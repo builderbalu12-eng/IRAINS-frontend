@@ -1,0 +1,663 @@
+<!-- <div id="loader" class="loader" *ngIf="isLoading">
+	<div class="loading-message">
+	  <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading..
+	</div>
+</div> -->
+
+<div id="loader" class="loader" *ngIf="isloadingSurrondingStations">
+	<div class="loading-message">
+	  <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading Surrounding Stations...
+	</div>
+</div>
+
+
+
+<div class="main-container">
+	<div [class.full-width]="!isSideNavOpen" class="map-container position-relative">
+		<!-- Map container -->
+		<div class="main-map" style="height: 100vh; position: relative;" id="map_observations">
+		  
+		  <!-- First button -->
+		  <!-- <button 
+			mat-button 
+			type="button" 
+			[ngStyle]="{
+			  'position': 'absolute',
+			  'top': '18%',
+			  'right': '94%',
+			  'z-index': '1000',
+			  'padding': '1.5rem 0.2rem',
+			  'background-color': isDraggingEnabled ? '#007bff' : '#6c757d',
+			  'color': 'white',
+			  'opacity': isDraggingEnabled ? '1' : '0.6',
+			  'border': 'none',
+			  'border-radius': '4px',
+			  'box-shadow': '0 4px 6px rgba(0, 0, 0, 0.1)',
+			  'cursor': 'pointer',
+			  'white-space': 'pre-line',
+			  'width': 'auto',
+			  'font-size': '16px'
+			}"
+			(click)="toggleDragging()">
+			{{isDraggingEnabled ? 'Disable\nDragging' : 'Enable\nDragging'}}
+		  </button> -->
+	  
+		  <!-- Second button -->
+		  <button 
+			mat-button 
+			type="button" 
+			[ngStyle]="{
+			  'position': 'absolute',
+			  'top': '2%',
+			  'left': '75%',
+			  'z-index': '1000',
+			  'padding': '1.5rem 0.2rem',
+			  'background-color': '#006fb9',
+			  'color': 'white',
+			  'border': 'none',
+			  'border-radius': '4px',
+			  'box-shadow': '0 4px 6px rgba(0, 0, 0, 0.1)',
+			  'cursor': 'pointer',
+			  'white-space': 'pre-line',
+			  'width': 'auto',
+			  'font-size': '16px'
+			}"
+			(click)="plotArea()">
+			{{'Plot\nArea'}}
+		  </button>
+		</div>
+
+
+		<button 
+		mat-button 
+		type="button" 
+		[ngStyle]="{
+		  'position': 'absolute',
+		  'top': '10%',
+		  'left': '74%',
+		  'z-index': '1000',
+		  'padding': '1.5rem 0.2rem',
+		  'background-color': isDraggingEnabled ? '#007bff' : '#6c757d',
+		  'color': 'white',
+		  'opacity': isDraggingEnabled ? '1' : '0.6',
+		  'border': 'none',
+		  'border-radius': '4px',
+		  'box-shadow': '0 4px 6px rgba(0, 0, 0, 0.1)',
+		  'cursor': 'pointer',
+		  'white-space': 'pre-line',
+		  'width': 'auto',
+		  'font-size': '16px'
+		}"
+		(click)="toggleDragging()">
+		{{isDraggingEnabled ? 'Disable\nDragging' : 'Enable\nDragging'}}
+	  </button>
+	  
+		<!-- Additional map container (hidden by default) -->
+		<div class="main-map1" style="height: 100vh; display: none;" id="map_observations1"></div>
+	  </div>
+	  
+
+
+	<div class="sidenav_right">
+
+
+
+		<div class="row justify-content-center">
+			<div class="d-flex flex-column justify-content-center align-items-center" >
+				<div class="station-details-container text-center mb-2">
+				  <div class="station-details-header">
+					<span class="h5">STATISTICS DETAILS</span>
+					<mat-divider style="border-top: 4px solid #333"></mat-divider>
+				  </div>
+
+				  <div class="station-details-header" style="margin-bottom: 1%;">
+					<span class="h5">Selected Date : {{selected_Date}}</span>
+				  </div>
+
+				</div> 
+				  <!-- <div class="station-stats-container p-2" style="margin-top: 20%;">
+					<div class="d-flex flex-column justify-content-center align-items-center mb-4">
+					  <span class="h5">TODAY STATISTICS</span>
+			
+					  <div style="overflow-y:scroll; width:100%; padding:1em;">
+						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
+						  <span>Highest recorded rainfall : {{maxStationRainfall}}</span>
+						</div>
+						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
+						  <span>Highest recorded Station : {{maxStationname}}, {{maxStationStatename}}</span>
+						</div>
+						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
+						  <span>No of Stations received : {{TotalStationsRecieved}}</span>
+						</div>
+						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
+						  <span>No of Stations Pending : {{TotalStationsPending}}</span>
+						</div>
+					  </div>
+					</div>
+				  </div> -->
+
+				  <!-- <div class="station-stats-container p-2" style="margin-top: 20%;">
+					<div class="d-flex flex-column justify-content-center align-items-center mb-4">
+					  <span class="h5">TODAY STATISTICS - Top {{ topN }}</span>
+				  
+					  <div style="overflow-y: scroll; width: 100%; padding: 1em;">
+						<div
+						  *ngFor="let station of topnStations"
+						  class="py-2 d-flex flex-column station-data-table w-100 mb-3 border rounded p-2"
+						>
+						  <span><strong>Station:</strong> {{ station.station_name }}, {{ station.state_name }}</span>
+						  <span><strong>Rainfall:</strong> {{ station.data }} mm</span>
+						  <span><strong>District:</strong> {{ station.district_name }}</span>
+						  <span><strong>Subdivision:</strong> {{ station.subdiv_name }}</span>
+						</div>
+					  </div>
+					</div>
+				  </div> -->
+
+
+
+				  <div class="station-stats-container p-2" style="margin-top: 2%;">
+
+
+					
+					<div class="d-flex flex-column justify-content-center align-items-center mb-4">
+						<div class="py-2 d-flex justify-content-between station-data-table mb-3">
+							<span>No of Stations received : {{TotalStationsRecieved}}</span>
+						  </div>
+						  <div class="py-2 d-flex justify-content-between station-data-table  mb-3">
+							<span>No of Stations Pending : {{TotalStationsPending}}</span>
+						  </div>
+						
+					  <div class="mb-3 w-100" style="max-width: 200px;">
+						<label for="topNSelect" class="form-label">Select Top N Stations(1-50):</label>
+						<input 
+						  type="number" 
+						  id="topNSelect" 
+						  class="form-control" 
+						  [(ngModel)]="topN" 
+						  (ngModelChange)="onTopNChange($event)"
+						  min="1" 
+						  max="50"
+						  required
+						  placeholder="Enter 1-50"
+						  style="border-color: #00FF00; border-width: 0.05cm;"
+						>
+					  </div>
+					  
+					  <span class="h5">TODAY STATISTICS - Top {{ topN }}</span>
+					  
+					  <div style="overflow-y: scroll; width: 100%; padding: 1em;">
+						<span *ngIf="topNstationsloader" class="chartloader"></span>
+
+						<div
+						  *ngFor="let station of topnStations"
+						  class="py-2 d-flex flex-column station-data-table w-100 mb-3 border rounded p-2"
+						>
+						  <span><strong>Station:</strong> {{ station.station_name }}, {{ station.state_name }}</span>
+						  <span><strong>Rainfall:</strong> {{ station.data }} mm</span>
+						  <span><strong>District:</strong> {{ station.district_name }}</span>
+						  <span><strong>Subdivision:</strong> {{ station.subdiv_name }}</span>
+						</div>
+					  </div>
+					</div>
+				  </div>
+
+
+			
+				  <!-- <div class="station-stats-container p-2" style="margin-top: 10%;">
+					<div class="d-flex flex-column justify-content-center align-items-center mb-4">
+					  <span class="h5">SEASONAL STATISTICS - {{currDate.getFullYear()}}</span>
+					  <span class="h5">({{currSeasonStartDate}}, {{currentSeasonEndDate}})</span>
+			
+					  <div style="overflow-y:scroll; width:100%; padding:1em;">
+						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
+						  <span>Highest recorded rainfall : {{maxSeasonalStationRainfall}}</span>
+						</div>
+						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
+						  <span>Highest recorded Station : {{maxSeasonalStationname}}</span>
+						</div>
+
+					  </div>
+					</div>
+				  </div> -->
+			  </div>
+		</div>
+
+		  
+	  </div>
+
+
+
+	
+	<div [class.side-nav-visible]="isSideNavOpen" [class.side-nav-hidden]="!isSideNavOpen" style="height: 100%"
+		class="weather-data-list-container">
+		<div id="observation-form" class="form-container">
+			<mat-divider></mat-divider>
+			<div class="my-3 d-flex align-items-center" style="gap: 1.2em; padding-left: 1em;"
+			[ngClass]="{'justify-content-around': isSideNavOpen, 'justify-content-start': !isSideNavOpen}">
+		 <span><mat-icon class="time-bg bg-light-green">access_time</mat-icon></span>
+		 <input class="form-control w-auto" type="date" id="birthdaytime"
+				[ngModel]="selected_Date | date:'yyyy-MM-dd'" (change)="onDateChange($event)"
+				name="birthdaytime">
+	   </div>
+			<mat-divider></mat-divider>
+
+			<div class="container-fluid p-2">
+				<div class="row g-3">
+				  <!-- Region Selection -->
+				  <div *ngIf="currentUserType == 'hq' || currentUserType == 'sp'" class="col-12">
+					<p-multiSelect
+					  [(ngModel)]="selectedRegion"
+					  [options]="regions"
+					  optionLabel="label"
+					  optionValue="value"
+					  placeholder="Select Regions"
+					  (onChange)="onRegionChange()"
+					  [showToggleAll]="false"
+					  styleClass="w-100"
+					></p-multiSelect>
+				  </div>
+			  
+				  <!-- Region Name Display -->
+				  <div *ngIf="currentUserType == 'mc' || currentUserType == 'rmc'" class="col-12 text-center fw-bold fs-5 py-2">
+					{{ this.regionName }}
+				  </div>
+			  
+				  <!-- MC Selection -->
+				  <ng-container *ngIf="currentUserType == 'hq' || currentUserType == 'sp'; else showUserName">
+					<div class="col-12">
+					  <p-multiSelect
+						[(ngModel)]="selectedMC"
+						[options]="centersMC1"
+						optionLabel="centre_name"
+						placeholder="Select MCs"
+						(ngModelChange)="onMcChange($event)"
+						[disabled]="mcDisabled"
+						[showToggleAll]="false"
+						styleClass="w-100"
+					  ></p-multiSelect>
+					</div>
+				  </ng-container>
+				  <ng-template #showUserName>
+					<div class="col-12 text-center fw-bold fs-5 py-2 px-3">
+					  {{ this.currentUserName }}
+					</div>
+				  </ng-template>
+			  
+				  <!-- RMC Selection -->
+				  <div *ngIf="currentUserType == 'hq' || currentUserType == 'sp'" class="col-12">
+					<p-multiSelect
+					  [(ngModel)]="selectedRMC"
+					  [options]="centersRMC1"
+					  optionLabel="centre_name"
+					  placeholder="Select RMCs"
+					  (ngModelChange)="onRMcChange($event)"
+					  [disabled]="rmcDisabled"
+					  [showToggleAll]="false"
+					  styleClass="w-100"
+					></p-multiSelect>
+				  </div>
+			  
+				  <!-- State Selection -->
+				  <div class="col-12">
+					<p-multiSelect
+					  [(ngModel)]="selectedState"
+					  [options]="filterStates"
+					  optionLabel="state_name"
+					  placeholder="Select States"
+					  (onChange)="onStateChange($event)"
+					  [showToggleAll]="false"
+					  styleClass="w-100"
+					></p-multiSelect>
+				  </div>
+			  
+				  <!-- District Selection -->
+				  <div class="col-12">
+					<p-multiSelect
+					  [(ngModel)]="selectedDistrict"
+					  [options]="filterDistrict"
+					  optionLabel="district_name"
+					  placeholder="Select Districts"
+					  (onChange)="onDistrictChange($event)"
+					  [showToggleAll]="false"
+					  styleClass="w-100"
+					></p-multiSelect>
+				  </div>
+			  
+				  <!-- Station Selection -->
+				  <div class="col-12">
+					<p-multiSelect
+					  [(ngModel)]="selectedStation"
+					  [options]="filteredStations"
+					  optionLabel="station_name"
+					  placeholder="Select Stations"
+					  (onChange)="onStationChange($event)"
+					  [showToggleAll]="false"
+					  styleClass="w-100"
+					></p-multiSelect>
+				  </div>
+			  
+				  <!-- Divider -->
+				  <div class="col-12">
+					<hr class="my-3">
+				  </div>
+			  
+				  <!-- Type Selection -->
+				  <div class="col-12">
+					<div class="text-center fw-bold mb-3">Select Type</div>
+					<div class="row row-cols-1 row-cols-md-3 g-2">
+					  <div class="col">
+						<div class="form-check d-flex align-items-center gap-2">
+						  <input
+							class="form-check-input"
+							type="checkbox"
+							id="aws"
+							name="aws"
+							[(ngModel)]="isAwsSelected"
+							(change)="filterStationData()"
+						  >
+						  <label class="form-check-label" for="aws">AWS</label>
+						</div>
+					  </div>
+					  <div class="col">
+						<div class="form-check d-flex align-items-center gap-2">
+						  <input
+							class="form-check-input"
+							type="checkbox"
+							id="org"
+							name="org"
+							[(ngModel)]="isOrgSelected"
+							(change)="filterStationData()"
+						  >
+						  <label class="form-check-label" for="org">ORG</label>
+						</div>
+					  </div>
+					  <div class="col">
+						<div class="form-check d-flex align-items-center gap-2">
+						  <input
+							class="form-check-input"
+							type="checkbox"
+							id="arg"
+							name="arg"
+							[(ngModel)]="isArgSelected"
+							(change)="filterStationData()"
+						  >
+						  <label class="form-check-label" for="arg">ARG</label>
+						</div>
+					  </div>
+					</div>
+				  </div>
+				</div>
+			  </div>
+
+			<mat-divider></mat-divider>
+			<div style="text-align: center; font-weight: bold;margin-top: 3%;">
+				<label>Day Statistics</label>
+			</div>
+
+
+
+			<div style="padding: 10px;">
+				<div style="display: inline-block; margin-bottom: 10px;">
+					<input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.zeroRainfallStations.isZeroStations" (change)="filterStationData()">
+					<div style="width: 20px; height: 10px; background-color: #4d4d4d; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
+					<span>Zero Rainfall Stations: {{dayStatistics.zeroRainfallStations.isZeroStations ? dayStatistics.zeroRainfallStations.count : ''}}</span>
+				  </div>
+				<div style="display: inline-block; margin-bottom: 10px;">
+				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.veryLightRainFallStations.isVeryLightRainFall" (change)="filterStationData()">
+				  <div style="width: 20px; height: 10px; background-color: #AAF200; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
+				  <span>Very Light Rainfall (0.1 to 2.4): {{dayStatistics.veryLightRainFallStations.isVeryLightRainFall ? dayStatistics.veryLightRainFallStations.count : ''}}</span>
+				</div>
+				<br>
+				<div style="display: inline-block; margin-bottom: 10px;">
+				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.lightRainfallStations.isLightRainfall" (change)="filterStationData()">
+				  <div style="width: 20px; height: 10px; background-color: #00FF00; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
+				  <span>Light Rainfall (2.4 to 15.5): {{dayStatistics.lightRainfallStations.isLightRainfall ? dayStatistics.lightRainfallStations.count : ''}}</span>
+				</div>
+				<br>
+				<div style="display: inline-block; margin-bottom: 10px;">
+				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.modrateRainFallStations.isModrateRainFall" (change)="filterStationData()">
+				  <div style="width: 20px; height: 10px; background-color: #00FFFF; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
+				  <span>Moderate Rainfall (15.5 to 64.4): {{dayStatistics.modrateRainFallStations.isModrateRainFall ? dayStatistics.modrateRainFallStations.count : ''}}</span>
+				</div>
+				<br>
+				<div style="display: inline-block; margin-bottom: 10px;">
+				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.heavyRainFallStations.isHeavyRainFall" (change)="filterStationData()">
+				  <div style="width: 20px; height: 10px; background-color: #FFFF00; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
+				  <span>Heavy Rainfall (64.4 to 115.5): {{dayStatistics.heavyRainFallStations.isHeavyRainFall ? dayStatistics.heavyRainFallStations.count : ''}}</span>
+				</div>
+				<br>
+				<div style="display: inline-block; margin-bottom: 10px;">
+				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.veryHeavyRainfallStations.isVeryHeavyRainfall" (change)="filterStationData()">
+				  <div style="width: 20px; height: 10px; background-color: #FF8C00; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
+				  <span>Very Heavy Rainfall (115.5 to 204.4): {{dayStatistics.veryHeavyRainfallStations.isVeryHeavyRainfall ? dayStatistics.veryHeavyRainfallStations.count : ''}}</span>
+				</div>
+				<br>
+				<div style="display: inline-block; margin-bottom: 10px;">
+				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.extremelyHeavyRainfallStations.isExtremelyHeavyRainfall" (change)="filterStationData()">
+				  <div style="width: 20px; height: 10px; background-color: #FF0000; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
+				  <span>Extremely Heavy Rainfall (>204.4): {{dayStatistics.extremelyHeavyRainfallStations.isExtremelyHeavyRainfall ? dayStatistics.extremelyHeavyRainfallStations.count : ''}}</span>
+				</div>
+				<br>
+
+			  </div>
+			  
+
+			<div class="my-3 d-flex justify-content-center">
+				<button mat-button type="button" class="mx-auto" [class.hidden]="!isSideNavOpen"
+					style="background-color:#4050b5; color:white" (click)="filterStationData()"> 
+					Submit
+				</button>
+
+
+			</div>
+
+			<mat-divider></mat-divider>
+
+		</div>
+	</div>
+
+	<div [ngStyle]="{'display': !isBottomNavOpen ? 'none' : 'flex'}" [class.station-data-container]="isBottomNavOpen"
+		class="flex-column border border-danger" style="height: auto;">
+
+		<div class="d-flex justify-content-center align-items-center" style="gap:2em;">
+			<div class="h5 align-self-center d-flex" [class.selected]="selectedOption === 'station_details'"
+				(click)="selectStationDataOption('station_details')" style="gap:0.2em;">
+				<mat-icon>graphic_eq</mat-icon>
+				<span>{{showSelectedStation}} STATION DETAILS</span>
+			</div>
+
+			<mat-icon (click)="closePopup()">close</mat-icon>
+
+		</div>
+
+
+
+		<mat-divider></mat-divider>
+		<div *ngIf="selectedOption === 'station_details'" class="d-flex" style="height:100%;">
+
+
+			
+
+			 <ng-container *ngIf="selectedOption === 'station_details'">
+				<div class="d-flex flex-column justify-content-center align-items-center p-2 mb-3"
+					style=" width:35%; max-height:50%;">
+					<!-- <Span class="h5">{{showSelectedStation}} DETAILS</Span> -->
+
+					<div style="overflow-y:scroll; width:100%; padding:1em;">
+
+						<div class="py-2 d-flex justify-content-between station-data-table w-100">
+							<span>Station Name</span>
+							<span>{{showSelectedStation}}, {{'furgfurgu'}}, {{showSelectedState_name}}</span>
+						</div>
+
+						<div class="py-2 d-flex justify-content-between station-data-table w-100">
+							<span>No of days - Data received</span>
+							<span>{{StationTotalEntries}}</span>
+						</div>
+
+						<div class="py-2 d-flex justify-content-between station-data-table w-100">
+							<span>No of days : Data missing</span>
+							<span>{{StationsMissingEntries}}</span>
+						</div>
+						<div class="py-2 d-flex justify-content-between station-data-table w-100">
+							<span>Highest Rainfall Record</span>
+							<span>{{StationHighestRecord}}, {{maxRecordedDataDateofSelectedStation}}</span>
+						</div>
+	
+						<div class="py-2 d-flex justify-content-between station-data-table w-100">
+							<span>Station - Activated from</span>
+							<span>{{StationFirstDate}}</span>
+						</div>
+
+						<br>
+						<br>
+							<!-- <span>Station - Activated from</span>
+							<span>{{StationFirstDate}}</span> -->
+
+					</div>
+				</div>
+
+				<div class="d-flex flex-column justify-content-center align-items-center p-2" style=" width:35%; max-height:80%;">
+
+					<div style="max-height:80%; margin-left: 90%;">	
+						<div *ngIf="chart" [chart]="chart" style="height: 232px; width:57em;" class="chart-container"></div>
+						<div class="station-data-options">
+							<div *ngFor="let weatherOptions of stationWeatherParametersnew" class="station-data-sub-options p-2"
+								[class.clicked]="toggleDataParameter(weatherOptions.text)"
+								(click)="updateChartNew(weatherOptions)">
+								{{ weatherOptions.text }}
+							</div>
+						</div>
+					</div>
+				</div>
+			</ng-container>
+
+		
+		</div>
+
+
+		<div *ngIf="selectedOption === 'custom_hand_polygon'" class="resizable-box border border-success d-flex flex-column">
+			
+			<div class="resizer" (mousedown)="onMouseDown($event)"></div>
+		
+		
+			<ng-container *ngIf="selectedOption === 'custom_hand_polygon'">
+				
+			  <div class="d-flex flex-row justify-content-between p-2 mb-3" style="width: 100%; height: 100%;">
+				<!-- Left side: Table -->
+				<div class="col-6" style="flex: 0 0 40%; max-width: 40%;">
+					<div class="table-container" style="overflow-y: auto; border: 1px solid #ddd; height: 100%;">
+					  <table class="table table-bordered" style="width: 100%;">
+						<thead>
+						  <tr>
+							<th style="width: 5%;">
+							  <input type="checkbox" [(ngModel)]="selectAllChecked" (change)="toggleSelectAll($event)">
+							</th>
+							<th><div><span>Station</span></div></th>
+							<th><div><span>State</span></div></th>
+							<th><div><span>Rainfall Data</span></div></th>
+						  </tr>
+						</thead>
+						<tbody>
+						  <tr *ngFor="let station of stationInsidethePolygon; let i = index">
+							<td style="width: 5%;">
+							  <input type="checkbox" [(ngModel)]="station.selected" (change)="onStationSelectChangeInPolygon(station)">
+							</td>
+							<td>{{ station.station_name }}</td>
+							<td>{{ station.state_name }}</td>
+							<td>{{ station.data }}</td>
+						  </tr>
+						</tbody>
+					  </table>
+					</div>
+				  </div>
+				  
+				  <div class="col-6" style="flex: 0 0 58%; max-width: 58%; padding-left: 10px;">
+					<div class="d-flex flex-column justify-content-center align-items-center p-2 mb-3" style="width: 100%; max-height:80%;">
+					  <div *ngIf="chartCompare" [chart]="chartCompare" [ngStyle]="{ 'height': chartHeight, 'width': '100%' }" class="chart-container"></div>
+					  <div class="station-data-options">
+						<div class="station-data-sub-options p-2">
+						  <button (click)="UpdatePolygonChart('Daily Data')" class="btn btn-primary mt-2" style="width: auto; height: auto;">
+							Update Chart
+						  </button>
+						</div>
+					  </div>
+					<span *ngIf="ischartInLoading" class="chartloader"></span>
+
+					</div>
+				  </div>
+				  
+			  </div>
+			</ng-container>
+		  </div>
+		  
+
+
+		  <div *ngIf="selectedOption === 'compare_charts'" class="resizable-box border border-success d-flex flex-column">
+			<div class="resizer" (mousedown)="onMouseDown($event)"></div>
+		  
+			<div class="Radius-Selection d-flex flex-column justify-content-center align-items-center p-2 mb-3">
+			  <div class="slider-container justify-content-center align-items-center" style="width: 100%;">
+				<label for="radius-slider" class="form-label" style="font-size: 18px;">Selected Radius: {{ selectedRadius }} Kilometers</label>
+				<br>
+				<input id="radius-slider" [(ngModel)]="selectedRadius" (input)="updateRadius()" type="range" min="1" max="500" value="50" class="custom-slider">
+			  </div>
+			</div>
+		  
+			<mat-divider style="border-top: 4px solid #333"></mat-divider>
+		  
+			<ng-container *ngIf="selectedOption === 'compare_charts' && showCompareData">
+			  <div class="d-flex flex-row justify-content-between p-2 mb-3" style="width:100%; height: 100%;">
+				<!-- Left side: Table -->
+				<div class="col-6" style="flex: 0 0 40%; max-width: 40%;">
+				  <div class="table-container">
+					<table class="table table-bordered" style="width: 100%; height: 100%;">
+					  <thead>
+						<tr>
+						  <th style="width: 5%;">
+							<input type="checkbox" [(ngModel)]="selectAllChecked" (change)="toggleSelectAll($event)">
+						  </th>
+						  <th><div><span>Station</span></div></th>
+						  <th><div><span>State</span></div></th>
+						  <th><div><span>Distance</span></div></th>
+						  <th><div><span>Rainfall Data</span></div></th>
+						</tr>
+					  </thead>
+					  <tbody *ngIf="stationsRadisuDataToDisplay && stationsRadisuDataToDisplay.length > 0">
+						<tr *ngFor="let station of stationsRadisuDataToDisplay; let i = index">
+						  <td style="width: 5%;">
+							<input type="checkbox" [(ngModel)]="station.selected" (change)="onStationSelectChange(station)">
+						  </td>
+						  <td>{{ station.station_name }}</td>
+						  <td>{{ station.state_name }}</td>
+						  <td>{{ station.distance }}</td>
+						  <td>{{ station.data }}</td>
+						</tr>
+					  </tbody>
+					</table>
+				  </div>
+				</div>
+		  
+				<!-- Right side: Search and Chart -->
+				<div class="col-6" style="flex: 0 0 58%; max-width: 58%; padding-left: 10px;">
+				  <div class="d-flex flex-column justify-content-center align-items-center p-2 mb-3" style="width: 100%; max-height:80%;">
+					<div *ngIf="chartCompare" [chart]="chartCompare" [ngStyle]="{ 'height': chartHeight, 'width': '100%' }" class="chart-container"></div>
+					<div class="station-data-options">
+					  <div class="station-data-sub-options p-2">
+						<button (click)="updateChartCompareNew('Daily Data')" class="btn btn-primary mt-2" style="width: auto; height: auto;">
+						  Update Chart
+						</button>
+					  </div>
+
+					</div>
+
+					<span *ngIf="ischartInLoading" class="chartloader"></span>
+
+				  </div>
+				</div>
+			  </div>
+			</ng-container>
+		  </div>
+		  
+</div>
