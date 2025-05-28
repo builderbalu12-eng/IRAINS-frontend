@@ -470,6 +470,40 @@ async downloadMapImage(downloadpdf : boolean) {
           });
 
 
+                    // // Calculate centroid for label placement
+                    // const bounds = layer.getBounds();
+                    // const center = bounds.getCenter();
+            
+                    // // Create a unique label ID
+                    // const labelId = `label-${id2}-${id1.replace(/\s+/g, '-')}`; // Ensure unique ID by combining district code and name
+            
+                    // // Remove existing label if it exists
+                    // const existingLabel = document.getElementById(labelId);
+                    // if (existingLabel) {
+                    //   existingLabel.remove();
+                    // }
+            
+                    // // Create label using L.marker and L.divIcon
+                    // if (center.lat && center.lng) {
+                    //   const label = L.marker([center.lat, center.lng], {
+                    //     icon: L.divIcon({                              // this.isFullScreen ? 10 : 8
+                    //       className: 'district-label',
+                    //       html: `
+                    //         <div id="${labelId}" style="font-size: ${8
+
+                    //         }px; font-weight: bolder; color: white; width: 100px; text-align: center; white-space: nowrap;">
+                    //           <div>${id1}</div>
+                    //           <div>${dailyrainfall} (${rainfall === -100 ? 'NA' : rainfall}%)</div>
+                    //           <div>${normalrainfall}</div>
+                    //         </div>
+                    //       `,
+                    //       iconSize: [80, 10], // Adjust size based on fullscreen
+                    //     }),
+                    //   }).addTo(this.map);
+                    // }
+                  
+
+
 
         }
       }).addTo(this.map);

@@ -79,14 +79,15 @@
           class="form-control"
           [value]="fromDate"
           [max]="today"
-          (change)="setFromAndToDate()"
+          [(ngModel)]="fromDate"
         />
       </div>
   
       <!-- Submit Button -->
       <div class="col d-flex justify-content-center align-items-center">
-        <button class="btn btn-success w-75" type="button">
+        <button class="btn btn-success w-75" type="button" (click)="setFromAndToDate()">
           Submit
+          
         </button>
       </div>
   

@@ -6,7 +6,7 @@ dist/
 build/
 static/
 angular/
-
+.angular/
 
 # Environment variables
 .env
@@ -17,8 +17,6 @@ angular/
 # IDE files
 .vscode/
 .idea/
-
-
 
 # OS specific
 .DS_Store

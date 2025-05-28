@@ -604,7 +604,7 @@ export class DataEntryComponent implements OnInit {
       elementRef.style.background = "red";
       // alert("Please enter a valid number with only one decimal place");
     }
-    if (Number(elementRef.value) > 100) {
+    if (Number(elementRef.value) > 300) {
       elementRef.style.background = "red";
       alert("Rainfall is greater than 100mm");
     } else {
@@ -1764,6 +1764,20 @@ export class DataEntryComponent implements OnInit {
       element.value = this.originalValue; // Restore original value if input is empty
     } else {
       this.updateRainfallValueData(stationCode, element.value); // Update with new value
+    }
+  }
+
+  moveToNextRow(currentInput: HTMLInputElement, currentIndex: number) {
+    // Blur the current input to trigger any blur-related logic
+    currentInput.blur();
+
+    // Check if there is a next row
+    if (currentIndex + 1 < this.filteredData.length) {
+      // Find the next row's input field
+      const nextRowInput = document.querySelectorAll('input[name="rainfall"]')[currentIndex + 1] as HTMLInputElement;
+      if (nextRowInput) {
+        nextRowInput.focus();
+      }
     }
   }
 

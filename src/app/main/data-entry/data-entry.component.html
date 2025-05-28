@@ -324,7 +324,7 @@
     step="0.1"
     (focus)="storeOriginalValue(rainFallElementRef)"
     (blur)="restoreOrUpdateRainfallValue(rainFallElementRef, station.station_code)"
-    (keyup.enter)="rainFallElementRef.blur()"
+    (keyup.enter)="moveToNextRow(rainFallElementRef, i)"
     (input)="showMessage(rainFallElementRef)"
   />
   <span
