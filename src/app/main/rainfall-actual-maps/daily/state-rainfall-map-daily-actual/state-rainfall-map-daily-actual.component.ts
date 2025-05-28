@@ -18,47 +18,46 @@ import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
 
-
-
 @Component({
-  selector: 'app-state-rainfall-map-daily-actual',
-  templateUrl: './state-rainfall-map-daily-actual.component.html',
-  styleUrls: ['./state-rainfall-map-daily-actual.component.css']
+  selector: "app-state-rainfall-map-daily-actual",
+  templateUrl: "./state-rainfall-map-daily-actual.component.html",
+  styleUrls: ["./state-rainfall-map-daily-actual.component.css"],
 })
 export class StateRainfallMapDailyActualComponent implements AfterViewInit {
-
-
   statedatacum: any[] = [];
   isLoading: boolean = false;
   countrydatacum: any;
   countryActual: any;
   countryNormal: any;
   countryDeparture: any;
-  fromDate: any = this.formatDate(new Date()) ;
+  fromDate: any = this.formatDate(new Date());
   toDate: any = this.formatDate(new Date());
   today: any;
   selectedMode: any;
 
-
-
   formatDate(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero based
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero based
     const year = date.getFullYear();
     return `${year}-${month}-${day}`;
   }
-  
 
   async downloadMapData() {
     this.isLoading = true;
     try {
       this.isLoading = true;
-      if(this.selectedMode.selectedMode == 'Unified'){
-        await this.downloadStatistcs.updateanddownloadpdfCustom(this.fromDate, this.fromDate);
-      }else{
-        await this.downloadStatistcs.updateanddownloadpdfFromDataEntryCustom(this.fromDate, this.fromDate);
-      }  
-                  this.isLoading = false;
+      if (this.selectedMode.selectedMode == "Unified") {
+        await this.downloadStatistcs.updateanddownloadpdfCustom(
+          this.fromDate,
+          this.fromDate
+        );
+      } else {
+        await this.downloadStatistcs.updateanddownloadpdfFromDataEntryCustom(
+          this.fromDate,
+          this.fromDate
+        );
+      }
+      this.isLoading = false;
     } catch (error) {
       console.error("Error downloading map data:", error);
     }
@@ -69,11 +68,19 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
   legendItems = [
     {
       color: "#abf200",
-      text: `Very Light Rainfall <br>[0mm to 2.4mm]`,
+      text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
       fontSize: "9.3px",
     },
-    { color: "#03ff00", text: "Light Rainfall <br>[>2.4mm to 15.5mm]", fontSize: "9.3px" },
-    { color: "#03ffff", text: "Moderate Rainfall <br>[>15.5mm to 64.4mm]", fontSize: "9.3px" },
+    {
+      color: "#03ff00",
+      text: "Light Rainfall <br>[>2.4mm to 15.5mm]",
+      fontSize: "9.3px",
+    },
+    {
+      color: "#03ffff",
+      text: "Moderate Rainfall <br>[>15.5mm to 64.4mm]",
+      fontSize: "9.3px",
+    },
     {
       color: "#ffff00",
       text: "Heavy Rainfall <br>[>64.4mm to 115.5mm]",
@@ -84,7 +91,11 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
       text: "Very Heavy Rainfall <br>[>115.5mm to 204.4mm]",
       fontSize: "9.3px",
     },
-    { color: "#ff0000", text: "Extremely Heavy Rainfall <br>[>204.4]", fontSize: "9.3px" },
+    {
+      color: "#ff0000",
+      text: "Extremely Heavy Rainfall <br>[>204.4]",
+      fontSize: "9.3px",
+    },
     { color: "#c0c0c0", text: "No <br>Data", fontSize: "9.3px" },
   ];
 
@@ -109,7 +120,7 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
     private downloadStatistcs: StateDownloadStatistics,
     private stateinfo: StateInfoService,
     private countryService: CountryService,
-    private constants : Constants
+    private constants: Constants
   ) {
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
@@ -138,9 +149,8 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
   async fetchBackend() {
     let selectedMode: any = localStorage.getItem("selectedMode");
     this.selectedMode = JSON.parse(selectedMode);
-    console.log('this.selected mOde', this.selectedMode)
+    console.log("this.selected mOde", this.selectedMode);
 
-    
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
     const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
@@ -151,15 +161,14 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
       endDate: this.fromDate,
     };
 
-
-    if(this.selectedMode.selectedMode == 'Unified'){
+    if (this.selectedMode.selectedMode == "Unified") {
       this.stateService.fetchDataFtp(data).subscribe((res) => {
         this.statedatacum = res.data;
         this.loadGeoJSON(false);
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       });
-  
+
       this.countryService.fetchDataFtp(data).subscribe((res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
@@ -168,7 +177,9 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data FTP",
           this.countrydatacum,
@@ -177,15 +188,14 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
           this.countryNormal
         );
       });
-
-    }else{
+    } else {
       this.stateService.fetchData(data).subscribe((res) => {
         this.statedatacum = res.data;
         this.loadGeoJSON(false);
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       });
-  
+
       this.countryService.fetchData(data).subscribe((res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
@@ -194,7 +204,9 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data Entry",
           this.countrydatacum,
@@ -204,7 +216,6 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
         );
       });
     }
-
   }
 
   filter = (node: HTMLElement) => {
@@ -399,9 +410,9 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
       fromDate: this.fromDate,
       toDate: this.fromDate,
     };
-    this.formatteddate = this.fromDate.split("-").reverse().join("-")
-    this.calculateInitialZoom()
-    this.fetchBackend()
+    this.formatteddate = this.fromDate.split("-").reverse().join("-");
+    this.calculateInitialZoom();
+    this.fetchBackend();
     // this.dataService.setfromAndToDate(JSON.stringify(data));
   }
 
@@ -419,7 +430,7 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
     const cardWidth = window.innerWidth * 0.9;
     const cardHeight = window.innerHeight * 0.7;
     this.initialZoom = this.calculateZoomLevel(cardWidth, cardHeight);
-    this.defaultFontSizeonMap = (this.initialZoom ) * 2.333;
+    this.defaultFontSizeonMap = this.initialZoom * 2.333;
   }
 
   private calculateZoomLevel(width: number, height: number): number {
@@ -607,21 +618,21 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
           const id2 = feature.properties["state_code"];
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
-          if (matchedData?.departure!=null) {
+          if (matchedData?.departure != null) {
             rainfall = matchedData.departure;
           } else {
             rainfall = "NA";
           }
 
           let dailyrainfall =
-          matchedData &&
-          matchedData.actual_state_rainfall !== null &&
-          matchedData.actual_state_rainfall != undefined &&
-          !Number.isNaN(matchedData.actual_state_rainfall)
-            ? this.constants.trimToOneDecimals(
-              matchedData.actual_state_rainfall
-            ) 
-            : "NA";
+            matchedData &&
+            matchedData.actual_state_rainfall !== null &&
+            matchedData.actual_state_rainfall != undefined &&
+            !Number.isNaN(matchedData.actual_state_rainfall)
+              ? this.constants.trimToOneDecimals(
+                  matchedData.actual_state_rainfall
+                )
+              : "NA";
           const color = this.constants.getActualColorForRainfall(dailyrainfall);
 
           return {
@@ -638,29 +649,27 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
           // console.log('STATE ID', id2)
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
-          if (matchedData?.departure!=null) {
-
+          if (matchedData?.departure != null) {
             rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
-        } else {
-
-          rainfall = "NA";
-        }
+          } else {
+            rainfall = "NA";
+          }
           console.log("raain", rainfall);
-          
+
           let dailyrainfall =
             matchedData &&
             matchedData.actual_state_rainfall !== null &&
             matchedData.actual_state_rainfall != undefined &&
             !Number.isNaN(matchedData.actual_state_rainfall)
               ? this.constants.trimToOneDecimals(
-                matchedData.actual_state_rainfall
-              ) 
+                  matchedData.actual_state_rainfall
+                )
               : "NA";
           let normalrainfall =
             matchedData && !Number.isNaN(matchedData.rainfall_normal_value)
               ? this.constants.trimToOneDecimals(
-                matchedData.rainfall_normal_value
-              ) 
+                  matchedData.rainfall_normal_value
+                )
               : "NA";
 
           // Determine label position and abbreviation
@@ -937,7 +946,9 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
                 html: `
  
  <div id="${labelId}" 
- style="font-size:  ${this.defaultFontSizeonMap}px; font-weight : 1000; color: #002467; width: 120px; text-align: center; white-space: nowrap;">
+ style="font-size:  ${
+   this.defaultFontSizeonMap
+ }px; font-weight : 1000; color: #002467; width: 120px; text-align: center; white-space: nowrap;">
  <div>${stateName}</div>
  <div>${dailyrainfall}(${rainfall == undefined ? "NA" : rainfall})</div>
  <div>${normalrainfall}</div>

@@ -14,23 +14,22 @@ import { CountryDownloadStatistics } from "src/app/services/country/pdfStatistic
 import jsPDF from "jspdf";
 import { Constants } from "src/app/services/constants";
 @Component({
-  selector: 'app-country-rainfall-map-daily-actual',
-  templateUrl: './country-rainfall-map-daily-actual.component.html',
-  styleUrls: ['./country-rainfall-map-daily-actual.component.css']
+  selector: "app-country-rainfall-map-daily-actual",
+  templateUrl: "./country-rainfall-map-daily-actual.component.html",
+  styleUrls: ["./country-rainfall-map-daily-actual.component.css"],
 })
 export class CountryRainfallMapDailyActualComponent {
-
   countrydatacum: any[] = [];
   isLoading: boolean = false;
 
-  fromDate: any = this.formatDate(new Date()) ;
+  fromDate: any = this.formatDate(new Date());
   toDate: any = this.formatDate(new Date());
   selectedMode: any;
-  today : any
+  today: any;
 
   formatDate(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero based
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero based
     const year = date.getFullYear();
     return `${year}-${month}-${day}`;
   }
@@ -44,11 +43,18 @@ export class CountryRainfallMapDailyActualComponent {
     this.isLoading = true;
     try {
       this.isLoading = true;
-      if(this.selectedMode.selectedMode == 'Unified'){
-        await this.countryDownloadStatistics.updateanddownloadpdfCustom(this.fromDate, this.fromDate);
-      }else{
-        await this.countryDownloadStatistics.updateanddownloadpdfFromDataEntryCustom(this.fromDate, this.fromDate);
-      }        this.isLoading = false;
+      if (this.selectedMode.selectedMode == "Unified") {
+        await this.countryDownloadStatistics.updateanddownloadpdfCustom(
+          this.fromDate,
+          this.fromDate
+        );
+      } else {
+        await this.countryDownloadStatistics.updateanddownloadpdfFromDataEntryCustom(
+          this.fromDate,
+          this.fromDate
+        );
+      }
+      this.isLoading = false;
     } catch (error) {
       console.error("Error downloading map data:", error);
     }
@@ -60,11 +66,19 @@ export class CountryRainfallMapDailyActualComponent {
   legendItems = [
     {
       color: "#abf200",
-      text: `Very Light Rainfall <br>[0mm to 2.4mm]`,
+      text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
       fontSize: "9.3px",
     },
-    { color: "#03ff00", text: "Light Rainfall <br>[>2.4mm to 15.5mm]", fontSize: "9.3px" },
-    { color: "#03ffff", text: "Moderate Rainfall <br>[>15.5mm to 64.4mm]", fontSize: "9.3px" },
+    {
+      color: "#03ff00",
+      text: "Light Rainfall <br>[>2.4mm to 15.5mm]",
+      fontSize: "9.3px",
+    },
+    {
+      color: "#03ffff",
+      text: "Moderate Rainfall <br>[>15.5mm to 64.4mm]",
+      fontSize: "9.3px",
+    },
     {
       color: "#ffff00",
       text: "Heavy Rainfall <br>[>64.4mm to 115.5mm]",
@@ -75,7 +89,11 @@ export class CountryRainfallMapDailyActualComponent {
       text: "Very Heavy Rainfall <br>[>115.5mm to 204.4mm]",
       fontSize: "9.3px",
     },
-    { color: "#ff0000", text: "Extremely Heavy Rainfall <br>[>204.4]", fontSize: "9.3px" },
+    {
+      color: "#ff0000",
+      text: "Extremely Heavy Rainfall <br>[>204.4]",
+      fontSize: "9.3px",
+    },
     { color: "#c0c0c0", text: "No <br>Data", fontSize: "9.3px" },
   ];
 
@@ -127,8 +145,7 @@ export class CountryRainfallMapDailyActualComponent {
   async fetchBackend() {
     let selectedMode: any = localStorage.getItem("selectedMode");
     this.selectedMode = JSON.parse(selectedMode);
-    console.log('this.selected mOde', this.selectedMode)
-
+    console.log("this.selected mOde", this.selectedMode);
 
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
@@ -140,7 +157,7 @@ export class CountryRainfallMapDailyActualComponent {
       endDate: this.fromDate,
     };
 
-    if(this.selectedMode.selectedMode == 'Unified'){
+    if (this.selectedMode.selectedMode == "Unified") {
       this.countryService.fetchDataFtp(data).subscribe((res) => {
         this.countrydatacum = res.data;
         console.log("COUNTRY DATA", res.data);
@@ -148,15 +165,11 @@ export class CountryRainfallMapDailyActualComponent {
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       });
-  
+
       this.countryService.fetchDataFtp(data).subscribe((res) => {
         this.countrydatacum = res.data;
       });
-      
-    }
-
-
-    else{
+    } else {
       this.countryService.fetchData(data).subscribe((res) => {
         this.countrydatacum = res.data;
         console.log("COUNTRY DATA", res.data);
@@ -347,9 +360,9 @@ export class CountryRainfallMapDailyActualComponent {
       fromDate: this.fromDate,
       toDate: this.fromDate,
     };
-    this.formatteddate = this.fromDate.split("-").reverse().join("-")
-    this.calculateInitialZoom()
-    this.fetchBackend()
+    this.formatteddate = this.fromDate.split("-").reverse().join("-");
+    this.calculateInitialZoom();
+    this.fetchBackend();
     // this.dataService.setfromAndToDate(JSON.stringify(data));
   }
 
@@ -445,8 +458,9 @@ export class CountryRainfallMapDailyActualComponent {
       "#celebrations-countryNavbar"
     );
 
-    const borderRemove = this.elRef.nativeElement.querySelector('#border-remove-CountryNavbar');  
-
+    const borderRemove = this.elRef.nativeElement.querySelector(
+      "#border-remove-CountryNavbar"
+    );
 
     if (isFullscreen) {
       this.map.addControl(this.map.zoomControl);
@@ -481,18 +495,15 @@ export class CountryRainfallMapDailyActualComponent {
       this.renderer.setStyle(resetButton, "top", "5%");
 
       if (isFullscreen && borderRemove) {
-        this.renderer.addClass(borderRemove, 'no-border');
-      } 
-    
-      
+        this.renderer.addClass(borderRemove, "no-border");
+      }
     } else {
       this.map.removeControl(this.map.zoomControl);
       this.map.dragging.disable();
 
-      this.renderer.removeClass(borderRemove, 'no-border');
-      this.renderer.setStyle(borderRemove, 'border', '2px solid black');  
+      this.renderer.removeClass(borderRemove, "no-border");
+      this.renderer.setStyle(borderRemove, "border", "2px solid black");
 
-      
       this.map.setZoom(this.initialZoom);
 
       this.renderer.removeStyle(logoImage, "position");
@@ -536,19 +547,19 @@ export class CountryRainfallMapDailyActualComponent {
           // console.log('matchedData',matchedData)
 
           let rainfall: any;
-          if (matchedData?.departure!=null) {
+          if (matchedData?.departure != null) {
             rainfall = matchedData.departure;
           } else {
             rainfall = "NA";
           }
 
           const dailyrainfall =
-          matchedData &&
-          matchedData.actual_rainfall !== null &&
-          matchedData.actual_rainfall != undefined &&
-          !Number.isNaN(matchedData.actual_rainfall)
-            ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
-            : "NA";
+            matchedData &&
+            matchedData.actual_rainfall !== null &&
+            matchedData.actual_rainfall != undefined &&
+            !Number.isNaN(matchedData.actual_rainfall)
+              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
+              : "NA";
           // const color = this.getColorForRainfall1(rainfall);
           const color = this.constants.getActualColorForRainfall(dailyrainfall);
 
@@ -564,28 +575,31 @@ export class CountryRainfallMapDailyActualComponent {
           const id1 = feature.properties["name"];
           const matchedData = this.countrydatacum[0];
           let rainfall: any;
-  
-          if (matchedData?.departure!=null) {
+
+          if (matchedData?.departure != null) {
             // rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
-            const departureValue = this.constants.trimToZeroDecimals(matchedData.departure);
-            rainfall = `${departureValue}%`; 
-
-        } else {
-
-          rainfall = "NA";
-        }
+            const departureValue = this.constants.trimToZeroDecimals(
+              matchedData.departure
+            );
+            rainfall = `${departureValue}%`;
+          } else {
+            rainfall = "NA";
+          }
           const dailyrainfall =
             matchedData &&
             matchedData.actual_rainfall !== null &&
             matchedData.actual_rainfall != undefined &&
             !Number.isNaN(matchedData.actual_rainfall)
-              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) + " mm"
+              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) +
+                " mm"
               : "NA";
           const normalrainfall =
             matchedData &&
             matchedData.actual_rainfall !== null &&
             !Number.isNaN(matchedData.rainfall_normal_value)
-              ? this.constants.trimToOneDecimals(parseFloat(matchedData.rainfall_normal_value)) + " mm" 
+              ? this.constants.trimToOneDecimals(
+                  parseFloat(matchedData.rainfall_normal_value)
+                ) + " mm"
               : "NA";
 
           const labelId = `label-${"India"}`;

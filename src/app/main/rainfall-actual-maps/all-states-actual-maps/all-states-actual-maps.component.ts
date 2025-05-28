@@ -21,12 +21,11 @@ import { DownloadPdfStateDistrict } from "src/app/services/district/states/distr
 import { Constants } from "src/app/services/constants";
 
 @Component({
-  selector: 'app-all-states-actual-maps',
-  templateUrl: './all-states-actual-maps.component.html',
-  styleUrls: ['./all-states-actual-maps.component.css']
+  selector: "app-all-states-actual-maps",
+  templateUrl: "./all-states-actual-maps.component.html",
+  styleUrls: ["./all-states-actual-maps.component.css"],
 })
 export class AllStatesActualMapsComponent {
-
   districtdatacum: any[] = [];
   StartDate: any;
   EndDate: any;
@@ -36,7 +35,7 @@ export class AllStatesActualMapsComponent {
   countryDeparture: any;
   isDownloading = false;
   isLoading: any = false;
-  selectedStateCode : any;
+  selectedStateCode: any;
   statedatacum: any;
   selectedMode: any;
   fromDate: any = this.formatDate(new Date());
@@ -47,12 +46,14 @@ export class AllStatesActualMapsComponent {
       startDate: this.selectedDate,
       endDate: this.selectedDate,
     };
-  
+
     try {
       const res = await this.stateService.fetchData(data).toPromise(); // Convert the Observable to a Promise
       this.statedatacum = res.data;
       console.log("balu....", this.statedatacum);
-      this.selectedStateCode = this.statedatacum.find((state: any) => state.state_name === this.selectedStateName).state_code;
+      this.selectedStateCode = this.statedatacum.find(
+        (state: any) => state.state_name === this.selectedStateName
+      ).state_code;
       // this.loadGeoJSON(false);
       // this.StartDate = this.convertToIndianDateFormat(this.StartDate);
       // this.EndDate = this.convertToIndianDateFormat(this.EndDate);
@@ -60,20 +61,30 @@ export class AllStatesActualMapsComponent {
       console.error("Error fetching state data", error);
     }
   }
-  
-
 
   async downloadMapData() {
-    await this.getSelectedStateCode()
+    await this.getSelectedStateCode();
     this.isDownloading = true;
     try {
       this.isDownloading = true;
-      console.log('selected start date and end date', this.selectedDate, this.selectedDate)
-      if(this.selectedMode.selectedMode == 'Unified'){
-        await this.downloadPdf$.updateanddownloadpdfCustom(this.fromDate, this.toDate, this.selectedStateCode);
-      }else{
-        await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.fromDate, this.toDate, this.selectedStateCode);
-      }      
+      console.log(
+        "selected start date and end date",
+        this.selectedDate,
+        this.selectedDate
+      );
+      if (this.selectedMode.selectedMode == "Unified") {
+        await this.downloadPdf$.updateanddownloadpdfCustom(
+          this.fromDate,
+          this.toDate,
+          this.selectedStateCode
+        );
+      } else {
+        await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(
+          this.fromDate,
+          this.toDate,
+          this.selectedStateCode
+        );
+      }
       this.isDownloading = false;
     } catch (error) {
       console.error("Error downloading map data:", error);
@@ -83,11 +94,19 @@ export class AllStatesActualMapsComponent {
   legendItems = [
     {
       color: "#abf200",
-      text: `Very Light Rainfall <br>[0mm to 2.4mm]`,
+      text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
       fontSize: "9.3px",
     },
-    { color: "#03ff00", text: "Light Rainfall <br>[>2.4mm to 15.5mm]", fontSize: "9.3px" },
-    { color: "#03ffff", text: "Moderate Rainfall <br>[>15.5mm to 64.4mm]", fontSize: "9.3px" },
+    {
+      color: "#03ff00",
+      text: "Light Rainfall <br>[>2.4mm to 15.5mm]",
+      fontSize: "9.3px",
+    },
+    {
+      color: "#03ffff",
+      text: "Moderate Rainfall <br>[>15.5mm to 64.4mm]",
+      fontSize: "9.3px",
+    },
     {
       color: "#ffff00",
       text: "Heavy Rainfall <br>[>64.4mm to 115.5mm]",
@@ -98,22 +117,25 @@ export class AllStatesActualMapsComponent {
       text: "Very Heavy Rainfall <br>[>115.5mm to 204.4mm]",
       fontSize: "9.3px",
     },
-    { color: "#ff0000", text: "Extremely Heavy Rainfall <br>[>204.4]", fontSize: "9.3px" },
+    {
+      color: "#ff0000",
+      text: "Extremely Heavy Rainfall <br>[>204.4]",
+      fontSize: "9.3px",
+    },
     { color: "#c0c0c0", text: "No <br>Data", fontSize: "9.3px" },
   ];
 
   formatteddate: any;
-  selectedDate: any = this.formatDate(new Date()) ;
+  selectedDate: any = this.formatDate(new Date());
   inputValue: string = "";
   inputValue1: string = "";
   private initialZoom = 10;
   private map: L.Map = {} as L.Map;
   loggedInUserObject: any;
 
-
   formatDate(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero based
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero based
     const year = date.getFullYear();
     return `${year}-${month}-${day}`;
   }
@@ -127,13 +149,13 @@ export class AllStatesActualMapsComponent {
     private downloadPdf$: DownloadPdfStateDistrict,
     private countryService: CountryService,
     private stateinfoservice: StateInformationService,
-    private stateService : StateService,
-    private constants : Constants
+    private stateService: StateService,
+    private constants: Constants
   ) {
-
-    const {startDate, endDate}  =  this.constants.getCurrentMonthSeasonFromAndToCurrentDate(new Date())
-    this.fromDate = startDate
-    this.EndDate = startDate
+    const { startDate, endDate } =
+      this.constants.getCurrentMonthSeasonFromAndToCurrentDate(new Date());
+    this.fromDate = startDate;
+    this.EndDate = startDate;
 
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
@@ -157,8 +179,6 @@ export class AllStatesActualMapsComponent {
       this.calculateInitialZoom();
       this.fetchBackend();
     });
-
-
   }
 
   resetMapSmallScreen(): void {
@@ -172,13 +192,11 @@ export class AllStatesActualMapsComponent {
     dateString.split("-").reverse().join("-");
 
   async fetchBackend() {
-
     let selectedMode: any = localStorage.getItem("selectedMode");
     this.selectedMode = JSON.parse(selectedMode);
-    console.log('this.selected mOde', this.selectedMode)
+    console.log("this.selected mOde", this.selectedMode);
 
-    
-    this.isLoading = true
+    this.isLoading = true;
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
     const mon = String(currentDate.getMonth() + 1).padStart(2, "0");
@@ -189,11 +207,10 @@ export class AllStatesActualMapsComponent {
       endDate: this.toDate,
     };
 
+    this.StartDate = this.fromDate.split("-").reverse().join("-");
+    this.EndDate = this.toDate.split("-").reverse().join("-");
 
-    this.StartDate = this.fromDate.split('-').reverse().join('-')
-    this.EndDate = this.toDate.split('-').reverse().join('-')
-
-    if(this.selectedMode.selectedMode == 'Unified'){
+    if (this.selectedMode.selectedMode == "Unified") {
       this.district.fetchDataFtp(data).subscribe((res) => {
         this.districtdatacum = res.data;
         console.log("fbdudusdubsudbsud", res.data);
@@ -201,18 +218,21 @@ export class AllStatesActualMapsComponent {
         // this.loadGeoJSON(url);
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
-  
-        this.selectedStateName =  this.selectedStateName=='' ? this.listOfmsRMCs[0]: this.selectedStateName
+
+        this.selectedStateName =
+          this.selectedStateName == ""
+            ? this.listOfmsRMCs[0]
+            : this.selectedStateName;
         this.selectedUrl =
-          this.stateinfoservice.getMcRMCsJson()[this.selectedStateName].url || null;
-        this.onWindowResizer()
-        
+          this.stateinfoservice.getMcRMCsJson()[this.selectedStateName].url ||
+          null;
+        this.onWindowResizer();
+
         if (this.selectedUrl) {
           this.loadGeoJSON(this.selectedUrl);
         }
-        this.isLoading = false
+        this.isLoading = false;
       });
-      
 
       this.countryService.fetchDataFtp(data).subscribe((res) => {
         this.countrydatacum = res.data;
@@ -222,7 +242,9 @@ export class AllStatesActualMapsComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data FTP",
           this.countrydatacum,
@@ -231,11 +253,7 @@ export class AllStatesActualMapsComponent {
           this.countryNormal
         );
       });
-
-    }
-
-
-    else{
+    } else {
       this.district.fetchData(data).subscribe((res) => {
         this.districtdatacum = res.data;
         console.log("fbdudusdubsudbsud", res.data);
@@ -244,15 +262,19 @@ export class AllStatesActualMapsComponent {
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
 
-        this.selectedStateName =  this.selectedStateName=='' ? this.listOfmsRMCs[0]: this.selectedStateName
+        this.selectedStateName =
+          this.selectedStateName == ""
+            ? this.listOfmsRMCs[0]
+            : this.selectedStateName;
         this.selectedUrl =
-          this.stateinfoservice.getMcRMCsJson()[this.selectedStateName].url || null;
-        this.onWindowResizer()
-        
+          this.stateinfoservice.getMcRMCsJson()[this.selectedStateName].url ||
+          null;
+        this.onWindowResizer();
+
         if (this.selectedUrl) {
           this.loadGeoJSON(this.selectedUrl);
         }
-        this.isLoading = false
+        this.isLoading = false;
       });
 
       this.countryService.fetchData(data).subscribe((res) => {
@@ -263,7 +285,9 @@ export class AllStatesActualMapsComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data Entry",
           this.countrydatacum,
@@ -271,10 +295,8 @@ export class AllStatesActualMapsComponent {
           this.countryDeparture,
           this.countryNormal
         );
-      });   
+      });
     }
-
-
   }
 
   filter = (node: HTMLElement) => {
@@ -501,7 +523,7 @@ export class AllStatesActualMapsComponent {
     if (!this.isFullscreen()) {
       // this.calculateInitialZoom();
       // console.log('zoomfactor console', this.stateinfoservice.getZoomFactor(this.selectedStateName))
-      console.log('selected state name', this.selectedStateName)
+      console.log("selected state name", this.selectedStateName);
       this.calculateInitialZoom(
         this.stateinfoservice.getZoomFactor(this.selectedStateName)
       );
@@ -519,7 +541,7 @@ export class AllStatesActualMapsComponent {
     if (!this.isFullscreen()) {
       // this.calculateInitialZoom();
       // console.log('zoomfactor console', this.stateinfoservice.getZoomFactor(this.selectedStateName))
-      console.log('selected state name', this.selectedStateName)
+      console.log("selected state name", this.selectedStateName);
       this.calculateInitialZoom(
         this.stateinfoservice.getZoomFactor(this.selectedStateName)
       );
@@ -551,16 +573,16 @@ export class AllStatesActualMapsComponent {
     this.selectedUrl =
       this.stateinfoservice.getMcRMCsJson()[this.selectedStateName].url || null;
     if (this.selectedUrl) {
-      // this.selectedStateCode = 
+      // this.selectedStateCode =
       this.loadGeoJSON(this.selectedUrl);
     }
-    this.onWindowResize()
+    this.onWindowResize();
     // this.resetMap()
   }
 
   onSubmit() {
     // console.log('Button clicked');
-    this.fetchBackend()
+    this.fetchBackend();
     // Example usage of the button reference
     // this.submitButton.nativeElement.disabled = true;
   }
@@ -605,7 +627,10 @@ export class AllStatesActualMapsComponent {
     }
 
     this.http.get(httpUrl).subscribe((res: any) => {
-      this.map.setView(this.stateinfoservice.getCordinates(this.selectedStateName), this.initialZoom);
+      this.map.setView(
+        this.stateinfoservice.getCordinates(this.selectedStateName),
+        this.initialZoom
+      );
       // this.map.setZoom(this.initialZoom);
       const districtLayer = L.geoJSON(res, {
         style: (feature: any) => {
@@ -613,21 +638,21 @@ export class AllStatesActualMapsComponent {
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
 
-          if (matchedData?.departure!=null) {
+          if (matchedData?.departure != null) {
             rainfall = matchedData.departure;
           } else {
-           rainfall = "NA";
+            rainfall = "NA";
           }
 
           const dailyrainfall =
-          matchedData &&
-          matchedData.actual_rainfall !== null &&
-          matchedData.actual_rainfall != undefined &&
-          !Number.isNaN(matchedData.actual_rainfall)
-            ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
-            : "NA";
+            matchedData &&
+            matchedData.actual_rainfall !== null &&
+            matchedData.actual_rainfall != undefined &&
+            !Number.isNaN(matchedData.actual_rainfall)
+              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
+              : "NA";
 
-        const color = this.constants.getActualColorForRainfall(dailyrainfall);
+          const color = this.constants.getActualColorForRainfall(dailyrainfall);
 
           return {
             fillColor: color,
@@ -643,25 +668,26 @@ export class AllStatesActualMapsComponent {
           const id2 = feature.properties["district_c"];
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
-          
-          if (matchedData?.departure!=null) {
 
+          if (matchedData?.departure != null) {
             rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
-        } else {
-
-          rainfall = "NA";
-        }
+          } else {
+            rainfall = "NA";
+          }
 
           const dailyrainfall =
             matchedData &&
             matchedData.actual_rainfall !== null &&
             matchedData.actual_rainfall != undefined &&
             !Number.isNaN(matchedData.actual_rainfall)
-              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) + " mm"
+              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) +
+                " mm"
               : "NA";
           const normalrainfall =
             matchedData && !Number.isNaN(matchedData.normal_rainfall)
-              ? this.constants.trimToOneDecimals(parseFloat(matchedData.normal_rainfall)) + " mm"
+              ? this.constants.trimToOneDecimals(
+                  parseFloat(matchedData.normal_rainfall)
+                ) + " mm"
               : "NA";
           const popupContent = `
   <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">

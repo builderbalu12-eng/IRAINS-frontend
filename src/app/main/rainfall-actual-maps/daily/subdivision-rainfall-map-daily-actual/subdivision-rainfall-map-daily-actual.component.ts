@@ -16,12 +16,11 @@ import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
 @Component({
-  selector: 'app-subdivision-rainfall-map-daily-actual',
-  templateUrl: './subdivision-rainfall-map-daily-actual.component.html',
-  styleUrls: ['./subdivision-rainfall-map-daily-actual.component.css']
+  selector: "app-subdivision-rainfall-map-daily-actual",
+  templateUrl: "./subdivision-rainfall-map-daily-actual.component.html",
+  styleUrls: ["./subdivision-rainfall-map-daily-actual.component.css"],
 })
 export class SubdivisionRainfallMapDailyActualComponent {
-
   subdivisiondatacum: any[] = [];
   isLoading: boolean = false;
   countrydatacum: any;
@@ -29,13 +28,13 @@ export class SubdivisionRainfallMapDailyActualComponent {
   countryNormal: any;
   countryDeparture: any;
   today: any;
-  fromDate: any = this.formatDate(new Date()) ;
+  fromDate: any = this.formatDate(new Date());
   toDate: any = this.formatDate(new Date());
   selectedMode: any;
 
   formatDate(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero based
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero based
     const year = date.getFullYear();
     return `${year}-${month}-${day}`;
   }
@@ -44,11 +43,17 @@ export class SubdivisionRainfallMapDailyActualComponent {
     this.isLoading = true;
     try {
       this.isLoading = true;
-      if(this.selectedMode.selectedMode == 'Unified'){
-        await this.downlaodStatistics.updateanddownloadpdfCustom(this.fromDate, this.fromDate);
-      }else{
-        await this.downlaodStatistics.updateanddownloadpdfFromDataEntryCustom(this.fromDate, this.fromDate);
-      }        
+      if (this.selectedMode.selectedMode == "Unified") {
+        await this.downlaodStatistics.updateanddownloadpdfCustom(
+          this.fromDate,
+          this.fromDate
+        );
+      } else {
+        await this.downlaodStatistics.updateanddownloadpdfFromDataEntryCustom(
+          this.fromDate,
+          this.fromDate
+        );
+      }
       this.isLoading = false;
     } catch (error) {
       console.error("Error downloading map data:", error);
@@ -61,11 +66,19 @@ export class SubdivisionRainfallMapDailyActualComponent {
   legendItems = [
     {
       color: "#abf200",
-      text: `Very Light Rainfall <br>[0mm to 2.4mm]`,
+      text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
       fontSize: "9.3px",
     },
-    { color: "#03ff00", text: "Light Rainfall <br>[>2.4mm to 15.5mm]", fontSize: "9.3px" },
-    { color: "#03ffff", text: "Moderate Rainfall <br>[>15.5mm to 64.4mm]", fontSize: "9.3px" },
+    {
+      color: "#03ff00",
+      text: "Light Rainfall <br>[>2.4mm to 15.5mm]",
+      fontSize: "9.3px",
+    },
+    {
+      color: "#03ffff",
+      text: "Moderate Rainfall <br>[>15.5mm to 64.4mm]",
+      fontSize: "9.3px",
+    },
     {
       color: "#ffff00",
       text: "Heavy Rainfall <br>[>64.4mm to 115.5mm]",
@@ -76,7 +89,11 @@ export class SubdivisionRainfallMapDailyActualComponent {
       text: "Very Heavy Rainfall <br>[>115.5mm to 204.4mm]",
       fontSize: "9.3px",
     },
-    { color: "#ff0000", text: "Extremely Heavy Rainfall <br>[>204.4]", fontSize: "9.3px" },
+    {
+      color: "#ff0000",
+      text: "Extremely Heavy Rainfall <br>[>204.4]",
+      fontSize: "9.3px",
+    },
     { color: "#c0c0c0", text: "No <br>Data", fontSize: "9.3px" },
   ];
 
@@ -136,9 +153,8 @@ export class SubdivisionRainfallMapDailyActualComponent {
   async fetchBackend() {
     let selectedMode: any = localStorage.getItem("selectedMode");
     this.selectedMode = JSON.parse(selectedMode);
-    console.log('this.selected mOde', this.selectedMode)
+    console.log("this.selected mOde", this.selectedMode);
 
-    
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
     const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
@@ -146,10 +162,10 @@ export class SubdivisionRainfallMapDailyActualComponent {
 
     const data = {
       startDate: this.fromDate,
-      endDate: this.fromDate
+      endDate: this.fromDate,
     };
 
-    if(this.selectedMode.selectedMode == 'Unified'){
+    if (this.selectedMode.selectedMode == "Unified") {
       this.subdivisionService.fetchDataFtp(data).subscribe((res) => {
         this.subdivisiondatacum = res.data;
         // console.log('SUBDIV DATA', res.data);
@@ -167,7 +183,9 @@ export class SubdivisionRainfallMapDailyActualComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data FTP",
           this.countrydatacum,
@@ -176,8 +194,7 @@ export class SubdivisionRainfallMapDailyActualComponent {
           this.countryNormal
         );
       });
-    }
-    else{
+    } else {
       this.subdivisionService.fetchData(data).subscribe((res) => {
         this.subdivisiondatacum = res.data;
         // console.log('SUBDIV DATA', res.data);
@@ -195,7 +212,9 @@ export class SubdivisionRainfallMapDailyActualComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data Entry",
           this.countrydatacum,
@@ -433,9 +452,9 @@ export class SubdivisionRainfallMapDailyActualComponent {
       fromDate: this.fromDate,
       toDate: this.fromDate,
     };
-    this.formatteddate = this.fromDate.split("-").reverse().join("-")
-    this.calculateInitialZoom()
-    this.fetchBackend()
+    this.formatteddate = this.fromDate.split("-").reverse().join("-");
+    this.calculateInitialZoom();
+    this.fetchBackend();
     // this.dataService.setfromAndToDate(JSON.stringify(data));
   }
 
@@ -594,23 +613,28 @@ export class SubdivisionRainfallMapDailyActualComponent {
           style: (feature: any) => {
             const id2 = feature.properties["SubDiv_Cod"];
             const matchedData = this.findMatchingData(id2);
-         //   console.log('matchedData subdivision manu',matchedData)
+            //   console.log('matchedData subdivision manu',matchedData)
 
             const dailyrainfall =
-            matchedData &&
-            matchedData.actual_subdiv_rainfall !== null &&
-            matchedData.actual_subdiv_rainfall != undefined &&
-            !Number.isNaN(matchedData.actual_subdiv_rainfall)? this.constants.trimToOneDecimals(matchedData.actual_subdiv_rainfall) : "NA";
+              matchedData &&
+              matchedData.actual_subdiv_rainfall !== null &&
+              matchedData.actual_subdiv_rainfall != undefined &&
+              !Number.isNaN(matchedData.actual_subdiv_rainfall)
+                ? this.constants.trimToOneDecimals(
+                    matchedData.actual_subdiv_rainfall
+                  )
+                : "NA";
 
             let rainfall: any;
-      
-            if (matchedData?.departure!=null) {
+
+            if (matchedData?.departure != null) {
               rainfall = matchedData.departure;
             } else {
               rainfall = "NA";
             }
 
-            const color = this.constants.getActualColorForRainfall(dailyrainfall);
+            const color =
+              this.constants.getActualColorForRainfall(dailyrainfall);
 
             return {
               // fillColor: color,
@@ -633,22 +657,28 @@ export class SubdivisionRainfallMapDailyActualComponent {
             // console.log('matchedData', matchedData)
             let rainfall: any;
 
-            if (matchedData?.departure!=null) {
-
-              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
-          } else {
-
-            rainfall = "NA";
-          }
+            if (matchedData?.departure != null) {
+              rainfall = this.constants.trimToZeroDecimals(
+                matchedData.departure
+              );
+            } else {
+              rainfall = "NA";
+            }
 
             const dailyrainfall =
               matchedData &&
               matchedData.actual_subdiv_rainfall !== null &&
               matchedData.actual_subdiv_rainfall != undefined &&
-              !Number.isNaN(matchedData.actual_subdiv_rainfall)? this.constants.trimToOneDecimals(matchedData.actual_subdiv_rainfall) : "NA";
+              !Number.isNaN(matchedData.actual_subdiv_rainfall)
+                ? this.constants.trimToOneDecimals(
+                    matchedData.actual_subdiv_rainfall
+                  )
+                : "NA";
             const normalrainfall =
               matchedData && !Number.isNaN(matchedData.rainfall_normal_value)
-                ? this.constants.trimToOneDecimals(matchedData.rainfall_normal_value) 
+                ? this.constants.trimToOneDecimals(
+                    matchedData.rainfall_normal_value
+                  )
                 : "NA";
 
             // Determine label position and abbreviation
@@ -675,7 +705,7 @@ export class SubdivisionRainfallMapDailyActualComponent {
             }
             if (id1 == "NMMT") {
               // id1 = "NL & MN & MZ & TR"
-              id1 = id1
+              id1 = id1;
               center.lat = 23.5;
               center.lng = 94;
             }
@@ -949,7 +979,6 @@ export class SubdivisionRainfallMapDailyActualComponent {
               center.lat = 10.8;
               center.lng = 73.5;
             }
-
 
             if (center.lat && center.lng) {
               const labelId = `label-${id2}`;

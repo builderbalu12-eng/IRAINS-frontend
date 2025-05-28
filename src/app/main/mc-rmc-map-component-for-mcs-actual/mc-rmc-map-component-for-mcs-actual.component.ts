@@ -41,7 +41,7 @@ export class McRmcMapComponentForMcsActualComponent {
   legendItems = [
     {
       color: "#abf200",
-      text: `Very Light Rainfall <br>[0mm to 2.4mm]`,
+      text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
       fontSize: "9.3px",
     },
     { color: "#03ff00", text: "Light Rainfall <br>[>2.4mm to 15.5mm]", fontSize: "9.3px" },
