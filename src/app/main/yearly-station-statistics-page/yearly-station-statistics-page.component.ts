@@ -612,7 +612,16 @@ export class YearlyStationStatisticsPageComponent {
       let lenOfCenterRMC = this.centersRMC.length;
       this.centersRMC1 = this.centersRMC[lenOfCenterRMC - 1];
       console.log("centersRMC1", this.centersRMC1);
+
+      // Get district codes for all districts under the selected state_code(s)
+      this.districtCodeList = this.districts[0].data
+      .filter((district: any) =>
+        this.selectedRegion.some((region: any) => region === district.region_code)
+      )
+      .map((district: any) => district.district_code);
     }
+
+    console.log('region districts', this.districts, this.selectedRegion,this.districtCodeList)
   }
 
   // onMcChange(event: any): void {
@@ -665,7 +674,7 @@ export class YearlyStationStatisticsPageComponent {
       )
       .map((district: any) => district.district_code);
   
-    console.log("Filtered district codes:", this.districtCodeList);
+    console.log("Filtered district codes at onMCChange", this.districtCodeList);
   }
 
   onRMcChange(event: any): void {
