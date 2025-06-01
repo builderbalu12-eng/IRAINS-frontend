@@ -13,6 +13,7 @@
           optionLabel="label"
           optionValue="value"
           placeholder="Select Regions"
+          (onChange)="onRegionChange()"
           [showToggleAll]="false"
         ></p-multiSelect>
       </div>
@@ -26,6 +27,8 @@
           placeholder="Select MCs"
           [disabled]="mcDisabled"
           [showToggleAll]="false"
+          (onChange)="onMcChange($event)"
+
         ></p-multiSelect>
       </div>
   
@@ -38,6 +41,8 @@
           placeholder="Select RMCs"
           [disabled]="rmcDisabled"
           [showToggleAll]="false"
+          (onChange)="onRMcChange($event)"
+
         ></p-multiSelect>
       </div>
   
@@ -49,6 +54,8 @@
           optionLabel="state_name"
           placeholder="Select States"
           [showToggleAll]="false"
+          (onChange)="onStateChange($event)"
+
         ></p-multiSelect>
       </div>
   
@@ -59,16 +66,19 @@
           optionLabel="district_name"
           placeholder="Select Districts"
           [showToggleAll]="false"
+          (onChange)="onDistrictChange($event)"
         ></p-multiSelect>
       </div>
   
       <!-- Block -->
       <div class="col">
         <p-multiSelect
-          [options]="filterDistrict"
+          [options]="filterBlocks"
           optionLabel="block_name"
           placeholder="Select Blocks"
           [showToggleAll]="false"
+          (onChange)="onBlockChange($event)"
+
         ></p-multiSelect>
       </div>
   

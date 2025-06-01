@@ -466,7 +466,6 @@ getColorForRainfall(rainfall: any): string {
 
 
 getActualColorForRainfall(data: any): string {
-  console.log('getting color data', data)
 
 
   let color = ''; 
@@ -488,7 +487,6 @@ getActualColorForRainfall(data: any): string {
   } else if (data > 204.4) {
       color = '#ff0000';
   } 
-  console.log('getting color', color)
 
   return color
 }

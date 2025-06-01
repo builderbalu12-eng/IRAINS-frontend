@@ -15,6 +15,15 @@ import { DownloadPdf } from "src/app/services/district/pdfdownload.service";
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+
+import { getRegionService } from "src/app/services/region/getregion.service";
+import { CenterService } from "src/app/services/centre/centre.service";
+import { getStateService } from "src/app/services/state/getState.service";
+import { getDistrictService } from "src/app/services/district/getdistrict.service";
+import { getBlockService } from "src/app/services/block/getblock.service";
+import { BlockService } from "src/app/services/block/BlockService.service";
+
+
 @Component({
   selector: 'app-actual-block-rainfall-map',
   templateUrl: './actual-block-rainfall-map.component.html',
@@ -23,7 +32,7 @@ import { Constants } from "src/app/services/constants";
 export class ActualBlockRainfallMapComponent implements AfterViewInit{
   
   
-      districtdatacum: any[] = [];
+      blockdatacum: any[] = [];
       StartDate: any;
       EndDate: any;
       countrydatacum: any;
@@ -40,17 +49,33 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
     toDate: any = this.formatDate(new Date());
     selectedMode: any;
     selectedRegion: any;
-regions: any[]|undefined;
-regionName: any;
-selectedMC: any;
-centersMC1: any[]|undefined;
-mcDisabled: any = false;
-selectedRMC: any;
-centersRMC1: any[]|undefined;
-rmcDisabled: any = false;
-selectedState: any;
-filterStates: any[]|undefined;
-filterDistrict: any[]|undefined;
+    regions: any[]|undefined;
+    regionName: any;
+    selectedMC: any;
+    centersMC1: any[]|undefined;
+    mcDisabled: any = false;
+    selectedRMC: any;
+    centersRMC1: any[]|undefined;
+    rmcDisabled: any = false;
+    selectedState: any;
+    filterStates: any[]|undefined;
+    filterDistrict: any[]|undefined;
+    centersMC: any[] = [];
+    centersRMC: any[] = [];
+    states: any[] = [];
+    districts: any[] = [];
+    blocks: any[] = [];
+
+  
+    selectedMCData: any[] = [];
+    selectedRMCData: any[] = [];
+    selectedStateData: any[] = [];
+    selectedDistrictData: any[] = [];
+
+    private geoJsonLayer: L.GeoJSON | null = null; // Store the GeoJSON layer
+    private geoJsonData: any; // Store the full GeoJSON data
+    filterBlocks: any[]|undefined;
+    selectedBlockData: any;
   
     formatDate(date: Date): string {
       const day = String(date.getDate()).padStart(2, '0');
@@ -107,10 +132,16 @@ filterDistrict: any[]|undefined;
         private dataService: DataService,
         private renderer: Renderer2,
         private elRef: ElementRef,
-        private district: DistrictService,
+        // private district: DistrictService,
+        private block : BlockService,
         private downloadPdf$: DownloadPdf,
         private countryService: CountryService,
-        private constants: Constants
+        private constants: Constants,
+        private regionService: getRegionService,
+        private centerService: CenterService,
+        private getStateService: getStateService,
+        private getDistrictService: getDistrictService,
+        private getBlockService : getBlockService,
       ) {
         // var currentDate = new Date();
         // var dd = String(currentDate.getDate());
@@ -142,6 +173,172 @@ filterDistrict: any[]|undefined;
     
       convertToIndianDateFormat = (dateString: string) =>
         dateString.split("-").reverse().join("-");
+
+
+
+      onRegionChange(): void {
+        console.log("balu", this.selectedRegion);
+        if (this.selectedRegion && this.selectedRegion.length > 0) {
+          // console.log("here",this.selectedRegion);
+          // console.log(this.centersMC[0]);
+    
+          const filteredCenters = this.centersMC[0]?.filter((center: any) =>
+            this.selectedRegion.includes(center.region_code)
+          );
+          // console.log('Filtered centers:', filteredCenters);
+    
+          this.centersMC.push(filteredCenters);
+          // console.log('centersMC', this.centersMC);
+    
+          let lenOfCenterMC = this.centersMC.length;
+          // console.log('lenOfCenterMC', lenOfCenterMC)
+          this.centersMC1 = this.centersMC[lenOfCenterMC - 1];
+          console.log("this.centersMC1", this.centersMC1);
+    
+          // <- RMC ->
+          const filteredCentersRMC = this.centersRMC[0]?.filter((center: any) =>
+            this.selectedRegion.includes(center.region_code)
+          );
+          console.log("filteredCentersRMC", filteredCentersRMC);
+    
+          this.centersRMC.push(filteredCentersRMC);
+    
+          let lenOfCenterRMC = this.centersRMC.length;
+          this.centersRMC1 = this.centersRMC[lenOfCenterRMC - 1];
+          console.log("centersRMC1", this.centersRMC1);
+
+          this.updateMap()
+        }
+      }
+
+      onMcChange(event: any): void {
+        this.selectedMCData = event.value;
+    
+        console.log("event.value for MC", event.value);
+    
+        this.rmcDisabled = this.selectedMC.length > 0;
+    
+        const filteredStates = this.states[0].data.filter((state: any) => {
+          return this.selectedMC.some(
+            (mc: any) => mc.centre_name == state.centre_name
+          );
+        });
+    
+        console.log("Filtered states:", filteredStates);
+        this.filterStates = filteredStates;
+
+        this.updateMap()
+
+      }
+    
+      onRMcChange(event: any): void {
+        this.selectedRMCData = event.value;
+        // console.log('selectedRMCData ', this.selectedRMCData );
+        this.mcDisabled = this.selectedRMC.length > 0;
+    
+        const filterStatesRMC = this.states[0].data.filter((state: any) => {
+          return this.selectedRMC.some(
+            (rmc: any) => rmc.centre_name == state.centre_name
+          );
+        });
+    
+        console.log("Filtered RMC States:", filterStatesRMC);
+        this.filterStates = filterStatesRMC;
+
+        this.updateMap()
+
+    
+        // this.selectedRegion.forEach((code:string)=>{
+        // this.getStateService.fetchData().subscribe(
+        // response => {
+        // console.log('State Data RMC', response);
+        // const filterStateRMC = response.data.filter((id: any)=> id.region_code === code);
+    
+        // // this.states.push(...filterStateRMC);
+    
+        // // Add only unique states based on state_name
+        // filterStateRMC.forEach((state: any) => {
+        // if (!this.states.some(existingState => existingState.state_name === state.state_name)) {
+        // this.states.push(state);
+        // }
+        // });
+    
+        // console.log('filterStateByRMC', filterStateRMC);
+        // console.log('state by RMC', this.states);
+        // }
+        // )
+        // })
+      }
+    
+      onStateChange(event: any): void {
+        this.selectedStateData = event.value;
+        // console.log('selectedStateData', this.selectedStateData)
+    
+        // console.log('selectedState', this.selectedState);
+        // console.log('districts', this.districts);
+    
+        const filteredDistricts = this.districts[0].data.filter((dist: any) => {
+          return this.selectedState.some(
+            (mc: any) => mc.state_code == dist.state_code
+          );
+        });
+        console.log("Filtered district", filteredDistricts);
+        this.filterDistrict = filteredDistricts;
+
+        this.updateMap()
+
+    
+        // if (this.selectedState && this.selectedState.length > 0) {
+        // const selectedStateCodes = this.selectedState.map((state: any) => state.state_code);
+        // console.log('selectedStateCodes', selectedStateCodes);
+    
+        // // Fetch districts based on selected states' state_code
+        // this.getDistrictService.fetchData().subscribe(
+        // (response : any) => {
+        // console.log('District Response', response);
+    
+        // selectedStateCodes.forEach((code: any) => {
+        // const filterDistrict = response.data.filter((district: any) => district.state_code === code);
+        // console.log('filterDistrict', filterDistrict);
+        // this.districts.push(...filterDistrict);
+        // });
+    
+        // console.log('Filtered districts:', this.districts);
+        // },
+        // (error : any) => {
+        // console.error('Error fetching district data:', error);
+        // }
+        // );
+        // } else {
+        // console.log('No states selected');
+        // }
+      }
+    
+      onDistrictChange(event: any): void {
+        console.log("District change", event.value);
+        this.selectedDistrictData = event.value;
+
+        const filterBlocks = this.blocks[0].data.filter((bloc: any) => {
+          return this.selectedDistrictData.some(
+            (d: any) => d.district_code == bloc.district_code
+          );
+        });
+        console.log("Filtered Blocks", filterBlocks);
+        this.filterBlocks = filterBlocks;
+
+
+
+        console.log("selectedDistrictData =>", this.selectedDistrictData);
+        this.updateMap()
+      }
+
+
+      onBlockChange(event: any): void {
+        console.log("District change", event.value);
+        this.selectedBlockData = event.value;
+        console.log("selectedDistrictData =>", this.selectedBlockData);
+        this.updateMap()
+      }
     
       async fetchBackend() {
         let selectedMode: any = localStorage.getItem("selectedMode");
@@ -160,8 +357,8 @@ filterDistrict: any[]|undefined;
   
   
         if(this.selectedMode.selectedMode == 'Unified'){
-          this.district.fetchDataFtp(data).subscribe((res) => {
-            this.districtdatacum = res.data;
+          this.block.fetchDataFtp(data).subscribe((res) => {
+            this.blockdatacum = res.data;
             console.log("fbdudusdubsudbsud", res.data);
             this.loadGeoJSON();
             this.StartDate = this.convertToIndianDateFormat(this.StartDate);
@@ -188,8 +385,8 @@ filterDistrict: any[]|undefined;
         else{
   
           
-          this.district.fetchData(data).subscribe((res) => {
-            this.districtdatacum = res.data;
+          this.block.fetchData(data).subscribe((res) => {
+            this.blockdatacum = res.data;
             console.log("fbdudusdubsudbsud", res.data);
             this.loadGeoJSON();
             this.StartDate = this.convertToIndianDateFormat(this.StartDate);
@@ -232,8 +429,9 @@ filterDistrict: any[]|undefined;
       };
     
       findMatchingData(id: number): any | null {
-        const matchedData = this.districtdatacum?.find((data: any) => {
-          return data.district_code === id.toString();
+        const matchedData = this.blockdatacum?.find((data: any) => {
+          // console.log(data.block_code, id.toString())
+          return data.block_code === id.toString();
         });
         if (matchedData) {
           return matchedData;
@@ -447,9 +645,110 @@ filterDistrict: any[]|undefined;
       // console.error('Error downloading map image:', error);
       // }
       // }
+
+      fetchRegionData() {
+        this.regionService.fetchData().subscribe(
+          (response:any) => {
+            console.log("Region data:", response);
+            // Ensure response.data contains the expected array structure
+            if (response && response.data) {
+              this.regions = response.data.map((region: any) => ({
+                label: region.region_name,
+                value: region.region_code,
+              }));
+              // console.log('Formatted regions:', this.regions);
+            } else {
+              console.error("Unexpected response format:", response);
+              alert("Data is not coming in the expected format");
+            }
+          },
+          (error:any) => {
+            console.error("Error fetching region data:", error);
+            alert("Data is not coming");
+          }
+        );
+      }
+
+
+        // MC Data
+  getAllMCData(): void {
+    this.centerService.fetchData("MC").subscribe(
+      (response:any) => {
+        console.log("getAllMCData", response);
+        this.centersMC.push(response.data);
+        console.log("this.centersMC", this.centersMC);
+      },
+      (error:any) => {
+        console.error("Error fetching center details:", error);
+      }
+    );
+  }
+
+  // RMC Data
+  getAllRMCData(): void {
+    this.centerService.fetchData("RMC").subscribe(
+      (response:any) => {
+        console.log("getAllRMCData", response);
+        this.centersRMC.push(response.data);
+        console.log("this.centersRMC", this.centersRMC);
+      },
+      (error:any) => {
+        console.error("Error fetching center details:", error);
+      }
+    );
+  }
+
+  // Get all States
+  getAllStates(): void {
+    this.getStateService.fetchData().subscribe(
+      (response:any) => {
+        console.log("All states", response);
+        this.states.push(response);
+        console.log("states", this.states);
+      },
+      (error:any) => {
+        console.error("Error fetching center details:", error);
+      }
+    );
+  }
+
+  getAllDistricts(): void {
+    this.getDistrictService.fetchData().subscribe(
+      (response:any) => {
+        console.log("All Districts", response);
+        this.districts.push(response);
+        console.log("Districts", this.districts);
+      },
+      (error:any) => {
+        console.error("Error fetching center details:", error);
+      }
+    );
+  }
+
+
+  getAllBlocks(): void {
+    this.getBlockService.fetchData().subscribe(
+      (response:any) => {
+        console.log("All Blocks", response);
+        this.blocks.push(response);
+        console.log("Blocks", this.blocks);
+      },
+      (error:any) => {
+        console.error("Error fetching center details:", error);
+      }
+    );
+  }
+
+      
     
       ngOnInit() {
         this.initMap();
+        this.fetchRegionData();
+        this.getAllMCData();
+        this.getAllRMCData();
+        this.getAllStates();
+        this.getAllDistricts();
+        this.getAllBlocks();
       }
     
       ngAfterViewInit(): void {
@@ -650,35 +949,37 @@ filterDistrict: any[]|undefined;
       }
       // assets/geojson/regions/EAST_AND_NORTH_EAST_INDIA.json 
       private loadGeoJSON(): void {
-        this.http
-          .get("assets/geojson/INDIA_BLOCK.json")
-          .subscribe((res: any) => {
-            const districtLayer = L.geoJSON(res, {
+        this.http.get("assets/geojson/INDIA_BLOCK.json").subscribe((res: any) => {
+            this.geoJsonData = res; // Store the full GeoJSON data
+            // this.updateMap()
+            console.log('india', res)
+            this.geoJsonLayer = L.geoJSON(res, {
               style: (feature: any) => {
-              //   const id2 = feature.properties["district_c"];
-              //   const matchedData = this.findMatchingData(id2);
-              //   let rainfall: any;
+                const id2 = feature.properties["block_code"];
+                const matchedData = this.findMatchingData(id2);
+                console.log('matched data', matchedData)
+                let rainfall: any;
                
-              //   if (matchedData?.departure!=null) {
-              //     rainfall = matchedData.departure;
-              //   } else {
-              //     rainfall = "NA";
-              //   }
-  
-              //   const dailyrainfall =
-              //   matchedData &&
-              //   matchedData.actual_rainfall !== null &&
-              //   matchedData.actual_rainfall != undefined &&
-              //   !Number.isNaN(matchedData.actual_rainfall)
-              //     ? this.constants.trimToOneDecimals(
-              //         matchedData.actual_rainfall
-              //       )
-              //     : "NA";
-  
-              // const color = this.constants.getActualColorForRainfall(dailyrainfall);
+                if (matchedData?.departure!=null) {
+                  rainfall = matchedData.departure;
+                } else {
+                  rainfall = "NA";
+                }
+                const dailyrainfall =
+                matchedData &&
+                matchedData.actual_rainfall !== null &&
+                matchedData.actual_rainfall != undefined &&
+                !Number.isNaN(matchedData.actual_rainfall)
+                  ? this.constants.trimToOneDecimals(
+                      matchedData.actual_rainfall
+                    )
+                  : "NA";
+                console.log(dailyrainfall)
+              
+              const color = this.constants.getActualColorForRainfall(dailyrainfall);
   
                 return {
-                  fillColor: this.constants.getActualColorForRainfall(Math.random() * (205 - 0) + 0),
+                  fillColor: color,
                   weight: 1,
                   opacity: 1.5,
                   color: "black",
@@ -731,6 +1032,10 @@ filterDistrict: any[]|undefined;
               },
             }).addTo(this.map);
           });
+
+
+
+
     
         // this.http.get('assets/geojson/INDIA_STATE.json').subscribe(
         // (stateRes: any) => {
@@ -748,11 +1053,207 @@ filterDistrict: any[]|undefined;
     
         console.log("loading is successful");
       }
+
+      // Load and store the full GeoJSON data
+      // private loadGeoJSON(): void {
+      //   this.http.get('assets/geojson/INDIA_BLOCK.json').subscribe((res: any) => {
+      //     this.geoJsonData = res; // Store the full GeoJSON data
+      //     this.updateMap(); // Render the initial map
+      //     console.log('GeoJSON loading successful');
+      //   });
+      // }
+
+
+      // Update the map based on dropdown selections
+      private updateMap(): void {
+        this.map.eachLayer((layer: any) => {
+          if (layer instanceof L.GeoJSON) {
+            this.map.removeLayer(layer);
+          }
+        });
+        this.geoJsonLayer = null;
+        console.log('Cleared all GeoJSON layers');
+      
+        if (!this.geoJsonData || !this.geoJsonData.features) {
+          console.error('GeoJSON data not loaded or invalid');
+          this.map.setView([20.5937, 78.9629], 5);
+          return;
+        }
+      
+        const filteredGeoJson = this.geoJsonData.features.filter((feature: any) => {
+          const props = feature.properties;
+          const geom = feature.geometry;
+      
+          if (!props || !geom) {
+            console.warn('Invalid feature, missing properties or geometry:', feature);
+            return false;
+          }
+      
+          if (this.selectedRegion.length > 0) {
+            const regionCodes = this.selectedRegion.map((r: any) => r.toString());
+            if (!regionCodes.includes(props.region_cod?.toString())) {
+              return false;
+            }
+          }
+
+          if (this.selectedMC?.length > 0) {
+            const selectedMCs = this.selectedMC.map((r: any) => r.centre_type+' '+r.centre_name);
+            if (!selectedMCs.includes(props.RMC_MC?.toString())) {
+              return false;
+            }
+          }
+
+          if (this.selectedRMC?.length > 0) {
+            const selectedRMCs = this.selectedRMC.map((r: any) => r.centre_type+' '+r.centre_name);
+            if (!selectedRMCs.includes(props.RMC_MC?.toString())) {
+              return false;
+            }
+          }
+
+          if (this.selectedState?.length > 0) {
+            const selectedStates = this.selectedState.map((st: any) => st.state_code.toString());
+            const propCodeStr = props.state_code.toString();
+            const propTransformedCode = propCodeStr[0] + propCodeStr.slice(-2); // first + last two          
+            if (!selectedStates.includes(propTransformedCode)) {
+              return false;
+            }
+          }
+
+
+          console.log('selected ds', this.selectedDistrictData )
+          if (this.selectedDistrictData?.length > 0) {
+            const selectedDistricts = this.selectedDistrictData.map((d: any) => d.district_code);
+            console.log(selectedDistricts, props.district_c?.toString())
+            if (!selectedDistricts.includes(props.district_c?.toString())) {
+              return false;
+            }
+          }
+
+
+          if (this.selectedBlockData?.length > 0) {
+            const selectedBlocks = this.selectedBlockData.map((b: any) => b.block_code);
+            console.log(selectedBlocks, props.block_code?.toString())
+            if (!selectedBlocks.includes(props.block_code?.toString())) {
+              return false;
+            }
+          }
+
+
+          return true; 
+        });
+      
+   
+      
+        if (!Array.isArray(filteredGeoJson) || filteredGeoJson.length === 0) {
+          console.warn('No features match the selected filters');
+          this.map.setView([20.5937, 78.9629], 5); // Reset to India center
+          return;
+        }
+      
+        // Create valid GeoJSON FeatureCollection
+        const subgeojson: any = {
+          type: 'FeatureCollection',
+          features: filteredGeoJson
+        };
+      
+        // console.log('GeoJSON to be added to map:', JSON.stringify(subgeojson, null, 2));
+      
+        // Add filtered GeoJSON to the map
+        try {
+          this.geoJsonLayer = L.geoJSON(subgeojson, {
+            style: (feature: any) => {
+              const id2 = feature.properties["block_code"];
+                const matchedData = this.findMatchingData(id2);
+                console.log('matched data', matchedData)
+                let rainfall: any;
+               
+                if (matchedData?.departure!=null) {
+                  rainfall = matchedData.departure;
+                } else {
+                  rainfall = "NA";
+                }
+                const dailyrainfall =
+                matchedData &&
+                matchedData.actual_rainfall !== null &&
+                matchedData.actual_rainfall != undefined &&
+                !Number.isNaN(matchedData.actual_rainfall)
+                  ? this.constants.trimToOneDecimals(
+                      matchedData.actual_rainfall
+                    )
+                  : "NA";
+                console.log(dailyrainfall)
+              
+              const color = this.constants.getActualColorForRainfall(dailyrainfall);
+              return {
+                fillColor: color,
+                weight: 1,
+                opacity: 1,
+                color: 'black',
+                fillOpacity: 0.8,
+              };
+            },
+            onEachFeature: (feature: any, layer: any) => {
+              const props = feature.properties;
+              const state = props.state || 'Unknown';
+              const district = props.district || 'Unknown';
+              const block = props.block_Name || 'Unknown';
+              const id2 = props.district_c;
+              const matchedData = this.findMatchingData(id2);
+      
+              const rainfall = matchedData?.departure != null
+                ? this.constants.trimToZeroDecimals(matchedData.departure)
+                : 'NA';
+      
+              const dailyRainfall = matchedData && matchedData.actual_rainfall != null && !Number.isNaN(matchedData.actual_rainfall)
+                ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) + ' mm'
+                : 'NA';
+      
+              const normalRainfall = matchedData && !Number.isNaN(matchedData.normal_rainfall)
+                ? this.constants.trimToOneDecimals(parseFloat(matchedData.normal_rainfall)) + ' mm'
+                : 'NA';
+      
+              const popupContent = `
+                <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
+                  <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
+                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
+                  <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
+                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyRainfall}</div>
+                  <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalRainfall}</div>
+                </div>
+              `;
+              layer.bindPopup(popupContent);
+              layer.on('mouseover', () => layer.openPopup());
+              layer.on('mouseout', () => layer.closePopup());
+            },
+          }).addTo(this.map);
+      
+          console.log('GeoJSON layer added to map');
+      
+          // Fit map to the bounds of the filtered GeoJSON
+          const bounds = this.geoJsonLayer.getBounds();
+          console.log('Computed bounds:', bounds);
+          if (bounds.isValid()) {
+            this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
+            console.log('Map zoomed to filtered bounds');
+          } else {
+            console.warn('Invalid bounds for filtered GeoJSON');
+            this.map.setView([20.5937, 78.9629], 5); // Fallback to default view
+          }
+        } catch (error) {
+          console.error('Error adding GeoJSON layer or setting bounds:', error);
+          this.map.setView([20.5937, 78.9629], 5); // Fallback to default view
+        }
+      
+        // Log all layers on the map for debugging
+        // this.map.eachLayer((layer: any) => {
+        //   console.log('Current map layer:', layer);
+        // });
+      }
+
       getColorForRainfall1(rainfall: any): string {
         if (rainfall == null || rainfall == " ") {
           return "#c0c0c0";
         }
-    
         const numericId = Math.round(rainfall);
         console.log("color", numericId);
         let cat = "";
