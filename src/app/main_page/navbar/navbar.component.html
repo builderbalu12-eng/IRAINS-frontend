@@ -88,10 +88,10 @@
                                     </a> -->
                                 </li>
                                 <li>
-                                    <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
+                                    <a *ngIf="hasAccess('actual-block-rainfall-map')" routerLink="../actual-block-rainfall-map">BLOCK RAINFALL MAP</a>
                                 </li>
                                 <li>
-                                    <a *ngIf="hasAccess('actual-block-rainfall-map')" routerLink="../actual-block-rainfall-map">BLOCK RAINFALL MAP</a>
+                                    <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
                                 </li>
                             </ul>
                         </li>
