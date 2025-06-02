@@ -11,7 +11,7 @@ import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
 import { DistrictService } from "src/app/services/district/district.service";
-import { DownloadPdf } from "src/app/services/district/pdfdownload.service";
+import { DownloadPdf } from "src/app/services/block/pdfdownload.service";
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
@@ -84,19 +84,44 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
       return `${year}-${month}-${day}`;
     }
   
+      // async downloadMapData() {
+      //   this.isLoading = true;
+      //   try {
+      //     this.isLoading = true;
+      //     this.isLoading = true;
+      //     if(this.selectedMode.selectedMode == 'Unified'){
+      //       await this.downloadPdf$.updateanddownloadpdfCustom(this.fromDate, this.fromDate);
+      //     }else{
+      //       await this.downloadPdf$.updateanddownloadpdfCustom(this.fromDate, this.fromDate);
+      //     } 
+      //             this.isLoading = false;
+      //   } catch (error) {
+      //     console.error("Error downloading map data:", error);
+      //   }
+      // }
+
+
       async downloadMapData() {
         this.isLoading = true;
         try {
-          this.isLoading = true;
-          this.isLoading = true;
-          if(this.selectedMode.selectedMode == 'Unified'){
-            await this.downloadPdf$.updateanddownloadpdfCustom(this.fromDate, this.fromDate);
-          }else{
-            await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.fromDate, this.fromDate);
-          } 
-                  this.isLoading = false;
+          // Prepare filter parameters
+          const filters: any = {
+            region_code: this.selectedRegion?.map((r: any) => r.toString()) || [],
+            centre: [
+              ...(this.selectedMC?.map((mc: any) => `${mc.centre_type} ${mc.centre_name}`) || []),
+              ...(this.selectedRMC?.map((rmc: any) => `${rmc.centre_type} ${rmc.centre_name}`) || [])
+            ],
+            state_code: this.selectedState?.map((s: any) => s.state_code.toString()) || [],
+            district_code: this.selectedDistrictData?.map((d: any) => d.district_code.toString()) || [],
+            block_code: this.selectedBlockData?.map((b: any) => b.block_code.toString()) || []
+          };
+    
+          // Call the DownloadPdf service with filters
+          await this.downloadPdf$.updateanddownloadpdfCustom(this.fromDate, this.toDate, filters);
+          this.isLoading = false;
         } catch (error) {
           console.error("Error downloading map data:", error);
+          this.isLoading = false;
         }
       }
     
@@ -177,169 +202,233 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
 
 
       onRegionChange(): void {
-        console.log("balu", this.selectedRegion);
-        if (this.selectedRegion && this.selectedRegion.length > 0) {
-          // console.log("here",this.selectedRegion);
-          // console.log(this.centersMC[0]);
+        console.log("Selected Region:", this.selectedRegion);
     
-          const filteredCenters = this.centersMC[0]?.filter((center: any) =>
+        // Clear all dependent dropdown selections
+        this.selectedMC = [];
+        this.selectedRMC = [];
+        this.selectedState = [];
+        this.selectedDistrictData = [];
+        this.selectedBlockData = [];
+    
+        // Reset dependent dropdown data
+        this.centersMC1 = [];
+        this.centersRMC1 = [];
+        this.filterStates = [];
+        this.filterDistrict = [];
+        this.filterBlocks = [];
+    
+        // Enable MC and RMC dropdowns
+        this.mcDisabled = false;
+        this.rmcDisabled = false;
+    
+        if (this.selectedRegion && this.selectedRegion.length > 0) {
+          // Filter MCs based on selected Region
+          const filteredCentersMC = this.centersMC[0]?.filter((center: any) =>
             this.selectedRegion.includes(center.region_code)
           );
-          // console.log('Filtered centers:', filteredCenters);
+          this.centersMC1 = filteredCentersMC || [];
+          console.log("Filtered MCs:", this.centersMC1);
     
-          this.centersMC.push(filteredCenters);
-          // console.log('centersMC', this.centersMC);
-    
-          let lenOfCenterMC = this.centersMC.length;
-          // console.log('lenOfCenterMC', lenOfCenterMC)
-          this.centersMC1 = this.centersMC[lenOfCenterMC - 1];
-          console.log("this.centersMC1", this.centersMC1);
-    
-          // <- RMC ->
+          // Filter RMCs based on selected Region
           const filteredCentersRMC = this.centersRMC[0]?.filter((center: any) =>
             this.selectedRegion.includes(center.region_code)
           );
-          console.log("filteredCentersRMC", filteredCentersRMC);
+          this.centersRMC1 = filteredCentersRMC || [];
+          console.log("Filtered RMCs:", this.centersRMC1);
     
-          this.centersRMC.push(filteredCentersRMC);
+          // Update States based on Region (since no MC or RMC is selected yet)
+          this.updateStatesByRegion();
     
-          let lenOfCenterRMC = this.centersRMC.length;
-          this.centersRMC1 = this.centersRMC[lenOfCenterRMC - 1];
-          console.log("centersRMC1", this.centersRMC1);
-
-          this.updateMap()
+          // Update the map
+          this.updateMap();
+        } else {
+          // If no Region selected, reset to full datasets
+          this.centersMC1 = this.centersMC[0] || [];
+          this.centersRMC1 = this.centersRMC[0] || [];
+          this.filterStates = this.states[0]?.data || [];
+          this.filterDistrict = this.districts[0]?.data || [];
+          this.filterBlocks = this.blocks[0]?.data || [];
+          this.updateMap();
         }
       }
-
+    
+      // Helper method to update States based on Region
+      private updateStatesByRegion(): void {
+        if (this.selectedRegion.length > 0) {
+          const regionCodes = this.selectedRegion.map((r: any) => r.toString());
+          const filteredStates = this.states[0]?.data.filter((state: any) =>
+            regionCodes.includes(state.region_code?.toString())
+          );
+          this.filterStates = filteredStates || [];
+          console.log("Filtered States by Region:", this.filterStates);
+    
+          // Update Districts based on filtered States
+          this.updateDistrictsByStates();
+        }
+      }
+    
+      // Helper method to update Districts based on States
+      private updateDistrictsByStates(): void {
+        if (this.filterStates && this.filterStates.length > 0) {
+          const stateCodes = this.filterStates.map((state: any) => state.state_code.toString());
+          const filteredDistricts = this.districts[0]?.data.filter((district: any) =>
+            stateCodes.includes(district.state_code?.toString())
+          );
+          this.filterDistrict = filteredDistricts || [];
+          console.log("Filtered Districts by States:", this.filterDistrict);
+    
+          // Update Blocks based on filtered Districts
+          this.updateBlocksByDistricts();
+        } else {
+          this.filterDistrict = [];
+          this.filterBlocks = [];
+        }
+      }
+    
+      // Helper method to update Blocks based on Districts
+      private updateBlocksByDistricts(): void {
+        if (this.filterDistrict && this.filterDistrict.length > 0) {
+          const districtCodes = this.filterDistrict.map((district: any) => district.district_code.toString());
+          const filteredBlocks = this.blocks[0]?.data.filter((block: any) =>
+            districtCodes.includes(block.district_code?.toString())
+          );
+          this.filterBlocks = filteredBlocks || [];
+          console.log("Filtered Blocks by Districts:", this.filterBlocks);
+        } else {
+          this.filterBlocks = [];
+        }
+      }
+    
+      // Updated onMcChange to respect MC selection
       onMcChange(event: any): void {
         this.selectedMCData = event.value;
+        console.log("Selected MC:", this.selectedMCData);
     
-        console.log("event.value for MC", event.value);
-    
+        // Disable RMC dropdown if MC is selected
         this.rmcDisabled = this.selectedMC.length > 0;
     
-        const filteredStates = this.states[0].data.filter((state: any) => {
-          return this.selectedMC.some(
-            (mc: any) => mc.centre_name == state.centre_name
-          );
-        });
+        // Clear dependent dropdowns
+        this.selectedRMC = [];
+        this.selectedState = [];
+        this.selectedDistrictData = [];
+        this.selectedBlockData = [];
+        this.filterStates = [];
+        this.filterDistrict = [];
+        this.filterBlocks = [];
     
-        console.log("Filtered states:", filteredStates);
-        this.filterStates = filteredStates;
-
-        this.updateMap()
-
+        if (this.selectedMC.length > 0) {
+          // Filter States based on selected MC
+          const filteredStates = this.states[0]?.data.filter((state: any) =>
+            this.selectedMC.some((mc: any) => mc.centre_name === state.centre_name)
+          );
+          this.filterStates = filteredStates || [];
+          console.log("Filtered States by MC:", this.filterStates);
+    
+          // Update Districts based on filtered States
+          this.updateDistrictsByStates();
+        } else {
+          // If MC is cleared, fall back to Region-based filtering
+          this.updateStatesByRegion();
+        }
+    
+        // Update the map
+        this.updateMap();
       }
     
+      // Updated onRMcChange to respect RMC selection
       onRMcChange(event: any): void {
         this.selectedRMCData = event.value;
-        // console.log('selectedRMCData ', this.selectedRMCData );
+        console.log("Selected RMC:", this.selectedRMCData);
+    
+        // Disable MC dropdown if RMC is selected
         this.mcDisabled = this.selectedRMC.length > 0;
     
-        const filterStatesRMC = this.states[0].data.filter((state: any) => {
-          return this.selectedRMC.some(
-            (rmc: any) => rmc.centre_name == state.centre_name
+        // Clear dependent dropdowns
+        this.selectedMC = [];
+        this.selectedState = [];
+        this.selectedDistrictData = [];
+        this.selectedBlockData = [];
+        this.filterStates = [];
+        this.filterDistrict = [];
+        this.filterBlocks = [];
+    
+        if (this.selectedRMC.length > 0) {
+          // Filter States based on selected RMC
+          const filteredStates = this.states[0]?.data.filter((state: any) =>
+            this.selectedRMC.some((rmc: any) => rmc.centre_name === state.centre_name)
           );
-        });
+          this.filterStates = filteredStates || [];
+          console.log("Filtered States by RMC:", this.filterStates);
     
-        console.log("Filtered RMC States:", filterStatesRMC);
-        this.filterStates = filterStatesRMC;
-
-        this.updateMap()
-
+          // Update Districts based on filtered States
+          this.updateDistrictsByStates();
+        } else {
+          // If RMC is cleared, fall back to Region-based filtering
+          this.updateStatesByRegion();
+        }
     
-        // this.selectedRegion.forEach((code:string)=>{
-        // this.getStateService.fetchData().subscribe(
-        // response => {
-        // console.log('State Data RMC', response);
-        // const filterStateRMC = response.data.filter((id: any)=> id.region_code === code);
-    
-        // // this.states.push(...filterStateRMC);
-    
-        // // Add only unique states based on state_name
-        // filterStateRMC.forEach((state: any) => {
-        // if (!this.states.some(existingState => existingState.state_name === state.state_name)) {
-        // this.states.push(state);
-        // }
-        // });
-    
-        // console.log('filterStateByRMC', filterStateRMC);
-        // console.log('state by RMC', this.states);
-        // }
-        // )
-        // })
+        // Update the map
+        this.updateMap();
       }
     
+      // Updated onStateChange
       onStateChange(event: any): void {
         this.selectedStateData = event.value;
-        // console.log('selectedStateData', this.selectedStateData)
+        console.log("Selected States:", this.selectedStateData);
     
-        // console.log('selectedState', this.selectedState);
-        // console.log('districts', this.districts);
+        // Clear dependent dropdowns
+        this.selectedDistrictData = [];
+        this.selectedBlockData = [];
+        this.filterDistrict = [];
+        this.filterBlocks = [];
     
-        const filteredDistricts = this.districts[0].data.filter((dist: any) => {
-          return this.selectedState.some(
-            (mc: any) => mc.state_code == dist.state_code
+        if (this.selectedState.length > 0) {
+          // Filter Districts based on selected States
+          const filteredDistricts = this.districts[0]?.data.filter((district: any) =>
+            this.selectedState.some((state: any) => state.state_code === district.state_code)
           );
-        });
-        console.log("Filtered district", filteredDistricts);
-        this.filterDistrict = filteredDistricts;
-
-        this.updateMap()
-
+          this.filterDistrict = filteredDistricts || [];
+          console.log("Filtered Districts by States:", this.filterDistrict);
     
-        // if (this.selectedState && this.selectedState.length > 0) {
-        // const selectedStateCodes = this.selectedState.map((state: any) => state.state_code);
-        // console.log('selectedStateCodes', selectedStateCodes);
+          // Update Blocks based on filtered Districts
+          this.updateBlocksByDistricts();
+        }
     
-        // // Fetch districts based on selected states' state_code
-        // this.getDistrictService.fetchData().subscribe(
-        // (response : any) => {
-        // console.log('District Response', response);
-    
-        // selectedStateCodes.forEach((code: any) => {
-        // const filterDistrict = response.data.filter((district: any) => district.state_code === code);
-        // console.log('filterDistrict', filterDistrict);
-        // this.districts.push(...filterDistrict);
-        // });
-    
-        // console.log('Filtered districts:', this.districts);
-        // },
-        // (error : any) => {
-        // console.error('Error fetching district data:', error);
-        // }
-        // );
-        // } else {
-        // console.log('No states selected');
-        // }
+        // Update the map
+        this.updateMap();
       }
     
+      // Updated onDistrictChange
       onDistrictChange(event: any): void {
-        console.log("District change", event.value);
         this.selectedDistrictData = event.value;
-
-        const filterBlocks = this.blocks[0].data.filter((bloc: any) => {
-          return this.selectedDistrictData.some(
-            (d: any) => d.district_code == bloc.district_code
+        console.log("Selected Districts:", this.selectedDistrictData);
+    
+        // Clear dependent dropdowns
+        this.selectedBlockData = [];
+        this.filterBlocks = [];
+    
+        if (this.selectedDistrictData.length > 0) {
+          // Filter Blocks based on selected Districts
+          const filteredBlocks = this.blocks[0]?.data.filter((block: any) =>
+            this.selectedDistrictData.some((district: any) => district.district_code === block.district_code)
           );
-        });
-        console.log("Filtered Blocks", filterBlocks);
-        this.filterBlocks = filterBlocks;
-
-
-
-        console.log("selectedDistrictData =>", this.selectedDistrictData);
-        this.updateMap()
-      }
-
-
-      onBlockChange(event: any): void {
-        console.log("District change", event.value);
-        this.selectedBlockData = event.value;
-        console.log("selectedDistrictData =>", this.selectedBlockData);
-        this.updateMap()
+          this.filterBlocks = filteredBlocks || [];
+          console.log("Filtered Blocks by Districts:", this.filterBlocks);
+        }
+    
+        // Update the map
+        this.updateMap();
       }
     
+      // Updated onBlockChange
+      onBlockChange(event: any): void {
+        this.selectedBlockData = event.value;
+        console.log("Selected Blocks:", this.selectedBlockData);
+    
+        // Update the map
+        this.updateMap();
+      }
       async fetchBackend() {
         let selectedMode: any = localStorage.getItem("selectedMode");
         this.selectedMode = JSON.parse(selectedMode);
@@ -988,8 +1077,10 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
               },
               onEachFeature: (feature: any, layer: any) => {
                 const state = feature.properties.state;
-                const id1 = feature.properties["district"];
-                const id2 = feature.properties["district_c"];
+                const district = feature.properties["district"];
+                const region = feature.properties["region"];
+                const block = feature.properties["block_Name"];
+                const id2 = feature.properties["block_code"];
                 const matchedData = this.findMatchingData(id2);
                 let rainfall: any;
     
@@ -1001,14 +1092,14 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
               }
   
                 const dailyrainfall =
-                  matchedData &&
-                  matchedData.actual_rainfall !== null &&
-                  matchedData.actual_rainfall != undefined &&
-                  !Number.isNaN(matchedData.actual_rainfall)
-                    ? this.constants.trimToOneDecimals(
-                        matchedData.actual_rainfall
-                      ) + " mm"
-                    : "NA";
+                matchedData &&
+                matchedData.actual_rainfall !== null &&
+                matchedData.actual_rainfall != undefined &&
+                !Number.isNaN(matchedData.actual_rainfall)
+                  ? this.constants.trimToOneDecimals(
+                      matchedData.actual_rainfall
+                    )
+                  : "NA";
                 const normalrainfall =
                   matchedData && !Number.isNaN(matchedData.normal_rainfall)
                     ? this.constants.trimToOneDecimals(
@@ -1016,12 +1107,14 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
                       ) + " mm"
                     : "NA";
                 const popupContent = `
-     <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-     <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
-     <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${id1}</div>
-     <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-     </div>
-     `;
+                    <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
+                    <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
+                    <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
+                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
+                    <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
+                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
+                    </div>
+                `;
                 layer.bindPopup(popupContent);
                 layer.on("mouseover", () => {
                   layer.openPopup();
@@ -1193,37 +1286,52 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
               };
             },
             onEachFeature: (feature: any, layer: any) => {
-              const props = feature.properties;
-              const state = props.state || 'Unknown';
-              const district = props.district || 'Unknown';
-              const block = props.block_Name || 'Unknown';
-              const id2 = props.district_c;
+              const state = feature.properties.state;
+              const district = feature.properties["district"];
+              const region = feature.properties["region"];
+              const block = feature.properties["block_Name"];
+              const id2 = feature.properties["block_code"];
               const matchedData = this.findMatchingData(id2);
-      
-              const rainfall = matchedData?.departure != null
-                ? this.constants.trimToZeroDecimals(matchedData.departure)
-                : 'NA';
-      
-              const dailyRainfall = matchedData && matchedData.actual_rainfall != null && !Number.isNaN(matchedData.actual_rainfall)
-                ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) + ' mm'
-                : 'NA';
-      
-              const normalRainfall = matchedData && !Number.isNaN(matchedData.normal_rainfall)
-                ? this.constants.trimToOneDecimals(parseFloat(matchedData.normal_rainfall)) + ' mm'
-                : 'NA';
-      
+              let rainfall: any;
+  
+              if (matchedData?.departure!=null) {
+
+                rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
+            } else {
+              rainfall = "NA";
+            }
+
+              const dailyrainfall =
+              matchedData &&
+              matchedData.actual_rainfall !== null &&
+              matchedData.actual_rainfall != undefined &&
+              !Number.isNaN(matchedData.actual_rainfall)
+                ? this.constants.trimToOneDecimals(
+                    matchedData.actual_rainfall
+                  )
+                : "NA";
+              const normalrainfall =
+                matchedData && !Number.isNaN(matchedData.normal_rainfall)
+                  ? this.constants.trimToOneDecimals(
+                      parseFloat(matchedData.normal_rainfall)
+                    ) + " mm"
+                  : "NA";
               const popupContent = `
-                <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
+                  <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
+                  <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyRainfall}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalRainfall}</div>
-                </div>
+                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
+                  </div>
               `;
               layer.bindPopup(popupContent);
-              layer.on('mouseover', () => layer.openPopup());
-              layer.on('mouseout', () => layer.closePopup());
+              layer.on("mouseover", () => {
+                layer.openPopup();
+              });
+              layer.on("mouseout", () => {
+                layer.closePopup();
+              });
             },
           }).addTo(this.map);
       
