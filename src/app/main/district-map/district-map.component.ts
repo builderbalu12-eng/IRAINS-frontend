@@ -193,238 +193,100 @@ export class DistrictMapComponent implements AfterViewInit {
       this.resetMap();
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
-
     this.isLoading = true;
+
     try {
       const mapElement = document.getElementById("map-district") as HTMLElement;
-
       if (!mapElement) {
         throw new Error("Map element not found");
       }
-
-      //  const scale = 8;
-      //  const originalWidth = mapElement.clientWidth;
-      //  const originalHeight = mapElement.clientHeight;
-      //  const width = originalWidth * scale;
-      //  const height = originalHeight * scale;
-
-      //  if(!this.isFullscreen()){
-      //  const dataUrl = await htmlToImage.toJpeg(mapElement, {
-      //  quality: 0.95,
-      //  filter: this.filter,
-      //  width: width,
-      //  height: height,
-      //  style: {
-      //  transform: `scale(${scale})`,
-      //  transformOrigin: 'top left'
-      //  }
-      //  });
-
-      //  const link = document.createElement('a');
-      //  link.download = 'DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg';
-      //  link.href = dataUrl;
-
-      //  if(downloadpdf){
-      //  this.generatePDF(dataUrl)
-      //  }else{
-      //  link.click();
-      //  }
-
-      //  }
-      //  else{
-      //   const cropWidth = 1200 * scale; // Width of the cropped area in the center
-      //   const cropHeight = originalHeight+1140 * scale; // Full height
-      //   const cropX = ((width - cropWidth) / 2)+500; // Centered horizontally
-      //   const cropY = 0; // Starting at the top
-
-      //  // Create a temporary canvas to crop the image
-      //  const tempCanvas = document.createElement('canvas');
-      //  tempCanvas.width = cropWidth;
-      //  tempCanvas.height = cropHeight;
-      //  const tempContext = tempCanvas.getContext('2d');
-
-      //  const dataUrl = await htmlToImage.toJpeg(mapElement, {
-      //  quality: 0.95,
-      //  filter: this.filter,
-      //  width: width,
-      //  height: height,
-      //  style: {
-      //  transform: `scale(${scale})`,
-      //  transformOrigin: 'top left',
-      //  width: `${width}px`,
-      //  height: `${height}px`,
-      //  overflow: 'hidden', // Ensure overflow is hidden during capture
-      //  }
-      //  });
-
-      //  // Load the captured image onto the temporary canvas
-      //  const image = new Image();
-      //  image.src = dataUrl;
-      //  image.onload = () => {
-      //  // Draw the central portion of the scaled image onto the temporary canvas
-      //  tempContext?.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-
-      //  // Convert the cropped canvas back to a data URL
-      //  const croppedDataUrl = tempCanvas.toDataURL('image/jpeg', 0.95);
-
-      //  // Trigger download
-      //  const link = document.createElement('a');
-      //  link.download = 'DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg';
-      //  link.href = croppedDataUrl;
-
-      //  if(downloadpdf){
-      //  this.generatePDF(croppedDataUrl)
-      //  }else{
-      //  link.click();
-      //  }
-      //  };
-      //  }
-
       const scale = 8;
       const originalWidth = mapElement.clientWidth;
       const originalHeight = mapElement.clientHeight;
       const width = originalWidth * scale;
       const height = originalHeight * scale;
 
-      const cropWidth = 1200 * scale; // Width of the cropped area in the center
+      if (!this.isFullscreen()) {
+        const dataUrl = await htmlToImage.toJpeg(mapElement, {
+          quality: 0.95,
+          filter: this.filter,
+          width: width,
+          height: height,
+          style: {
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          },
+        });
 
-      // Calculate cropHeight dynamically based on the screen height
-      const cropHeight = originalHeight * scale; // Full height of the screen after scaling
-      const cropX = (width - cropWidth) / 2 + 500; // Centered horizontally
-      const cropY = 0; // Starting at the top
-
-      // Create a temporary canvas to crop the image
-      const tempCanvas = document.createElement("canvas");
-      tempCanvas.width = cropWidth;
-      tempCanvas.height = cropHeight;
-      const tempContext = tempCanvas.getContext("2d");
-
-      const dataUrl = await htmlToImage.toJpeg(mapElement, {
-        quality: 0.95,
-        filter: this.filter,
-        width: width,
-        height: height,
-        style: {
-          transform: `scale(${scale})`,
-          transformOrigin: "top left",
-          width: `${width}px`,
-          height: `${height}px`,
-          overflow: "hidden", // Ensure overflow is hidden during capture
-        },
-      });
-
-      // Load the captured image onto the temporary canvas
-      const image = new Image();
-      image.src = dataUrl;
-      image.onload = () => {
-        // Draw the central portion of the scaled image onto the temporary canvas
-        tempContext?.drawImage(
-          image,
-          cropX,
-          cropY,
-          cropWidth,
-          cropHeight,
-          0,
-          0,
-          cropWidth,
-          cropHeight
-        );
-
-        // Convert the cropped canvas back to a data URL
-        const croppedDataUrl = tempCanvas.toDataURL("image/jpeg", 0.95);
-
-        // Trigger download
         const link = document.createElement("a");
         link.download = "DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg";
-        link.href = croppedDataUrl;
+        link.href = dataUrl;
 
         if (downloadpdf) {
-          this.generatePDF(croppedDataUrl);
+          this.generatePDF(dataUrl);
         } else {
           link.click();
         }
-      };
+      } else {
+        const cropWidth = 1200 * scale; // Width of the cropped area in the center
+        const cropHeight = originalHeight + 1155 * scale; //1140
+        const cropX = (width - cropWidth) / 2 + 2000; // Centered horizontally
+        const cropY = 0; // Starting at the top
 
-      // const scale = 8;
-      // const originalWidth = mapElement.clientWidth;
-      // const originalHeight = mapElement.clientHeight;
-      // const width = originalWidth * scale;
-      // const height = originalHeight * scale;
+        // Create a temporary canvas to crop the image
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = cropWidth;
+        tempCanvas.height = cropHeight;
+        const tempContext = tempCanvas.getContext("2d");
 
-      // if (!this.isFullscreen()) {
-      //   const dataUrl = await htmlToImage.toJpeg(mapElement, {
-      //     quality: 0.95,
-      //     filter: this.filter,
-      //     width: width,
-      //     height: height,
-      //     style: {
-      //       transform: `scale(${scale})`,
-      //       transformOrigin: 'top left'
-      //     }
-      //   });
+        const dataUrl = await htmlToImage.toJpeg(mapElement, {
+          quality: 0.95,
+          filter: this.filter,
+          width: width,
+          height: height,
+          style: {
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            width: `${width}px`,
+            height: `${height}px`,
+          },
+        });
 
-      //   const link = document.createElement('a');
-      //   link.download = 'DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg';
-      //   link.href = dataUrl;
+        // Load the captured image onto the temporary canvas
+        const image = new Image();
+        image.src = dataUrl;
+        image.onload = () => {
+          // Draw the central portion of the scaled image onto the temporary canvas
+          tempContext?.drawImage(
+            image,
+            cropX,
+            cropY,
+            cropWidth,
+            cropHeight,
+            0,
+            0,
+            cropWidth,
+            cropHeight
+          );
 
-      //   if (downloadpdf) {
-      //     this.generatePDF(dataUrl);
-      //   } else {
-      //     link.click();
-      //   }
-      // } else {
-      //   // Calculate crop dimensions dynamically
-      //   const cropWidth = originalWidth * 0.8 * scale; // 80% of the element's width
-      //   const cropHeight = originalHeight * scale; // Full height of the element
-      //   const cropX = (width - cropWidth) / 2; // Centered horizontally
-      //   const cropY = (height - cropHeight) / 2; // Centered vertically
+          // Convert the cropped canvas back to a data URL
+          const croppedDataUrl = tempCanvas.toDataURL("image/jpeg", 0.95);
 
-      //   // Create a temporary canvas to crop the image
-      //   const tempCanvas = document.createElement('canvas');
-      //   tempCanvas.width = cropWidth;
-      //   tempCanvas.height = cropHeight;
-      //   const tempContext = tempCanvas.getContext('2d');
+          // Trigger download
+          const link = document.createElement("a");
+          link.download = "DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg";
+          link.href = croppedDataUrl;
 
-      //   const dataUrl = await htmlToImage.toJpeg(mapElement, {
-      //     quality: 0.95,
-      //     filter: this.filter,
-      //     width: width,
-      //     height: height,
-      //     style: {
-      //       transform: `scale(${scale})`,
-      //       transformOrigin: 'top left',
-      //       width: `${width}px`,
-      //       height: `${height}px`,
-      //       overflow: 'hidden', // Ensure overflow is hidden during capture
-      //     }
-      //   });
-
-      //   // Load the captured image onto the temporary canvas
-      //   const image = new Image();
-      //   image.src = dataUrl;
-      //   image.onload = () => {
-      //     // Draw the central portion of the scaled image onto the temporary canvas
-      //     tempContext?.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-
-      //     // Convert the cropped canvas back to a data URL
-      //     const croppedDataUrl = tempCanvas.toDataURL('image/jpeg', 0.95);
-
-      //     // Trigger download
-      //     const link = document.createElement('a');
-      //     link.download = 'DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg';
-      //     link.href = croppedDataUrl;
-
-      //     if (downloadpdf) {
-      //       this.generatePDF(croppedDataUrl);
-      //     } else {
-      //       link.click();
-      //     }
-      //   };
-      // }
+          if (downloadpdf) {
+            this.generatePDF(croppedDataUrl);
+          } else {
+            link.click();
+          }
+        };
+      }
     } catch (error) {
       console.error("Error downloading map image:", error);
     }
-
     this.isLoading = false;
   }
 

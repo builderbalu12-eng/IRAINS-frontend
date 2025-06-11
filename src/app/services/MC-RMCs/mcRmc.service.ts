@@ -121,6 +121,47 @@ export class MCRMCsService {
       centre: [28.5199, 77.1900],
       zoomfactor: 2,
     },
+
+    "MC Agartala": {
+      url: "assets/geojson/MCRMCs/MC_AGARTALA.json",
+      centre: [23.8361, 91.7994],
+      zoomfactor: 4,
+    },
+    "MC Aizawl": {
+      url: "assets/geojson/MCRMCs/MC_AIZAWL.json",
+      centre: [23.2271, 92.7176],
+      zoomfactor: 5,
+    },
+    "MC Gangtok": {
+      url: "assets/geojson/MCRMCs/MC_GANGTOK.json",
+      centre: [27.5389, 88.6065],
+      zoomfactor: 4,
+    },
+    "MC Imphal": {
+      url: "assets/geojson/MCRMCs/MC_IMPHAL.json",
+      centre: [24.817, 93.9368],
+      zoomfactor: 5,
+    },
+    "MC Itanagar": {
+      url: "assets/geojson/MCRMCs/MC_ITANAGAR.json",
+      centre: [28.0844, 94.053],
+      zoomfactor: 14,
+    },
+    "MC Kohima": {
+      url: "assets/geojson/MCRMCs/MC_KOHIMA.json",
+      centre: [25.9747, 94.5107],
+      zoomfactor: 5,
+    },
+    "MC Shillong": {
+      url: "assets/geojson/MCRMCs/MC_SHILLONG.json",
+      centre: [25.5788, 91.2933],
+      zoomfactor: 6,
+    },
+    "MC Vijayapuram": {
+      url: "assets/geojson/MCRMCs/MC_VIJAYA_PURAM.json",
+      centre: [10.6234, 92.7265],  // Example coordinates for Port Blair
+      zoomfactor: 14,
+    },
   };
 
   listOfmsRMCs: any = ["HYD", "BBN", "BNG"];
