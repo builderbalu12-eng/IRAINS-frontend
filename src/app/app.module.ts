@@ -161,6 +161,7 @@ import { IrainsOverviewComponent } from './main/irains-overview/irains-overview.
 import { ActualBlockRainfallComponent } from './main/rainfall-actual-maps/Actual/actual-block-rainfall/actual-block-rainfall.component';
 import { ActualBlockRainfallMapComponent } from './main/rainfall-actual-maps/Actual/actual-block-rainfall-map/actual-block-rainfall-map.component';
 import { WeeklyDistrictSpatialComponent } from './main/spatial-maps/weekly-district-spatial/weekly-district-spatial.component';
+import { CummulativeDistrictSpatialComponent } from './main/spatial-maps/cummulative-district-spatial/cummulative-district-spatial.component';
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -298,6 +299,7 @@ import { WeeklyDistrictSpatialComponent } from './main/spatial-maps/weekly-distr
     ActualBlockRainfallComponent,
     ActualBlockRainfallMapComponent,
     WeeklyDistrictSpatialComponent,
+    CummulativeDistrictSpatialComponent,
     
   ],
   imports: [
