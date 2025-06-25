@@ -5,8 +5,6 @@ import {
   ElementRef,
   AfterViewInit,
   HostListener,
-  OnDestroy,
-  OnInit,
 } from "@angular/core";
 import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
@@ -17,31 +15,13 @@ import { DownloadPdf } from "src/app/services/district/pdfdownload.service";
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
-import "leaflet.heat"; // <-- This line is required for L.heatLayer
-
-declare module 'leaflet' {
-  namespace HeatLayer {
-    interface HeatLatLngTuple extends L.LatLngTuple {
-      2?: number; // intensity
-    }
-  }
-
-  function heatLayer(
-    latlngs: HeatLayer.HeatLatLngTuple[],
-    options?: any
-  ): Layer;
-}
-
 
 @Component({
-  selector: 'app-district-daily-spatial',
-  templateUrl: './district-daily-spatial.component.html',
-  styleUrls: ['./district-daily-spatial.component.css']
+  selector: 'app-weekly-district-spatial',
+  templateUrl: './weekly-district-spatial.component.html',
+  styleUrls: ['./weekly-district-spatial.component.css']
 })
-
-
-
-export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
+export class WeeklyDistrictSpatialComponent {
 
     districtdatacum: any[] = [];
     StartDate: any;
@@ -51,33 +31,20 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
     countryNormal: any;
     countryDeparture: any;
     isLoading = false;
-
-
-    today: any;
-  
-
-  fromDate: any = this.formatDate(new Date()) ;
-  toDate: any = this.formatDate(new Date());
+  months: any[] = [];
   selectedMode: any;
-
-  formatDate(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero based
-    const year = date.getFullYear();
-    return `${year}-${month}-${day}`;
-  }
-
+  selectedWeek: any;
+  fromDate: any;
+  
     async downloadMapData() {
       this.isLoading = true;
       try {
         this.isLoading = true;
-        this.isLoading = true;
         if(this.selectedMode.selectedMode == 'Unified'){
-          await this.downloadPdf$.updateanddownloadpdfCustom(this.fromDate, this.fromDate);
+          await this.downloadPdf$.updateanddownloadpdfCustom(this.StartDate, this.EndDate);
         }else{
-          await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.fromDate, this.fromDate);
-        } 
-                this.isLoading = false;
+          await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.StartDate, this.EndDate);
+        }        this.isLoading = false;
       } catch (error) {
         console.error("Error downloading map data:", error);
       }
@@ -144,35 +111,51 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
           this.StartDate = `${year}-${mon}-${dd}`;
           this.EndDate = `${year}-${mon}-${dd}`;
         }
+        this.generateWeeklyOptions()
         this.calculateInitialZoom();
-  
         this.fetchBackend();
       });
     }
-  ngOnDestroy(): void {
-    throw new Error("Method not implemented.");
-  }
   
     convertToIndianDateFormat = (dateString: string) =>
       dateString.split("-").reverse().join("-");
   
     async fetchBackend() {
+      // const currentDate = new Date();
+      // const dd = String(currentDate.getDate()).padStart(2, "0");
+      // const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+      // const year = String(currentDate.getFullYear());
+  
+      // const data = {
+      //   startDate: this.StartDate,
+      //   endDate: this.EndDate,
+      // };
+
       let selectedMode: any = localStorage.getItem("selectedMode");
       this.selectedMode = JSON.parse(selectedMode);
       console.log('this.selected mOde', this.selectedMode)
-
-      const currentDate = new Date();
-      const dd = String(currentDate.getDate()).padStart(2, "0");
-      const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-      const year = String(currentDate.getFullYear());
   
-      const data = {
-        startDate: this.fromDate,
-        endDate: this.fromDate,
-      };
-
+      if(!this.selectedWeek){
+        // this.selectedWeek = 
+        const lastMonth = this.months[this.months.length - 1];
+        const lastWeek = lastMonth.weeks[lastMonth.weeks.length - 1];
+        this.selectedWeek = lastWeek.range;
+      }
+  
+        const dates = this.selectedWeek.split(' - ');
+        const fromDate = dates[0];
+        const toDate = dates[1];
+    
+        let data = {
+          startDate: fromDate,
+          endDate: toDate
+        };
+  
+        this.StartDate = fromDate.split('-').reverse().join('-');
+        this.EndDate = toDate.split('-').reverse().join('-');
 
       if(this.selectedMode.selectedMode == 'Unified'){
+
         this.district.fetchDataFtp(data).subscribe((res) => {
           this.districtdatacum = res.data;
           console.log("fbdudusdubsudbsud", res.data);
@@ -180,27 +163,28 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
           this.StartDate = this.convertToIndianDateFormat(this.StartDate);
           this.EndDate = this.convertToIndianDateFormat(this.EndDate);
         });
-        this.countryService.fetchData(data).subscribe((res) => {
-          this.countrydatacum = res.data;
-          this.countryActual = this.constants.trimToOneDecimals(
-            this.countrydatacum[0].actual_rainfall
-          );
-          this.countryNormal = this.constants.trimToOneDecimals(
-            parseFloat(this.countrydatacum[0].rainfall_normal_value)
-          );
-          this.countryDeparture = Math.round(this.countrydatacum[0].departure);
-          console.log(
-            "country dep data",
-            this.countrydatacum,
-            this.countryActual,
-            this.countryDeparture,
-            this.countryNormal
-          );
-        });
+
+        this.countryService.fetchDataFtp(data).subscribe((res) => {
+        this.countrydatacum = res.data;
+        this.countryActual = this.constants.trimToOneDecimals(
+          this.countrydatacum[0].actual_rainfall
+        );
+        this.countryNormal = this.constants.trimToOneDecimals(
+          parseFloat(this.countrydatacum[0].rainfall_normal_value)
+        );
+        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        console.log(
+          "country dep data FTP",
+          this.countrydatacum,
+          this.countryActual,
+          this.countryDeparture,
+          this.countryNormal
+        );
+      });
+
       }
       else{
 
-        
         this.district.fetchData(data).subscribe((res) => {
           this.districtdatacum = res.data;
           console.log("fbdudusdubsudbsud", res.data);
@@ -208,6 +192,7 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
           this.StartDate = this.convertToIndianDateFormat(this.StartDate);
           this.EndDate = this.convertToIndianDateFormat(this.EndDate);
         });
+
         this.countryService.fetchData(data).subscribe((res) => {
           this.countrydatacum = res.data;
           this.countryActual = this.constants.trimToOneDecimals(
@@ -216,9 +201,9 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
           this.countryNormal = this.constants.trimToOneDecimals(
             parseFloat(this.countrydatacum[0].rainfall_normal_value)
           );
-          this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+          this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
           console.log(
-            "country dep data",
+            "country dep data Entry",
             this.countrydatacum,
             this.countryActual,
             this.countryDeparture,
@@ -226,7 +211,71 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
           );
         });
       }
+      
+
     }
+
+    setFromAndToDate() {
+      let data = {
+        fromDate: this.fromDate,
+        toDate: this.fromDate,
+      };
+      this.dataService.setfromAndToDate(JSON.stringify(data));
+    }
+    
+  generateWeeklyOptions() {
+    this.months = []
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June', 
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+  
+    const startDate = new Date(2024, 0, 1); // January 1, 2024
+    const endDate = new Date(); // December 31, 2024
+  
+    let currentDate = startDate;
+    while (currentDate <= endDate) {
+      if (currentDate.getDay() === 4) { // Thursday
+        let startOfWeek = new Date(currentDate);
+        let endOfWeek = new Date(currentDate);
+        let todayofWeek = new Date()
+        endOfWeek.setDate(endOfWeek.getDate() + 6);
+        if((endOfWeek) > todayofWeek){
+          endOfWeek = todayofWeek
+        }
+
+  
+        let monthIndex = startOfWeek.getMonth();
+        let weekRange = `${this.formatDate(startOfWeek)} - ${this.formatDate(endOfWeek)}`;
+        let weekRangeForDisplay = `${this.formatDateForDisplay(startOfWeek)} - ${this.formatDateForDisplay(endOfWeek)}`;
+  
+        if (!this.months[monthIndex]) {
+          this.months[monthIndex] = { name: monthNames[monthIndex], weeks: [] };
+        }
+  
+        let weekNumber = this.months[monthIndex].weeks.length + 1;
+        let weekLabel = `Week ${weekNumber}`;
+        this.months[monthIndex].weeks.push({ label: weekLabel, range: weekRange, displayRange: weekRangeForDisplay });
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    console.log('printing months',this.months)
+  }
+
+
+  formatDate(date: Date): string {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero based
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
+  }
+
+  formatDateForDisplay(date: Date): string {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
   
     filter = (node: HTMLElement) => {
       const exclusionClasses = [
@@ -269,7 +318,7 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
   
       try {
         const mapElement = document.getElementById(
-          "map-panindia"
+          "map-district-ftp"
         ) as HTMLElement;
         if (!mapElement) {
           throw new Error("Map element not found");
@@ -405,7 +454,7 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
   
     // async downloadMapImage() {
     // try {
-    // const mapElement = document.getElementById('map-panindia') as HTMLElement;
+    // const mapElement = document.getElementById('map-district-ftp') as HTMLElement;
     // if (!mapElement) {
     // throw new Error('Map element not found');
     // }
@@ -468,17 +517,6 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
     ngAfterViewInit(): void {
       this.loadGeoJSON();
     }
-
-    setFromAndToDate() {
-      let data = {
-        fromDate: this.fromDate,
-        toDate: this.fromDate,
-      };
-      this.formatteddate = this.fromDate.split("-").reverse().join("-")
-      this.calculateInitialZoom()
-      this.fetchBackend()
-      // this.dataService.setfromAndToDate(JSON.stringify(data));
-    }
   
     private calculateInitialZoom(): void {
       const cardWidth = window.innerWidth * 0.9;
@@ -505,7 +543,7 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
     }
   
     resetMap(): void {
-      this.map.setView([24, 80.9629], this.initialZoom + 1);
+      this.map.setView([24, 80.9629]);
     }
   
     resetMapSmallScreen(): void {
@@ -513,16 +551,19 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
     }
   
     private initMap(): void {
-      this.map = L.map("map-panindia", {
+      this.map = L.map("map-districtNav", {
+        
         center: [24, 81.9629],
         zoom: this.initialZoom,
         scrollWheelZoom: false,
         zoomSnap: 0.1,
         zoomDelta: 0.1,
+        
       });
   
       this.map.removeControl(this.map.zoomControl);
       this.map.dragging.disable();
+    
   
       this.map.on("fullscreenchange", () => {
         this.toggleLogoPosition(this.isFullscreen());
@@ -536,7 +577,7 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
         content: '<i class="bi bi-arrows-fullscreen"></i>',
       });
   
-      this.map.addControl(fullscreenControl);
+      // this.map.addControl(fullscreenControl);
     }
     public isFullscreen(): boolean {
       return !!(
@@ -549,29 +590,29 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
   
     private toggleLogoPosition(isFullscreen: boolean): void {
       const logoImage = this.elRef.nativeElement.querySelector(
-        "#logoImage-pan_india"
+        "#logoImage-district"
       );
       const Header = this.elRef.nativeElement.querySelector(
-        "#middle-header-panindia"
+        "#middle-header-district"
       );
       const directionCompass = this.elRef.nativeElement.querySelector(
-        "#compassArrow-pan-india"
+        "#compassArrow-district"
       );
-      // const btn = this.elRef.nativeElement.querySelector('#all-btn-panindia');
-      const resetButton = this.elRef.nativeElement.querySelector("#resetButton-panindia");
+      // const btn = this.elRef.nativeElement.querySelector('#all-btn-district');
+      const resetButton = this.elRef.nativeElement.querySelector("#resetButton");
   
       let legendsColor = this.elRef.nativeElement.querySelector(
-        "#leaflet-bottom-pan-india"
+        "#leaflet-bottom-district"
       );
       const celebrations = this.elRef.nativeElement.querySelector(
-        "#celebrations-pan-india"
+        "#celebrations-district"
       );
       const country_val = this.elRef.nativeElement.querySelector(
-        "#country_values-pan-india"
+        "#country_values-district"
       );
       const spinner = this.elRef.nativeElement.querySelector("#loading-message");
   
-      const borderRemove = this.elRef.nativeElement.querySelector('#border-remove-panindia')
+      const borderRemove = this.elRef.nativeElement.querySelector('#border-remove-district_dup')
   
       if (isFullscreen) {
         this.map.addControl(this.map.zoomControl);
@@ -661,101 +702,7 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
         this.renderer.removeStyle(resetButton, "top");
       }
     }
-    // assets/geojson/regions/EAST_AND_NORTH_EAST_INDIA.json 
-
-
-  //   private loadGeoJSON(): void {
-  //     this.http
-  //       .get("assets/geojson/INDIA_DISTRICT.json")
-  //       .subscribe((res: any) => {
-  //         const districtLayer = L.geoJSON(res, {
-  //           style: (feature: any) => {
-  //             const id2 = feature.properties["district_c"];
-  //             const matchedData = this.findMatchingData(id2);
-  //             let rainfall: any;
-             
-  //             if (matchedData?.departure!=null) {
-  //               rainfall = matchedData.departure;
-  //             } else {
-  //               rainfall = "NA";
-  //             }
-
-  //           const color = this.constants.getColorForRainfall(rainfall);
-
-  //             return {
-  //               fillColor: color,
-  //               weight: 1,
-  //               opacity: 1.5,
-  //               color: "black",
-  //               fillOpacity: 100,
-  //             };
-  //           },
-  //           onEachFeature: (feature: any, layer: any) => {
-  //             const state = feature.properties.state;
-  //             const id1 = feature.properties["district"];
-  //             const id2 = feature.properties["district_c"];
-  //             const matchedData = this.findMatchingData(id2);
-  //             let rainfall: any;
   
-  //             if (matchedData?.departure!=null) {
-
-  //               rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
-  //           } else {
-  //             rainfall = "NA";
-  //           }
-
-  //             const dailyrainfall =
-  //               matchedData &&
-  //               matchedData.actual_rainfall !== null &&
-  //               matchedData.actual_rainfall != undefined &&
-  //               !Number.isNaN(matchedData.actual_rainfall)
-  //                 ? this.constants.trimToOneDecimals(
-  //                     matchedData.actual_rainfall
-  //                   ) + " mm"
-  //                 : "NA";
-  //             const normalrainfall =
-  //               matchedData && !Number.isNaN(matchedData.normal_rainfall)
-  //                 ? this.constants.trimToOneDecimals(
-  //                     parseFloat(matchedData.normal_rainfall)
-  //                   ) + " mm"
-  //                 : "NA";
-  //             const popupContent = `
-  //  <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-  //  <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
-  //  <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${id1}</div>
-  //  <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-  //  <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
-  //  <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall} % </div>
-  //  </div>
-  //  `;
-  //             layer.bindPopup(popupContent);
-  //             layer.on("mouseover", () => {
-  //               layer.openPopup();
-  //             });
-  //             layer.on("mouseout", () => {
-  //               layer.closePopup();
-  //             });
-  //           },
-  //         }).addTo(this.map);
-  //       });
-  
-  //     // this.http.get('assets/geojson/INDIA_STATE.json').subscribe(
-  //     // (stateRes: any) => {
-  //     // const stateLayer = L.geoJSON(stateRes, {
-  //     // style: {
-  //     // weight: 1,
-  //     // opacity: 100,
-  //     // color: 'black',
-  //     // fillOpacity: 0
-  //     // }
-  
-  //     // }).
-  //     // addTo(this.map);
-  //     // })
-  
-  //     console.log("loading is successful");
-  //   }
-
     private loadGeoJSON(): void {
       const heatPoints: [number, number, number][] = [];
     
@@ -804,45 +751,46 @@ export class DistrictDailySpatialComponent implements OnInit, OnDestroy{
         if (val === -100) return 0.1;
         return 0.0;
       }
-    
-    getColorForRainfall1(rainfall: any): string {
-      if (rainfall == null || rainfall == " ") {
-        return "#c0c0c0";
-      }
+    // getColorForRainfall1(rainfall: any): string {
+    //   if (rainfall == null || rainfall == " ") {
+    //     return "#c0c0c0";
+    //   }
   
-      const numericId = Math.round(rainfall);
-      console.log("color", numericId);
-      let cat = "";
-      let count = 0;
+    //   const numericId = Math.round(rainfall);
+    //   console.log("color", numericId);
+    //   let cat = "";
+    //   let count = 0;
   
-      if (numericId >= 60) {
-        cat = "LE";
-        return "#0393ff";
-      }
-      if (numericId >= 20 && numericId < 60) {
-        cat = "E";
-        return "#69bef7";
-      }
-      if (numericId >= -19 && numericId < 20) {
-        cat = "N";
-        return "#68dd58";
-      }
-      if (numericId >= -59 && numericId < -19) {
-        cat = "D";
-        return "#fb4111";
-      }
-      if (numericId >= -99 && numericId < -59) {
-        cat = "LD";
-        return "#ffff00";
-      }
+    //   if (numericId >= 60) {
+    //     cat = "LE";
+    //     return "#0393ff";
+    //   }
+    //   if (numericId >= 20 && numericId < 60) {
+    //     cat = "E";
+    //     return "#69bef7";
+    //   }
+    //   if (numericId >= -19 && numericId < 20) {
+    //     cat = "N";
+    //     return "#68dd58";
+    //   }
+    //   if (numericId >= -59 && numericId < -19) {
+    //     cat = "D";
+    //     return "#fb4111";
+    //   }
+    //   if (numericId >= -99 && numericId < -59) {
+    //     cat = "LD";
+    //     return "#ffff00";
+    //   }
   
-      if (numericId == -100) {
-        cat = "NR";
-        count = count + 1;
-        return "#ffffff";
-      } else {
-        cat = "ND";
-        return "#c0c0c0";
-      }
-    }
-}
+    //   if (numericId == -100) {
+    //     cat = "NR";
+    //     count = count + 1;
+    //     return "#ffffff";
+    //   } else {
+    //     cat = "ND";
+    //     return "#c0c0c0";
+    //   }
+    // }
+  }
+
+

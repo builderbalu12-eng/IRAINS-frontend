@@ -422,8 +422,8 @@
                     <a>DAILY</a>
                     <ul>
                         <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">DISTRICT</a>
-                            <!-- <a *ngIf="hasAccess('underprogress')" routerLink="../district-daily-spatial">DISTRICT</a> -->
+                            <!-- <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">DISTRICT</a> -->
+                            <a *ngIf="hasAccess('district-daily-spatial')" routerLink="../district-daily-spatial">DISTRICT</a>
                         </li>
                         <li>
                             <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
@@ -437,7 +437,8 @@
                     <a>WEEKLY</a>
                     <ul>
                         <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">DISTRICT</a>
+                            <!-- <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">DISTRICT</a> -->\
+                            <a *ngIf="hasAccess('weekly-daily-spatial')" routerLink="../weekly-daily-spatial">DISTRICT</a>
                         </li>
                         <li>
                             <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>

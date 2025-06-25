@@ -398,11 +398,13 @@ import { GangaRiverBasinComponent } from './main/Basins/ganga-river-basin/ganga-
 import { DistrictDailySpatialComponent } from './main/spatial-maps/district-daily-spatial/district-daily-spatial.component';
 import { ActualBlockRainfallComponent } from './main/rainfall-actual-maps/Actual/actual-block-rainfall/actual-block-rainfall.component';
 import { ActualBlockRainfallMapComponent } from './main/rainfall-actual-maps/Actual/actual-block-rainfall-map/actual-block-rainfall-map.component';
+import { WeeklyDistrictSpatialComponent } from './main/spatial-maps/weekly-district-spatial/weekly-district-spatial.component';
 
 export const routes: Routes = [
   
  { path: 'daily-actual-state-map', component: StateRainfallMapDailyActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
  { path: 'district-daily-spatial', component: DistrictDailySpatialComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
+ { path: 'weekly-daily-spatial', component: WeeklyDistrictSpatialComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
  { path: 'daily-actual-subdivision-map', component: SubdivisionRainfallMapDailyActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
  { path: 'pan-india-region-actual', component: PanIndiaRegionActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
  { path: 'daily-east-north-east-region-actual', component: EastNorthEastRegionActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
