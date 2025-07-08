@@ -9,7 +9,6 @@
       <button mat-button (click)="selectMode('DataEntry')" class="mode-button" [ngClass]="{'active': selectedMode === 'DataEntry'}">MC-RMC Data Products</button>
     </div>
   </mat-toolbar>
-  
   <div id="loader" class="loader" *ngIf="isLoading">
     <div class="loading-message">
       <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading...
@@ -167,7 +166,7 @@
                                     <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
                                 </li>
                                 <li>
-                                    <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">BLOCK RAINFALL MAP</a>
+                                    <a *ngIf="hasAccess('block-rainfall-map-daily')" routerLink="../block-rainfall-map-daily">BLOCK RAINFALL MAP</a>
                                 </li>
                             </ul>
                         </li>

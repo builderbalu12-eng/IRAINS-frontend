@@ -23,6 +23,7 @@ export class NavbarComponent implements OnInit {
   selectedMode: string = '';
   routeDictionary: any;
   loggedInUserType: any;
+  google: any;
 
   hasAccess(route: any) {
     return this.routeDictionary[route]?.allowedUsers?.includes(this.loggedInUserType) || false;
@@ -97,11 +98,52 @@ export class NavbarComponent implements OnInit {
     //   this.selectedMode = this.constants.getGuestMode();
     // }
 
+
+
+
     let loggedInUser: any = localStorage.getItem("isAuthorised");
     this.loggedInUser = JSON.parse(loggedInUser);
     this.loggedInUserType = this.loggedInUser.data[0].mcorhq
     console.log('loggedInUserType, loggedInUser', this.loggedInUser, this.loggedInUserType)
   }
+  private isTranslateInitialized = false;
+
+  showTranslateDropdown(): void {
+    const translateDiv = document.getElementById('google_translate_element');
+    if (translateDiv) {
+      translateDiv.style.display = 'block';
+    }
+
+    if (!this.isTranslateInitialized && typeof this.google !== 'undefined' && this.google.translate) {
+      this.isTranslateInitialized = true;
+
+      new this.google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'en,hi,ta,te,bn,gu,kn,ml,mr,pa,ur',
+        layout: this.google.translate.TranslateElement.InlineLayout.SIMPLE
+      }, 'google_translate_element');
+    }
+
+    this.removeTranslateHashImmediately();
+  }
+
+  removeTranslateHashImmediately(): void {
+    const observer = new MutationObserver(() => {
+      if (location.hash.includes('googtrans')) {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Also set up a one-time cleanup
+    setTimeout(() => {
+      if (location.hash.includes('googtrans')) {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    }, 500);
+  }
+
 
   downloadPDF(name: string) {
     localStorage.removeItem('weekDates');
