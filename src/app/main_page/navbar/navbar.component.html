@@ -90,6 +90,9 @@
                                     <a *ngIf="hasAccess('actual-block-rainfall-map')" routerLink="../actual-block-rainfall-map">BLOCK RAINFALL MAP</a>
                                 </li>
                                 <li>
+                                    <a *ngIf="hasAccess('block-rainfall-awsorg-map-daily')" routerLink="../block-rainfall-awsorg-map-daily">BLOCK RAINFALL ORGAWS MAP</a>
+                                </li>
+                                <li>
                                     <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
                                 </li>
                             </ul>

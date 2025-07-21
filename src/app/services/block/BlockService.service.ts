@@ -21,4 +21,9 @@ export class BlockService {
     console.log('called fetchDataFtp');
     return this.http.post<any>(url, data);
   }
+
+  fetchDatablockaws(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchLatestAwsExcelData`;
+    return this.http.post<any>(url, data);
+  }
 }

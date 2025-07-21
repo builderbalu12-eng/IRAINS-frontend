@@ -158,11 +158,11 @@ import { DistrictDailySpatialComponent } from './main/spatial-maps/district-dail
 import { DataEntryGuideManualComponent } from './main/data-entry-guide-manual/data-entry-guide-manual.component';
 import { UserManualComponent } from './main/user-manual/user-manual.component';
 import { IrainsOverviewComponent } from './main/irains-overview/irains-overview.component';
-import { ActualBlockRainfallComponent } from './main/rainfall-actual-maps/Actual/actual-block-rainfall/actual-block-rainfall.component';
 import { ActualBlockRainfallMapComponent } from './main/rainfall-actual-maps/Actual/actual-block-rainfall-map/actual-block-rainfall-map.component';
 import { WeeklyDistrictSpatialComponent } from './main/spatial-maps/weekly-district-spatial/weekly-district-spatial.component';
 import { CummulativeDistrictSpatialComponent } from './main/spatial-maps/cummulative-district-spatial/cummulative-district-spatial.component';
 import { BlockRainfallMapDailyComponent } from './main/rainfallMapsNav/dailyMaps/block-rainfall-map-daily/block-rainfall-map-daily.component';
+import { BlockActualRainfallMapIncAwsComponent } from './main/rainfall-actual-maps/Actual/block-actual-rainfall-map-inc-aws/block-actual-rainfall-map-inc-aws.component';
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -297,11 +297,11 @@ import { BlockRainfallMapDailyComponent } from './main/rainfallMapsNav/dailyMaps
     DataEntryGuideManualComponent,
     UserManualComponent,
     IrainsOverviewComponent,
-    ActualBlockRainfallComponent,
     ActualBlockRainfallMapComponent,
     WeeklyDistrictSpatialComponent,
     CummulativeDistrictSpatialComponent,
     BlockRainfallMapDailyComponent,
+    BlockActualRainfallMapIncAwsComponent,
     
   ],
   imports: [
