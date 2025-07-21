@@ -104,13 +104,16 @@ export class NormalRainfallComponent {
       }
   
     } else {
+      const year = new Date().getFullYear();
+      console.log('ye', year)
       // For other seasons, fetch the respective date range
       const seasonDateRanges: any = {
-        Winter: { startDate: "2024-01-01", endDate: "2024-02-29" },
-        "Pre Monsoon": { startDate: "2024-03-01", endDate: "2024-05-31" },
-        Monsoon: { startDate: "2024-06-01", endDate: "2024-09-29" },
-        "Post Monsoon": { startDate: "2024-10-01", endDate: "2024-12-31" },
-        Annual: { startDate: "2024-01-01", endDate: "2024-12-31" },
+
+        Winter: { startDate: `${year}-01-01`, endDate: `${year}-02-29` },
+        "Pre Monsoon": { startDate: `${year}-03-01`, endDate: `${year}-05-31` },
+        Monsoon: { startDate: `${year}-06-01`, endDate: `${year}-09-29` },
+        "Post Monsoon": { startDate: `${year}-10-01`, endDate: `${year}-12-31` },
+        Annual: { startDate: `${year}-01-01`, endDate: `${year}-12-31`},
       };
   
       requestData = seasonDateRanges[this.selectedSeason] || {};

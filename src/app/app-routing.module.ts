@@ -400,6 +400,7 @@ import { ActualBlockRainfallComponent } from './main/rainfall-actual-maps/Actual
 import { ActualBlockRainfallMapComponent } from './main/rainfall-actual-maps/Actual/actual-block-rainfall-map/actual-block-rainfall-map.component';
 import { WeeklyDistrictSpatialComponent } from './main/spatial-maps/weekly-district-spatial/weekly-district-spatial.component';
 import { CummulativeDistrictSpatialComponent } from './main/spatial-maps/cummulative-district-spatial/cummulative-district-spatial.component';
+import { BlockRainfallMapDailyComponent } from './main/rainfallMapsNav/dailyMaps/block-rainfall-map-daily/block-rainfall-map-daily.component';
 
 export const routes: Routes = [
   
@@ -419,6 +420,7 @@ export const routes: Routes = [
  { path: 'annual-seasonal-monthly-actual-maps', component: RealTimeUpdatedRainfallActualMapsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'actual-block-rainfall-map', component: ActualBlockRainfallMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'actual-block-rainfall', component: ActualBlockRainfallMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ { path: 'block-rainfall-map-daily', component: BlockRainfallMapDailyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
 
 
 

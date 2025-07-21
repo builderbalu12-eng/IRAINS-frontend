@@ -516,3 +516,34 @@ nav ul {
   pointer-events: none; /* Disables clicking */
   opacity: 0.6; /* Makes the text look faded */
 }
+
+
+
+
+
+
+.goog-logo-link,
+.goog-te-gadget span,
+.goog-te-banner-frame.skiptranslate,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.goog-text-highlight {
+  display: none !important;
+}
+
+
+/* Style the dropdown only */
+.goog-te-gadget {
+  color: transparent !important;
+  font-size: 0px;
+}
+
+.goog-te-gadget .goog-te-combo {
+  font-size: 14px !important;
+  color: #000 !important;
+  background-color: #fff;
+  border-radius: 4px;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  font-family: Arial, sans-serif;
+}
