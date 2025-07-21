@@ -5,8 +5,8 @@
         <div class="map-frame">
           <div
             id="map-district-ftp"
-            class="text-center shadow-sm  bg-white"
-            style="width: 44rem; height: 58.8rem; padding: 1rem;"
+            class="text-center shadow-sm bg-white"
+            style="width: 44rem; height: 58.8rem; padding: 1rem"
           >
             <div
               style="
@@ -117,10 +117,12 @@
                     </div>
                   </div>
 
-                  <div *ngIf="isFullscreen()"
-                     id="resetButton"
-                     class="ResetMap text-center"
-                     style="width: 72%">
+                  <div
+                    *ngIf="isFullscreen()"
+                    id="resetButton"
+                    class="ResetMap text-center"
+                    style="width: 72%"
+                  >
                     <div>
                       <button
                         mat-button
@@ -168,14 +170,7 @@
                       *ngIf="isFullscreen()"
                       class="text-center mt-3 ms-1"
                     >
-                      <p
-                        style="
-                          color: black
-                        "
-                        class="fs-4"
-                      >
-                        India
-                      </p>
+                      <p style="color: black" class="fs-4">India</p>
                       <table
                         style="
                           border: 1px solid black;
@@ -183,30 +178,22 @@
                           width: auto;
                         "
                         class="table table-bordered table-sm"
-
                       >
                         <tr>
-                          <th
-                            style="
-                              border: 2px solid black;
-                              "
-                            class="px-2"
-                          >
+                          <th style="border: 2px solid black" class="px-2">
                             Actual
                           </th>
                           <th
                             style="
                               border: 2px solid black;
-                              background-color: white;          
+                              background-color: white;
                             "
                             class="px-2"
                           >
                             Normal
                           </th>
                           <th
-                            style="
-                              border: 2px solid black;                              
-                            "
+                            style="border: 2px solid black"
                             class="text-nowrap px-2"
                           >
                             % Dep.
@@ -299,7 +286,7 @@
                             <th
                               style="
                                 font-size: xx-small;
-                                border: 2px solid black;                          
+                                border: 2px solid black;
                               "
                             >
                               % Dep.
@@ -307,7 +294,7 @@
                           </tr>
                         </thead>
                         <tbody>
-                          <tr>  
+                          <tr>
                             <td
                               style="
                                 font-size: xx-small;

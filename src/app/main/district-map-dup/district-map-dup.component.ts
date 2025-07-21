@@ -137,7 +137,9 @@ export class DistrictMapDupComponent implements AfterViewInit {
       this.countryNormal = this.constants.trimToOneDecimals(
         parseFloat(this.countrydatacum[0].rainfall_normal_value)
       );
-      this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+      this.countryDeparture = this.constants.trimToZeroDecimals(
+        this.countrydatacum[0].departure
+      );
       console.log(
         "country dep data",
         this.countrydatacum,
@@ -428,6 +430,7 @@ export class DistrictMapDupComponent implements AfterViewInit {
       scrollWheelZoom: false,
       zoomSnap: 0.1,
       zoomDelta: 0.1,
+      touchZoom: false,
     });
 
     this.map.removeControl(this.map.zoomControl);
@@ -480,13 +483,18 @@ export class DistrictMapDupComponent implements AfterViewInit {
     );
     const spinner = this.elRef.nativeElement.querySelector("#loading-message");
 
-    const borderRemove = this.elRef.nativeElement.querySelector('#border-remove-district_dup')
+    const borderRemove = this.elRef.nativeElement.querySelector(
+      "#border-remove-district_dup"
+    );
 
     if (isFullscreen) {
       this.map.addControl(this.map.zoomControl);
       this.map.dragging.enable();
+      this.map.scrollWheelZoom.enable();
+      this.map.touchZoom.enable();
 
       this.map.setZoom(this.initialZoom + 0.3);
+
       this.renderer.setStyle(logoImage, "position", "absolute");
       this.renderer.setStyle(logoImage, "left", "26%");
       this.renderer.setStyle(logoImage, "top", "3.25%");
@@ -523,16 +531,14 @@ export class DistrictMapDupComponent implements AfterViewInit {
       this.renderer.setStyle(resetButton, "top", "5%");
 
       if (isFullscreen && borderRemove) {
-        this.renderer.addClass(borderRemove, 'no-border');
-      } 
-
-
+        this.renderer.addClass(borderRemove, "no-border");
+      }
     } else {
       this.map.removeControl(this.map.zoomControl);
       this.map.dragging.disable();
 
-      this.renderer.removeClass(borderRemove, 'no-border');
-      this.renderer.setStyle(borderRemove, 'border', '2px solid black');
+      this.renderer.removeClass(borderRemove, "no-border");
+      this.renderer.setStyle(borderRemove, "border", "2px solid black");
 
       this.map.setZoom(this.initialZoom);
 
@@ -570,7 +576,7 @@ export class DistrictMapDupComponent implements AfterViewInit {
       this.renderer.removeStyle(resetButton, "top");
     }
   }
-  // assets/geojson/regions/EAST_AND_NORTH_EAST_INDIA.json 
+  // assets/geojson/regions/EAST_AND_NORTH_EAST_INDIA.json
   private loadGeoJSON(): void {
     this.http
       .get("assets/geojson/INDIA_DISTRICT.json")
@@ -580,7 +586,7 @@ export class DistrictMapDupComponent implements AfterViewInit {
             const id2 = feature.properties["district_c"];
             const matchedData = this.findMatchingData(id2);
             let rainfall: any;
-            if (matchedData?.departure!=null) {
+            if (matchedData?.departure != null) {
               rainfall = matchedData.departure;
             } else {
               rainfall = "NA";
@@ -602,12 +608,11 @@ export class DistrictMapDupComponent implements AfterViewInit {
             const matchedData = this.findMatchingData(id2);
             let rainfall: any;
 
-
-            if (matchedData?.departure!=null) {
-
-                rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
+            if (matchedData?.departure != null) {
+              rainfall = this.constants.trimToZeroDecimals(
+                matchedData.departure
+              );
             } else {
-
               rainfall = "NA";
             }
             const dailyrainfall =
@@ -662,8 +667,6 @@ export class DistrictMapDupComponent implements AfterViewInit {
     console.log("loading is successful");
   }
 
-
-  
   // getColorForRainfall1(rainfall: any): string {
   //   if (rainfall == null || rainfall == " " || rainfall == 'NA') {
   //     return "#c0c0c0";

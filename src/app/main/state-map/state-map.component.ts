@@ -360,9 +360,7 @@ export class StateMapComponent implements AfterViewInit {
   }
 
   resetMap(): void {
-    this.map.setView([24, 80.9629], this.initialZoom + 0.3
-      
-    );
+    this.map.setView([24, 80.9629], this.initialZoom + 0.3);
   }
 
   resetMapSmallScreen(): void {
@@ -376,6 +374,7 @@ export class StateMapComponent implements AfterViewInit {
       scrollWheelZoom: false,
       zoomSnap: 0.1,
       zoomDelta: 0.1,
+      touchZoom: false, // Explicitly disable touch zoom initially
     });
 
     this.map.removeControl(this.map.zoomControl);
@@ -435,7 +434,8 @@ export class StateMapComponent implements AfterViewInit {
     if (isFullscreen) {
       this.map.addControl(this.map.zoomControl);
       this.map.dragging.enable();
-
+      this.map.scrollWheelZoom.enable(); // Enable mouse scroll zooming
+      this.map.touchZoom.enable(); // Enable touch zooming
       this.loadGeoJSON(true);
       this.map.setZoom(this.initialZoom + 0.3);
 
@@ -481,8 +481,15 @@ export class StateMapComponent implements AfterViewInit {
         this.renderer.addClass(borderRemove, "no-border");
       }
     } else {
+      // this.map.removeControl(this.map.zoomControl);
+      // this.map.dragging.disable();
+
       this.map.removeControl(this.map.zoomControl);
       this.map.dragging.disable();
+      this.map.scrollWheelZoom.disable(); // Disable mouse scroll zooming
+      this.map.touchZoom.disable(); // Disable touch zooming
+      this.loadGeoJSON(false);
+      this.map.setZoom(this.initialZoom);
 
       this.renderer.removeClass(borderRemove, "no-border");
       this.renderer.setStyle(borderRemove, "border", "2px solid black");
@@ -532,7 +539,7 @@ export class StateMapComponent implements AfterViewInit {
           const id2 = feature.properties["state_code"];
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
-          if (matchedData?.departure!=null) {
+          if (matchedData?.departure != null) {
             rainfall = matchedData.departure;
           } else {
             rainfall = "NA";
@@ -545,6 +552,7 @@ export class StateMapComponent implements AfterViewInit {
             opacity: 0.3, //1.5
             color: "black",
             fillOpacity: 100,
+            className: "state-layer", // Add class for CSS
           };
         },
         onEachFeature: (feature: any, layer: any) => {
@@ -849,13 +857,13 @@ export class StateMapComponent implements AfterViewInit {
             }
 
             const popupContent = `
-            <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-            <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${stateName}</div>
-            <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-            <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
-            <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall} % </div>
-            </div>
-            `;
+              <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
+              <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${stateName}</div>
+              <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
+              <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
+              <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall} % </div>
+              </div>
+              `;
             layer.bindPopup(popupContent);
             layer.on("mouseover", () => {
               layer.openPopup();
@@ -864,22 +872,19 @@ export class StateMapComponent implements AfterViewInit {
               layer.closePopup();
             });
 
-
-
-
             const label = L.marker([center.lat, center.lng], {
               icon: L.divIcon({
                 className: "state-label",
                 html: `
- 
- <div id="${labelId}" style="font-size: ${
+
+   <div id="${labelId}" style="font-size: ${
                   this.defaultFontSizeonMap
                 }px; font-weight : 1000; color: #002467; width: 120px; text-align: center; white-space: nowrap;">
- <div>${stateName}</div>
- <div>${dailyrainfall}(${rainfall == undefined ? "NA" : rainfall})</div>
- <div>${normalrainfall}</div>
- </div>
- `,
+   <div>${stateName}</div>
+   <div>${dailyrainfall}(${rainfall == undefined ? "NA" : rainfall})</div>
+   <div>${normalrainfall}</div>
+   </div>
+   `,
                 iconSize: isFullScreen ? [50, 10] : [80, 10], // Adjusts the label position relative to the centroid
               }),
             }).addTo(this.map);

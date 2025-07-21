@@ -367,7 +367,7 @@ export class RegionMapComponent {
   }
 
   resetMap(): void {
-    this.map.setView([24, 80.9629], this.initialZoom + 1);
+    this.map.setView([24, 80.9629], this.initialZoom + 0.3);
   }
 
   resetMapSmallScreen(): void {
@@ -381,6 +381,7 @@ export class RegionMapComponent {
       scrollWheelZoom: false,
       zoomSnap: 0.1,
       zoomDelta: 0.1,
+      touchZoom: false,
     });
 
     this.map.removeControl(this.map.zoomControl);
@@ -435,8 +436,14 @@ export class RegionMapComponent {
     );
 
     if (isFullscreen) {
+      // this.map.addControl(this.map.zoomControl);
+      // this.map.dragging.enable();
+
       this.map.addControl(this.map.zoomControl);
       this.map.dragging.enable();
+      this.map.scrollWheelZoom.enable(); // Enable mouse scroll zooming
+      this.map.touchZoom.enable();
+      this.map.setZoom(this.initialZoom + 0.3);
 
       this.map.setZoom(this.initialZoom + 0.3);
       this.defaultFontSizeonMap = (this.initialZoom + 1) * 2;
@@ -479,8 +486,14 @@ export class RegionMapComponent {
         this.renderer.addClass(borderRemove, "no-border");
       }
     } else {
+      // this.map.removeControl(this.map.zoomControl);
+      // this.map.dragging.disable();
+
       this.map.removeControl(this.map.zoomControl);
       this.map.dragging.disable();
+      this.map.scrollWheelZoom.disable(); // Disable mouse scroll zooming
+      this.map.touchZoom.disable();
+      this.map.setZoom(this.initialZoom);
 
       this.renderer.removeClass(borderRemove, "no-border");
       this.renderer.setStyle(borderRemove, "border", "2px solid black");
@@ -532,10 +545,8 @@ export class RegionMapComponent {
           const matchedData = this.findMatchingData(id2);
           // console.log('matchedData',matchedData)
           let rainfall: any;
-          if (matchedData?.departure!=null) {
-
-              rainfall = matchedData.departure;
-            
+          if (matchedData?.departure != null) {
+            rainfall = matchedData.departure;
           } else {
             rainfall = "NA";
           }
@@ -620,7 +631,6 @@ export class RegionMapComponent {
               existingLabel.remove();
             }
 
-
             const popupContent = `
             <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
             <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${id1}</div>
@@ -636,7 +646,6 @@ export class RegionMapComponent {
             layer.on("mouseout", () => {
               layer.closePopup();
             });
-
 
             const label = L.marker([center.lat, center.lng], {
               icon: L.divIcon({
