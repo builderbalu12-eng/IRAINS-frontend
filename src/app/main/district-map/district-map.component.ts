@@ -77,6 +77,8 @@ export class DistrictMapComponent implements AfterViewInit {
   inputValue1: string = "";
   private initialZoom = 3.8;
   private map: L.Map = {} as L.Map;
+  private stateLayers: { [key: string]: L.GeoJSON } = {}; // Store state layers by state name
+  private districtLayer: L.GeoJSON | null = null;
 
   constructor(
     private http: HttpClient,
@@ -86,7 +88,7 @@ export class DistrictMapComponent implements AfterViewInit {
     private district: DistrictService,
     private downloadPdf$: DownloadPdf,
     private countryService: CountryService,
-    private constants : Constants
+    private constants: Constants
   ) {
     // var currentDate = new Date();
     // var dd = String(currentDate.getDate());
@@ -329,69 +331,16 @@ export class DistrictMapComponent implements AfterViewInit {
     };
   }
 
-  // async downloadMapImage() {
-  // try {
-  // const mapElement = document.getElementById('map-district') as HTMLElement;
-  // if (!mapElement) {
-  // throw new Error('Map element not found');
-  // }
-  // const scale = 8;
-  // const originalWidth = mapElement.clientWidth;
-  // const originalHeight = mapElement.clientHeight;
-  // const width = originalWidth * scale;
-  // const height = originalHeight * scale;
-
-  // // Set dimensions for the cropped area
-  // const cropWidth = 1200 * scale; // Width of the cropped area in the center
-  // const cropHeight = originalHeight+1175 * scale; // Full height
-  // const cropX = ((width - cropWidth) / 2)+500; // Centered horizontally
-  // const cropY = 0; // Starting at the top
-
-  // // Create a temporary canvas to crop the image
-  // const tempCanvas = document.createElement('canvas');
-  // tempCanvas.width = cropWidth;
-  // tempCanvas.height = cropHeight;
-  // const tempContext = tempCanvas.getContext('2d');
-
-  // const dataUrl = await htmlToImage.toJpeg(mapElement, {
-  // quality: 0.95,
-  // filter: this.filter,
-  // width: width,
-  // height: height,
-  // style: {
-  // transform: `scale(${scale})`,
-  // transformOrigin: 'top left',
-  // width: `${width}px`,
-  // height: `${height}px`
-  // }
-  // });
-
-  // // Load the captured image onto the temporary canvas
-  // const image = new Image();
-  // image.src = dataUrl;
-  // image.onload = () => {
-  // // Draw the central portion of the scaled image onto the temporary canvas
-  // tempContext?.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-
-  // // Convert the cropped canvas back to a data URL
-  // const croppedDataUrl = tempCanvas.toDataURL('image/jpeg', 0.95);
-
-  // // Trigger download
-  // const link = document.createElement('a');
-  // link.download = 'DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg';
-  // link.href = croppedDataUrl;
-  // link.click();
-  // };
-  // } catch (error) {
-  // console.error('Error downloading map image:', error);
-  // }
-  // }
-
   ngOnInit() {
     this.initMap();
   }
 
-  ngAfterViewInit(): void {
+  // ngAfterViewInit(): void {
+  //   this.loadStateGeoJSON(); // Load state layer first
+  //   this.loadGeoJSON();
+  // }
+  async ngAfterViewInit(): Promise<void> {
+    await this.loadStateGeoJSON(); // Wait for state GeoJSON to load
     this.loadGeoJSON();
   }
 
@@ -433,6 +382,7 @@ export class DistrictMapComponent implements AfterViewInit {
       scrollWheelZoom: false,
       zoomSnap: 0.1,
       zoomDelta: 0.1,
+      touchZoom: false,
     });
 
     this.map.removeControl(this.map.zoomControl);
@@ -452,12 +402,20 @@ export class DistrictMapComponent implements AfterViewInit {
 
     this.map.addControl(fullscreenControl);
   }
+  // public isFullscreen(): boolean {
+  //   return !!(
+  //     document.fullscreenElement ||
+  //     document.fullscreenElement ||
+  //     document.fullscreenElement ||
+  //     document.fullscreenElement
+  //   );
+  // }
   public isFullscreen(): boolean {
     return !!(
       document.fullscreenElement ||
-      document.fullscreenElement ||
-      document.fullscreenElement ||
-      document.fullscreenElement
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement
     );
   }
 
@@ -484,12 +442,17 @@ export class DistrictMapComponent implements AfterViewInit {
       "#country_values_district_all_maps"
     );
 
-    const borderRemove = this.elRef.nativeElement.querySelector('#border-remove-district')
-
+    const borderRemove = this.elRef.nativeElement.querySelector(
+      "#border-remove-district"
+    );
 
     if (isFullscreen) {
       this.map.addControl(this.map.zoomControl);
       this.map.dragging.enable();
+      this.map.scrollWheelZoom.enable(); // Enable mouse scroll zooming
+      this.map.touchZoom.enable(); // Enable touch zooming
+
+      this.map.setZoom(this.initialZoom + 0.3);
 
       this.map.setZoom(this.initialZoom + 0.3);
       this.renderer.setStyle(logoImage, "position", "absolute");
@@ -523,15 +486,21 @@ export class DistrictMapComponent implements AfterViewInit {
       this.renderer.setStyle(resetButton, "top", "5%");
 
       if (isFullscreen && borderRemove) {
-        this.renderer.addClass(borderRemove, 'no-border');
-      } 
-
+        this.renderer.addClass(borderRemove, "no-border");
+      }
     } else {
+      // this.map.removeControl(this.map.zoomControl);
+      // this.map.dragging.disable();
+
       this.map.removeControl(this.map.zoomControl);
       this.map.dragging.disable();
+      this.map.scrollWheelZoom.disable(); // Disable mouse scroll zooming
+      this.map.touchZoom.disable(); // Disable touch zooming
 
-      this.renderer.removeClass(borderRemove, 'no-border');
-      this.renderer.setStyle(borderRemove, 'border', '2px solid black');
+      this.map.setZoom(this.initialZoom);
+
+      this.renderer.removeClass(borderRemove, "no-border");
+      this.renderer.setStyle(borderRemove, "border", "2px solid black");
 
       this.map.setZoom(this.initialZoom);
 
@@ -546,10 +515,6 @@ export class DistrictMapComponent implements AfterViewInit {
       this.renderer.removeStyle(directionCompass, "position");
       this.renderer.removeStyle(directionCompass, "right");
       this.renderer.removeStyle(directionCompass, "top");
-
-      // this.renderer.removeStyle(btn, 'position');
-      // this.renderer.removeStyle(btn, 'right');
-      // this.renderer.removeStyle(btn, 'top');
 
       this.renderer.removeStyle(celebrations, "position");
       this.renderer.removeStyle(celebrations, "right");
@@ -571,16 +536,59 @@ export class DistrictMapComponent implements AfterViewInit {
     }
   }
 
+  private async loadStateGeoJSON(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.http.get("assets/geojson/INDIA_STATE.json").subscribe({
+        next: (res: any) => {
+          console.log(
+            "State GeoJSON loaded, first feature properties:",
+            res.features[0]?.properties
+          );
+          const stateLayer = L.geoJSON(res, {
+            style: () => ({
+              fillOpacity: 0,
+              weight: 0,
+              color: "transparent",
+              opacity: 0,
+            }),
+            onEachFeature: (feature: any, layer: any) => {
+              const stateName = feature.properties.state_name?.toLowerCase();
+              console.log("Storing state:", stateName);
+              if (stateName) {
+                this.stateLayers[stateName] = layer;
+              } else {
+                console.warn(
+                  "State name undefined for feature:",
+                  feature.properties
+                );
+              }
+            },
+          }).addTo(this.map);
+          console.log("State layers populated:", Object.keys(this.stateLayers));
+          resolve();
+        },
+        error: (err) => {
+          console.error("Error loading state GeoJSON:", err);
+          reject(err);
+        },
+      });
+    });
+  }
+
   private loadGeoJSON(): void {
     this.http
       .get("assets/geojson/INDIA_DISTRICT.json")
       .subscribe((res: any) => {
-        const districtLayer = L.geoJSON(res, {
+        // console.log(
+        //   "District GeoJSON loaded, first feature properties:",
+        //   res.features[0]?.properties
+        // );
+        this.districtLayer = L.geoJSON(res, {
           style: (feature: any) => {
             const id2 = feature.properties["district_c"];
             const matchedData = this.findMatchingData(id2);
             let rainfall: any;
-            if (matchedData?.departure!=null) {
+            if (matchedData?.departure != null) {
               rainfall = matchedData.departure;
             } else {
               rainfall = "NA";
@@ -589,14 +597,24 @@ export class DistrictMapComponent implements AfterViewInit {
 
             return {
               fillColor: color,
-              weight: 1,
-              opacity: 1.5,
+              weight: 0.4,
+              opacity: 1,
               color: "black",
-              fillOpacity: 100,
+              fillOpacity: 1,
             };
           },
           onEachFeature: (feature: any, layer: any) => {
-            const state = feature.properties.state;
+            const state =
+              feature.properties.state?.toLowerCase() ||
+              feature.properties.State?.toLowerCase() ||
+              feature.properties.state_name?.toLowerCase() ||
+              feature.properties.ST_NM?.toLowerCase();
+            // console.log(
+            //   "District state:",
+            //   state,
+            //   "Properties:",
+            //   feature.properties
+            // );
             const id1 = feature.properties["district"];
             const id2 = feature.properties["district_c"];
             const matchedData = this.findMatchingData(id2);
@@ -626,41 +644,73 @@ export class DistrictMapComponent implements AfterViewInit {
                   ) + " mm"
                 : "NA";
             const popupContent = `
- <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
- <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
- <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${id1}</div>
- <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
- <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
- <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall} % </div>
- </div>
- `;
+            <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
+              <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${
+                state || "Unknown"
+              }</div>
+              <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${id1}</div>
+              <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
+              <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
+              <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall} % </div>
+            </div>
+          `;
             layer.bindPopup(popupContent);
+
             layer.on("mouseover", () => {
               layer.openPopup();
+              const stateLayer = this.stateLayers[state];
+              if (stateLayer) {
+                stateLayer.setStyle({
+                  weight: 5,
+                  color: "#000000",
+                  opacity: 1,
+                  fillColor: "#FFFFFF",
+                  fillOpacity: 0.1,
+                });
+                // Apply blur effect to districts outside the hovered state
+                if (this.districtLayer) {
+                  this.districtLayer.eachLayer((district: any) => {
+                    const districtState =
+                      district.feature.properties.state?.toLowerCase() ||
+                      district.feature.properties.State?.toLowerCase() ||
+                      district.feature.properties.state_name?.toLowerCase() ||
+                      district.feature.properties.ST_NM?.toLowerCase();
+                    district.setStyle({
+                      fillOpacity: districtState === state ? 1 : 0.3,
+                    });
+                  });
+                }
+              } else {
+                console.warn(`State layer not found for state: ${state}`);
+              }
             });
+
             layer.on("mouseout", () => {
               layer.closePopup();
+              const stateLayer = this.stateLayers[state];
+              if (stateLayer) {
+                stateLayer.setStyle({
+                  weight: 0,
+                  color: "transparent",
+                  opacity: 0,
+                  fillOpacity: 0,
+                });
+                // Restore district layer opacity
+                if (this.districtLayer) {
+                  this.districtLayer.eachLayer((district: any) => {
+                    district.setStyle({
+                      fillOpacity: 1,
+                    });
+                  });
+                }
+              }
             });
           },
         }).addTo(this.map);
+        console.log("District layer added");
       });
-
-    // this.http.get('assets/geojson/INDIA_STATE.json').subscribe(
-    // (stateRes: any) => {
-    // const stateLayer = L.geoJSON(stateRes, {
-    // style: {
-    // weight: 1,
-    // opacity: 100,
-    // color: 'black',
-    // fillOpacity: 0
-    // }
-
-    // }).
-    // addTo(this.map);
-    // })
-
-    console.log("loading is successful");
   }
+
   getColorForRainfall1(rainfall: any): string {
     const numericId = rainfall;
     let cat = "";

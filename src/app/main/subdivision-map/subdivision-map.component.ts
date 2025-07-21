@@ -89,7 +89,7 @@ export class SubdivisionMapComponent {
     private subdivisionService: SubdivisionService,
     private downlaodStatistics: SubdivDownloadStatistics,
     private countryService: CountryService,
-    private constants : Constants
+    private constants: Constants
   ) {
     // var currentDate = new Date();
     // var dd = String(currentDate.getDate());
@@ -134,14 +134,23 @@ export class SubdivisionMapComponent {
       endDate: this.EndDate || `${year}-${mon}-${dd}`,
     };
 
-    this.countryService.fetchDataFtp(data).subscribe(res =>{
-      this.countrydatacum = res.data
-      this.countryActual = this.constants.trimToOneDecimals(this.countrydatacum[0].actual_rainfall)
-      this.countryNormal = this.constants.trimToOneDecimals(parseFloat(this.countrydatacum[0].rainfall_normal_value))
-      this.countryDeparture = Math.round(this.countrydatacum[0].departure)
-      console.log('country dep data', this.countrydatacum, this.countryActual, this.countryDeparture, this.countryNormal)
-      })
-      
+    this.countryService.fetchDataFtp(data).subscribe((res) => {
+      this.countrydatacum = res.data;
+      this.countryActual = this.constants.trimToOneDecimals(
+        this.countrydatacum[0].actual_rainfall
+      );
+      this.countryNormal = this.constants.trimToOneDecimals(
+        parseFloat(this.countrydatacum[0].rainfall_normal_value)
+      );
+      this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+      console.log(
+        "country dep data",
+        this.countrydatacum,
+        this.countryActual,
+        this.countryDeparture,
+        this.countryNormal
+      );
+    });
 
     this.subdivisionService.fetchData(data).subscribe((res) => {
       this.subdivisiondatacum = res.data;
@@ -151,9 +160,6 @@ export class SubdivisionMapComponent {
       this.StartDate = this.convertToIndianDateFormat(this.StartDate);
       this.endDate = this.convertToIndianDateFormat(this.endDate);
     });
-
-
-    
   }
 
   filter = (node: HTMLElement) => {
@@ -209,7 +215,7 @@ export class SubdivisionMapComponent {
   }
 
   resetMap(): void {
-    this.map.setView([24, 80.9629], this.initialZoom + 1);
+    this.map.setView([24, 80.9629], this.initialZoom + 0.3);
   }
 
   resetMapSmallScreen(): void {
@@ -379,6 +385,7 @@ export class SubdivisionMapComponent {
       scrollWheelZoom: false,
       zoomSnap: 0.1,
       zoomDelta: 0.1,
+      touchZoom: false, // Explicitly disable touch zoom initially
     });
 
     this.map.removeControl(this.map.zoomControl);
@@ -428,12 +435,20 @@ export class SubdivisionMapComponent {
       "#country_values_subdivision_allmaps"
     );
 
-    const borderRemove = this.elRef.nativeElement.querySelector('#border-remove-subdiv')
-
+    const borderRemove = this.elRef.nativeElement.querySelector(
+      "#border-remove-subdiv"
+    );
 
     if (isFullscreen) {
+      // this.map.addControl(this.map.zoomControl);
+      // this.map.dragging.enable();
+
       this.map.addControl(this.map.zoomControl);
       this.map.dragging.enable();
+      this.map.scrollWheelZoom.enable(); // Enable mouse scroll zooming
+      this.map.touchZoom.enable(); // Enable touch zooming
+      this.loadGeoJSON(true);
+      this.map.setZoom(this.initialZoom + 0.3);
 
       this.map.setZoom(this.initialZoom + 0.3);
       this.defaultFontSizeonMap = (this.initialZoom + 1) * 2;
@@ -474,15 +489,21 @@ export class SubdivisionMapComponent {
       this.renderer.setStyle(resetButton, "top", "5%");
 
       if (isFullscreen && borderRemove) {
-        this.renderer.addClass(borderRemove, 'no-border');
-      } 
-
+        this.renderer.addClass(borderRemove, "no-border");
+      }
     } else {
+      // this.map.removeControl(this.map.zoomControl);
+      // this.map.dragging.disable();
+
       this.map.removeControl(this.map.zoomControl);
       this.map.dragging.disable();
+      this.map.scrollWheelZoom.disable(); // Disable mouse scroll zooming
+      this.map.touchZoom.disable(); // Disable touch zooming
+      this.loadGeoJSON(false);
+      this.map.setZoom(this.initialZoom);
 
-      this.renderer.removeClass(borderRemove, 'no-border');
-      this.renderer.setStyle(borderRemove, 'border', '2px solid black');
+      this.renderer.removeClass(borderRemove, "no-border");
+      this.renderer.setStyle(borderRemove, "border", "2px solid black");
 
       this.map.setZoom(this.initialZoom);
       this.defaultFontSizeonMap = this.initialZoom * 2;
@@ -533,9 +554,9 @@ export class SubdivisionMapComponent {
             const matchedData = this.findMatchingData(id2);
             // console.log('matchedData',matchedData)
             let rainfall: any;
-            if (matchedData?.departure!=null) {
+            if (matchedData?.departure != null) {
               rainfall = matchedData.departure;
-              console.log('departure loadgeoJSON', rainfall);
+              console.log("departure loadgeoJSON", rainfall);
             } else {
               rainfall = "NA";
             }
@@ -565,7 +586,9 @@ export class SubdivisionMapComponent {
               if (Number.isNaN(matchedData.actual_subdiv_rainfall)) {
                 rainfall = "NA";
               } else {
-                rainfall = this.constants.trimToOneDecimals(matchedData.departure)
+                rainfall = this.constants.trimToOneDecimals(
+                  matchedData.departure
+                );
               }
             } else {
               rainfall = -100;
@@ -575,7 +598,9 @@ export class SubdivisionMapComponent {
               matchedData.actual_subdiv_rainfall !== null &&
               matchedData.actual_subdiv_rainfall != undefined &&
               !Number.isNaN(matchedData.actual_subdiv_rainfall)
-                ? this.constants.trimToOneDecimals(matchedData.actual_subdiv_rainfall)
+                ? this.constants.trimToOneDecimals(
+                    matchedData.actual_subdiv_rainfall
+                  )
                 : "NA";
             const normalrainfall =
               matchedData && !Number.isNaN(matchedData.rainfall_normal_value)
@@ -606,7 +631,7 @@ export class SubdivisionMapComponent {
             }
             if (id1 == "NMMT") {
               // id1 = "NL & MN & MZ & TR"
-              id1 = id1
+              id1 = id1;
               center.lat = 23.5;
               center.lng = 94;
             }
@@ -889,9 +914,6 @@ export class SubdivisionMapComponent {
                 existingLabel.remove();
               }
 
-
-
-
               const popupContent = `
               <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
               <div style="color: #002467; font-weight: bold; font-size: 13px;">SUBDIVISION: ${id1}</div>
@@ -907,7 +929,6 @@ export class SubdivisionMapComponent {
               layer.on("mouseout", () => {
                 layer.closePopup();
               });
-  
 
               const label = L.marker([center.lat, center.lng], {
                 icon: L.divIcon({
