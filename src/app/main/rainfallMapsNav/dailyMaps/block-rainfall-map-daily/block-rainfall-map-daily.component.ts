@@ -127,24 +127,25 @@ export class BlockRainfallMapDailyComponent implements AfterViewInit{
     
       legendItems = [
         {
-          color: "#277620",
-          text: `Very light to light <br>[0.1 to 15.5]mm`,
-          fontSize: "11.6px",
+          color: "#0096ff",
+          text: `Large Excess <br>[60% or more]`,
+          fontSize: "9.3px",
         },
-        { color: "#1f9ee7", text: "Moderate <br>[15.6 to 64.4]mm", fontSize: "11.6px" },
-        { color: "#f3e821", text: "Heavy <br>[64.5 to 115.5]mm", fontSize: "11.6px" },
+        { color: "#32c0f8", text: "Excess <br>[20 to 59]%", fontSize: "9.3px" },
+        { color: "#00cd5b", text: "Normal <br>[-19 to 19]%", fontSize: "9.3px" },
         {
-          color: "#ff8b00",
-          text: "Very Heavy <br>[115.6 to 204.4]mm",
-          fontSize: "11.6px",
+          color: "#ff2700",
+          text: "Deficient <br>[-59 to -20]%",
+          fontSize: "9.3px",
         },
         {
-          color: "#da1b1e",
-          text: "Extremely Heavy <br>[>=204.5]mm",
-          fontSize: "11.6px",
+          color: "#ffff20",
+          text: "Large Deficient <br>[-99 to -60]%",
+          fontSize: "9.3px",
         },
+        { color: "#ffffff", text: "No Rain <br>[-100]%", fontSize: "9.3px" },
+        { color: "#c0c0c0", text: "No <br>Data", fontSize: "9.3px" },
       ];
-    
       formatteddate: any;
       selectedDate: Date = new Date();
       inputValue: string = "";
@@ -1277,7 +1278,7 @@ export class BlockRainfallMapDailyComponent implements AfterViewInit{
                   : "NA";
                 console.log(dailyrainfall)
               
-              const color = this.constants.getActualColorForRainfall(dailyrainfall);
+                const color = this.constants.getColorForRainfall(rainfall);
               return {
                 fillColor: color,
                 weight: 1,
@@ -1317,13 +1318,15 @@ export class BlockRainfallMapDailyComponent implements AfterViewInit{
                       parseFloat(matchedData.normal_rainfall)
                     ) + " mm"
                   : "NA";
-              const popupContent = `
+                  const popupContent = `
                   <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
+                  <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
+                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall}</div>
                   </div>
               `;
               layer.bindPopup(popupContent);

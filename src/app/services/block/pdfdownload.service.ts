@@ -384,7 +384,7 @@ export class DownloadPdf {
 
   private loadTheRows() {
     this.rows = [];
-
+  
     // Apply filters if provided
     const filters = this.data.filters || {};
     const filteredCurrDate = this.blockDataCurrdate.filter(item => {
@@ -396,7 +396,7 @@ export class DownloadPdf {
         (!filters.block_code || filters.block_code.length === 0 || filters.block_code.includes(item.block_code.toString()))
       );
     });
-
+  
     const filteredSeasonDate = this.blockDataSeasondate.filter(item => {
       return (
         (!filters.region_code || filters.region_code.length === 0 || filters.region_code.includes(item.region_code.toString())) &&
@@ -406,7 +406,7 @@ export class DownloadPdf {
         (!filters.block_code || filters.block_code.length === 0 || filters.block_code.includes(item.block_code.toString()))
       );
     });
-
+  
     const groupedByState = filteredCurrDate.reduce((acc, item) => {
       const stateCode = item.state_code.toString();
       const districtCode = item.district_code.toString();
@@ -419,16 +419,16 @@ export class DownloadPdf {
       acc[stateCode][districtCode].push(item);
       return acc;
     }, {});
-
+  
     const sortedStates = Object.keys(groupedByState).sort((a, b) => {
       const stateA = filteredCurrDate.find(item => item.state_code.toString() === a)?.state_name || '';
       const stateB = filteredCurrDate.find(item => item.state_code.toString() === b)?.state_name || '';
       return stateA.localeCompare(stateB);
     });
-
+  
     let stateColorCode = [238, 130, 238];
     let districtColorCode = [72, 209, 204];
-
+  
     for (const stateCode of sortedStates) {
       const stateData = filteredCurrDate.find(item => item.state_code.toString() === stateCode);
       if (!stateData) continue;
@@ -444,14 +444,14 @@ export class DownloadPdf {
         { content: '', styles: { fillColor: stateColorCode } },
         { content: '', styles: { fillColor: stateColorCode } }
       ]);
-
+  
       const districts = groupedByState[stateCode];
       const sortedDistricts = Object.keys(districts).sort((a, b) => {
         const districtA = filteredCurrDate.find(item => item.district_code.toString() === a)?.district_name || '';
         const districtB = filteredCurrDate.find(item => item.district_code.toString() === b)?.district_name || '';
         return districtA.localeCompare(districtB);
       });
-
+  
       for (const districtCode of sortedDistricts) {
         const districtData = filteredCurrDate.find(item => item.district_code.toString() === districtCode);
         if (!districtData) continue;
@@ -467,26 +467,26 @@ export class DownloadPdf {
           { content: '', styles: { fillColor: districtColorCode } },
           { content: '', styles: { fillColor: districtColorCode } }
         ]);
-
+  
         const blocksCurrDate = districts[districtCode];
         const sortedBlocksCurrDate = blocksCurrDate.sort((a: any, b: any) => a.block_name.localeCompare(b.block_name));
-
+  
         for (let i = 0; i < sortedBlocksCurrDate.length; i++) {
           const blockDate = sortedBlocksCurrDate[i];
           const blockSeason = filteredSeasonDate.find(block => block.block_code === blockDate.block_code);
-          const dateCat = this.constants.getColorAndCat(blockDate.departure || null);
+          const dateCat = this.constants.getColorAndCat(blockDate.departure);
           const seasonCat = this.constants.getColorAndCat(blockSeason?.departure || null);
-
+  
           this.rows.push([
             i + 1,
             blockDate.block_name,
-            blockDate.actual_rainfall != null ? this.constants.trimToOneDecimals(blockDate.actual_rainfall) : ' ',
-            'Normals N.A',
-            'Normals N.A',
+            blockDate.actual_rainfall != null ? this.constants.trimToOneDecimals(blockDate.actual_rainfall) : '',
+            blockDate.normal_rainfall != null ? this.constants.trimToOneDecimals(blockDate.normal_rainfall) : '',
+            blockDate.departure != null ? this.constants.trimToOneDecimals(blockDate.departure) : '',
             { content: dateCat.Cat, styles: { fillColor: dateCat.color } },
-            blockSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(blockSeason.actual_rainfall) : ' ',
-            'Normals N.A',
-            'Normals N.A',
+            blockSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(blockSeason.actual_rainfall) : '',
+            blockSeason?.normal_rainfall != null ? this.constants.trimToOneDecimals(blockSeason.normal_rainfall) : '',
+            blockSeason?.departure != null ? this.constants.trimToOneDecimals(blockSeason.departure) : '',
             { content: seasonCat.Cat, styles: { fillColor: seasonCat.color } }
           ]);
         }
