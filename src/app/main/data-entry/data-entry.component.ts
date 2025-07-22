@@ -234,7 +234,7 @@ export class DataEntryComponent implements OnInit {
     this.maxDate = this.formatDate(new Date());
     if (this.loggedInUserObject.data[0].mcorhq == "mc") {
       const todayDate = new Date();
-      todayDate.setDate(todayDate.getDate() - 29);
+      todayDate.setDate(todayDate.getDate() - 60);
       this.minDate = this.formatDate(todayDate);
 
     }
