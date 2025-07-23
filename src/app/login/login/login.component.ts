@@ -100,13 +100,8 @@ showOthersInput: any = false;
             localStorage.setItem("isAuthorised", JSON.stringify(res));
             console.log(this.router)
 
-            let data: any = {
-              selectedMode: 'Unified'
-            };
-            localStorage.setItem("selectedMode", JSON.stringify(data));
-            console.log(this.router)
 
-            this.router.navigate(['/front-page/unifieddeparture']);
+            this.router.navigate(['/all-maps']);
           } else {
             alert(res.message);
           }

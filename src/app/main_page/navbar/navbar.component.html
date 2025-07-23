@@ -4,10 +4,10 @@
     </button>
     <span class="toolbar-title">iRAINS PRODUCTS</span>
   
-    <div *ngIf="loggedInUser.data[0].mcorhq != 'public'" class="toolbar-center">
+    <!-- <div *ngIf="loggedInUser.data[0].mcorhq != 'public'" class="toolbar-center">
       <button mat-button (click)="selectMode('Unified')" class="mode-button" [ngClass]="{'active': selectedMode === 'Unified'}">Unified File Data Products</button>
       <button mat-button (click)="selectMode('DataEntry')" class="mode-button" [ngClass]="{'active': selectedMode === 'DataEntry'}">MC-RMC Data Products</button>
-    </div>
+    </div> -->
   </mat-toolbar>
   <div id="loader" class="loader" *ngIf="isLoading">
     <div class="loading-message">
@@ -589,23 +589,19 @@
 
         
 
-        <li  *ngIf="hasAccess('data-entry')" >
+        <li *ngIf="hasAccess('data-entry')">
             <a
-              [routerLink]="isDataEntryAccessible() ? '../data-entry' : null" 
-              [class.disabled]="!isDataEntryAccessible()" 
-              (click)="onLinkClick($event)" 
-              class="main_nav">
+              class="main_nav" *ngIf="hasAccess('data-entry')" routerLink="../data-entry">
               DATA ENTRY
             </a>
         </li>
           
 
-        <li *ngIf="hasAccess('rainfalldatacm')" >
+        <li  *ngIf="hasAccess('rainfalldatacm')" >
             <a 
             class="main_nav" 
-            [routerLink]="isDataEntryAccessible() ? '../rainfalldatacm' : null" 
-            [class.disabled]="!isDataEntryAccessible()" 
-            (click)="onLinkClick($event)">
+            *ngIf="hasAccess('rainfalldatacm')" routerLink="../rainfalldatacm"
+            >
             SIGNIFICANT RAINFALL
             </a>
         </li>
@@ -624,44 +620,41 @@
         <li *ngIf="hasAccess('verification-page-mc')" >
             <a 
             class="main_nav" 
-            [routerLink]="isDataEntryAccessible() ? '../verification-page-mc' : null" 
-            [class.disabled]="!isDataEntryAccessible()" 
-            (click)="onLinkClick($event)">
+            *ngIf="hasAccess('verification-page-mc')" routerLink="../verification-page-mc"
+            >
             VERIFICATION MC
             </a>
         </li>
         
 
-        <li *ngIf="hasAccess('verification-page-hq')">
+        <li  *ngIf="hasAccess('verification-page-hq')">
             <a 
             class="main_nav" 
-             
-            [routerLink]="isDataEntryAccessible() ? '../verification-page-hq' : null" 
-            [class.disabled]="!isDataEntryAccessible()" 
-            (click)="onLinkClick($event)">
+            *ngIf="hasAccess('verification-page-hq')" routerLink="../verification-page-hq"
+            >
             VERIFICATION HQ
             </a>
         </li>
         
-        <li *ngIf="hasAccess('new-email-dissemination')" >
+        <li *ngIf="hasAccess('new-email-dissemination')">
             <a 
-            
-            [routerLink]="isDataEntryAccessible() ? '../new-email-dissemination' : null" 
-            [class.disabled]="!isDataEntryAccessible()" 
-            (click)="onLinkClick($event)">
+            class="main_nav" 
+            *ngIf="hasAccess('new-email-dissemination')" routerLink="../new-email-dissemination"
+            >
             DISSEMINATION
             </a>
         </li>
         
-        <li *ngIf="hasAccess('station-statistics')">
-            <a class="main_nav">STATION STATISTICS</a>
+        <li *ngIf="hasAccess('station-statistics')" >
+            <a
+
+            >STATION STATISTICS</a>
             <ul>
             <li >
                 <a 
-                
-                [routerLink]="isDataEntryAccessible() ? '../station-statistics' : null" 
-                [class.disabled]="!isDataEntryAccessible()" 
-                (click)="onLinkClick($event)">
+                class="main_nav"
+            *ngIf="hasAccess('station-statistics')" routerLink="../station-statistics"
+                >
                 STATISTICS
                 </a>
             </li>
@@ -679,20 +672,18 @@
         
         <li *ngIf="hasAccess('yearlystationstatistics')">
             <a 
-            
-            [routerLink]="isDataEntryAccessible() ? '../yearlystationstatistics' : null" 
-            [class.disabled]="!isDataEntryAccessible()" 
-            (click)="onLinkClick($event)">
+            class="main_nav"
+            *ngIf="hasAccess('yearlystationstatistics')" routerLink="../yearlystationstatistics"
+            >
             YEARLY STATION STATISTICS
             </a>
         </li>
         
         <li *ngIf="hasAccess('log-info')">
             <a 
-            class="main_nav" 
-            [routerLink]="isDataEntryAccessible() ? '../log-info' : null" 
-            [class.disabled]="!isDataEntryAccessible()" 
-            (click)="onLinkClick($event)">
+            class="main_nav"
+            *ngIf="hasAccess('log-info')" routerLink="../log-info"
+            >
             LOG INFO
             </a>
         </li>

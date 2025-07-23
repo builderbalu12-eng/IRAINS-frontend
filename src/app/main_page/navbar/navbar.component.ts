@@ -20,7 +20,7 @@ export class NavbarComponent implements OnInit {
   isLoading : boolean = false
   loading: boolean = false;
 
-  selectedMode: string = '';
+  // selectedMode: string = '';
   routeDictionary: any;
   loggedInUserType: any;
   google: any;
@@ -31,18 +31,18 @@ export class NavbarComponent implements OnInit {
   
   
 
-  selectMode(mode: string) {
-    let data : any= {
-      selectedMode : mode
-    }
-    localStorage.setItem("selectedMode", JSON.stringify(data));
+  // selectMode(mode: string) {
+  //   let data : any= {
+  //     selectedMode : mode
+  //   }
+  //   localStorage.setItem("selectedMode", JSON.stringify(data));
 
-    if(mode == 'Unified'){
-      this.router.navigate(['front-page/unifieddeparture']);
-    } else{ 
-      this.router.navigate(['all-maps']);
-    }
-  }
+  //   if(mode == 'Unified'){
+  //     this.router.navigate(['front-page/unifieddeparture']);
+  //   } else{ 
+  //     this.router.navigate(['all-maps']);
+  //   }
+  // }
 
   toggleNavbar() {
     this.isNavbarOpen = !this.isNavbarOpen;
@@ -63,12 +63,12 @@ export class NavbarComponent implements OnInit {
 
 
 
-    const currentRoute = this.router.url;
-    if (currentRoute.includes('/unifieddeparture')) {
-      this.selectedMode = 'Unified'
-    } else if (currentRoute.includes('/all-maps')) {
-      this.selectedMode = 'DataEntry'
-    }
+    // const currentRoute = this.router.url;
+    // if (currentRoute.includes('/unifieddeparture')) {
+    //   this.selectedMode = 'Unified'
+    // } else if (currentRoute.includes('/all-maps')) {
+    //   this.selectedMode = 'DataEntry'
+    // }
 
     this.isLoading = true;
     setTimeout(() => {
@@ -329,20 +329,20 @@ export class NavbarComponent implements OnInit {
   //   }
   // }
 
-  isDataEntryAccessible(): boolean {
-    // console.log('Checking accessibility - Selected Mode:', this.selectedMode);
-    return this.selectedMode === 'DataEntry';
-  }
+  // isDataEntryAccessible(): boolean {
+  //   // console.log('Checking accessibility - Selected Mode:', this.selectedMode);
+  //   return this.selectedMode === 'DataEntry';
+  // }
 
-  onLinkClick(event: MouseEvent): void {
-    const accessible = this.isDataEntryAccessible();
-    console.log('Link clicked - isDataEntryAccessible:', accessible);
-    if (!accessible) {
-      alert('Cannot access this tab when the mode is set to Unified.');
-      console.log('Navigation prevented');
-      event.preventDefault();
-    }
-  }
+  // onLinkClick(event: MouseEvent): void {
+  //   const accessible = this.isDataEntryAccessible();
+  //   console.log('Link clicked - isDataEntryAccessible:', accessible);
+  //   if (!accessible) {
+  //     alert('Cannot access this tab when the mode is set to Unified.');
+  //     console.log('Navigation prevented');
+  //     event.preventDefault();
+  //   }
+  // }
 
   // onLinkClick(event: MouseEvent): void {
   //   if (this.selectedMode === 'Unified') {
