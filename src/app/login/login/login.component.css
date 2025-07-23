@@ -1,67 +1,16 @@
-/* .background-effect {
-  background-image: url(../../../assets/images/max-22x7fxFpl_8-unsplash.jpg);
-  background-repeat: no-repeat;
-  background-size: cover;
-  height: 100vh;
-  width: 100%;
-}
-
-.login.card {
-  width: 100%;
-  max-width: 480px;
-  margin: 0 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-.container {
-  height: 65%;
-  display: flex;
-  justify-content: center;
-  flex-direction: column;
-  align-items: center;
-}
-
-.card-body {
-  padding: 50px;
-}
-
-.register.card {
-  max-width: 480px;
-  margin: 0 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-.card .card-img-top {
-  width: 100px;
-  margin: 16px auto 0;
-}
-.alert {
-  margin-top: 10px;
-}
-
-.hide {
-  display: none;
-}
-
-.card {
-  background-color: transparent !important;
-} */
-
 .login-side-pic {
-  /* background: url(../../../assets/images/amir-borhan-v7-pC1PYRR0-unsplash.jpg); */
-  /* background: url(../../../assets/images/rainfall_baground.jpg); */
-  /* background: url(../../../assets/images/rainfall_baground1.jpg); */
   background: url(../../../assets/images/rainfall_baground2.jpg);
-  /* background: url(../../../assets/images/back2.jpg); */
   background-size: cover;
 }
 
-.login-body{
+.login-body {
   overflow-x: hidden !important;
 }
 
 .label-text {
   width: 104px;
   height: 25px;
-  font-family: 'Inter';
+  font-family: "Inter";
   font-style: normal;
   font-weight: 700;
   font-size: 18px;
@@ -70,7 +19,7 @@
 
   text-align: center;
 
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .input-label {
@@ -88,7 +37,7 @@
 }
 
 .btn-secondary {
-  background: #4AD295;
+  background: #4ad295;
 }
 
 .btn-block {
@@ -104,14 +53,13 @@
   background: white;
   width: 43.53px;
   height: 43.53px;
-  border: 1px solid #E2E8F0;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
 }
 
 .form-check-input:checked {
-  background-color: #E0E0E0;
-  ;
-  border-color: #E0E0E0;
+  background-color: #e0e0e0;
+  border-color: #e0e0e0;
 }
 
 .subscribe-pane {
@@ -153,10 +101,6 @@
   }
 }
 
-
-
-
-
 .guest-login-btn {
   text-transform: uppercase;
   font-weight: 500;
@@ -187,23 +131,26 @@
   color: #6c757d; /* Subtle gray text */
 }
 
-
-
-
 .success-message {
   text-align: center;
 }
 
 .tick-container {
   font-size: 50px;
-  color: #4CAF50;
+  color: #4caf50;
   animation: tickAnimation 0.5s ease-in-out;
 }
 
 @keyframes tickAnimation {
-  0% { transform: scale(0); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .tick-mark {
@@ -212,3 +159,49 @@
   font-weight: bold;
 }
 
+/* ----------- new ----------------- */
+.guest-register-wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap; /* <-- prevent stacking */
+}
+
+.option-box {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(to right, #e3f2fd, #ffffff);
+  padding: 16px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  flex: 1 1 260px;
+  max-width: 320px;
+  min-width: 220px;
+}
+.option-box a {
+  color: #007bff;
+  font-weight: 600;
+  text-decoration: none; /* ✅ this removes the underline */
+  transition: color 0.3s;
+}
+
+.option-box:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+.option-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #0d47a1;
+}
+.option-link {
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #007bff;
+}
