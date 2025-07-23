@@ -239,15 +239,15 @@ export const routes: Routes = [
     ]
    },
    
-  { path: 'front-page', component: FrontPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }, children:
-    [
-      { path: 'unifieddeparture', component: AllMapsDupComponent},
-      // { path: 'weekly-departure', component: WeeklyDepartureMapComponent },
-      { path: '', redirectTo: 'dupdeparture', pathMatch: 'full' }
-    ]
-  },
+  // { path: 'front-page', component: FrontPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }, children:
+  //   [
+  //     // { path: 'unifieddeparture', component: AllMapsDupComponent},
+  //     // { path: 'weekly-departure', component: WeeklyDepartureMapComponent },
+  //     { path: '', redirectTo: 'dupdeparture', pathMatch: 'full' }
+  //   ]
+  // },
 
-  { path: '',  redirectTo: '/front-page/unifieddeparture', pathMatch: 'full' },
+  { path: '',  redirectTo: '/all-maps', pathMatch: 'full' },
   { path: 'auth', loadChildren: () => import('./auth/auth.module').then(m => m.AuthModule) },
   { path: '**', component: PageNotFoundComponent },
 ];

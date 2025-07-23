@@ -100,7 +100,13 @@ showOthersInput: any = false;
             localStorage.setItem("isAuthorised", JSON.stringify(res));
             console.log(this.router)
 
+          let data: any = {
+            selectedMode: 'Data-entry'
+          };
+          localStorage.setItem("selectedMode", JSON.stringify(data));
+          console.log(this.router)
 
+          this.router.navigate(['/all-maps']);
             this.router.navigate(['/all-maps']);
           } else {
             alert(res.message);
@@ -139,12 +145,12 @@ showOthersInput: any = false;
           console.log(this.router)
 
           let data: any = {
-            selectedMode: 'Unified'
+            selectedMode: 'Data-entry'
           };
           localStorage.setItem("selectedMode", JSON.stringify(data));
           console.log(this.router)
 
-          this.router.navigate(['/front-page/unifieddeparture']);
+          this.router.navigate(['/all-maps']);
         } else {
           alert(res.message);
         }

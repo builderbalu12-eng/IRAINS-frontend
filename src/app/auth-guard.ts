@@ -34,12 +34,12 @@ export class AuthGuard implements CanActivate {
 					localStorage.setItem("isAuthorised", JSON.stringify(res));
 	
 					const modeData = {
-						selectedMode: 'Unified'
+						selectedMode: 'Data-entry'
 					};
 					localStorage.setItem("selectedMode", JSON.stringify(modeData));
 	
-					console.log("Navigating to Unified Departure...");
-					await this.router.navigate(['/front-page/unifieddeparture']);
+					// console.log("Navigating to Unified Departure...");
+					await this.router.navigate(['/all-maps']);
 				} else {
 					alert(res.message);
 					return false;

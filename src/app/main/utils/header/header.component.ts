@@ -49,18 +49,19 @@ export class HeaderComponent implements OnInit {
     // let data : any= {
     //   selectedMode : mode
     // }
-    let selectedMode: any = localStorage.getItem("selectedMode");
-    selectedMode = JSON.parse(selectedMode);
-    console.log('this.selected mOde', selectedMode)
+    // let selectedMode: any = localStorage.getItem("selectedMode");
+    // selectedMode = JSON.parse(selectedMode);
+    // console.log('this.selected mOde', selectedMode)
 
-    this.Mode = selectedMode.selectedMode
+    // this.Mode = selectedMode.selectedMode
     
-    // localStorage.setItem("selectedMode", JSON.stringify(data));
+    // // localStorage.setItem("selectedMode", JSON.stringify(data));
 
-    if(selectedMode.selectedMode == 'Unified'){
-      this.router.navigate(['front-page/unifieddeparture']);
-    } else{ 
-      this.router.navigate(['all-maps']);
-    }
+    // if(selectedMode.selectedMode == 'Unified'){
+    //   this.router.navigate(['front-page/unifieddeparture']);
+    // } else{ 
+    //   this.router.navigate(['all-maps']);
+    // }
+    this.router.navigate(['all-maps']);
   }
 }
