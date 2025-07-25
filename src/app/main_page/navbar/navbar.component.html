@@ -4,10 +4,10 @@
     </button>
     <span class="toolbar-title">iRAINS PRODUCTS</span>
   
-    <!-- <div *ngIf="loggedInUser.data[0].mcorhq != 'public'" class="toolbar-center">
-      <button mat-button (click)="selectMode('Unified')" class="mode-button" [ngClass]="{'active': selectedMode === 'Unified'}">Unified File Data Products</button>
-      <button mat-button (click)="selectMode('DataEntry')" class="mode-button" [ngClass]="{'active': selectedMode === 'DataEntry'}">MC-RMC Data Products</button>
-    </div> -->
+    <div class="toolbar-center">
+      <button mat-button (click)="selectBlockOrRainfallMaps('RainfallMaps')" class="mode-button" [ngClass]="{'active': selectedMapType === 'RainfallMaps'}">RainfallMaps</button>
+      <button mat-button (click)="selectBlockOrRainfallMaps('Block')" class="mode-button" [ngClass]="{'active': selectedMapType === 'Block'}">Block Rainfall</button>
+    </div>
   </mat-toolbar>
   <div id="loader" class="loader" *ngIf="isLoading">
     <div class="loading-message">

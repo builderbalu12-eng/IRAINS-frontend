@@ -310,11 +310,13 @@ export class DownloadPdf {
     console.log('ssssss', this.data.startDate, typeof this.data.startDate,  this.data.endDate, this.data.startDate==this.data.endDate);
 
     // Adjust season dates based on this.data.startDate to set the seasonal period
-      const seasonRange = this.adjustSeasonForRange(this.data.startDate, this.data.endDate);
+    const seasonRange = this.adjustSeasonForRange(this.data.startDate, this.data.endDate);
   
     // Set the season period start and end dates
      this.seasonPeriodDate.startDate = seasonRange.startDate;
      this.seasonPeriodDate.endDate = seasonRange.endDate;
+
+     console.log(this.seasonPeriodDate)
 
     const columns1 = ['', '', 
       // {
@@ -557,6 +559,10 @@ export class DownloadPdf {
         seasonStartDate = startDate;
         seasonEndDate = endDate;
     }
+
+    if(seasonEndDate>new Date()){
+      seasonEndDate = new Date()
+    }
   
     return {
       season,
@@ -608,8 +614,6 @@ export class DownloadPdf {
 
         const DateCat = this.constants.getColorAndCat(subdivisionDate.departure);
         const SeasonCat = this.constants.getColorAndCat(subdivisionSeason.departure);
-
-
 
         this.rows.push([
             { content: '', styles: { fillColor: subdivColorCode } },

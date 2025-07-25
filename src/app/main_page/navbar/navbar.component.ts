@@ -15,6 +15,8 @@ import { routes } from 'src/app/app-routing.module';
 })
 
 export class NavbarComponent implements OnInit {
+  selectedMapType: any = 'RainfallMaps';
+
   isNavbarOpen = false;
   loggedInUser: any;
   isLoading : boolean = false
@@ -29,6 +31,14 @@ export class NavbarComponent implements OnInit {
     return this.routeDictionary[route]?.allowedUsers?.includes(this.loggedInUserType) || false;
   }
   
+  selectBlockOrRainfallMaps(arg0: string) {
+    this.selectedMapType = arg0
+    if(this.selectedMapType == 'RainfallMaps'){
+      this.router.navigate(['/all-maps']);
+    } else{ 
+      this.router.navigate(['/block-rainfall']);
+    }    
+}
   
 
   // selectMode(mode: string) {
@@ -63,12 +73,12 @@ export class NavbarComponent implements OnInit {
 
 
 
-    // const currentRoute = this.router.url;
-    // if (currentRoute.includes('/unifieddeparture')) {
-    //   this.selectedMode = 'Unified'
-    // } else if (currentRoute.includes('/all-maps')) {
-    //   this.selectedMode = 'DataEntry'
-    // }
+    const currentRoute = this.router.url;
+    if (currentRoute.includes('/all-maps')) {
+      this.selectedMapType = 'RainfallMaps'
+    } else if (currentRoute.includes('/block-rainfall')) {
+      this.selectedMapType = 'Block'
+    }
 
     this.isLoading = true;
     setTimeout(() => {

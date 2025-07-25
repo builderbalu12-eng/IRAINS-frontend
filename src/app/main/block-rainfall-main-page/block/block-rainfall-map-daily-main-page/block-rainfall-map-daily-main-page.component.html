@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    img {
+      width: 60px;
+    }
+
+    .wholebody {
+      background-color: #a2c5b6;
+      min-height: 100vh;
+      margin: 0 auto;
+      max-width: 100%; /* Constrain max width for large screens */
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      padding: 15px;
+      gap: 15px;
+      box-sizing: border-box;
+      justify-content: center; /* Center content */
+    }
+
+    .left-sidebar {
+      flex: 0 0 clamp(250px, 20vw, 280px); /* Responsive width */
+      max-width: 280px;
+      min-width: 200px;
+      padding: 20px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      height: fit-content;
+      box-sizing: border-box;
+    }
+
+    .map-container {
+      flex: 1;
+      min-width: clamp(300px, 50vw, 600px); /* Responsive map width */
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .right-dashboard {
+      flex: 0 0 clamp(300px, 30vw, 380px); /* Fixed invalid flex syntax */
+      max-width: 380px;
+      min-width: 250px;
+      padding: 20px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      height: fit-content;
+      box-sizing: border-box;
+      overflow-y: auto;
+      max-height: 80vh; /* Adjusted to viewport height */
+    }
+
+    .loader-pan_india {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1050;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .loading-message {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+      font-size: 16px;
+      color: #333;
+      display: flex;
+      align-items: center;
+    }
+
+    .loading-message i {
+      margin-right: 10px;
+      font-size: 24px;
+    }
+
+    .map_data {
+      text-align: center;
+      margin: 2%;
+      font-weight: 600;
+      font-size: 10px;
+    }
+
+    #load {
+      background-color: #002467;
+      padding: 10px;
+      margin: 6px;
+      margin-left: 15px;
+      width: 160px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 20px;
+      color: white;
+    }
+
+    #load:hover {
+      background-color: white;
+      color: #002467;
+      border-style: solid;
+      border-width: 2px;
+      border-color: white;
+    }
+
+    .fullscreen-logo {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+    }
+
+    .download, .downloadpdf {
+      background-color: #002467;
+      padding: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 20px;
+      color: white;
+    }
+
+    .download:hover, .downloadpdf:hover {
+      background-color: white;
+      color: #002467;
+      border-style: solid;
+      border-width: 2px;
+      border-color: #002467;
+    }
+
+    .values {
+      margin: 10px 32% 17px 32%;
+      background-color: white;
+      padding: 25px;
+      border-radius: 10px;
+      width: auto;
+    }
+
+    .form-label {
+      font-weight: 500;
+      font-size: 1.1rem;
+      color: #343a40;
+    }
+
+    .form-control, p-multiSelect {
+      border-radius: 8px;
+      box-shadow: none;
+      transition: box-shadow 0.2s ease-in-out;
+      margin-bottom: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .form-control:focus {
+      box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    button {
+      font-weight: 600;
+      border-radius: 8px;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .mode-button {
+      background-color: #69aedc;
+      color: black;
+      padding: 10px 20px;
+      font-size: 12px;
+      border-radius: 5px;
+      width: auto;
+      transition: all 0.3s ease-in-out;
+      outline: none;
+      cursor: pointer;
+      box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .mode-button:hover:not(.active) {
+      background-color: #e0e0e0;
+      color: #0056b3;
+      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .disabled {
+      color: grey;
+      cursor: not-allowed;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .custom-z-index {
+      z-index: 1049;
+      position: relative;
+    }
+
+    .no-border {
+      border: none !important;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .dashboard-card h5 {
+      margin-bottom: 15px;
+      color: #343a40;
+    }
+
+    #map-panindia {
+      width: 100%;
+      max-width: 44rem;
+      height: auto;
+      aspect-ratio: 3/4;
+      padding: 1rem;
+    }
+
+    @media (max-width: 1200px) {
+      .wholebody {
+        flex-direction: column;
+        align-items: center;
+      }
+      .left-sidebar, .right-dashboard {
+        flex: 0 0 100%;
+        max-width: clamp(300px, 90vw, 500px);
+        min-width: 0;
+        margin: 10px 0;
+      }
+      .map-container {
+        order: -1;
+        min-width: 100%;
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .left-sidebar, .right-dashboard {
+        padding: 15px;
+        max-width: 100%;
+      }
+      #map-panindia {
+        max-width: 100%;
+        aspect-ratio: 3/4;
+      }
+      .map-container {
+        padding: 10px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .left-sidebar, .right-dashboard {
+        padding: 10px;
+      }
+      .form-control, p-multiSelect {
+        margin-bottom: 15px;
+      }
+      .dashboard-card {
+        padding: 10px;
+      }
+      .dashboard-card h5 {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wholebody">
+    <div class="left-sidebar">
+      <p-multiSelect
+        [(ngModel)]="selectedRegion"
+        [options]="regions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Select Regions"
+        (onChange)="onRegionChange()"
+        [showToggleAll]="false"
+      ></p-multiSelect>
+
+      <p-multiSelect
+        [(ngModel)]="selectedMC"
+        [options]="centersMC1"
+        optionLabel="centre_name"
+        placeholder="Select MCs"
+        [disabled]="mcDisabled"
+        [showToggleAll]="false"
+        (onChange)="onMcChange($event)"
+      ></p-multiSelect>
+
+      <p-multiSelect
+        [(ngModel)]="selectedRMC"
+        [options]="centersRMC1"
+        optionLabel="centre_name"
+        placeholder="Select RMCs"
+        [disabled]="rmcDisabled"
+        [showToggleAll]="false"
+        (onChange)="onRMcChange($event)"
+      ></p-multiSelect>
+
+      <p-multiSelect
+        [(ngModel)]="selectedState"
+        [options]="filterStates"
+        optionLabel="state_name"
+        placeholder="Select States"
+        [showToggleAll]="false"
+        (onChange)="onStateChange($event)"
+      ></p-multiSelect>
+
+      <p-multiSelect
+        [options]="filterDistrict"
+        optionLabel="district_name"
+        placeholder="Select Districts"
+        [showToggleAll]="false"
+        (onChange)="onDistrictChange($event)"
+      ></p-multiSelect>
+
+      <p-multiSelect
+        [options]="filterBlocks"
+        optionLabel="block_name"
+        placeholder="Select Blocks"
+        [showToggleAll]="false"
+        (onChange)="onBlockChange($event)"
+      ></p-multiSelect>
+
+      <input
+        type="date"
+        class="form-control"
+        [value]="fromDate"
+        [max]="today"
+        [(ngModel)]="fromDate"
+      />
+
+      <button class="btn btn-success w-100" type="button" (click)="setFromAndToDate()">
+        Submit
+      </button>
+    </div>
+
+    <div class="map-container">
+      <div class="col-12" id="mapdiv1-ftp">
+        <div class="map-frame d-flex justify-content-center">
+          <div
+            id="map-panindia"
+            class="text-center shadow-sm bg-white"
+          >
+            <div
+              style="border: 2px solid black; width: 100%; height: 100%; padding: 2em;"
+              id="border-remove-panindia"
+            >
+              <div class="">
+                <div id="loader-panindia" class="loader-pan_india" *ngIf="isLoading">
+                  <div class="loading-message">
+                    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+                    Downloading...
+                  </div>
+                </div>
+
+                <div class="d-flex w-100">
+                  <div class="text-center ms-2" style="width: 15%">
+                    <img
+                      id="logoImage-pan_india"
+                      src="/assets/images/IMDlogo_Ipart-iris.png"
+                      alt=""
+                    />
+                    <div *ngIf="!isFullscreen()" class="download-buttons">
+                      <div id="all-btn-panindia" class="d-flex flex-column mt-3">
+                        <button mat-button class="mode-button mb-2" (click)="downloadMapImage(false)">
+                          Map Download
+                        </button>
+                        <button mat-button class="mode-button mb-2" (click)="downloadMappdf()">
+                          Map Pdf Download
+                        </button>
+                        <button mat-button class="mode-button mb-2" (click)="downloadMapData()">
+                          Statistics Download
+                        </button>
+                        <button mat-button class="mode-button mb-2 custom-z-index" (click)="resetMapSmallScreen()">
+                          Reset Position
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="middle-header-panindia" class="text-center pt-3" style="width: 72%">
+                    <div class="d-flex flex-column align-items-center ps-4">
+                      <div>
+                        <label class="text-black fw-bold" style="font-family: Arial; font-size: 12px">
+                          INDIA METEOROLOGICAL DEPARTMENT, NEW DELHI
+                        </label>
+                      </div>
+                      <div>
+                        <label class="text-black fw-bold" style="font-family: Arial; font-size: 14px">
+                          Date : {{ formatteddate }}
+                        </label>
+                      </div>
+                      <div>
+                        <label class="text-black fw-bold" style="font-family: Arial; font-size: 14px">
+                          BLOCK WISE RAINFALL MAP (mm)
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div *ngIf="isFullscreen()" id="resetButton-panindia" class="ResetMap text-center" style="width: 72%">
+                    <div>
+                      <button mat-button class="mode-button w-25" (click)="resetMap()">
+                        Reset Position
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div id="celebrations-pan-india" class="text-center mt-3 ms-1">
+                      <img class="logo" src="assets/images/IMD150(BGR).png" alt="" />
+                    </div>
+                    <img
+                      class="mt-5 ms-1 img-fluid small-img"
+                      style="width: 100px; height: 100px"
+                      src="../../assets/images/—Pngtree—compass_6028609.png"
+                      alt=""
+                      id="compassArrow-pan-india"
+                    />
+                  </div>
+
+                  <div id="country_values-pan-india" *ngIf="isFullscreen()" class="text-center mt-3 ms-1">
+                    <p style="text-align: center; font-weight: bold; font-size: xx-large; color: #ff9933;">
+                      India
+                    </p>
+                    <table style="border: 1px solid black; border-collapse: collapse; width: 10px;">
+                      <tr>
+                        <th style="border: 2px solid black; background-color: #ff9933;">Actual (mm)</th>
+                        <th style="border: 2px solid black; background-color: white;">Normal (mm)</th>
+                        <th style="border: 2px solid black; background-color: #138808;">Departure (%)</th>
+                      </tr>
+                      <tr>
+                        <td style="border: 2px solid black; color: #000080;">
+                          {{ countryActual == -999 || countryActual == null ? "No Data" : countryActual }}
+                        </td>
+                        <td style="border: 2px solid black; color: #000080;">
+                          {{ countryNormal == -999 || countryNormal == null ? "No Data" : countryNormal }}
+                        </td>
+                        <td style="border: 2px solid black; color: #000080;">
+                          {{ countryDeparture == -999 || countryDeparture == null ? "No Data" : countryDeparture }}
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+
+                  <div id="additional_table" *ngIf="!isFullscreen()" class="position-absolute" style="bottom: 15%; right: 30%">
+                    <p style="color: black" class="fs-4">India</p>
+                    <table class="table table-bordered table-sm" style="width: auto">
+                      <thead class="thead-light">
+                        <tr>
+                          <th style="font-size: xx-small; border: 2px solid black;">Actual</th>
+                          <th style="font-size: xx-small; border: 2px solid black;">Normal</th>
+                          <th style="font-size: xx-small; border: 2px solid black;">% Dep.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style="font-size: xx-small; border: 2px solid black; color: #000080;">
+                            {{ countryActual == -999 || countryActual == null ? "null" : countryActual }}
+                          </td>
+                          <td style="font-size: xx-small; border: 2px solid black; color: #000080;">
+                            {{ countryNormal == -999 || countryNormal == null ? "null" : countryNormal }}
+                          </td>
+                          <td style="font-size: xx-small; border: 2px solid black; color: #000080;">
+                            {{ countryDeparture == -999 || countryDeparture == null ? "null" : countryDeparture }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="leaflet-bottom" id="leaflet-bottom-pan-india">
+                  <div class="info_legend leaflet-control justify-content-center d-flex align-items-center flex-wrap mb-5" id="legends-district" style="width: auto; height: 30px">
+                    <div *ngFor="let item of legendItems" class="d-flex align-items-center me-3">
+                      <div [style.background-color]="item.color" class="d-inline-block" style="width: 11px; height: 11px"></div>
+                      <div [style.font-size]="item.fontSize" class="text-black fw-bold mx-2">
+                        <span [innerHTML]="item.text"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-dashboard">
+      <div class="dashboard-card">
+        <h5>Rainfall Distribution</h5>
+        <canvas id="rainfallPieChart"></canvas>
+      </div>
+
+      <div class="dashboard-card">
+        <h5>Rainfall Trend</h5>
+        <canvas id="rainfallLineChart"></canvas>
+      </div>
+
+      <div class="dashboard-card">
+        <h5>Regional Statistics</h5>
+        <table class="table table-sm table-bordered">
+          <thead>
+            <tr>
+              <th>Region</th>
+              <th>Avg. Rainfall (mm)</th>
+              <th>Change (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>North</td>
+              <td>45.2</td>
+              <td>+12%</td>
+            </tr>
+            <tr>
+              <td>South</td>
+              <td>38.7</td>
+              <td>-5%</td>
+            </tr>
+            <tr>
+              <td>East</td>
+              <td>52.1</td>
+              <td>+8%</td>
+            </tr>
+            <tr>
+              <td>West</td>
+              <td>29.4</td>
+              <td>-15%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="dashboard-card">
+        <h5>Summary Statistics</h5>
+        <ul class="list-group">
+          <li class="list-group-item">Total Rainfall: 165.4 mm</li>
+          <li class="list-group-item">Highest Rainfall: 82.3 mm (East)</li>
+          <li class="list-group-item">Lowest Rainfall: 29.4 mm (West)</li>
+          <li class="list-group-item">Average Departure: +0.5%</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Pie Chart
+    const pieChart = new Chart(document.getElementById('rainfallPieChart'), {
+      type: 'pie',
+      data: {
+        labels: ['Heavy', 'Moderate', 'Light', 'No Rain'],
+        datasets: [{
+          data: [30, 40, 20, 10],
+          backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#e7e9ed']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+
+    // Line Chart
+    const lineChart = new Chart(document.getElementById('rainfallLineChart'), {
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [{
+          label: 'Rainfall (mm)',
+          data: [20, 25, 30, 35, 40, 45],
+          borderColor: '#36a2eb',
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
