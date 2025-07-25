@@ -134,7 +134,7 @@ export class SubdivisionMapComponent {
       endDate: this.EndDate || `${year}-${mon}-${dd}`,
     };
 
-    this.countryService.fetchDataFtp(data).subscribe((res) => {
+    this.countryService.fetchData(data).subscribe((res) => {
       this.countrydatacum = res.data;
       this.countryActual = this.constants.trimToOneDecimals(
         this.countrydatacum[0].actual_rainfall
