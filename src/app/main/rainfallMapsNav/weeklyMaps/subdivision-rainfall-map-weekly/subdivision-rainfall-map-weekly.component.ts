@@ -188,7 +188,9 @@ export class SubdivisionRainfallMapWeeklyComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data FTP",
           this.countrydatacum,
@@ -197,7 +199,6 @@ export class SubdivisionRainfallMapWeeklyComponent {
           this.countryNormal
         );
       });
-
     } else {
       this.subdivisionService.fetchData(data).subscribe((res) => {
         this.subdivisiondatacum = res.data;
@@ -216,7 +217,9 @@ export class SubdivisionRainfallMapWeeklyComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data Entry",
           this.countrydatacum,
@@ -225,7 +228,6 @@ export class SubdivisionRainfallMapWeeklyComponent {
           this.countryNormal
         );
       });
-
     }
   }
 
@@ -246,7 +248,7 @@ export class SubdivisionRainfallMapWeeklyComponent {
       "December",
     ];
 
-    const startDate = new Date(2024, 0, 1); // January 1, 2024
+    const startDate = new Date(2025, 0, 1); // January 1, 2024
     const endDate = new Date(); // December 31, 2024
 
     let currentDate = startDate;
@@ -687,7 +689,7 @@ export class SubdivisionRainfallMapWeeklyComponent {
             // console.log('matchedData',matchedData)
             let rainfall: any;
 
-            if (matchedData?.departure!=null) {
+            if (matchedData?.departure != null) {
               rainfall = matchedData.departure;
             } else {
               rainfall = "NA";
@@ -715,23 +717,27 @@ export class SubdivisionRainfallMapWeeklyComponent {
             // console.log('matchedData', matchedData)
             let rainfall: any;
 
-            if (matchedData?.departure!=null) {
-
-            rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
-        } else {
-
-          rainfall = "NA";
-        }
+            if (matchedData?.departure != null) {
+              rainfall = this.constants.trimToZeroDecimals(
+                matchedData.departure
+              );
+            } else {
+              rainfall = "NA";
+            }
             const dailyrainfall =
               matchedData &&
               matchedData.actual_subdiv_rainfall !== null &&
               matchedData.actual_subdiv_rainfall != undefined &&
               !Number.isNaN(matchedData.actual_subdiv_rainfall)
-                ? this.constants.trimToOneDecimals(matchedData.actual_subdiv_rainfall) 
+                ? this.constants.trimToOneDecimals(
+                    matchedData.actual_subdiv_rainfall
+                  )
                 : "NA";
             const normalrainfall =
               matchedData && !Number.isNaN(matchedData.rainfall_normal_value)
-                ? this.constants.trimToOneDecimals(matchedData.rainfall_normal_value) 
+                ? this.constants.trimToOneDecimals(
+                    matchedData.rainfall_normal_value
+                  )
                 : "NA";
 
             // Determine label position and abbreviation
@@ -758,7 +764,7 @@ export class SubdivisionRainfallMapWeeklyComponent {
             }
             if (id1 == "NMMT") {
               // id1 = "NL & MN & MZ & TR"
-              id1 = id1
+              id1 = id1;
               center.lat = 23.5;
               center.lng = 94;
             }
@@ -1032,7 +1038,6 @@ export class SubdivisionRainfallMapWeeklyComponent {
               center.lat = 10.8;
               center.lng = 73.5;
             }
-
 
             if (center.lat && center.lng) {
               const labelId = `label-${id2}`;

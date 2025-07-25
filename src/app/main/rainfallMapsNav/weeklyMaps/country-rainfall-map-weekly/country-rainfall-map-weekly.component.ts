@@ -209,7 +209,7 @@ export class CountryRainfallMapWeeklyComponent {
       "December",
     ];
 
-    const startDate = new Date(2024, 0, 1); // January 1, 2024
+    const startDate = new Date(2025, 0, 1); // January 1, 2024
     const endDate = new Date(); // December 31, 2024
 
     let currentDate = startDate;
@@ -613,7 +613,7 @@ export class CountryRainfallMapWeeklyComponent {
           // console.log('matchedData',matchedData)
           let rainfall: any;
 
-          if (matchedData?.departure!=null) {
+          if (matchedData?.departure != null) {
             rainfall = matchedData.departure;
           } else {
             rainfall = "NA";
@@ -634,25 +634,27 @@ export class CountryRainfallMapWeeklyComponent {
           const matchedData = this.countrydatacum[0];
           let rainfall: any;
 
-          if (matchedData?.departure!=null) {
-
+          if (matchedData?.departure != null) {
             rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
-        } else {
-          rainfall = "NA";
-        }
+          } else {
+            rainfall = "NA";
+          }
 
           const dailyrainfall =
             matchedData &&
             matchedData.actual_rainfall !== null &&
             matchedData.actual_rainfall != undefined &&
             !Number.isNaN(matchedData.actual_rainfall)
-              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) + " mm"
+              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) +
+                " mm"
               : "NA";
           const normalrainfall =
             matchedData &&
             matchedData.actual_rainfall !== null &&
             !Number.isNaN(matchedData.rainfall_normal_value)
-              ? this.constants.trimToOneDecimals(parseFloat(matchedData.rainfall_normal_value)) 
+              ? this.constants.trimToOneDecimals(
+                  parseFloat(matchedData.rainfall_normal_value)
+                )
               : "NA";
 
           const labelId = `label-${"India"}`;

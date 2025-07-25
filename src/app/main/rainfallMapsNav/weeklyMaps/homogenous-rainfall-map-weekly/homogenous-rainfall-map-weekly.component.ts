@@ -191,7 +191,9 @@ export class HomogenousRainfallMapWeeklyComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data FTP",
           this.countrydatacum,
@@ -200,7 +202,6 @@ export class HomogenousRainfallMapWeeklyComponent {
           this.countryNormal
         );
       });
-
     } else {
       this.regionService.fetchData(data).subscribe((res: any) => {
         this.regiondatacum = res.data;
@@ -218,7 +219,9 @@ export class HomogenousRainfallMapWeeklyComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data Entry",
           this.countrydatacum,
@@ -247,7 +250,7 @@ export class HomogenousRainfallMapWeeklyComponent {
       "December",
     ];
 
-    const startDate = new Date(2024, 0, 1); // January 1, 2024
+    const startDate = new Date(2025, 0, 1); // January 1, 2024
     const endDate = new Date(); // December 31, 2024
 
     let currentDate = startDate;
@@ -682,7 +685,7 @@ export class HomogenousRainfallMapWeeklyComponent {
           // console.log('matchedData',matchedData)
           let rainfall: any;
 
-          if (matchedData?.departure!=null) {
+          if (matchedData?.departure != null) {
             rainfall = matchedData.departure;
           } else {
             rainfall = "NA";
@@ -705,24 +708,24 @@ export class HomogenousRainfallMapWeeklyComponent {
           // console.log('matchedData', matchedData)
           let rainfall: any;
 
-          if (matchedData?.departure!=null) {
-
+          if (matchedData?.departure != null) {
             rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
-        } else {
-
-          rainfall = "NA";
-        }
+          } else {
+            rainfall = "NA";
+          }
 
           const dailyrainfall =
             matchedData &&
             matchedData.actual_rainfall !== null &&
             matchedData.actual_rainfall != undefined &&
             !Number.isNaN(matchedData.actual_rainfall)
-              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) 
+              ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
               : "NA";
           const normalrainfall =
             matchedData && !Number.isNaN(matchedData.rainfall_normal_value)
-              ? this.constants.trimToOneDecimals(parseFloat(matchedData.rainfall_normal_value)) 
+              ? this.constants.trimToOneDecimals(
+                  parseFloat(matchedData.rainfall_normal_value)
+                )
               : "NA";
           // console.log('SUB DIV DAILY RAINFALL', dailyrainfall)
           // console.log('SUB DIV normalrainfall', normalrainfall)

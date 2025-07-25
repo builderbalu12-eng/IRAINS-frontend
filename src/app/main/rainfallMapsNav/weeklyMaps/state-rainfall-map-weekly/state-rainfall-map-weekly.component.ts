@@ -102,7 +102,7 @@ export class StateRainfallMapWeeklyComponent {
     private downloadStatistcs: StateDownloadStatistics,
     private stateinfo: StateInfoService,
     private countryService: CountryService,
-    private constants: Constants,
+    private constants: Constants
   ) {
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
@@ -171,7 +171,9 @@ export class StateRainfallMapWeeklyComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data FTP",
           this.countrydatacum,
@@ -196,7 +198,9 @@ export class StateRainfallMapWeeklyComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(
+          this.countrydatacum[0].departure
+        );
         console.log(
           "country dep data Entry",
           this.countrydatacum,
@@ -430,7 +434,7 @@ export class StateRainfallMapWeeklyComponent {
       "December",
     ];
 
-    const startDate = new Date(2024, 0, 1); // January 1, 2024
+    const startDate = new Date(2025, 0, 1); // January 1, 2024
     const endDate = new Date(); // December 31, 2024
 
     let currentDate = startDate;
@@ -686,7 +690,7 @@ export class StateRainfallMapWeeklyComponent {
           const id2 = feature.properties["state_code"];
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
-          if (matchedData?.departure!=null) {
+          if (matchedData?.departure != null) {
             rainfall = matchedData.departure;
           } else {
             rainfall = "NA";
@@ -710,13 +714,11 @@ export class StateRainfallMapWeeklyComponent {
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
 
-           if (matchedData?.departure!=null) {
-
+          if (matchedData?.departure != null) {
             rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
-        } else {
-
-          rainfall = "NA";
-        }
+          } else {
+            rainfall = "NA";
+          }
 
           console.log("raain", rainfall);
 
@@ -725,11 +727,15 @@ export class StateRainfallMapWeeklyComponent {
             matchedData.actual_state_rainfall !== null &&
             matchedData.actual_state_rainfall != undefined &&
             !Number.isNaN(matchedData.actual_state_rainfall)
-              ? this.constants.trimToOneDecimals(matchedData.actual_state_rainfall)
+              ? this.constants.trimToOneDecimals(
+                  matchedData.actual_state_rainfall
+                )
               : "NA";
           let normalrainfall =
             matchedData && !Number.isNaN(matchedData.rainfall_normal_value)
-              ? this.constants.trimToOneDecimals(matchedData.rainfall_normal_value)
+              ? this.constants.trimToOneDecimals(
+                  matchedData.rainfall_normal_value
+                )
               : "NA";
 
           // Determine label position and abbreviation
