@@ -194,6 +194,7 @@ export class RainfallStatisticsWeeklyComponent implements OnInit {
       console.log("without the stringify", data);
       console.log("with the stringify", JSON.stringify(data));
 
+      console.log("category", this.category);
       try {
         // console.log(data)
         if (this.category == "STATE") {
@@ -226,6 +227,7 @@ export class RainfallStatisticsWeeklyComponent implements OnInit {
     this.dataService.setfromAndToDate(JSON.stringify(data));
 
     this.loading = true; // Start loading
+    console.log("category", this.category);
 
     if (this.category == "STATE") {
       await this.stateStatisticsService.updateandViewpdf();
