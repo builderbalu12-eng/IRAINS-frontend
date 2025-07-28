@@ -166,6 +166,7 @@ import { BlockActualRainfallMapIncAwsComponent } from "./main/rainfall-actual-ma
 import { MatCardModule } from "@angular/material/card";
 import { BlockRainfallMainPageComponent } from './main/block-rainfall-main-page/block-rainfall-main-page.component';
 import { BlockRainfallMapDailyMainPageComponent } from './main/block-rainfall-main-page/block/block-rainfall-map-daily-main-page/block-rainfall-map-daily-main-page.component';
+import { BlockrainfallMapDailyActualMainPageComponent } from './main/block-rainfall-main-page/block/blockrainfall-map-daily-actual-main-page/blockrainfall-map-daily-actual-main-page.component';
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -307,6 +308,7 @@ import { BlockRainfallMapDailyMainPageComponent } from './main/block-rainfall-ma
     BlockActualRainfallMapIncAwsComponent,
     BlockRainfallMainPageComponent,
     BlockRainfallMapDailyMainPageComponent,
+    BlockrainfallMapDailyActualMainPageComponent,
   ],
   imports: [
     MatCardModule,

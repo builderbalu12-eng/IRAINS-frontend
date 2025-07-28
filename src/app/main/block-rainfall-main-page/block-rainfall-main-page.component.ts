@@ -13,8 +13,7 @@ export class BlockRainfallMainPageComponent {
   previousWeekWeeklyStartDate: any;
   previousWeekWeeklyendDate: any;
   loggedInUserObject : any;
-  selecteddatamode : any
-  
+  selecteddatamode : any = 'Departure'
  constructor(
     private dataService: DataService,
 

@@ -7,5 +7,17 @@
             <button mat-button class="mode-button">ACTUAL</button>
         </div>
     </div> -->
-    <app-block-rainfall-map-daily-main-page></app-block-rainfall-map-daily-main-page>
+    <!-- <app-block-rainfall-map-daily-main-page></app-block-rainfall-map-daily-main-page> -->
+
+    <div *ngIf="selecteddatamode == 'Departure'">
+        <div >
+            <app-block-rainfall-map-daily-main-page></app-block-rainfall-map-daily-main-page>
+        </div>
+    </div>
+
+    <div *ngIf="selecteddatamode == 'Actual'">
+        <div >
+            <app-blockrainfall-map-daily-actual-main-page></app-blockrainfall-map-daily-actual-main-page>
+        </div>
+    </div>
 </div>

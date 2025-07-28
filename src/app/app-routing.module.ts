@@ -103,6 +103,7 @@ import { CummulativeDistrictSpatialComponent } from './main/spatial-maps/cummula
 import { BlockRainfallMapDailyComponent } from './main/rainfallMapsNav/dailyMaps/block-rainfall-map-daily/block-rainfall-map-daily.component';
 import { BlockActualRainfallMapIncAwsComponent } from './main/rainfall-actual-maps/Actual/block-actual-rainfall-map-inc-aws/block-actual-rainfall-map-inc-aws.component';
 import { BlockRainfallMainPageComponent } from './main/block-rainfall-main-page/block-rainfall-main-page.component';
+import { BlockrainfallMapDailyActualMainPageComponent } from './main/block-rainfall-main-page/block/blockrainfall-map-daily-actual-main-page/blockrainfall-map-daily-actual-main-page.component';
 
 export const routes: Routes = [
   
@@ -125,6 +126,7 @@ export const routes: Routes = [
  { path: 'block-rainfall-map-daily', component: BlockRainfallMapDailyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall-awsorg-map-daily', component: ActualBlockRainfallMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall', component: BlockRainfallMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ { path: 'block-rainfall-actual', component: BlockrainfallMapDailyActualMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
 
 //  BlockActualRainfallMapIncAwsComponent
 
