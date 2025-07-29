@@ -22,18 +22,13 @@ import { getStateService } from "src/app/services/state/getState.service";
 import { getDistrictService } from "src/app/services/district/getdistrict.service";
 import { getBlockService } from "src/app/services/block/getblock.service";
 import { BlockService } from "src/app/services/block/BlockService.service";
-import { Router } from "@angular/router";
 @Component({
-  selector: 'app-block-rainfall-map-daily-main-page',
-  templateUrl: './block-rainfall-map-daily-main-page.component.html',
-  styleUrls: ['./block-rainfall-map-daily-main-page.component.css']
+  selector: 'app-blockrainfall-map-daily-actual-main-page',
+  templateUrl: './blockrainfall-map-daily-actual-main-page.component.html',
+  styleUrls: ['./blockrainfall-map-daily-actual-main-page.component.css']
 })
-export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
+export class BlockrainfallMapDailyActualMainPageComponent implements AfterViewInit{
 
-      selecteddatamode: any = 'Departure';
-
-
-      
   
       blockdatacum: any[] = [];
       StartDate: any;
@@ -43,6 +38,8 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
       countryNormal: any;
       countryDeparture: any;
       isLoading = false;
+      selecteddatamode: any = 'Actual';
+
   
   
       today: any;
@@ -113,6 +110,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
       }
 
 
+
       async downloadMapData() {
         this.isLoading = true;
         try {
@@ -139,25 +137,24 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
     
       legendItems = [
         {
-          color: "#0096ff",
-          text: `Large Excess <br>[60% or more]`,
-          fontSize: "9.3px",
+          color: "#277620",
+          text: `Very light to light <br>[0.1 to 15.5]mm`,
+          fontSize: "11.6px",
         },
-        { color: "#32c0f8", text: "Excess <br>[20 to 59]%", fontSize: "9.3px" },
-        { color: "#00cd5b", text: "Normal <br>[-19 to 19]%", fontSize: "9.3px" },
+        { color: "#1f9ee7", text: "Moderate <br>[15.6 to 64.4]mm", fontSize: "11.6px" },
+        { color: "#f3e821", text: "Heavy <br>[64.5 to 115.5]mm", fontSize: "11.6px" },
         {
-          color: "#ff2700",
-          text: "Deficient <br>[-59 to -20]%",
-          fontSize: "9.3px",
+          color: "#ff8b00",
+          text: "Very Heavy <br>[115.6 to 204.4]mm",
+          fontSize: "11.6px",
         },
         {
-          color: "#ffff20",
-          text: "Large Deficient <br>[-99 to -60]%",
-          fontSize: "9.3px",
+          color: "#da1b1e",
+          text: "Extremely Heavy <br>[>=204.5]mm",
+          fontSize: "11.6px",
         },
-        { color: "#ffffff", text: "No Rain <br>[-100]%", fontSize: "9.3px" },
-        { color: "#c0c0c0", text: "No <br>Data", fontSize: "9.3px" },
       ];
+    
       formatteddate: any;
       selectedDate: Date = new Date();
       inputValue: string = "";
@@ -180,8 +177,6 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
         private getStateService: getStateService,
         private getDistrictService: getDistrictService,
         private getBlockService : getBlockService,
-        private router: Router,
-
       ) {
         // var currentDate = new Date();
         // var dd = String(currentDate.getDate());
@@ -558,7 +553,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
     
         try {
           const mapElement = document.getElementById(
-            "block-departure-main"
+            "block-actual-main"
           ) as HTMLElement;
           if (!mapElement) {
             throw new Error("Map element not found");
@@ -694,7 +689,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
     
       // async downloadMapImage() {
       // try {
-      // const mapElement = document.getElementById('block-departure-main') as HTMLElement;
+      // const mapElement = document.getElementById('block-actual-main') as HTMLElement;
       // if (!mapElement) {
       // throw new Error('Map element not found');
       // }
@@ -903,7 +898,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
       }
     
       // private initMap(): void {
-      //   this.map = L.map("block-departure-main", {
+      //   this.map = L.map("block-actual-main", {
       //     center: [24, 81.9629],
       //     zoom: this.initialZoom,
       //     scrollWheelZoom: false,
@@ -930,10 +925,8 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
       // }
 
 
-
-
       private initMap(): void {
-        this.map = L.map("block-departure-main", {
+        this.map = L.map("block-actual-main", {
           center: [24, 81.9629],
           zoom: this.initialZoom,
           scrollWheelZoom: false,
@@ -1111,7 +1104,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
                   : "NA";
                 console.log(dailyrainfall)
               
-                const color = this.constants.getColorForRainfall(rainfall);
+              const color = this.constants.getActualColorForRainfall(dailyrainfall);
   
                 return {
                   fillColor: color,
@@ -1136,15 +1129,16 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
               } else {
                 rainfall = "NA";
               }
-              const dailyrainfall =
-              matchedData &&
-              matchedData.actual_rainfall !== null &&
-              matchedData.actual_rainfall != undefined &&
-              !Number.isNaN(matchedData.actual_rainfall)
-                ? this.constants.trimToOneDecimals(
-                    matchedData.actual_rainfall
-                  )
-                : "NA";
+  
+                const dailyrainfall =
+                matchedData &&
+                matchedData.actual_rainfall !== null &&
+                matchedData.actual_rainfall != undefined &&
+                !Number.isNaN(matchedData.actual_rainfall)
+                  ? this.constants.trimToOneDecimals(
+                      matchedData.actual_rainfall
+                    )
+                  : "NA";
                 const normalrainfall =
                   matchedData && !Number.isNaN(matchedData.normal_rainfall)
                     ? this.constants.trimToOneDecimals(
@@ -1158,8 +1152,6 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
                     <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
                     <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
                     <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall}</div>
                     </div>
                 `;
                 layer.bindPopup(popupContent);
@@ -1323,7 +1315,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
                   : "NA";
                 console.log(dailyrainfall)
               
-                const color = this.constants.getColorForRainfall(rainfall);
+              const color = this.constants.getActualColorForRainfall(dailyrainfall);
               return {
                 fillColor: color,
                 weight: 1,
@@ -1363,15 +1355,13 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit{
                       parseFloat(matchedData.normal_rainfall)
                     ) + " mm"
                   : "NA";
-                  const popupContent = `
+              const popupContent = `
                   <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
                   <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall}</div>
                   </div>
               `;
               layer.bindPopup(popupContent);
