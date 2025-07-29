@@ -1351,6 +1351,10 @@ export class DataEntryComponent implements OnInit {
       console.log("filteredData after district:", this.filteredData);
     }
 
+    this.filteredData.sort((a: any, b: any) =>
+      (a.station_name || '').localeCompare(b.station_name || '')
+    );
+
 
   }
 
