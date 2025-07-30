@@ -161,6 +161,7 @@ export class DataEntryComponent implements OnInit {
   isTableEmpty: boolean = true;
   currentUsernameToDisplay: any;
   maxDate: any;
+  isSorting: boolean = false;
 
   constructor(
     private dataService: DataService,
@@ -757,6 +758,46 @@ export class DataEntryComponent implements OnInit {
       alert("Please choose a file:");
     }
   }
+
+
+  sortDirection: { [key: string]: 'asc' | 'desc' } = {};
+
+  sortTable(column: string): void {
+    this.isSorting = true; // Show loader
+  
+    setTimeout(() => {
+      const direction = this.sortDirection[column] === 'asc' ? 'desc' : 'asc';
+      this.sortDirection[column] = direction;
+  
+      this.filteredData.sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+  
+        // Handle null or undefined
+        if (valA == null) valA = '';
+        if (valB == null) valB = '';
+  
+        // If both are numbers
+        if (!isNaN(Number(valA)) && !isNaN(Number(valB))) {
+          return direction === 'asc'
+            ? Number(valA) - Number(valB)
+            : Number(valB) - Number(valA);
+        }
+  
+        // Else treat as strings (case-insensitive)
+        valA = valA.toString().toLowerCase();
+        valB = valB.toString().toLowerCase();
+  
+        if (valA < valB) return direction === 'asc' ? -1 : 1;
+        if (valA > valB) return direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+  
+      this.isSorting = false; // Hide loader after sorting
+    }, 100); // Brief delay to let UI show spinner
+  }
+  
+
 
   private formatDate(date: Date): string {
     const year = date.getFullYear();

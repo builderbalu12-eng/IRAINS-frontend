@@ -22,6 +22,12 @@
   </div>
 </div>
 
+<div id="loader" class="loader" *ngIf="isSorting">
+  <div class="loading-message">
+    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Sorting...
+  </div>
+</div>
+
 <div id="loader" class="loader" *ngIf="isUploading">
   <div class="loading-message">
     <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Uploading...
@@ -259,9 +265,19 @@
           <thead>
             <tr>
               <th style="border: 1px solid black">S.NO</th>
-              <th style="border: 1px solid black">DISTRICT NAME</th>
-              <th style="border: 1px solid black">STATION ID</th>
-              <th style="border: 1px solid black">STATION NAME</th>
+              <th style="border: 1px solid black">
+                DISTRICT NAME
+                <button (click)="sortTable('district_name')" class="sort-button">⇅</button>
+              </th>
+              <th style="border: 1px solid black">
+                STATION ID
+                <button (click)="sortTable('station_code')" class="sort-button">⇅</button>
+              </th>
+              <th style="border: 1px solid black">
+                STATION NAME
+                <button (click)="sortTable('station_name')" class="sort-button">⇅</button>
+              </th>
+              
               <th style="border: 1px solid black">RAINFALL</th>
 
               <!-- hidden below as of now -->

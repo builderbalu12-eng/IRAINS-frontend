@@ -269,3 +269,23 @@ th {
 
 
 
+
+
+
+.sort-button {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+  padding-left: 4px;
+  color: #333;
+}
+
+.sort-button:hover {
+  color: #007bff;
+}
+
+.sort-button:disabled {
+  cursor: not-allowed;
+  color: #ccc;
+}
