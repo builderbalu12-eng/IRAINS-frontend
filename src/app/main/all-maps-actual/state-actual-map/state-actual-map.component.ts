@@ -19,12 +19,11 @@ import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
 
 @Component({
-  selector: 'app-state-actual-map',
-  templateUrl: './state-actual-map.component.html',
-  styleUrls: ['./state-actual-map.component.css']
+  selector: "app-state-actual-map",
+  templateUrl: "./state-actual-map.component.html",
+  styleUrls: ["./state-actual-map.component.css"],
 })
 export class StateActualMapComponent {
-
   statedatacum: any[] = [];
   isLoading: boolean = false;
   countrydatacum: any;
@@ -75,11 +74,19 @@ export class StateActualMapComponent {
   legendItems = [
     {
       color: "#277620",
-      text: `Very light to light <br>[0.1 to 15.5]mm`,
+      text: `Very light to light <br>[0 to 15.5]mm`,
       fontSize: "11.6px",
     },
-    { color: "#1f9ee7", text: "Moderate <br>[15.6 to 64.4]mm", fontSize: "11.6px" },
-    { color: "#f3e821", text: "Heavy <br>[64.5 to 115.5]mm", fontSize: "11.6px" },
+    {
+      color: "#1f9ee7",
+      text: "Moderate <br>[15.6 to 64.4]mm",
+      fontSize: "11.6px",
+    },
+    {
+      color: "#f3e821",
+      text: "Heavy <br>[64.5 to 115.5]mm",
+      fontSize: "11.6px",
+    },
     {
       color: "#ff8b00",
       text: "Very Heavy <br>[115.6 to 204.4]mm",
@@ -90,9 +97,13 @@ export class StateActualMapComponent {
       text: "Extremely Heavy <br>[>=204.5]mm",
       fontSize: "11.6px",
     },
+    {
+      color: "#c0c0c0",
+      text: "No Data",
+      fontSize: "11.6px",
+    },
   ];
 
-  
   EndDate: any;
   formatteddate: any;
   StartDate: any;
@@ -215,7 +226,9 @@ export class StateActualMapComponent {
     this.isLoading = true;
 
     try {
-      const mapElement = document.getElementById("map-actual-state") as HTMLElement;
+      const mapElement = document.getElementById(
+        "map-actual-state"
+      ) as HTMLElement;
       if (!mapElement) {
         throw new Error("Map element not found");
       }
@@ -382,9 +395,7 @@ export class StateActualMapComponent {
   }
 
   resetMap(): void {
-    this.map.setView([24, 80.9629], this.initialZoom + 0.3
-      
-    );
+    this.map.setView([24, 80.9629], this.initialZoom + 0.3);
   }
 
   resetMapSmallScreen(): void {
@@ -564,14 +575,14 @@ export class StateActualMapComponent {
             rainfall = -100;
           }
           let dailyrainfall =
-          matchedData &&
-          matchedData.actual_state_rainfall !== null &&
-          matchedData.actual_state_rainfall != undefined &&
-          !Number.isNaN(matchedData.actual_state_rainfall)
-            ? this.constants.trimToOneDecimals(
-                matchedData.actual_state_rainfall
-              )
-            : "NA";
+            matchedData &&
+            matchedData.actual_state_rainfall !== null &&
+            matchedData.actual_state_rainfall != undefined &&
+            !Number.isNaN(matchedData.actual_state_rainfall)
+              ? this.constants.trimToOneDecimals(
+                  matchedData.actual_state_rainfall
+                )
+              : "NA";
           const color = this.constants.getActualColorForRainfall(dailyrainfall);
 
           return {
@@ -883,7 +894,6 @@ export class StateActualMapComponent {
               existingLabel.remove();
             }
 
-            
             const label = L.marker([center.lat, center.lng], {
               icon: L.divIcon({
                 className: "state-label",

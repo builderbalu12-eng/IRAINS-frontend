@@ -358,25 +358,25 @@
 
                 <div class="leaflet-bottom" id="leaflet-bottom-state">
                   <div
-                    class="info_legend leaflet-control justify-content-center d-flex align-items-center flex-wrap mb-5"
-                    id="legends-state"
-                    style="width: auto; height: 30px"
+                    class="info_legend leaflet-control d-flex flex-nowrap align-items-center mb-4 px-2 py-1"
+                    id="legends-district"
+                    style="width: auto; height: auto; overflow-x: auto"
                   >
                     <div
                       *ngFor="let item of legendItems"
-                      class="d-flex align-items-center me-3"
+                      class="d-flex align-items-center me-2"
+                      style="white-space: nowrap"
                     >
                       <div
                         [style.background-color]="item.color"
                         class="d-inline-block"
-                        style="width: 11px; height: 11px"
+                        style="width: 12px; height: 12px; border-radius: 2px"
                       ></div>
                       <div
-                        [style.font-size]="item.fontSize"
-                        class="text-black fw-bold mx-2"
+                        [style.font-size]="item.fontSize || '10px'"
+                        class="text-black fw-semibold mx-1"
                       >
                         <span [innerHTML]="item.text"></span>
-                        <!-- {{ item.text }} -->
                       </div>
                     </div>
                   </div>

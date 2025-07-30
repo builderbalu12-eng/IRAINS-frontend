@@ -17,12 +17,11 @@ import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
 
 @Component({
-  selector: 'app-district-actual-map',
-  templateUrl: './district-actual-map.component.html',
-  styleUrls: ['./district-actual-map.component.css']
+  selector: "app-district-actual-map",
+  templateUrl: "./district-actual-map.component.html",
+  styleUrls: ["./district-actual-map.component.css"],
 })
 export class DistrictActualMapComponent {
-
   districtdatacum: any[] = [];
   StartDate: any;
   EndDate: any;
@@ -75,11 +74,19 @@ export class DistrictActualMapComponent {
   legendItems = [
     {
       color: "#277620",
-      text: `Very light to light <br>[0.1 to 15.5]mm`,
+      text: `Very light to light <br>[0 to 15.5]mm`,
       fontSize: "11.6px",
     },
-    { color: "#1f9ee7", text: "Moderate <br>[15.6 to 64.4]mm", fontSize: "11.6px" },
-    { color: "#f3e821", text: "Heavy <br>[64.5 to 115.5]mm", fontSize: "11.6px" },
+    {
+      color: "#1f9ee7",
+      text: "Moderate <br>[15.6 to 64.4]mm",
+      fontSize: "11.6px",
+    },
+    {
+      color: "#f3e821",
+      text: "Heavy <br>[64.5 to 115.5]mm",
+      fontSize: "11.6px",
+    },
     {
       color: "#ff8b00",
       text: "Very Heavy <br>[115.6 to 204.4]mm",
@@ -88,6 +95,11 @@ export class DistrictActualMapComponent {
     {
       color: "#da1b1e",
       text: "Extremely Heavy <br>[>=204.5]mm",
+      fontSize: "11.6px",
+    },
+    {
+      color: "#c0c0c0",
+      text: "No Data",
       fontSize: "11.6px",
     },
   ];
@@ -107,7 +119,7 @@ export class DistrictActualMapComponent {
     private district: DistrictService,
     private downloadPdf$: DownloadPdf,
     private countryService: CountryService,
-    private constants : Constants
+    private constants: Constants
   ) {
     // var currentDate = new Date();
     // var dd = String(currentDate.getDate());
@@ -217,7 +229,9 @@ export class DistrictActualMapComponent {
 
     this.isLoading = true;
     try {
-      const mapElement = document.getElementById("map-actual-district") as HTMLElement;
+      const mapElement = document.getElementById(
+        "map-actual-district"
+      ) as HTMLElement;
 
       if (!mapElement) {
         throw new Error("Map element not found");
@@ -643,8 +657,9 @@ export class DistrictActualMapComponent {
       "#country_values_district_all_maps"
     );
 
-    const borderRemove = this.elRef.nativeElement.querySelector('#border-remove-district')
-
+    const borderRemove = this.elRef.nativeElement.querySelector(
+      "#border-remove-district"
+    );
 
     if (isFullscreen) {
       this.map.addControl(this.map.zoomControl);
@@ -682,15 +697,14 @@ export class DistrictActualMapComponent {
       this.renderer.setStyle(resetButton, "top", "5%");
 
       if (isFullscreen && borderRemove) {
-        this.renderer.addClass(borderRemove, 'no-border');
-      } 
-
+        this.renderer.addClass(borderRemove, "no-border");
+      }
     } else {
       this.map.removeControl(this.map.zoomControl);
       this.map.dragging.disable();
 
-      this.renderer.removeClass(borderRemove, 'no-border');
-      this.renderer.setStyle(borderRemove, 'border', '2px solid black');
+      this.renderer.removeClass(borderRemove, "no-border");
+      this.renderer.setStyle(borderRemove, "border", "2px solid black");
 
       this.map.setZoom(this.initialZoom);
 
@@ -749,15 +763,14 @@ export class DistrictActualMapComponent {
               rainfall = -100;
             }
             const dailyrainfall =
-            matchedData &&
-            matchedData.actual_rainfall !== null &&
-            matchedData.actual_rainfall != undefined &&
-            !Number.isNaN(matchedData.actual_rainfall)
-              ? this.constants.trimToOneDecimals(
-                  matchedData.actual_rainfall
-                )
-              : "NA";
-            const color = this.constants.getActualColorForRainfall(dailyrainfall);
+              matchedData &&
+              matchedData.actual_rainfall !== null &&
+              matchedData.actual_rainfall != undefined &&
+              !Number.isNaN(matchedData.actual_rainfall)
+                ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
+                : "NA";
+            const color =
+              this.constants.getActualColorForRainfall(dailyrainfall);
 
             return {
               fillColor: color,

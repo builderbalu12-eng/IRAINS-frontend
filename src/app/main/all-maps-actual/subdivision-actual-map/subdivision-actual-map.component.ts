@@ -16,9 +16,9 @@ import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
 @Component({
-  selector: 'app-subdivision-actual-map',
-  templateUrl: './subdivision-actual-map.component.html',
-  styleUrls: ['./subdivision-actual-map.component.css']
+  selector: "app-subdivision-actual-map",
+  templateUrl: "./subdivision-actual-map.component.html",
+  styleUrls: ["./subdivision-actual-map.component.css"],
 })
 export class SubdivisionActualMapComponent {
   subdivisiondatacum: any[] = [];
@@ -50,11 +50,19 @@ export class SubdivisionActualMapComponent {
   legendItems = [
     {
       color: "#277620",
-      text: `Very light to light <br>[0.1 to 15.5]mm`,
+      text: `Very light to light <br>[0 to 15.5]mm`,
       fontSize: "11.6px",
     },
-    { color: "#1f9ee7", text: "Moderate <br>[15.6 to 64.4]mm", fontSize: "11.6px" },
-    { color: "#f3e821", text: "Heavy <br>[64.5 to 115.5]mm", fontSize: "11.6px" },
+    {
+      color: "#1f9ee7",
+      text: "Moderate <br>[15.6 to 64.4]mm",
+      fontSize: "11.6px",
+    },
+    {
+      color: "#f3e821",
+      text: "Heavy <br>[64.5 to 115.5]mm",
+      fontSize: "11.6px",
+    },
     {
       color: "#ff8b00",
       text: "Very Heavy <br>[115.6 to 204.4]mm",
@@ -63,6 +71,11 @@ export class SubdivisionActualMapComponent {
     {
       color: "#da1b1e",
       text: "Extremely Heavy <br>[>=204.5]mm",
+      fontSize: "11.6px",
+    },
+    {
+      color: "#c0c0c0",
+      text: "No Data",
       fontSize: "11.6px",
     },
   ];
@@ -86,7 +99,7 @@ export class SubdivisionActualMapComponent {
     private subdivisionService: SubdivisionService,
     private downlaodStatistics: SubdivDownloadStatistics,
     private countryService: CountryService,
-    private constants : Constants
+    private constants: Constants
   ) {
     // var currentDate = new Date();
     // var dd = String(currentDate.getDate());
@@ -131,14 +144,23 @@ export class SubdivisionActualMapComponent {
       endDate: this.EndDate || `${year}-${mon}-${dd}`,
     };
 
-    this.countryService.fetchDataFtp(data).subscribe(res =>{
-      this.countrydatacum = res.data
-      this.countryActual = this.constants.trimToOneDecimals(this.countrydatacum[0].actual_rainfall)
-      this.countryNormal = this.constants.trimToOneDecimals(parseFloat(this.countrydatacum[0].rainfall_normal_value))
-      this.countryDeparture = Math.round(this.countrydatacum[0].departure)
-      console.log('country dep data', this.countrydatacum, this.countryActual, this.countryDeparture, this.countryNormal)
-      })
-      
+    this.countryService.fetchDataFtp(data).subscribe((res) => {
+      this.countrydatacum = res.data;
+      this.countryActual = this.constants.trimToOneDecimals(
+        this.countrydatacum[0].actual_rainfall
+      );
+      this.countryNormal = this.constants.trimToOneDecimals(
+        parseFloat(this.countrydatacum[0].rainfall_normal_value)
+      );
+      this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+      console.log(
+        "country dep data",
+        this.countrydatacum,
+        this.countryActual,
+        this.countryDeparture,
+        this.countryNormal
+      );
+    });
 
     this.subdivisionService.fetchData(data).subscribe((res) => {
       this.subdivisiondatacum = res.data;
@@ -148,9 +170,6 @@ export class SubdivisionActualMapComponent {
       this.StartDate = this.convertToIndianDateFormat(this.StartDate);
       this.endDate = this.convertToIndianDateFormat(this.endDate);
     });
-
-
-    
   }
 
   filter = (node: HTMLElement) => {
@@ -425,8 +444,9 @@ export class SubdivisionActualMapComponent {
       "#country_values_subdivision_allmaps"
     );
 
-    const borderRemove = this.elRef.nativeElement.querySelector('#border-remove-subdiv')
-
+    const borderRemove = this.elRef.nativeElement.querySelector(
+      "#border-remove-subdiv"
+    );
 
     if (isFullscreen) {
       this.map.addControl(this.map.zoomControl);
@@ -471,15 +491,14 @@ export class SubdivisionActualMapComponent {
       this.renderer.setStyle(resetButton, "top", "5%");
 
       if (isFullscreen && borderRemove) {
-        this.renderer.addClass(borderRemove, 'no-border');
-      } 
-
+        this.renderer.addClass(borderRemove, "no-border");
+      }
     } else {
       this.map.removeControl(this.map.zoomControl);
       this.map.dragging.disable();
 
-      this.renderer.removeClass(borderRemove, 'no-border');
-      this.renderer.setStyle(borderRemove, 'border', '2px solid black');
+      this.renderer.removeClass(borderRemove, "no-border");
+      this.renderer.setStyle(borderRemove, "border", "2px solid black");
 
       this.map.setZoom(this.initialZoom);
       this.defaultFontSizeonMap = this.initialZoom * 2;
@@ -540,13 +559,16 @@ export class SubdivisionActualMapComponent {
               rainfall = -100;
             }
             const dailyrainfall =
-            matchedData &&
-            matchedData.actual_subdiv_rainfall !== null &&
-            matchedData.actual_subdiv_rainfall != undefined &&
-            !Number.isNaN(matchedData.actual_subdiv_rainfall)
-              ? this.constants.trimToOneDecimals(matchedData.actual_subdiv_rainfall)
-              : "NA";
-            const color = this.constants.getActualColorForRainfall(dailyrainfall);
+              matchedData &&
+              matchedData.actual_subdiv_rainfall !== null &&
+              matchedData.actual_subdiv_rainfall != undefined &&
+              !Number.isNaN(matchedData.actual_subdiv_rainfall)
+                ? this.constants.trimToOneDecimals(
+                    matchedData.actual_subdiv_rainfall
+                  )
+                : "NA";
+            const color =
+              this.constants.getActualColorForRainfall(dailyrainfall);
 
             return {
               // fillColor: color,
@@ -572,7 +594,9 @@ export class SubdivisionActualMapComponent {
               if (Number.isNaN(matchedData.actual_subdiv_rainfall)) {
                 rainfall = "NA";
               } else {
-                rainfall = this.constants.trimToOneDecimals(matchedData.departure)
+                rainfall = this.constants.trimToOneDecimals(
+                  matchedData.departure
+                );
               }
             } else {
               rainfall = -100;
@@ -582,7 +606,9 @@ export class SubdivisionActualMapComponent {
               matchedData.actual_subdiv_rainfall !== null &&
               matchedData.actual_subdiv_rainfall != undefined &&
               !Number.isNaN(matchedData.actual_subdiv_rainfall)
-                ? this.constants.trimToOneDecimals(matchedData.actual_subdiv_rainfall)
+                ? this.constants.trimToOneDecimals(
+                    matchedData.actual_subdiv_rainfall
+                  )
                 : "NA";
             const normalrainfall =
               matchedData && !Number.isNaN(matchedData.rainfall_normal_value)
@@ -613,7 +639,7 @@ export class SubdivisionActualMapComponent {
             }
             if (id1 == "NMMT") {
               // id1 = "NL & MN & MZ & TR"
-              id1 = id1
+              id1 = id1;
               center.lat = 23.5;
               center.lng = 94;
             }
@@ -896,7 +922,6 @@ export class SubdivisionActualMapComponent {
                 existingLabel.remove();
               }
 
-
               const popupContent = `
               <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
               <div style="color: #002467; font-weight: bold; font-size: 13px;">SUBDIVISION: ${id1}</div>
@@ -915,9 +940,7 @@ export class SubdivisionActualMapComponent {
                 icon: L.divIcon({
                   className: "state-label",
                   html: `
-    <div id="${labelId}" style="font-size: ${
-                    this.defaultFontSizeonMap
-                  }px; font-weight : 1000; color: #002467; width: 120px; text-align: center; white-space: nowrap;">
+    <div id="${labelId}" style="font-size: ${this.defaultFontSizeonMap}px; font-weight : 1000; color: #002467; width: 120px; text-align: center; white-space: nowrap;">
     <div>${id1}</div>
     <div>${dailyrainfall}</div>
     </div>
