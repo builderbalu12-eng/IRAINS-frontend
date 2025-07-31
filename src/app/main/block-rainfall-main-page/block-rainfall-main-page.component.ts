@@ -13,11 +13,22 @@ export class BlockRainfallMainPageComponent {
   previousWeekWeeklyStartDate: any;
   previousWeekWeeklyendDate: any;
   loggedInUserObject : any;
-  selecteddatamode : any = 'Departure'
+  selecteddatamode : any = 'Actual'
+
+  selectDataMode(mode: string) {
+    this.selecteddatamode = mode;
+    let data = {
+      selecteddatamode: mode,
+    };
+    this.dataService.setDataMode(JSON.stringify(data));
+  }
+
+
  constructor(
     private dataService: DataService,
 
   ) {
+    this.selectDataMode("Actual");
 
     let loggedInUser: any = localStorage.getItem("isAuthorised");
     this.loggedInUserObject = JSON.parse(loggedInUser);
