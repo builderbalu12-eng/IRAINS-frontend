@@ -452,7 +452,7 @@ export class Constants {
   getActualColorForRainfall(data: any): string {
     let color = "";
 
-    if (data == null || data == undefined || data == "NA") {
+    if (data == null || data == undefined || data == "NA" || data<0) {
       return "#c0c0c0";
     }
 

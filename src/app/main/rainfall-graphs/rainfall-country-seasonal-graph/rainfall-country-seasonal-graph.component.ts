@@ -405,5 +405,6 @@ export class RainfallCountrySeasonalGraphComponent implements OnInit {
     let selectedMode: any = localStorage.getItem("selectedMode");
     this.selectedMode = JSON.parse(selectedMode);
     console.log('this.selected mOde', this.selectedMode)
+    this.selectedSeason = this.constants.getCurrentSeason(new Date())
   }
 }

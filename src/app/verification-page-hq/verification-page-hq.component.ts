@@ -7,6 +7,9 @@ import { VerificationHq } from '../services/verification/verificationHq.service'
 import { response } from 'express';
 import { DataEntryService } from '../services/dataEntry/dataEntry.service';
 import { coerceStringArray } from '@angular/cdk/coercion';
+import * as XLSX from 'xlsx';
+import * as FileSaver from 'file-saver';
+
 
 @Component({
   selector: 'app-verification-page-hq',
@@ -37,6 +40,8 @@ export class VerificationPageHQComponent {
   devationStatus: any;
   isVerificationLoading: any = false;
   isVerifiactionButtonClicked: any = false;
+  EXCEL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
+
 
   constructor(
     private dataService: DataService,
@@ -470,6 +475,39 @@ export class VerificationPageHQComponent {
     });
 }
 
+exportToExcel(): void {
+  if (!this.filteredMCorRMCSArray || this.filteredMCorRMCSArray.length === 0) {
+    alert('No data to export!');
+    return;
+  }
+
+  const exportData = this.filteredMCorRMCSArray.map((item, index) => ({
+    'S. No': index + 1,
+    'Date' : this.selectedDate,
+    'MC or RMC': item.name || '',
+    'Total Stations': item.data.Total_Stations ?? '',
+    'Updated Stations': item.data.isUpdated ?? '',
+    'Not Updated Stations': item.data.isNotUpdated ?? '',
+    'Verified Stations': item.data.isVerified ?? '',
+    'Not Verified Stations': item.data.isNotVerified ?? ''
+  }));
+
+  console.log('Exporting Data:', exportData);
+
+  const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook: XLSX.WorkBook = {
+    Sheets: { 'Stations Data': worksheet },
+    SheetNames: ['Stations Data']
+  };
+
+  const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+  const data: Blob = new Blob([excelBuffer], {
+    type: 'application/octet-stream' // simpler type
+  });
+
+  FileSaver.saveAs(data, 'StationsData.xlsx');
+}
 
 }
 

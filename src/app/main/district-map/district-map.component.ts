@@ -30,6 +30,7 @@ export class DistrictMapComponent implements AfterViewInit {
   countryActual: any;
   countryNormal: any;
   countryDeparture: any;
+  isBuffering: any = false;
 
   // downloadMapData
   // () {
@@ -121,6 +122,7 @@ export class DistrictMapComponent implements AfterViewInit {
     dateString.split("-").reverse().join("-");
 
   async fetchBackend() {
+    this.isBuffering = true
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
     const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
@@ -137,6 +139,8 @@ export class DistrictMapComponent implements AfterViewInit {
       console.log("look date", this.StartDate, typeof this.StartDate);
       this.StartDate = this.convertToIndianDateFormat(this.StartDate);
       this.EndDate = this.convertToIndianDateFormat(this.EndDate);
+      this.isBuffering = false
+
     });
 
     this.countryService.fetchData(data).subscribe((res) => {
@@ -156,6 +160,7 @@ export class DistrictMapComponent implements AfterViewInit {
         this.countryNormal
       );
     });
+
   }
 
   filter = (node: HTMLElement) => {

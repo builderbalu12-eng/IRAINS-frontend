@@ -17,6 +17,14 @@
               "
               id="border-remove-district"
             >
+
+              <div id="loader" class="loader" *ngIf="isBuffering">
+                <div class="loading-message">
+                  <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+                  Loading...
+                </div>
+              </div>
+
               <div id="loader" class="loader" *ngIf="isLoading">
                 <div class="loading-message">
                   <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
