@@ -1,0 +1,125 @@
+/* #state-map, #district-map, #block-map {
+  background: #fff;
+  border: 1px solid #eee;
+}
+
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-container:focus-visible,
+.leaflet-pane:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.comparison-bar {
+  width: 100%;
+  background: #f4f7ff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 3px 6px -3px rgba(0,0,0,.06);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16px 0 7px 0;
+}
+
+.comparison-content {
+  
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.comparison-map-block {
+  flex: 1 1 0px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.comparison-map-block h4 {
+  text-align: center;
+  margin-bottom: 5px;
+  font-size: 1.08rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.comparison-map {
+  width: 100%;
+  height: 450px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+
+.leaflet-container:focus {
+  outline: none !important;
+}
+
+.leaflet-interactive:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-path:focus,
+.leaflet-container:focus-visible,
+.leaflet-interactive:focus-visible,
+.leaflet-path:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+.leaflet-interactive {
+  -webkit-tap-highlight-color: transparent;
+  outline: none !important;
+  box-shadow: none !important;
+} */
+
+
+
+/* 
+.comparison-map {
+  height: 450px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+
+.leaflet-container:focus,
+.leaflet-container:focus-visible,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+path.leaflet-interactive:focus {
+  outline: none !important;
+} */
+
+.comparison-map {
+  height: 450px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+path.leaflet-interactive:focus {
+  outline: none !important;
+}

@@ -1,0 +1,137 @@
+<!-- <div class="main-body" style="height: 100vh; display: flex; flex-direction: column;">
+  <div class="dashboard-container" style="flex-grow: 1; display: flex; gap: 10px; height: 100%;">
+    
+
+    <div class="left-column" style="flex: 0 0 70%; display: flex; flex-direction: column; gap: 10px; height: 100%;">
+      <app-map-nav-bar ></app-map-nav-bar>
+      <app-map-dashboardcontainer style="flex-grow: 1;"></app-map-dashboardcontainer>
+    </div>
+
+
+    <div class="right-column" style="flex: 0 0 30%; border-left: 1px solid #ddd; overflow-y: auto; height: 100%;">
+      <app-map-charts></app-map-charts>
+    </div>
+  </div>
+</div> -->
+
+
+<!-- <div class="main-body">
+  <div class="dashboard-container">
+    <div class="left-column">
+      <app-map-nav-bar (layerSelected)="onLayerSelected($event)"(toggleComparison)="onToggleComparison()"></app-map-nav-bar>
+      <app-comparison [showComparison]="showComparison" (closePopup)="onClosePopup()"></app-comparison>
+      <app-map-dashboardcontainer [selectedLayer]="selectedLayer"></app-map-dashboardcontainer>
+    </div>
+    <div class="right-column">
+      <app-map-charts></app-map-charts>
+    </div>
+  </div>
+</div>   -->
+
+<!-- 
+<div class="main-body">
+  <div class="dashboard-container">
+
+    
+    <div class="navbar-row">
+      <app-map-nav-bar 
+        (layerSelected)="onLayerSelected($event)" 
+        (toggleComparison)="onToggleComparison()">
+      </app-map-nav-bar>
+    </div>
+
+    
+    <div class="comparison-row" *ngIf="showComparison">
+      <app-comparison 
+        [showComparison]="showComparison" 
+        (closePopup)="onClosePopup()">
+      </app-comparison>
+    </div>
+
+    
+    <div class="content-row">
+      
+      <div class="map-column">
+        <app-map-dashboardcontainer [selectedLayer]="selectedLayer"></app-map-dashboardcontainer>
+      </div>
+
+      
+      <div class="charts-column">
+        <app-map-charts></app-map-charts>
+      </div>
+    </div>
+
+  </div>
+</div>  -->
+
+
+<!-- 
+<div class="main-body">
+  <div class="dashboard-container">
+
+  
+    <div class="navbar-row">
+      <app-map-nav-bar 
+        [showComparison]="showComparison"
+        (layerSelected)="onLayerSelected($event)" 
+        (toggleComparison)="onToggleComparison()">
+      </app-map-nav-bar>
+    </div>
+
+  
+    <div class="comparison-row" *ngIf="showComparison">
+      <app-comparison [showComparison]="showComparison" (closePopup)="onClosePopup()"></app-comparison>
+    </div>
+
+   
+    <div class="content-row">
+      <div class="map-column">
+        <app-map-dashboardcontainer [selectedLayer]="selectedLayer"></app-map-dashboardcontainer>
+      </div>
+      <div class="charts-column">
+        <app-map-charts></app-map-charts>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+
+
+<div class="main-body">
+  <div class="dashboard-container">
+
+  
+    <div class="navbar-row">
+      <app-map-nav-bar
+        [showComparison]="showComparison"
+        (layerSelected)="onLayerSelected($event)"
+        (toggleComparison)="onToggleComparison()">
+      </app-map-nav-bar>
+    </div>
+
+
+    <ng-container *ngIf="showComparison; else mainContent">
+      
+      <div class="comparison-row">
+        <app-comparison
+          [showComparison]="showComparison"
+          (closePopup)="onClosePopup()">
+        </app-comparison>
+      </div>
+    </ng-container>
+
+    <ng-template #mainContent>
+      <div class="content-row">
+       
+        <div class="map-column">
+          <app-map-dashboardcontainer [selectedLayer]="selectedLayer"></app-map-dashboardcontainer>
+        </div>
+       
+        <div class="charts-column">
+          <app-map-charts></app-map-charts>
+        </div>
+      </div>
+    </ng-template>
+
+  </div>
+</div> 

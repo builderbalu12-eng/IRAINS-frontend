@@ -1,0 +1,120 @@
+ /* .dashboard-container {
+  display: flex;
+  height: 100%;
+  gap: 10px; 
+}
+
+.left-column {
+  flex: 0 0 70%; 
+  display: flex;
+  flex-direction: column;
+  gap: 10px; 
+}
+
+.right-column {
+  flex: 0 0 30%; 
+}  */
+/* 
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+
+.navbar-row {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+
+.comparison-row {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+
+.content-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  overflow: hidden;
+}
+
+
+.map-column {
+  flex: 0 0 70%;   
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+
+.charts-column {
+  flex: 0 0 30%; 
+  display: flex;
+  flex-direction: column;
+}  */
+
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background: #f8fafc;
+}
+
+/* Full-width sticky navbar at top */
+.navbar-row {
+  flex: 0 0 auto;
+  width: 100%;
+  z-index: 100;
+  /* position: sticky; */
+  top: 0;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+/* Full-width comparison bar just below navbar */
+.comparison-row {
+  flex: 0 0 auto;
+  width: 100%;
+  background: #f4f7ff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 3px 6px -3px rgba(0,0,0,.06);
+  padding-bottom: 0.5rem;
+}
+
+/* Main panel: two columns */
+.content-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.map-column {
+  flex: 0 0 35%;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0 0.5rem 0.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.charts-column {
+  flex: 0 0 65%;
+  padding: 1rem 1rem 1rem 0;
+  background: #fff;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0.5rem 0.5rem 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+}

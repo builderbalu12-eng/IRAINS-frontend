@@ -1,0 +1,142 @@
+<!-- <nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container-fluid">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('country')">Country</a></li>
+        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('region')">Region</a></li>
+        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('subdivision')">Sub Division</a></li>
+        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('state')">State</a></li>
+        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('district')">District</a></li>
+        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('block')">Block</a></li>
+        <li class="nav-item"><a class="nav-link" (click)="onToggleComparison()">Compare</a></li>
+      </ul>
+    </div>
+  </div>
+</nav> 
+ -->
+
+
+
+
+<!-- 
+ <nav class="custom-navbar navbar navbar-expand-lg">
+  <div class="container-fluid justify-content-between">
+
+    
+    <ul class="navbar-nav flex-row">
+      <li *ngFor="let item of navItems" class="nav-item me-2">
+        <a class="nav-link nav-btn"
+           [ngClass]="item.active ? 'active' : ''"
+           (click)="onSelectLayer(item.id)">
+          {{ item.label }}
+        </a>
+      </li>
+    </ul>
+
+    
+    <button class="btn compare-btn"
+            [ngClass]="showComparison ? 'active' : ''"
+            (click)="onToggleComparison()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           class="me-1">
+        <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 
+                 0 0-2 2v6a2 2 0 0 0 2 2h2a2 
+                 2 0 0 0 2-2zm0 0V9a2 2 0 
+                 0 1 2-2h2a2 2 0 
+                 0 1 2 2v10m-6 0a2 2 0 0 0 
+                 2 2h2a2 2 0 0 0 2-2m0 
+                 0V5a2 2 0 0 1 
+                 2-2h2a2 2 0 0 1 2 2v14a2 
+                 2 0 0 1-2 2h-2a2 2 0 
+                 0 1-2-2z"></path>
+      </svg>
+      Compare
+    </button>
+
+  </div>
+</nav> -->
+
+
+<!-- 
+<nav class="custom-navbar navbar navbar-expand-lg">
+  <div class="container-fluid justify-content-between">
+
+   
+    <ul class="navbar-nav flex-row">
+      <li *ngFor="let item of navItems" class="nav-item me-2">
+        <a class="nav-link nav-btn"
+           [ngClass]="item.active ? 'active' : ''"
+           (click)="onSelectLayer(item.id)">
+          {{ item.label }}
+        </a>
+      </li>
+    </ul>
+
+    <button class="btn compare-btn"
+            [ngClass]="showComparison ? 'active' : ''"
+            (click)="onToggleComparison()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           class="me-1">
+        <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 
+                 0 0-2 2v6a2 2 0 0 0 2 2h2a2 
+                 2 0 0 0 2-2zm0 0V9a2 2 0 
+                 0 1 2-2h2a2 2 0 
+                 0 1 2 2v10m-6 0a2 2 0 0 0 
+                 2 2h2a2 2 0 0 0 2-2m0 
+                 0V5a2 2 0 0 1 
+                 2-2h2a2 2 0 0 1 2 2v14a2 
+                 2 0 0 1-2 2h-2a2 2 0 
+                 0 1-2-2z"></path>
+      </svg>
+      Compare
+    </button>
+
+  </div>
+</nav> -->
+
+
+
+
+<nav class="custom-navbar navbar navbar-expand-lg">
+  <div class="container-fluid justify-content-between">
+
+    <!-- Layer buttons -->
+    <ul class="navbar-nav flex-row">
+      <li *ngFor="let item of navItems" class="nav-item me-2">
+        <a class="nav-link nav-btn"
+           [ngClass]="item.active ? 'active' : ''"
+           (click)="onSelectLayer(item.id)">
+          {{ item.label }}
+        </a>
+      </li>
+    </ul>
+
+    <!-- Compare button -->
+    <button class="btn compare-btn"
+            [ngClass]="showComparison ? 'active' : ''"
+            (click)="onToggleComparisonClick()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+           fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round"
+           class="me-1">
+        <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 
+                 0 0-2 2v6a2 2 0 0 0 2 2h2a2 
+                 2 0 0 0 2-2zm0 0V9a2 2 0 
+                 0 1 2-2h2a2 2 0 
+                 0 1 2 2v10m-6 0a2 2 0 0 0 
+                 2 2h2a2 2 0 0 0 2-2m0 
+                 0V5a2 2 0 0 1 
+                 2-2h2a2 2 0 0 1 2 2v14a2 
+                 2 0 0 1-2 2h-2a2 2 0 
+                 0 1-2-2z"></path>
+      </svg>
+      Compare
+    </button>
+
+  </div>
+</nav>

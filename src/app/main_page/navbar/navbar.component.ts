@@ -41,18 +41,10 @@ export class NavbarComponent implements OnInit {
 }
   
 
-  // selectMode(mode: string) {
-  //   let data : any= {
-  //     selectedMode : mode
-  //   }
-  //   localStorage.setItem("selectedMode", JSON.stringify(data));
-
-  //   if(mode == 'Unified'){
-  //     this.router.navigate(['front-page/unifieddeparture']);
-  //   } else{ 
-  //     this.router.navigate(['all-maps']);
-  //   }
-  // }
+  NavigateToDashboad() {
+      this.selectedMapType = "Dashboard"
+      this.router.navigate(['irains-dashboard']);
+  }
 
   toggleNavbar() {
     this.isNavbarOpen = !this.isNavbarOpen;
@@ -78,6 +70,8 @@ export class NavbarComponent implements OnInit {
       this.selectedMapType = 'RainfallMaps'
     } else if (currentRoute.includes('/block-rainfall')) {
       this.selectedMapType = 'Block'
+    } else {
+      this.selectedMapType = 'Dashboard'
     }
 
     this.isLoading = true;

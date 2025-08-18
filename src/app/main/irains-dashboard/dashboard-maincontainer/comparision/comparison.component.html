@@ -1,0 +1,99 @@
+ <!-- <div *ngIf="showComparison" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; display: flex; justify-content: center; align-items: center;">
+  <div style="background: #fff; max-width: 1200px; width: 100%; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); padding: 24px; display: flex; gap: 16px;">
+   
+    <div style="flex: 1; min-width: 0; height: 600px;">
+      <h4 style="text-align: center;">State Map</h4>
+      <div id="state-map" style="height: 100%; width: 100%; border-radius: 8px;"></div>
+    </div>
+    
+    <div style="flex: 1; min-width: 0; height: 600px;">
+      <h4 style="text-align: center;">District Map {{selectedState ? '(' + selectedState + ')' : '(All)'}}</h4>
+      <div id="district-map" style="height: 100%; width: 100%; border-radius: 8px;"></div>
+    </div>
+  
+    <div style="flex: 1; min-width: 0; height: 600px;">
+      <h4 style="text-align: center;">Block Map {{selectedDistrict ? '(' + selectedDistrict + ')' : '(All)'}}</h4>
+      <div id="block-map" style="height: 100%; width: 100%; border-radius: 8px;"></div>
+    </div>
+  </div>
+</div>
+
+
+ -->
+
+
+
+ <!-- NO overlay, NO position: fixed! Just a styled horizontal container -->
+<!-- <div class="comparison-bar">
+  <div class="comparison-content">
+    <div class="comparison-map-block">
+      <h4>State Map</h4>
+      <div id="state-map" class="comparison-map"></div>
+    </div>
+    <div class="comparison-map-block">
+      <h4>District Map <span *ngIf="selectedState">({{selectedState}})</span><span *ngIf="!selectedState">(All)</span></h4>
+      <div id="district-map" class="comparison-map"></div>
+    </div>
+    <div class="comparison-map-block">
+      <h4>Block Map <span *ngIf="selectedDistrict">({{selectedDistrict}})</span><span *ngIf="!selectedDistrict">(All)</span></h4>
+      <div id="block-map" class="comparison-map"></div>
+    </div>
+  </div>
+</div> -->
+
+
+<div class="comparison-bar container-fluid py-3 bg-light border-bottom">
+
+  <div class="row g-3 align-items-center mb-3">
+
+
+    <div class="col-auto">
+      <label for="startDate" class="form-label mb-0 me-2">Start Date:</label>
+      <input type="date" class="form-control"
+             id="startDate"
+             [(ngModel)]="startDate"
+             [max]="maxDate" />
+    </div>
+
+
+    <div class="col-auto">
+      <label for="endDate" class="form-label mb-0 me-2">End Date:</label>
+      <input type="date" class="form-control"
+             id="endDate"
+             [(ngModel)]="endDate"
+             [max]="maxDate" />
+    </div>
+
+
+    <div class="col-auto d-flex align-items-center">
+      <span class="me-2 fw-bold">Actual</span>
+      <div class="form-check form-switch m-0">
+        <input class="form-check-input" type="checkbox" id="modeToggle"
+               [(ngModel)]="isActual" (change)="isActual = !isActual">
+      </div>
+      <span class="ms-2 fw-bold">Departure</span>
+    </div>
+  </div>
+
+
+  <div class="row g-3">
+    <div class="col-md-4">
+      <h5 class="text-center">State Map</h5>
+      <div id="state-map" class="comparison-map"></div>
+    </div>
+    <div class="col-md-4">
+      <h5 class="text-center">
+        District Map {{ selectedState ? '(' + selectedState.properties.state_name + ')' : '(All)' }}
+      </h5>
+      <div id="district-map" class="comparison-map"></div>
+    </div>
+    <div class="col-md-4">
+      <h5 class="text-center">
+        Block Map {{ selectedDistrict ? '(' + selectedDistrict.properties.district + ')' : '(All)' }}
+      </h5>
+      <div id="block-map" class="comparison-map"></div>
+    </div>
+  </div>
+</div>
+
+
