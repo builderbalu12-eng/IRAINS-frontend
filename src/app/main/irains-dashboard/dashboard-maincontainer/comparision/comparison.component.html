@@ -1,6 +1,6 @@
-<div class="comparison-bar container-fluid py-3 bg-light border-bottom">
+ <!-- <div class="main_container_box comparison-bar container-fluid py-3 bg-light border-bottom">
 
-  <div class="row g-3 align-items-center mb-3">
+  <div class="filter_box row g-3 align-items-center mb-3">
     <div class="col-auto">
       <label for="startDate" class="form-label mb-0 me-2">Start Date:</label>
       <input type="date" class="form-control"
@@ -26,7 +26,7 @@
       </div>
       <span class="ms-2 fw-bold">Departure</span>
     </div>
-    <!-- RESET BUTTON HERE -->
+    
     <div class="col-auto">
       <button class="btn btn-outline-primary" (click)="resetMapView()">
         Reset Map View
@@ -34,31 +34,147 @@
     </div>
   </div>
 
-  <div class="row g-3">
+  <div class=" map_box row g-3">
     <div class="col-md-4">
       <h5 class="text-center">State Map</h5>
-      <div id="state-map" class="comparison-map" style="height: 600px;"></div>
+      <div id="state-map" class="comparison-map" style="height: 500px;"></div>
     </div>
     <div class="col-md-4">
       <h5 class="text-center">
-        District Map {{
-          selectedState ? '(' + selectedState.properties.state_name + ')' : '(All)'
-        }}
+        District Map
+       
       </h5>
-      <div id="district-map" class="comparison-map" style="height: 600px;"></div>
+      <div id="district-map" class="comparison-map" style="height: 500px;"></div>
     </div>
     <div class="col-md-4">
       <h5 class="text-center">
-        Block Map {{
-          selectedDistrict ? '(' + selectedDistrict.properties.district + ')' : '(All)'
-        }}
+        Block Map
+        
       </h5>
-      <div id="block-map" class="comparison-map" style="height: 600px;"></div>
+      <div id="block-map" class="comparison-map" style="height: 500px;"></div>
     </div>
   </div>
-</div> 
+
+</div>  -->
+
+
+<!-- 
+<div class="main_container_box">
+  <div class="filter_box">
+    <div class="filter_box_inner">
+      <div class="filter-row d-flex align-items-center justify-content-center flex-wrap">
+        <div class="filter-item me-2 mb-2">
+          <label for="startDate" class="form-label mb-0 me-1">Start Date:</label>
+          <input type="date" class="form-control"
+                 id="startDate"
+                 [(ngModel)]="startDate"
+                 [max]="maxDate"
+                 (change)="onDateOrModeChange()" />
+        </div>
+        <div class="filter-item me-2 mb-2">
+          <label for="endDate" class="form-label mb-0 me-1">End Date:</label>
+          <input type="date" class="form-control"
+                 id="endDate"
+                 [(ngModel)]="endDate"
+                 [max]="maxDate"
+                 (change)="onDateOrModeChange()" />
+        </div>
+        <div class="filter-item d-flex align-items-center me-2 mb-2">
+          <span class="fw-bold me-1">Actual</span>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="modeToggle"
+                   [(ngModel)]="isActual"
+                   (change)="onDateOrModeChange()" />
+          </div>
+          <span class="fw-bold ms-1">Departure</span>
+        </div>
+        <div class="filter-item mb-2">
+          <button class="btn btn-outline-primary" (click)="resetMapView()">Reset Map View</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="map_box row g-3">
+    <div class="col-md-4">
+      <div class="map_card">
+        <h5 class="text-center">State Map</h5>
+        <div id="state-map" class="comparison-map"></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="map_card">
+        <h5 class="text-center">District Map</h5>
+        <div id="district-map" class="comparison-map"></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="map_card">
+        <h5 class="text-center">Block Map</h5>
+        <div id="block-map" class="comparison-map"></div>
+      </div>
+    </div>
+  </div>
+</div> -->
 
 
 
+<div class="main_container_box">
+  <div class="filter_box">
+    <div class="filter_box_inner d-flex justify-content-center align-items-center">
+      <div class="dates_toggle_group">
+        <div class="d-flex gap-2 flex-nowrap mb-2">
+          <div class="filter-item">
+            <label for="startDate" class="form-label mb-0 me-1">Start Date:</label>
+            <input type="date" class="form-control"
+                   id="startDate"
+                   [(ngModel)]="startDate"
+                   [max]="maxDate"
+                   (change)="onDateOrModeChange()" />
+          </div>
+          <div class="filter-item">
+            <label for="endDate" class="form-label mb-0 me-1">End Date:</label>
+            <input type="date" class="form-control"
+                   id="endDate"
+                   [(ngModel)]="endDate"
+                   [max]="maxDate"
+                   (change)="onDateOrModeChange()" />
+          </div>
+        </div>
+        <div class="filter-item toggle-row">
+          <span class="fw-bold me-1">Actual</span>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="modeToggle"
+                   [(ngModel)]="isActual"
+                   (change)="onDateOrModeChange()" />
+          </div>
+          <span class="fw-bold ms-1">Departure</span>
+        </div>
+      </div>
+      <div class="filter-item ms-4 mt-md-0 mt-2">
+        <button class="btn btn-outline-primary" (click)="resetMapView()">Reset Map View</button>
+      </div>
+    </div>
+  </div>
 
-
+  <div class="map_box row g-3">
+    <div class="col-md-4">
+      <div class="map_card">
+        <h5 class="text-center">State Map</h5>
+        <div id="state-map" class="comparison-map"></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="map_card">
+        <h5 class="text-center">District Map</h5>
+        <div id="district-map" class="comparison-map"></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="map_card">
+        <h5 class="text-center">Block Map</h5>
+        <div id="block-map" class="comparison-map"></div>
+      </div>
+    </div>
+  </div>
+</div>

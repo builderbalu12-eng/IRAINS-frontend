@@ -30,7 +30,7 @@ export class ComparisonComponent implements OnInit {
   startDate = '';
   endDate = '';
   maxDate = '';
-  isActual = true;
+  isActual = false;
 
   isGeojsonLoaded = false;
 
@@ -200,7 +200,7 @@ export class ComparisonComponent implements OnInit {
     const isSelected = this.selectedState && feature === this.selectedState;
     return {
       fillColor,
-      color: isSelected ? '#b91c1c' : '#333',
+      color: isSelected ? '#000000ff' : '#333',
       weight: isSelected ? 3 : 1,
       fillOpacity: 1
     };
