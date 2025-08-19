@@ -1,0 +1,80 @@
+/* .map-container {
+  padding: 10px;
+}
+
+#map {
+  border: 1px solid #ccc;
+} */
+
+
+.map-container {
+  position: relative;
+  /* min-height: 800px; */
+}
+
+#map {
+  height: 720px;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+}
+
+/* Floating Filter Overlay (expanded) */
+.map-filter-overlay {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  min-width: 260px;
+  background: rgba(255,255,255,0.97);
+  border-radius: 10px;
+  padding: 18px 14px 14px 14px;
+  z-index: 500;
+  box-shadow: 0 6px 20px 0 rgba(16,21,60,0.11);
+  animation: slide-down 0.23s ease;
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px) scale(0.95);}
+  to { opacity: 1; transform: translateY(0) scale(1);}
+}
+
+.filter-header {
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+.map-filter-form label {
+  font-size: 12px;
+  color: #5b6270;
+  margin-bottom: 2px;
+}
+.gap-2 > * { margin-right: 10px; }
+.gap-2 > *:last-child { margin-right: 0; }
+
+/* Floating collapsed FAB "Filter" button style (top right) */
+.filter-fab {
+  position: absolute;
+  top: 24px;
+  right: 22px;
+  background: #fff;
+  color: #3b82f6;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(56,123,241,0.13);
+  min-width: 84px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 6px 16px 6px 13px;
+  font-weight: 500;
+  font-size: 16px;
+  z-index: 501;
+  transition: box-shadow 0.18s, background 0.18s;
+  border: 1.5px solid #e1eaff;
+  gap: 8px;
+}
+.filter-fab:hover, .filter-fab:focus {
+  background: #f3f7ff;
+  box-shadow: 0 3px 18px 0 rgba(59,130,246,0.14);
+}

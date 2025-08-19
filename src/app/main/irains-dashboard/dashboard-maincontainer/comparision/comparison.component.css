@@ -1,0 +1,240 @@
+/* #state-map, #district-map, #block-map {
+  background: #fff;
+  border: 1px solid #eee;
+}
+
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-container:focus-visible,
+.leaflet-pane:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.comparison-bar {
+  width: 100%;
+  background: #f4f7ff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 3px 6px -3px rgba(0,0,0,.06);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16px 0 7px 0;
+}
+
+.comparison-content {
+  
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.comparison-map-block {
+  flex: 1 1 0px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.comparison-map-block h4 {
+  text-align: center;
+  margin-bottom: 5px;
+  font-size: 1.08rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.comparison-map {
+  width: 100%;
+  height: 450px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+
+.leaflet-container:focus {
+  outline: none !important;
+}
+
+.leaflet-interactive:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-path:focus,
+.leaflet-container:focus-visible,
+.leaflet-interactive:focus-visible,
+.leaflet-path:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+.leaflet-interactive {
+  -webkit-tap-highlight-color: transparent;
+  outline: none !important;
+  box-shadow: none !important;
+} */
+
+
+
+/* 
+.comparison-map {
+  height: 450px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+
+.leaflet-container:focus,
+.leaflet-container:focus-visible,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+path.leaflet-interactive:focus {
+  outline: none !important;
+} */
+/* 
+.comparison-map {
+  height: 450px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+path.leaflet-interactive:focus {
+  outline: none !important;
+} */
+
+
+.main_container_box {
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+.filter_box {
+  width: 100%;
+  display: flex;
+    max-width: 700px;
+  justify-content: center;
+  align-items: center;
+  background: #fff;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  margin: 10px auto;
+  padding: 18px 0;
+}
+
+.filter_box_inner {
+  width: 100%;
+  max-width: 700px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.dates_toggle_group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.dates_toggle_group > .d-flex {
+  width: 100%;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-row {
+  margin: 0px auto;
+  margin-top: 0px;
+  margin-bottom: 0;
+  gap: 8px;
+}
+
+.filter-item .form-label {
+  min-width: 75px;
+  font-weight: 500;
+  font-size: 14px;
+  margin-bottom: 0;
+  margin-right: 2px;
+}
+
+.filter-item input[type="date"] {
+  min-width: 140px;
+  font-size: 15px;
+}
+
+.map_box {
+  margin-bottom: 0;
+}
+
+.map_card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.06);
+  padding: 12px 12px 0 12px;
+  min-height: 550px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.comparison-map {
+  height: 550px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  margin-bottom: 10px;
+}
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+path.leaflet-interactive:focus {
+  outline: none !important;
+}
+
+/* Responsive tweaks if you need them */
+@media (max-width: 767px) {
+  .filter_box_inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dates_toggle_group {
+    width: 100%;
+    align-items: stretch;
+  }
+  .filter-item {
+    width: 100%;
+    margin-bottom: 7px;
+  }
+  .filter-item:last-child {
+    margin-bottom: 0;
+  }
+}

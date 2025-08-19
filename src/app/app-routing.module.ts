@@ -104,9 +104,10 @@ import { BlockRainfallMapDailyComponent } from './main/rainfallMapsNav/dailyMaps
 import { BlockActualRainfallMapIncAwsComponent } from './main/rainfall-actual-maps/Actual/block-actual-rainfall-map-inc-aws/block-actual-rainfall-map-inc-aws.component';
 import { BlockRainfallMainPageComponent } from './main/block-rainfall-main-page/block-rainfall-main-page.component';
 import { BlockrainfallMapDailyActualMainPageComponent } from './main/block-rainfall-main-page/block/blockrainfall-map-daily-actual-main-page/blockrainfall-map-daily-actual-main-page.component';
+import { DashboardComponent } from './main/irains-dashboard/dashboard/dashboard.component';
 
 export const routes: Routes = [
-  
+ { path: 'irains-dashboard', component: DashboardComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
  { path: 'daily-actual-state-map', component: StateRainfallMapDailyActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
  { path: 'district-daily-spatial', component: DistrictDailySpatialComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
  { path: 'weekly-daily-spatial', component: WeeklyDistrictSpatialComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },

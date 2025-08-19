@@ -1,0 +1,22 @@
+.charts-container {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.card {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  background-color: #f9f9f9;
+}
+
+.table {
+  width: 100%;
+}
+
+.table th, .table td {
+  padding: 5px;
+  text-align: left;
+}

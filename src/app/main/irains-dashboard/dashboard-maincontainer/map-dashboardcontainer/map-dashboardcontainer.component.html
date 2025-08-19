@@ -1,0 +1,61 @@
+<!-- <div class="map-container">
+  <div id="map" style="height: 800px; width: 100%;"></div>
+</div>  -->
+
+<div class="map-container" style="position:relative;">
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <!-- FILTER: Collapsed Button -->
+  <div
+    *ngIf="!isFilterOpen"
+    class="filter-fab shadow-sm"
+    (click)="openFilter()"
+    tabindex="0"
+    title="Show Filter"
+  >
+    <svg width="20" height="20" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4h12M4 8h12M4 12h6"></path>
+    </svg>
+    <span>Filter</span>
+  </div>
+
+  <!-- FILTER: Expanded Panel -->
+  <div *ngIf="isFilterOpen" class="map-filter-overlay shadow animate-slide-down">
+    <div class="filter-header d-flex justify-content-between align-items-center mb-2">
+      <span class="fw-bold text-primary">Filter</span>
+      <button type="button"
+        class="btn-close btn-close-sm"
+        aria-label="Close"
+        (click)="closeFilter()"
+      ></button>
+    </div>
+    <form (ngSubmit)="applyFilter()" class="map-filter-form">
+      <div class="d-flex gap-2 mb-2">
+        <div>
+          <label for="startDate" class="form-label form-label-sm">Start</label>
+          <input type="date" class="form-control form-control-sm"
+                 id="startDate"
+                 [(ngModel)]="startDate" name="startDate"
+                 [max]="maxDate" required />
+        </div>
+        <div>
+          <label for="endDate" class="form-label form-label-sm">End</label>
+          <input type="date" class="form-control form-control-sm"
+                 id="endDate"
+                 [(ngModel)]="endDate" name="endDate"
+                 [max]="maxDate" required />
+        </div>
+      </div>
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="me-2 small fw-bold">Actual</span>
+        <div class="form-check form-switch m-0">
+          <input class="form-check-input" type="checkbox" id="modeSwitch"
+                 [(ngModel)]="isActual" name="mode">
+        </div>
+        <span class="ms-2 small fw-bold">Departure</span>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm w-100">Apply Filter</button>
+    </form>
+  </div>
+</div>
