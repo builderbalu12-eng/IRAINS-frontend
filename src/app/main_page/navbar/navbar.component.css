@@ -86,13 +86,20 @@ nav ul {
 }
 
 /* submenu positioning*/
+/* **MODIFIED: submenu positioning with scrolling support** */
 .nav ul {
   position: absolute;
   white-space: nowrap;
   border-bottom: 5px solid #fffdd0;
   z-index: 1;
   left: -99999em;
+  max-height: 250px; /* ADD: Fixed maximum height */
+  overflow-y: auto; /* ADD: Enable vertical scrolling */
+  overflow-x: hidden; /* ADD: Hide horizontal scrolling */
+  scrollbar-width: thin; /* ADD: Firefox - thin scrollbar */
+  scrollbar-color: #888 #f1f1f1; /* ADD: Firefox - scrollbar colors */
 }
+
 .nav > li:hover > ul {
   left: auto;
   padding-top: 5px;

@@ -452,8 +452,10 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
               // Append second response to the first
               const aws = awsData?.data || [];
               const normal = normalData?.data || [];
+              console.log('API AWS data', aws)
           
               this.blockdatacum = [...aws, ...normal];
+              // this.blockdatacum = [...normal];
           
               console.log("Combined block data:", this.blockdatacum);
           
@@ -481,15 +483,21 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
               );
             });
           } else {
+            console.log('hi1')
             // Fetch both AWS and normal block data (even in non-unified mode)
             forkJoin({
               awsData: this.block.fetchDatablockaws(data),
               normalData: this.block.fetchData(data)
             }).subscribe(({ awsData, normalData }) => {
+              console.log('hi2')
+
               const aws = awsData?.data || [];
               const normal = normalData?.data || [];
+              console.log('API AWS data', aws)
           
               this.blockdatacum = [...aws, ...normal];
+              // this.blockdatacum = [...normal];
+
           
               console.log("Combined block data:", this.blockdatacum);
           
@@ -536,19 +544,10 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
         };
       
         findMatchingData(id: string, block_name:string): any | null {
-          console.log(id, block_name)
-          // const matchedData = this.blockdatacum?.find((data: any) => {
-          //   return data.block_name === block_name.toString();
-          // });
-          const excludedNames = ["Jaipur", "Beerpur", "Mohammadabad", "Shamshabad", "Basar", "Manchal", "Kandi",
-            "Padra", "Balapur", "Dharur", "Rajapur", "Khanapur", "Atmakur", "Maddur", "Dharmapuri", "Gudur", "Rajampet",
-            "Ananthagiri",
-          ];
-
+ 
           const matchedData = this.blockdatacum?.find((data: any) => {
             return (
-              data.block_name === block_name.toString() &&
-              !excludedNames.includes(data.block_name)
+              data.block_name === block_name.toString()            
             );
           });
 
@@ -1071,13 +1070,11 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
           this.http.get("assets/geojson/INDIA_BLOCK.json").subscribe((res: any) => {
               this.geoJsonData = res; // Store the full GeoJSON data
               // this.updateMap()
-              console.log('india', res)
               this.geoJsonLayer = L.geoJSON(res, {
                 style: (feature: any) => {
                   const block_name = feature.properties['block_Name']
                   const id2 = feature.properties["block_code"];
                   const matchedData = this.findMatchingData(id2, block_name);
-                  console.log('matched data', matchedData)
                   let rainfall: any;
                  
                   if (matchedData?.departure!=null) {
@@ -1094,7 +1091,6 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
                         matchedData.actual_rainfall
                       )
                     : "NA";
-                  console.log(dailyrainfall)
                 
                 const color = this.constants.getActualColorForRainfall(dailyrainfall);
     
@@ -1247,7 +1243,6 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
             console.log('selected ds', this.selectedDistrictData )
             if (this.selectedDistrictData?.length > 0) {
               const selectedDistricts = this.selectedDistrictData.map((d: any) => d.district_code);
-              console.log(selectedDistricts, props.district_c?.toString())
               if (!selectedDistricts.includes(props.district_c?.toString())) {
                 return false;
               }
@@ -1256,7 +1251,6 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
   
             if (this.selectedBlockData?.length > 0) {
               const selectedBlocks = this.selectedBlockData.map((b: any) => b.block_code);
-              console.log(selectedBlocks, props.block_code?.toString())
               if (!selectedBlocks.includes(props.block_code?.toString())) {
                 return false;
               }
@@ -1306,7 +1300,6 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
                         matchedData.actual_rainfall
                       )
                     : "NA";
-                  console.log(dailyrainfall)
                 
                 const color = this.constants.getActualColorForRainfall(dailyrainfall);
                 return {
@@ -1395,7 +1388,6 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
             return "#c0c0c0";
           }
           const numericId = Math.round(rainfall);
-          console.log("color", numericId);
           let cat = "";
           let count = 0;
       

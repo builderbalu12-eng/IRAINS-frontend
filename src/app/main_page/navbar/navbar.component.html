@@ -479,7 +479,7 @@
             <a class="main_nav" (click)="uploadPopUp()">INFO UPLOAD</a>
         </li>
 
-        <li class="main_nav">
+        <!-- <li class="main_nav">
             <a class="main_nav">QPF VERIFICATION REPORT</a>
 
             <ul>
@@ -586,8 +586,52 @@
             </li>
             <li *ngFor="let file of rainFallReports;"><a (click)="downloadFile(file.file_data)">{{file.file_name}}</a></li>
         </ul>
-    </li>
+    </li> -->
 
+
+
+    <!-- QPF VERIFICATION REPORT - Dynamic -->
+<li class="main_nav" *ngIf="hasDocuments('QPF VERIFICATION REPORT')">
+    <a class="main_nav">QPF VERIFICATION REPORT</a>
+    <ul>
+        <li *ngFor="let document of getDocumentsByType('QPF VERIFICATION REPORT')">
+            <a (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
+        </li>
+    </ul>
+</li>
+
+<!-- **SIMPLIFIED: DESIGN STORM ANALYSIS - Now simple like QPF** -->
+<li *ngIf="hasDocuments('DESIGN STORM ANALYSIS')">
+    <a class="main_nav">DESIGN STORM ANALYSIS</a>
+    <ul>
+        <li *ngFor="let document of getDocumentsByType('DESIGN STORM ANALYSIS')">
+            <a (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
+        </li>
+    </ul>
+</li>
+
+<!-- RAINFALL REPORTS - Dynamic -->
+<li *ngIf="hasDocuments('RAINFALL REPORTS')">
+    <a class="main_nav">RAINFALL REPORTS</a>
+    <ul>
+        <li *ngFor="let document of getDocumentsByType('RAINFALL REPORTS')">
+            <a (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
+        </li>
+    </ul>
+</li>
+
+<!-- Generic section for any other document types -->
+<li *ngFor="let docType of documentTypes" 
+    [hidden]="docType.document_type === 'QPF VERIFICATION REPORT' || 
+              docType.document_type === 'DESIGN STORM ANALYSIS' || 
+              docType.document_type === 'RAINFALL REPORTS'">
+    <a class="main_nav">{{ docType.document_type }}</a>
+    <ul>
+        <li *ngFor="let document of docType.documents">
+            <a (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
+        </li>
+    </ul>
+</li>
         
 
         <li *ngIf="hasAccess('data-entry')">

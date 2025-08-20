@@ -27,6 +27,9 @@ export class NavbarComponent implements OnInit {
   loggedInUserType: any;
   google: any;
 
+  documentTypes: any[] = [];
+
+
   hasAccess(route: any) {
     return this.routeDictionary[route]?.allowedUsers?.includes(this.loggedInUserType) || false;
   }
@@ -108,7 +111,9 @@ export class NavbarComponent implements OnInit {
     let loggedInUser: any = localStorage.getItem("isAuthorised");
     this.loggedInUser = JSON.parse(loggedInUser);
     this.loggedInUserType = this.loggedInUser.data[0].mcorhq
-    console.log('loggedInUserType, loggedInUser', this.loggedInUser, this.loggedInUserType)
+    console.log('loggedInUserType nav, loggedInUser', this.loggedInUser, this.loggedInUserType)
+    this.loadDocumentTypes();
+
   }
   private isTranslateInitialized = false;
 
@@ -369,5 +374,89 @@ export class NavbarComponent implements OnInit {
       console.error('Document ID is missing');
     }
   }
+
+
+
+
+
+
+  // **ADDED: Load document types from API**
+  loadDocumentTypes(): void {
+    console.log('hi')
+    this.pdfService.getDocumentTypes().subscribe({
+      next: (response: any[]) => {
+        this.documentTypes = response;
+        console.log('hi')
+
+        console.log('Document types loaded:', this.documentTypes);
+      },
+      error: (error: any) => {
+        console.error('Error loading document types:', error);
+      }
+    });
+  }
+
+  // **ADDED: Get documents by type**
+  getDocumentsByType(documentType: string): any[] {
+    const typeData = this.documentTypes.find(type => type.document_type === documentType);
+    return typeData ? typeData.documents : [];
+  }
+
+  // **ADDED: Check if document type exists and has documents**
+  hasDocuments(documentType: string): boolean {
+    const documents = this.getDocumentsByType(documentType);
+    return documents && documents.length > 0;
+  }
+
+  // **ADDED: Handle document click - use the ID from API**
+  onDocumentClick(documentId: number): void {
+    if (documentId) {
+      console.log('Fetching PDF for Document ID:', documentId);
+      this.pdfService.fetchPdf(documentId);
+    } else {
+      console.error('Document ID is missing');
+    }
+  }
+
+  // **ADDED: Group documents by subcategory for nested structure**
+  getGroupedDocuments(documentType: string): any {
+    const documents = this.getDocumentsByType(documentType);
+    
+    if (documentType === 'DESIGN STORM ANALYSIS') {
+      return this.groupDesignStormDocuments(documents);
+    }
+    
+    return { ungrouped: documents };
+  }
+
+  // **ADDED: Group Design Storm documents into ATLASES and REPORTS**
+  private groupDesignStormDocuments(documents: any[]): any {
+    const atlases: any = {
+      'KRISHNA BASIN PMP ATLAS': [],
+      'INDUS BASIN PMP ATLAS': []
+    };
+    const reports: any[] = [];
+
+    documents.forEach(doc => {
+      const name = doc.document_name.toLowerCase();
+      
+      if (name.includes('krishna') && name.includes('basin')) {
+        atlases['KRISHNA BASIN PMP ATLAS'].push(doc);
+      } else if (name.includes('indus') && name.includes('basin')) {
+        atlases['INDUS BASIN PMP ATLAS'].push(doc);
+      } else {
+        reports.push(doc);
+      }
+    });
+
+    return { atlases, reports };
+  }
+
+  
  
 }
+
+
+
+
+
