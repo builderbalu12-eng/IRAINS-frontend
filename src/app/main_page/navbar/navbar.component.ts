@@ -6,8 +6,6 @@ import { PdfUploadService } from 'src/app/services/pdfUploadService.ts/pdf-uploa
 import { Constants } from 'src/app/services/constants';
 import { routes } from 'src/app/app-routing.module';
 
-
-
 @Component({
   selector: 'app-navbar',
   templateUrl: './navbar.component.html',
@@ -21,6 +19,9 @@ export class NavbarComponent implements OnInit {
   loggedInUser: any;
   isLoading : boolean = false
   loading: boolean = false;
+  showDeleteConfirm: boolean = false;
+  documentToDelete: any = null;
+  isDeleting: boolean = false;
 
   // selectedMode: string = '';
   routeDictionary: any;
@@ -217,9 +218,6 @@ export class NavbarComponent implements OnInit {
   }
 
   goToWeeklyMap(name: string) {
-    
-
-
     localStorage.removeItem('dailyDate');
     this.weeklyMap();
     if (name == "District") {
@@ -453,6 +451,73 @@ export class NavbarComponent implements OnInit {
   }
 
   
+
+
+
+
+
+  canDelete(): boolean {
+    return this.loggedInUser?.data[0]?.mcorhq === 'hq';
+  }
+
+  confirmDelete(event: Event, document: any): void {
+    if (!this.canDelete()) {
+      alert('You do not have permission to delete documents.');
+      return;
+    }
+    
+    event.stopPropagation(); // Prevent dropdown from closing
+    event.preventDefault(); // Prevent default click behavior
+    
+    this.documentToDelete = document;
+    this.showDeleteConfirm = true;
+  }
+
+  cancelDelete(): void {
+    this.showDeleteConfirm = false;
+    this.documentToDelete = null;
+    this.isDeleting = false;
+  }
+
+  executeDelete(): void {
+    if (!this.canDelete()) {
+      alert('You do not have permission to delete documents.');
+      this.cancelDelete();
+      return;
+    }
+    
+    if (this.documentToDelete) {
+      this.isDeleting = true;
+      
+      this.pdfService.deletePdf(this.documentToDelete.id).subscribe({
+        next: (response) => {
+          if (response.success) {
+            console.log('PDF deleted successfully:', response);
+            
+            // Remove from local documentTypes array
+            this.removeDocumentFromLocalArray(this.documentToDelete.id);
+            
+            alert(`Document "${this.documentToDelete.document_name}" deleted successfully!`);
+            this.cancelDelete();
+          }
+        },
+        error: (error) => {
+          console.error('Error deleting PDF:', error);
+          alert('Error deleting document. Please try again.');
+          this.cancelDelete();
+        }
+      });
+    }
+  }
+
+  private removeDocumentFromLocalArray(documentId: number): void {
+    this.documentTypes.forEach(docType => {
+      const index = docType.documents.findIndex((doc: any) => doc.id === documentId);
+      if (index > -1) {
+        docType.documents.splice(index, 1);
+      }
+    });
+  }
  
 }
 

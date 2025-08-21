@@ -61,4 +61,11 @@ export class PdfUploadService {
     const url = `${this.baseUrl}/api/v1/getDocumentTypesAndNames`;
     return this.http.get<any>(url);
   }
+
+
+  // **ADD THIS METHOD ONLY to your existing PdfUploadService**
+  deletePdf(documentId: number): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/api/v1/deletePdf/${documentId}`);
+  }
+
 }

@@ -86,20 +86,13 @@ nav ul {
 }
 
 /* submenu positioning*/
-/* **MODIFIED: submenu positioning with scrolling support** */
 .nav ul {
   position: absolute;
   white-space: nowrap;
   border-bottom: 5px solid #fffdd0;
   z-index: 1;
   left: -99999em;
-  max-height: 250px; /* ADD: Fixed maximum height */
-  overflow-y: auto; /* ADD: Enable vertical scrolling */
-  overflow-x: hidden; /* ADD: Hide horizontal scrolling */
-  scrollbar-width: thin; /* ADD: Firefox - thin scrollbar */
-  scrollbar-color: #888 #f1f1f1; /* ADD: Firefox - scrollbar colors */
 }
-
 .nav > li:hover > ul {
   left: auto;
   padding-top: 5px;
@@ -553,4 +546,198 @@ nav ul {
   padding: 4px 8px;
   border: 1px solid #ccc;
   font-family: Arial, sans-serif;
+}
+
+
+
+
+
+
+/* Delete functionality styling - REMOVE THIS BLOCK */
+.dropdown-item-with-delete {
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+.dropdown-item-with-delete .document-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  width: 100%;
+  min-height: 36px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.dropdown-item-with-delete:last-child .document-item {
+  border-bottom: none;
+}
+.dropdown-item-with-delete .document-link {
+  flex: 1;
+  padding: 8px 15px;
+  margin: 0;
+  display: block;
+  text-decoration: none;
+  cursor: pointer;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: all 0.2s ease;
+}
+.dropdown-item-with-delete .document-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #eade07;
+  padding-left: 18px;
+}
+.dropdown-item-with-delete .delete-btn {
+  background: transparent;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  padding: 6px;
+  font-size: 11px;
+  opacity: 0;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+}
+.dropdown-item-with-delete:hover .delete-btn {
+  opacity: 1;
+}
+.dropdown-item-with-delete .delete-btn:hover {
+  background-color: rgba(255, 107, 107, 0.2);
+  color: #ff4757;
+  transform: scale(1.1);
+}
+.dropdown-item-with-delete .delete-btn:active {
+  transform: scale(0.9);
+}
+/* Delete confirmation modal styling - REMOVE THIS BLOCK */
+.delete-confirmation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.delete-confirmation-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  max-width: 380px;
+  width: 90%;
+  overflow: hidden;
+  animation: modalFadeIn 0.2s ease-out;
+}
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+.modal-header h3 {
+  margin: 0;
+  color: #495057;
+  font-size: 18px;
+  font-weight: 600;
+}
+.modal-body {
+  padding: 16px 20px;
+  text-align: center;
+}
+.modal-body p {
+  margin-bottom: 10px;
+  color: #6c757d;
+}
+.document-name {
+  font-weight: 600;
+  color: #495057 !important;
+  font-style: italic;
+  word-break: break-word;
+}
+.warning-text {
+  color: #dc3545 !important;
+  font-weight: 500;
+  font-size: 14px;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+.btn-cancel, .btn-delete {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+.btn-cancel {
+  background-color: #6c757d;
+  color: white;
+}
+.btn-cancel:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+.btn-delete {
+  background-color: #dc3545;
+  color: white;
+}
+.btn-delete:hover:not(:disabled) {
+  background-color: #c82333;
+}
+.btn-cancel:disabled, .btn-delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.close-btn:hover:not(:disabled) {
+  color: #495057;
+}
+.close-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* Ensure proper behavior for all dropdown types */
+.nav ul li.dropdown-item-with-delete:hover {
+  background-color: green; 
+  z-index: -100;
 }

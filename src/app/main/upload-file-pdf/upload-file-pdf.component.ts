@@ -53,7 +53,7 @@ export class UploadFilePdfComponent {
             },
             error: (error) => {
               this.loading = false;  // Stop loading spinner
-              this.uploadError = 'Upload failed. Please try again.';  // Show error message
+              this.uploadError = error.error?.error || 'File upload failed. Please try again.';
               console.error('Upload failed', error);
             }
           });
