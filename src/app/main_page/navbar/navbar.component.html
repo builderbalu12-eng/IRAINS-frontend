@@ -5,7 +5,7 @@
     <span class="toolbar-title">iRAINS PRODUCTS</span>
   
     <div class="toolbar-center">
-      <!-- <button mat-button (click)="NavigateToDashboad()" class="mode-button" [ngClass]="{'active': selectedMapType === 'Dashboard'}">Dashboard</button> -->
+      <button mat-button (click)="NavigateToDashboad()" class="mode-button" [ngClass]="{'active': selectedMapType === 'Dashboard'}">Dashboard</button>
       <button mat-button (click)="selectBlockOrRainfallMaps('RainfallMaps')" class="mode-button" [ngClass]="{'active': selectedMapType === 'RainfallMaps'}">DRMS</button>
       <button mat-button (click)="selectBlockOrRainfallMaps('Block')" class="mode-button" [ngClass]="{'active': selectedMapType === 'Block'}">BRMS</button>
     </div>

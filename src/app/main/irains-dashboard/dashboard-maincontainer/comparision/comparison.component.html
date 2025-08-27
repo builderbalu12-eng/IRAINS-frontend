@@ -1,180 +1,201 @@
- <!-- <div class="main_container_box comparison-bar container-fluid py-3 bg-light border-bottom">
 
-  <div class="filter_box row g-3 align-items-center mb-3">
-    <div class="col-auto">
-      <label for="startDate" class="form-label mb-0 me-2">Start Date:</label>
-      <input type="date" class="form-control"
-             id="startDate"
-             [(ngModel)]="startDate"
-             [max]="maxDate"
-             (change)="onDateOrModeChange()" />
-    </div>
-    <div class="col-auto">
-      <label for="endDate" class="form-label mb-0 me-2">End Date:</label>
-      <input type="date" class="form-control"
-             id="endDate"
-             [(ngModel)]="endDate"
-             [max]="maxDate"
-             (change)="onDateOrModeChange()" />
-    </div>
-    <div class="col-auto d-flex align-items-center">
-      <span class="me-2 fw-bold">Actual</span>
-      <div class="form-check form-switch m-0">
-        <input class="form-check-input" type="checkbox" id="modeToggle"
-               [(ngModel)]="isActual"
-               (change)="onDateOrModeChange()" />
-      </div>
-      <span class="ms-2 fw-bold">Departure</span>
-    </div>
-    
-    <div class="col-auto">
-      <button class="btn btn-outline-primary" (click)="resetMapView()">
-        Reset Map View
-      </button>
-    </div>
+<div>
+<div id="loader" class="loader" *ngIf="isBuffering">
+  <div class="loading-message">
+    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+    Loading...
   </div>
+</div>
+<div class="main_container_box" style="padding: 10px 5px 5px 5px ; background-color: rgb(237, 237, 237);">
 
-  <div class=" map_box row g-3">
+  
+
+  <div class="map_box row g-3">
+     <div class="datebox">
+    {{ dateRangeLabel }}
+  </div>
     <div class="col-md-4">
-      <h5 class="text-center">State Map</h5>
-      <div id="state-map" class="comparison-map" style="height: 500px;"></div>
-    </div>
-    <div class="col-md-4">
-      <h5 class="text-center">
-        District Map
-       
-      </h5>
-      <div id="district-map" class="comparison-map" style="height: 500px;"></div>
-    </div>
-    <div class="col-md-4">
-      <h5 class="text-center">
-        Block Map
+      <div class="map_card">
         
-      </h5>
-      <div id="block-map" class="comparison-map" style="height: 500px;"></div>
+        <div id="state-map" class="comparison-map">
+          <h6 class="text-center mapheadings">State Map</h6>
+        </div>
+        <div class="summary-table mt-1">
+          <table class="table table-sm table-bordered text-center">
+            <thead class="table-light">
+              <tr>
+                <th></th>
+                <th>Actual</th>
+                <th>Normal</th>
+                <th>Departure</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Highest</td>
+                <td>
+                  {{ stateSummary.highest.daily.value !== null ? stateSummary.highest.daily.value : 'NA' }}
+                  <br/>
+                  <div style="font-size: 10px; margin-top: -3px;">
+                    {{ stateSummary.highest.daily.name || '-' }}
+                  </div>
+                </td>
+                <td>
+                  {{ stateSummary.highest.normal.value !== null ? stateSummary.highest.normal.value : 'NA' }}
+                  <br />
+                  <div style="font-size: 10px; margin-top: -3px;">
+                    {{ stateSummary.highest.normal.name || '-' }}
+                  </div>
+                </td>
+                <td>
+                  {{ stateSummary.highest.departure.value !== null ? stateSummary.highest.departure.value : 'NA' }}
+                  <br />
+                  <div style="font-size: 10px; margin-top: -3px;">
+                    {{ stateSummary.highest.departure.name || '-' }}
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>Lowest</td>
+                <td>
+                  {{ stateSummary.lowest.daily.value !== null ? stateSummary.lowest.daily.value : 'NA' }}
+                  <br />
+                  <div style="font-size: 10px; margin-top: -3px;">
+                    {{ stateSummary.lowest.daily.name || '-' }}
+                  </div>
+                </td>
+                <td>
+                  {{ stateSummary.lowest.normal.value !== null ? stateSummary.lowest.normal.value : 'NA' }}
+                  <br />
+                  <div style="font-size: 10px; margin-top: -3px;">
+                    {{ stateSummary.lowest.normal.name || '-' }}
+                  </div>
+                </td>
+                <td>
+                  {{ stateSummary.lowest.departure.value !== null ? stateSummary.lowest.departure.value : 'NA' }}
+                  <br />
+                  <div style="font-size: 10px; margin-top: -3px;">
+                    {{ stateSummary.lowest.departure.name || '-' }}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="map_card">
+        <div id="district-map" class="comparison-map">
+          <h6 class="text-center mapheadings">
+          <span *ngIf="selectedState">{{ toCamelCase(selectedState.properties.state_name) }}</span>
+          District Map
+        </h6>
+        </div>
+        <div class="summary-table mt-1">
+          <table class="table table-sm table-bordered text-center">
+            <thead class="table-light">
+              <tr>
+                <th></th>
+                <th>Actual</th>
+                <th>Normal</th>
+                <th>Departure</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Highest</td>
+                <td>
+                  {{ districtSummary.highest.daily.value !== null ? districtSummary.highest.daily.value : 'NA' }}
+                  <br />
+                  <div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.daily.name || '-' }}</div>
+                </td>
+                <td>
+                  {{ districtSummary.highest.normal.value !== null ? districtSummary.highest.normal.value : 'NA' }}
+                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.normal.name || '-' }}</div>
+                </td>
+                <td>
+                  {{ districtSummary.highest.departure.value !== null ? districtSummary.highest.departure.value : 'NA' }}
+                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.departure.name || '-' }}</div>
+                </td>
+              </tr>
+              <tr>
+                <td>Lowest</td>
+                <td>
+                  {{ districtSummary.lowest.daily.value !== null ? districtSummary.lowest.daily.value : 'NA' }}
+                  <br /><div style="font-size: 10px;">{{ districtSummary.lowest.daily.name || '-' }}</div>
+                </td>
+                <td>
+                  {{ districtSummary.lowest.normal.value !== null ? districtSummary.lowest.normal.value : 'NA' }}
+                  <br /><div style="font-size: 10px;">{{ districtSummary.lowest.normal.name || '-' }}</div>
+                </td>
+                <td>
+                  {{ districtSummary.lowest.departure.value !== null ? districtSummary.lowest.departure.value : 'NA' }}
+                  <br /><div style="font-size: 10px;">{{ districtSummary.lowest.departure.name || '-' }}</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="map_card">
+        <div id="block-map" class="comparison-map">
+          <h6 class="text-center mapheadings">
+          <span *ngIf="selectedDistrict">{{ toCamelCase(selectedDistrict.properties.district) }}</span>
+          <span *ngIf="!selectedDistrict && selectedState">{{ toCamelCase(selectedState.properties.state_name) }}</span>
+          Block Map
+        </h6>
+        </div>
+        <div class="summary-table mt-1">
+          <table class="table table-sm table-bordered text-center">
+            <thead class="table-light">
+              <tr>
+                <th></th>
+                <th>Actual</th>
+                <th>Normal</th>
+                <th>Departure</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Highest</td>
+                <td>
+                  {{ blockSummary.highest.daily.value !== null ? blockSummary.highest.daily.value : 'NA' }}
+                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.daily.name || '-' }}</div>
+                </td>
+                <td>
+                  {{ blockSummary.highest.normal.value !== null ? blockSummary.highest.normal.value : 'NA' }}
+                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.normal.name || '-' }}</div>
+                </td>
+                <td>
+                  {{ blockSummary.highest.departure.value !== null ? blockSummary.highest.departure.value : 'NA' }}
+                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.departure.name || '-' }}</div>
+                </td>
+              </tr>
+              <tr>
+                <td>Lowest</td>
+                <td>
+                  {{ blockSummary.lowest.daily.value !== null ? blockSummary.lowest.daily.value : 'NA' }}
+                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.daily.name || '-' }}</div>
+                </td>
+                <td>
+                  {{ blockSummary.lowest.normal.value !== null ? blockSummary.lowest.normal.value : 'NA' }}
+                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.normal.name || '-' }}</div>
+                </td>
+                <td>
+                  {{ blockSummary.lowest.departure.value !== null ? blockSummary.lowest.departure.value : 'NA' }}
+                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.departure.name || '-' }}</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
-
-</div>  -->
-
-
-<!-- 
-<div class="main_container_box">
-  <div class="filter_box">
-    <div class="filter_box_inner">
-      <div class="filter-row d-flex align-items-center justify-content-center flex-wrap">
-        <div class="filter-item me-2 mb-2">
-          <label for="startDate" class="form-label mb-0 me-1">Start Date:</label>
-          <input type="date" class="form-control"
-                 id="startDate"
-                 [(ngModel)]="startDate"
-                 [max]="maxDate"
-                 (change)="onDateOrModeChange()" />
-        </div>
-        <div class="filter-item me-2 mb-2">
-          <label for="endDate" class="form-label mb-0 me-1">End Date:</label>
-          <input type="date" class="form-control"
-                 id="endDate"
-                 [(ngModel)]="endDate"
-                 [max]="maxDate"
-                 (change)="onDateOrModeChange()" />
-        </div>
-        <div class="filter-item d-flex align-items-center me-2 mb-2">
-          <span class="fw-bold me-1">Actual</span>
-          <div class="form-check form-switch m-0">
-            <input class="form-check-input" type="checkbox" id="modeToggle"
-                   [(ngModel)]="isActual"
-                   (change)="onDateOrModeChange()" />
-          </div>
-          <span class="fw-bold ms-1">Departure</span>
-        </div>
-        <div class="filter-item mb-2">
-          <button class="btn btn-outline-primary" (click)="resetMapView()">Reset Map View</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="map_box row g-3">
-    <div class="col-md-4">
-      <div class="map_card">
-        <h5 class="text-center">State Map</h5>
-        <div id="state-map" class="comparison-map"></div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="map_card">
-        <h5 class="text-center">District Map</h5>
-        <div id="district-map" class="comparison-map"></div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="map_card">
-        <h5 class="text-center">Block Map</h5>
-        <div id="block-map" class="comparison-map"></div>
-      </div>
-    </div>
-  </div>
-</div> -->
-
-
-
-<div class="main_container_box">
-  <div class="filter_box">
-    <div class="filter_box_inner d-flex justify-content-center align-items-center">
-      <div class="dates_toggle_group">
-        <div class="d-flex gap-2 flex-nowrap mb-2">
-          <div class="filter-item">
-            <label for="startDate" class="form-label mb-0 me-1">Start Date:</label>
-            <input type="date" class="form-control"
-                   id="startDate"
-                   [(ngModel)]="startDate"
-                   [max]="maxDate"
-                   (change)="onDateOrModeChange()" />
-          </div>
-          <div class="filter-item">
-            <label for="endDate" class="form-label mb-0 me-1">End Date:</label>
-            <input type="date" class="form-control"
-                   id="endDate"
-                   [(ngModel)]="endDate"
-                   [max]="maxDate"
-                   (change)="onDateOrModeChange()" />
-          </div>
-        </div>
-        <div class="filter-item toggle-row">
-          <span class="fw-bold me-1">Actual</span>
-          <div class="form-check form-switch m-0">
-            <input class="form-check-input" type="checkbox" id="modeToggle"
-                   [(ngModel)]="isActual"
-                   (change)="onDateOrModeChange()" />
-          </div>
-          <span class="fw-bold ms-1">Departure</span>
-        </div>
-      </div>
-      <div class="filter-item ms-4 mt-md-0 mt-2">
-        <button class="btn btn-outline-primary" (click)="resetMapView()">Reset Map View</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="map_box row g-3">
-    <div class="col-md-4">
-      <div class="map_card">
-        <h5 class="text-center">State Map</h5>
-        <div id="state-map" class="comparison-map"></div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="map_card">
-        <h5 class="text-center">District Map</h5>
-        <div id="district-map" class="comparison-map"></div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="map_card">
-        <h5 class="text-center">Block Map</h5>
-        <div id="block-map" class="comparison-map"></div>
-      </div>
-    </div>
-  </div>
+</div>
 </div>

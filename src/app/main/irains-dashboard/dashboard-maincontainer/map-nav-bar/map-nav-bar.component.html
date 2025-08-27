@@ -1,129 +1,58 @@
-<!-- <nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <div class="container-fluid">
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav">
-        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('country')">Country</a></li>
-        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('region')">Region</a></li>
-        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('subdivision')">Sub Division</a></li>
-        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('state')">State</a></li>
-        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('district')">District</a></li>
-        <li class="nav-item"><a class="nav-link" (click)="onSelectLayer('block')">Block</a></li>
-        <li class="nav-item"><a class="nav-link" (click)="onToggleComparison()">Compare</a></li>
-      </ul>
+
+<nav class="custom-navbar navbar navbar-expand-lg">
+  <div class="container-fluid justify-content-between align-items-center d-flex">
+
+    <!-- Show nav items only if compare inactive -->
+    <ul *ngIf="!showComparison" class="navbar-nav flex-row">
+      <li *ngFor="let item of navItems" class="nav-item me-2">
+        <a class="nav-link nav-btn" [ngClass]="item.active ? 'active' : ''" (click)="onSelectLayer(item.id)">
+          {{ item.label }}
+        </a>
+      </li>
+    </ul>
+
+
+
+    <div *ngIf="showComparison" class="d-flex align-items-center filter_box_container">
+      <div class="d-flex gap-3 flex-nowrap align-items-center">
+
+        <!-- Start Date Field (inline) -->
+        <div class="filter-item d-flex align-items-center gap-2">
+          <label for="startDate" class="form-label mb-0 me-0">Start Date:</label>
+          <input type="date" class="form-control" id="startDate" [max]="maxDate" [(ngModel)]="startDate"
+            (change)="onFilterChange()" />
+        </div>
+
+        <!-- End Date Field (inline) -->
+        <div class="filter-item d-flex align-items-center gap-2">
+          <label for="endDate" class="form-label mb-0 me-0">End Date:</label>
+          <input type="date" class="form-control" id="endDate" [max]="maxDate" [(ngModel)]="endDate"
+            (change)="onFilterChange()" />
+        </div>
+
+        <!-- Departure/Actual Toggle -->
+        <div class="filter-item toggle-row d-flex align-items-center gap-2 fw-bold">
+          Departure
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="modeToggle" [(ngModel)]="isActual"
+              (change)="onFilterChange()" />
+          </div>
+          Actual
+        </div>
+
+        <!-- Reset Button -->
+        <div class="filter-item ms-3">
+          <button class="btn btn-outline-primary" (click)="onResetMapView()">Reset Map View</button>
+        </div>
+      </div>
     </div>
-  </div>
-</nav> 
- -->
 
 
 
-
-<!-- 
- <nav class="custom-navbar navbar navbar-expand-lg">
-  <div class="container-fluid justify-content-between">
-
-    
-    <ul class="navbar-nav flex-row">
-      <li *ngFor="let item of navItems" class="nav-item me-2">
-        <a class="nav-link nav-btn"
-           [ngClass]="item.active ? 'active' : ''"
-           (click)="onSelectLayer(item.id)">
-          {{ item.label }}
-        </a>
-      </li>
-    </ul>
-
-    
-    <button class="btn compare-btn"
-            [ngClass]="showComparison ? 'active' : ''"
-            (click)="onToggleComparison()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-           class="me-1">
-        <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 
-                 0 0-2 2v6a2 2 0 0 0 2 2h2a2 
-                 2 0 0 0 2-2zm0 0V9a2 2 0 
-                 0 1 2-2h2a2 2 0 
-                 0 1 2 2v10m-6 0a2 2 0 0 0 
-                 2 2h2a2 2 0 0 0 2-2m0 
-                 0V5a2 2 0 0 1 
-                 2-2h2a2 2 0 0 1 2 2v14a2 
-                 2 0 0 1-2 2h-2a2 2 0 
-                 0 1-2-2z"></path>
-      </svg>
-      Compare
-    </button>
-
-  </div>
-</nav> -->
-
-
-<!-- 
-<nav class="custom-navbar navbar navbar-expand-lg">
-  <div class="container-fluid justify-content-between">
-
-   
-    <ul class="navbar-nav flex-row">
-      <li *ngFor="let item of navItems" class="nav-item me-2">
-        <a class="nav-link nav-btn"
-           [ngClass]="item.active ? 'active' : ''"
-           (click)="onSelectLayer(item.id)">
-          {{ item.label }}
-        </a>
-      </li>
-    </ul>
-
-    <button class="btn compare-btn"
-            [ngClass]="showComparison ? 'active' : ''"
-            (click)="onToggleComparison()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-           class="me-1">
-        <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 
-                 0 0-2 2v6a2 2 0 0 0 2 2h2a2 
-                 2 0 0 0 2-2zm0 0V9a2 2 0 
-                 0 1 2-2h2a2 2 0 
-                 0 1 2 2v10m-6 0a2 2 0 0 0 
-                 2 2h2a2 2 0 0 0 2-2m0 
-                 0V5a2 2 0 0 1 
-                 2-2h2a2 2 0 0 1 2 2v14a2 
-                 2 0 0 1-2 2h-2a2 2 0 
-                 0 1-2-2z"></path>
-      </svg>
-      Compare
-    </button>
-
-  </div>
-</nav> -->
-
-
-
-
-<nav class="custom-navbar navbar navbar-expand-lg">
-  <div class="container-fluid justify-content-between">
-
-    <!-- Layer buttons -->
-    <ul class="navbar-nav flex-row">
-      <li *ngFor="let item of navItems" class="nav-item me-2">
-        <a class="nav-link nav-btn"
-           [ngClass]="item.active ? 'active' : ''"
-           (click)="onSelectLayer(item.id)">
-          {{ item.label }}
-        </a>
-      </li>
-    </ul>
-
-    <!-- Compare button -->
-    <button class="btn compare-btn"
-            [ngClass]="showComparison ? 'active' : ''"
-            (click)="onToggleComparisonClick()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-           fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round"
-           class="me-1">
+    <!-- Compare toggle button, always visible -->
+    <button class="btn compare-btn" [ngClass]="showComparison ? 'active' : ''" (click)="onToggleComparisonClick()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="me-1">
         <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 
                  0 0-2 2v6a2 2 0 0 0 2 2h2a2 
                  2 0 0 0 2-2zm0 0V9a2 2 0 
