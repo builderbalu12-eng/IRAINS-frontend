@@ -1,4 +1,4 @@
-
+<!-- 
 <div>
 <div id="loader" class="loader" *ngIf="isBuffering">
   <div class="loading-message">
@@ -199,4 +199,432 @@
     </div>
   </div>
 </div>
+</div> -->
+
+
+<!-- 
+<div>
+  <div id="loader" class="loader" *ngIf="isBuffering">
+    <div class="loading-message">
+      <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+      Loading...
+    </div>
+  </div>
+  <div class="main_container_box" style="padding: 10px 5px 5px 5px ; background-color: rgb(237, 237, 237);">
+    <div class="map_box row g-3">
+      <div class="datebox">
+        {{ dateRangeLabel }}
+      </div>
+
+      <div class="col-md-4">
+        <div class="map_card">
+          <div id="state-map" class="comparison-map">
+            <h6 class="text-center mapheadings">State Map</h6>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('state-map')" title="Toggle full screen">
+              <i class="fa fa-expand" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="summary-table mt-1">
+           
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th>Normal</th>
+                  <th>Departure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Highest</td>
+                  <td>
+                    {{ stateSummary.highest.daily.value !== null ? stateSummary.highest.daily.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ stateSummary.highest.daily.name || '-' }}
+                    </div>
+                  </td>
+                  <td>
+                    {{ stateSummary.highest.normal.value !== null ? stateSummary.highest.normal.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ stateSummary.highest.normal.name || '-' }}
+                    </div>
+                  </td>
+                  <td>
+                    {{ stateSummary.highest.departure.value !== null ? stateSummary.highest.departure.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ stateSummary.highest.departure.name || '-' }}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lowest</td>
+                  <td>
+                    {{ stateSummary.lowest.daily.value !== null ? stateSummary.lowest.daily.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ stateSummary.lowest.daily.name || '-' }}
+                    </div>
+                  </td>
+                  <td>
+                    {{ stateSummary.lowest.normal.value !== null ? stateSummary.lowest.normal.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ stateSummary.lowest.normal.name || '-' }}
+                    </div>
+                  </td>
+                  <td>
+                    {{ stateSummary.lowest.departure.value !== null ? stateSummary.lowest.departure.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ stateSummary.lowest.departure.name || '-' }}
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="map_card">
+          <div id="district-map" class="comparison-map">
+            <h6 class="text-center mapheadings">
+              <span *ngIf="selectedState">{{ toCamelCase(selectedState.properties.state_name) }}</span> District Map
+            </h6>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('district-map')" title="Toggle full screen">
+              <i class="fa fa-expand" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="summary-table mt-1">
+            
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th>Normal</th>
+                  <th>Departure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Highest</td>
+                  <td>
+                    {{ districtSummary.highest.daily.value !== null ? districtSummary.highest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ districtSummary.highest.normal.value !== null ? districtSummary.highest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ districtSummary.highest.departure.value !== null ? districtSummary.highest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lowest</td>
+                  <td>
+                    {{ districtSummary.lowest.daily.value !== null ? districtSummary.lowest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ districtSummary.lowest.normal.value !== null ? districtSummary.lowest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ districtSummary.lowest.departure.value !== null ? districtSummary.lowest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="map_card">
+          <div id="block-map" class="comparison-map">
+            <h6 class="text-center mapheadings">
+              <span *ngIf="selectedDistrict">{{ toCamelCase(selectedDistrict.properties.district) }}</span>
+              <span *ngIf="!selectedDistrict && selectedState">{{ toCamelCase(selectedState.properties.state_name) }}</span>
+              Block Map
+            </h6>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('block-map')" title="Toggle full screen">
+              <i class="fa fa-expand" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="summary-table mt-1">
+            
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th>Normal</th>
+                  <th>Departure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Highest</td>
+                  <td>
+                    {{ blockSummary.highest.daily.value !== null ? blockSummary.highest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ blockSummary.highest.normal.value !== null ? blockSummary.highest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ blockSummary.highest.departure.value !== null ? blockSummary.highest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lowest</td>
+                  <td>
+                    {{ blockSummary.lowest.daily.value !== null ? blockSummary.lowest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ blockSummary.lowest.normal.value !== null ? blockSummary.lowest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ blockSummary.lowest.departure.value !== null ? blockSummary.lowest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+
+
+
+
+
+
+<div>
+  <div id="loader" class="loader" *ngIf="isBuffering">
+    <div class="loading-message">
+      <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+      Loading...
+    </div>
+  </div>
+  <div class="main_container_box" style="padding: 10px 5px 5px 5px ; background-color: rgb(237, 237, 237);">
+    <div class="map_box row g-3">
+      <div class="datebox">
+        {{ dateRangeLabel }}
+      </div>
+      <div class="template-select">
+        <select [(ngModel)]="template" (change)="onTemplateChange()">
+          <option value="state">Template 1: State</option>
+          <option value="region">Template 2: Region</option>
+          <option value="subdivision">Template 3: Subdivision</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <div class="map_card">
+          <div id="top-map" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getTopLevelName() }} Map</h6>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('top-map')" title="Toggle full screen">
+              <i class="fa fa-expand" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="summary-table mt-1">
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th>Normal</th>
+                  <th>Departure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Highest</td>
+                  <td>
+                    {{ topSummary.highest.daily.value !== null ? topSummary.highest.daily.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ topSummary.highest.daily.name || '-' }}
+                    </div>
+                  </td>
+                  <td>
+                    {{ topSummary.highest.normal.value !== null ? topSummary.highest.normal.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ topSummary.highest.normal.name || '-' }}
+                    </div>
+                  </td>
+                  <td>
+                    {{ topSummary.highest.departure.value !== null ? topSummary.highest.departure.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ topSummary.highest.departure.name || '-' }}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lowest</td>
+                  <td>
+                    {{ topSummary.lowest.daily.value !== null ? topSummary.lowest.daily.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ topSummary.lowest.daily.name || '-' }}
+                    </div>
+                  </td>
+                  <td>
+                    {{ topSummary.lowest.normal.value !== null ? topSummary.lowest.normal.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ topSummary.lowest.normal.name || '-' }}
+                    </div>
+                  </td>
+                  <td>
+                    {{ topSummary.lowest.departure.value !== null ? topSummary.lowest.departure.value : 'NA' }}
+                    <br />
+                    <div style="font-size: 10px; margin-top: -3px;">
+                      {{ topSummary.lowest.departure.name || '-' }}
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="map_card">
+          <div id="district-map" class="comparison-map">
+            <h6 class="text-center mapheadings">
+              <span *ngIf="getSelectedTopLevel()">{{ toCamelCase(getSelectedTopLevel().properties[getNameProp()]) }}</span> District Map
+            </h6>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('district-map')" title="Toggle full screen">
+              <i class="fa fa-expand" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="summary-table mt-1">
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th>Normal</th>
+                  <th>Departure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Highest</td>
+                  <td>
+                    {{ districtSummary.highest.daily.value !== null ? districtSummary.highest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ districtSummary.highest.normal.value !== null ? districtSummary.highest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ districtSummary.highest.departure.value !== null ? districtSummary.highest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lowest</td>
+                  <td>
+                    {{ districtSummary.lowest.daily.value !== null ? districtSummary.lowest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ districtSummary.lowest.normal.value !== null ? districtSummary.lowest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ districtSummary.lowest.departure.value !== null ? districtSummary.lowest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="map_card">
+          <div id="block-map" class="comparison-map">
+            <h6 class="text-center mapheadings">
+              <span *ngIf="selectedDistrict">{{ toCamelCase(selectedDistrict.properties.district) }}</span>
+              <span *ngIf="!selectedDistrict && getSelectedTopLevel()">{{ toCamelCase(getSelectedTopLevel().properties[getNameProp()]) }}</span>
+              Block Map
+            </h6>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('block-map')" title="Toggle full screen">
+              <i class="fa fa-expand" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="summary-table mt-1">
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th>Normal</th>
+                  <th>Departure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Highest</td>
+                  <td>
+                    {{ blockSummary.highest.daily.value !== null ? blockSummary.highest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ blockSummary.highest.normal.value !== null ? blockSummary.highest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ blockSummary.highest.departure.value !== null ? blockSummary.highest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lowest</td>
+                  <td>
+                    {{ blockSummary.lowest.daily.value !== null ? blockSummary.lowest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ blockSummary.lowest.normal.value !== null ? blockSummary.lowest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ blockSummary.lowest.departure.value !== null ? blockSummary.lowest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

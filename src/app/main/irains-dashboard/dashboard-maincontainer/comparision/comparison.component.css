@@ -33,7 +33,7 @@
 .mapheadings {
   position: absolute;
   top: 10px;    /* distance from top edge */
-  right: 10px;  /* distance from right edge */
+  right: 38px;  /* distance from right edge */
   background-color: rgba(255, 255, 255, 0.8); /* optional: semi-transparent background */
   padding: 4px 8px;
   border-radius: 4px;
@@ -91,4 +91,37 @@ path.leaflet-interactive:focus {
   align-items: right;
   justify-content: right;
 
+}
+
+
+
+.comparison-map.fullscreen {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999;
+  background: white;
+}
+
+.comparison-map {
+  position: relative;
+}
+
+.fullscreen-toggle {
+  position: absolute;
+  top: 10px;
+  right: 5px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  padding: 5px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.fullscreen-toggle:focus {
+  outline: none;
 }

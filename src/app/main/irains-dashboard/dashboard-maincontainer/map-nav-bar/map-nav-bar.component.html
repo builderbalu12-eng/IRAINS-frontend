@@ -2,7 +2,7 @@
 <nav class="custom-navbar navbar navbar-expand-lg">
   <div class="container-fluid justify-content-between align-items-center d-flex">
 
-    <!-- Show nav items only if compare inactive -->
+   
     <ul *ngIf="!showComparison" class="navbar-nav flex-row">
       <li *ngFor="let item of navItems" class="nav-item me-2">
         <a class="nav-link nav-btn" [ngClass]="item.active ? 'active' : ''" (click)="onSelectLayer(item.id)">
@@ -16,14 +16,14 @@
     <div *ngIf="showComparison" class="d-flex align-items-center filter_box_container">
       <div class="d-flex gap-3 flex-nowrap align-items-center">
 
-        <!-- Start Date Field (inline) -->
+        
         <div class="filter-item d-flex align-items-center gap-2">
           <label for="startDate" class="form-label mb-0 me-0">Start Date:</label>
           <input type="date" class="form-control" id="startDate" [max]="maxDate" [(ngModel)]="startDate"
             (change)="onFilterChange()" />
         </div>
 
-        <!-- End Date Field (inline) -->
+        
         <div class="filter-item d-flex align-items-center gap-2">
           <label for="endDate" class="form-label mb-0 me-0">End Date:</label>
           <input type="date" class="form-control" id="endDate" [max]="maxDate" [(ngModel)]="endDate"
@@ -82,7 +82,7 @@
              2 0 0 1-2 2h-2a2 2 0 
              0 1-2-2z"></path>
   </svg> -->
-  {{ showComparison ? 'Back' : 'Compare' }}
+  {{ showComparison ? 'Statistics' : 'Compare' }}
 </button>
 
 
