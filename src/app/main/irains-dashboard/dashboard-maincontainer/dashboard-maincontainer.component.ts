@@ -1,5 +1,60 @@
+// import { Component, ViewChild } from '@angular/core';
+// import { ComparisonComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/comparision/comparison.component'; // update import path if needed
+
+// @Component({
+//   selector: 'app-dashboard-maincontainer',
+//   templateUrl: './dashboard-maincontainer.component.html',
+//   styleUrls: ['./dashboard-maincontainer.component.css']
+// })
+// export class DashboardMaincontainerComponent {
+//   @ViewChild('comparisonComp') comparisonComponent!: ComparisonComponent;
+
+//   selectedLayer = 'country';
+//   showComparison = false;
+//   lastActiveLayer = 'country';
+
+//   startDate = '';
+//   endDate = '';
+//   isActual = false;
+
+//   maxDate = new Date().toISOString().split('T')[0];
+
+//   onLayerSelected(layerName: string) {
+//     this.selectedLayer = layerName;
+//     this.lastActiveLayer = layerName;
+//     this.showComparison = false;
+//   }
+
+//   onToggleComparison() {
+//     this.showComparison = !this.showComparison;
+
+//     if (!this.showComparison) {
+//       this.selectedLayer = this.lastActiveLayer;
+//     }
+//   }
+
+//   onFilterChange(filter: { startDate: string; endDate: string; isActual: boolean }) {
+//     this.startDate = filter.startDate;
+//     this.endDate = filter.endDate;
+//     this.isActual = filter.isActual;
+//   }
+
+//   onResetMapView() {
+//     // Important: reset only when compare mode active
+//     if (this.showComparison && this.comparisonComponent) {
+//       this.comparisonComponent.resetMapView();
+//     }
+//   }
+
+//   onClosePopup() {
+//     this.showComparison = false;
+//   }
+// }
+
+
 import { Component, ViewChild } from '@angular/core';
-import { ComparisonComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/comparision/comparison.component'; // update import path if needed
+import { ComparisonComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/comparision/comparison.component';
+import { MapNavBarComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/map-nav-bar/map-nav-bar.component';
 
 @Component({
   selector: 'app-dashboard-maincontainer',
@@ -8,16 +63,25 @@ import { ComparisonComponent } from 'src/app/main/irains-dashboard/dashboard-mai
 })
 export class DashboardMaincontainerComponent {
   @ViewChild('comparisonComp') comparisonComponent!: ComparisonComponent;
+  @ViewChild('mapNavBar') mapNavBarComponent!: MapNavBarComponent;
 
   selectedLayer = 'country';
-  showComparison = false;
+  // showComparison = false;  // if want to view map nav bars as default 
+  showComparison = true;  
   lastActiveLayer = 'country';
-
   startDate = '';
   endDate = '';
   isActual = false;
-
   maxDate = new Date().toISOString().split('T')[0];
+  selectedLevels: string[] = ['state', 'district', 'block'];
+  mode: string = 'state';
+
+  ngAfterViewInit() {
+    if (this.mapNavBarComponent) {
+      this.selectedLevels = this.mapNavBarComponent.selectedLevels || ['state', 'district', 'block'];
+      this.mode = this.mapNavBarComponent.mode || 'state';
+    }
+  }
 
   onLayerSelected(layerName: string) {
     this.selectedLayer = layerName;
@@ -30,6 +94,11 @@ export class DashboardMaincontainerComponent {
 
     if (!this.showComparison) {
       this.selectedLayer = this.lastActiveLayer;
+    } else {
+      if (this.mapNavBarComponent) {
+        this.selectedLevels = this.mapNavBarComponent.selectedLevels || ['state', 'district', 'block'];
+        this.mode = this.mapNavBarComponent.mode || 'state';
+      }
     }
   }
 
@@ -39,8 +108,12 @@ export class DashboardMaincontainerComponent {
     this.isActual = filter.isActual;
   }
 
+  onFilterSettingsChange(settings: { selectedLevels: string[]; mode: string }) {
+    this.selectedLevels = settings.selectedLevels;
+    this.mode = settings.mode;
+  }
+
   onResetMapView() {
-    // Important: reset only when compare mode active
     if (this.showComparison && this.comparisonComponent) {
       this.comparisonComponent.resetMapView();
     }

@@ -14,7 +14,15 @@
   border-radius: 8px;
 
 }
-
+#map1 {
+  z-index: 99;
+}
+#map2 {
+  z-index: 99;
+}
+#map3 {
+  z-index: 99;
+}
 .map_card {
   min-height: 550px;
   display: flex;
@@ -25,7 +33,7 @@
 
 .comparison-map {
   position: relative;
-  height: 500px;
+  height: 550px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   margin-bottom: 5px;

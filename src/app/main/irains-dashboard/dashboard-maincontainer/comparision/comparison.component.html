@@ -416,7 +416,7 @@
 
 
 
-
+<!-- 
 <div>
   <div id="loader" class="loader" *ngIf="isBuffering">
     <div class="loading-message">
@@ -618,6 +618,182 @@
                   <td>
                     {{ blockSummary.lowest.departure.value !== null ? blockSummary.lowest.departure.value : 'NA' }}
                     <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+
+<div>
+  <div id="loader" class="loader" *ngIf="isBuffering">
+    <div class="loading-message">
+      <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+      Loading...
+    </div>
+  </div>
+  <div class="main_container_box" style="padding: 10px 5px 5px 5px; background-color: rgb(237, 237, 237);">
+    <div class="map_box row g-3">
+      <div class="col-md-4" *ngIf="selectedLevels[0]">
+        <div class="map_card">
+          <div id="map1" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[0], 0) }}</h6>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('map1')" title="Toggle full screen">
+              <i class="fa fa-expand" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="summary-table mt-1">
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th>Normal</th>
+                  <th>Departure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Highest</td>
+                  <td>
+                    {{ map1Summary.highest.daily.value !== null ? map1Summary.highest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map1Summary.highest.normal.value !== null ? map1Summary.highest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map1Summary.highest.departure.value !== null ? map1Summary.highest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lowest</td>
+                  <td>
+                    {{ map1Summary.lowest.daily.value !== null ? map1Summary.lowest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map1Summary.lowest.normal.value !== null ? map1Summary.lowest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map1Summary.lowest.departure.value !== null ? map1Summary.lowest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4" *ngIf="selectedLevels[1]">
+        <div class="map_card">
+          <div id="map2" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[1], 1) }}</h6>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('map2')" title="Toggle full screen">
+              <i class="fa fa-expand" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="summary-table mt-1">
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th>Normal</th>
+                  <th>Departure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Highest</td>
+                  <td>
+                    {{ map2Summary.highest.daily.value !== null ? map2Summary.highest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map2Summary.highest.normal.value !== null ? map2Summary.highest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map2Summary.highest.departure.value !== null ? map2Summary.highest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lowest</td>
+                  <td>
+                    {{ map2Summary.lowest.daily.value !== null ? map2Summary.lowest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map2Summary.lowest.normal.value !== null ? map2Summary.lowest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map2Summary.lowest.departure.value !== null ? map2Summary.lowest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4" *ngIf="selectedLevels[2]">
+        <div class="map_card">
+          <div id="map3" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[2], 2) }}</h6>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('map3')" title="Toggle full screen">
+              <i class="fa fa-expand" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="summary-table mt-1">
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th>Normal</th>
+                  <th>Departure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Highest</td>
+                  <td>
+                    {{ map3Summary.highest.daily.value !== null ? map3Summary.highest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map3Summary.highest.normal.value !== null ? map3Summary.highest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map3Summary.highest.departure.value !== null ? map3Summary.highest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.departure.name || '-' }}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lowest</td>
+                  <td>
+                    {{ map3Summary.lowest.daily.value !== null ? map3Summary.lowest.daily.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.daily.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map3Summary.lowest.normal.value !== null ? map3Summary.lowest.normal.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.normal.name || '-' }}</div>
+                  </td>
+                  <td>
+                    {{ map3Summary.lowest.departure.value !== null ? map3Summary.lowest.departure.value : 'NA' }}
+                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.departure.name || '-' }}</div>
                   </td>
                 </tr>
               </tbody>
