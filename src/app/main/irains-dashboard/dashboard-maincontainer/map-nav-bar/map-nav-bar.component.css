@@ -179,12 +179,14 @@ label.form-label {
 
 .filter-panel.show {
   display: block;
-  max-height: 200px;
+  max-height: 205px;
   opacity: 1;
 }
 
 .mode-select {
   margin-bottom: 10px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.5);
+
 }
 
 .mode-select label {
@@ -199,8 +201,16 @@ label.form-label {
   margin-right: 8px;
 }
 
+
+.level-select form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 columns */
+  gap: 2px 4px; /* vertical and horizontal spacing */
+}
+
 .level-select {
-  margin-bottom: 10px;
+  
+  margin-bottom: 1px;
 }
 
 .level-select .checkbox-inline {
@@ -227,6 +237,7 @@ label.form-label {
   font-size: 13px;
   font-weight: 500;
   transition: background-color 0.3s ease;
+
 }
 
 .btn-primary.btn-sm:hover {
@@ -241,6 +252,7 @@ label.form-label {
   font-size: 13px;
   font-weight: 500;
   transition: background-color 0.3s ease;
+    margin-right: 5px;
 }
 
 .btn-secondary.btn-sm:hover {

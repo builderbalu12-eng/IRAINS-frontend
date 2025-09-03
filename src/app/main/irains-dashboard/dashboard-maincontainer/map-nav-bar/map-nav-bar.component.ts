@@ -1,4 +1,5 @@
 // import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
+// import { FormBuilder, FormGroup } from '@angular/forms';
 
 // @Component({
 //   selector: 'app-map-nav-bar',
@@ -14,6 +15,7 @@
 //   @Output() toggleComparison = new EventEmitter<void>();
 //   @Output() filterChange = new EventEmitter<{ startDate: string; endDate: string; isActual: boolean }>();
 //   @Output() resetMap = new EventEmitter<void>();
+//   @Output() filterSettingsChange = new EventEmitter<{ selectedLevels: string[]; mode: string }>(); // New event
 
 //   navItems = [
 //     { id: 'country', label: 'Country', active: true },
@@ -27,6 +29,20 @@
 //   startDate: string = '';
 //   endDate: string = '';
 //   isActual: boolean = false;
+//   mode: string = 'state';
+//   availableLevels: string[] = ['region', 'state', 'district', 'block'];
+//   selectedLevels: string[] = ['state', 'district', 'block'];
+//   levelForm: FormGroup;
+//   showFilterPanel: boolean = false;
+
+//   constructor(private fb: FormBuilder) {
+//     this.levelForm = this.fb.group({
+//       region: [false],
+//       state: [true],
+//       district: [true],
+//       block: [true]
+//     });
+//   }
 
 //   ngOnInit(): void {
 //     if (this.maxDate) {
@@ -59,9 +75,53 @@
 //   setActiveLayer(layerName: string) {
 //     this.navItems.forEach(item => item.active = item.id === layerName);
 //   }
+
+//   onModeChange(): void {
+//     if (this.mode === 'state') {
+//       this.selectedLevels = ['state', 'district', 'block'];
+//     } else {
+//       this.selectedLevels = ['subdivision', 'district', 'block'];
+//     }
+//     this.updateAvailableLevels();
+//     this.updateFormFromSelectedLevels();
+//     this.filterSettingsChange.emit({ selectedLevels: this.selectedLevels, mode: this.mode }); // Emit change
+//   }
+
+//   updateAvailableLevels(): void {
+//     this.availableLevels = this.mode === 'state'
+//       ? ['region', 'state', 'district', 'block']
+//       : ['region', 'subdivision', 'district', 'block'];
+//   }
+
+//   updateFormFromSelectedLevels(): void {
+//     const controls = this.levelForm.controls;
+//     controls['region'].setValue(this.selectedLevels.includes('region'));
+//     controls['state'].setValue(this.selectedLevels.includes(this.mode === 'state' ? 'state' : 'subdivision'));
+//     controls['district'].setValue(this.selectedLevels.includes('district'));
+//     controls['block'].setValue(this.selectedLevels.includes('block'));
+//   }
+
+//   onApply(): void {
+//     const selected = Object.keys(this.levelForm.value).filter(key => this.levelForm.value[key]);
+//     const pendingLevels = selected.map(key => key === 'state' ? (this.mode === 'state' ? 'state' : 'subdivision') : key);
+//     if (pendingLevels.length !== 3) {
+//       alert('Please select exactly three levels.');
+//       return;
+//     }
+//     this.selectedLevels = pendingLevels;
+//     this.closeFilterPanel();
+//     this.filterSettingsChange.emit({ selectedLevels: this.selectedLevels, mode: this.mode }); // Emit change
+//     this.onFilterChange(); // Ensure date and actual filters are also emitted
+//   }
+
+//   toggleFilterPanel(): void {
+//     this.showFilterPanel = !this.showFilterPanel;
+//   }
+
+//   closeFilterPanel(): void {
+//     this.showFilterPanel = false;
+//   }
 // }
-
-
 
 import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
@@ -80,7 +140,7 @@ export class MapNavBarComponent implements OnInit {
   @Output() toggleComparison = new EventEmitter<void>();
   @Output() filterChange = new EventEmitter<{ startDate: string; endDate: string; isActual: boolean }>();
   @Output() resetMap = new EventEmitter<void>();
-  @Output() filterSettingsChange = new EventEmitter<{ selectedLevels: string[]; mode: string }>(); // New event
+  @Output() filterSettingsChange = new EventEmitter<{ selectedLevels: string[]; mode: string }>();
 
   navItems = [
     { id: 'country', label: 'Country', active: true },
@@ -95,13 +155,14 @@ export class MapNavBarComponent implements OnInit {
   endDate: string = '';
   isActual: boolean = false;
   mode: string = 'state';
-  availableLevels: string[] = ['region', 'state', 'district', 'block'];
+  availableLevels: string[] = ['country', 'region', 'state', 'district', 'block']; // Added country
   selectedLevels: string[] = ['state', 'district', 'block'];
   levelForm: FormGroup;
   showFilterPanel: boolean = false;
 
   constructor(private fb: FormBuilder) {
     this.levelForm = this.fb.group({
+      country: [false], // Added country
       region: [false],
       state: [true],
       district: [true],
@@ -114,6 +175,7 @@ export class MapNavBarComponent implements OnInit {
       this.startDate = this.maxDate;
       this.endDate = this.maxDate;
     }
+    this.updateFormFromSelectedLevels();
   }
 
   onSelectLayer(layerId: string) {
@@ -149,17 +211,18 @@ export class MapNavBarComponent implements OnInit {
     }
     this.updateAvailableLevels();
     this.updateFormFromSelectedLevels();
-    this.filterSettingsChange.emit({ selectedLevels: this.selectedLevels, mode: this.mode }); // Emit change
+    this.filterSettingsChange.emit({ selectedLevels: this.selectedLevels, mode: this.mode });
   }
 
   updateAvailableLevels(): void {
     this.availableLevels = this.mode === 'state'
-      ? ['region', 'state', 'district', 'block']
-      : ['region', 'subdivision', 'district', 'block'];
+      ? ['country', 'region', 'state', 'district', 'block']
+      : ['country', 'region', 'subdivision', 'district', 'block'];
   }
 
   updateFormFromSelectedLevels(): void {
     const controls = this.levelForm.controls;
+    controls['country'].setValue(this.selectedLevels.includes('country'));
     controls['region'].setValue(this.selectedLevels.includes('region'));
     controls['state'].setValue(this.selectedLevels.includes(this.mode === 'state' ? 'state' : 'subdivision'));
     controls['district'].setValue(this.selectedLevels.includes('district'));
@@ -175,8 +238,8 @@ export class MapNavBarComponent implements OnInit {
     }
     this.selectedLevels = pendingLevels;
     this.closeFilterPanel();
-    this.filterSettingsChange.emit({ selectedLevels: this.selectedLevels, mode: this.mode }); // Emit change
-    this.onFilterChange(); // Ensure date and actual filters are also emitted
+    this.filterSettingsChange.emit({ selectedLevels: this.selectedLevels, mode: this.mode });
+    this.onFilterChange();
   }
 
   toggleFilterPanel(): void {
