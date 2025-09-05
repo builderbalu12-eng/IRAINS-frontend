@@ -8,6 +8,7 @@ import { DownloadPdf } from 'src/app/services/district/pdfdownload.service';
 import jsPDF from 'jspdf';
 // import { CountryService } from 'src/app/services/country/country.service';
 import { MCRMCsService } from 'src/app/services/MC-RMCs/mcRmc.service';
+import { MCRMCDownloadStatistics } from 'src/app/services/MC-RMCs/mcRMCpdf.service';
 @Component({
   selector: 'app-mc-rmc-map-component-for-mcs',
   templateUrl: './mc-rmc-map-component-for-mcs.component.html',
@@ -24,17 +25,30 @@ export class McRmcMapComponentForMCsComponent {
   countryDeparture: any;
   isLoading = false;
   displayMcName: any;
+  mcDistricts = new Set();
 
   async downloadMapData() {
     this.isLoading = true; 
     try {
-      this.isLoading = true; 
-      await this.downloadPdf$.updateanddownloadpdfFromDataEntry();
+      // Check if Set is empty
+      if (this.mcDistricts.size === 0) {
+        alert('Please select at least one MC/RMC district');
+        this.isLoading = false;
+        return;
+      }
+  
+      // Convert Set to Array before passing
+      const mcDistrictsArray = Array.from(this.mcDistricts);
+      console.log('MC Districts selected:', mcDistrictsArray);
+      
+      await this.downloadPdf$.updateanddownloadpdfFromDataEntry(mcDistrictsArray);
       this.isLoading = false; 
     } catch (error) {
       console.error('Error downloading map data:', error);
+      this.isLoading = false;
     } 
   }
+  
 
   legendItems = [
     { color: '#0096ff', text: `Large Excess <br>[60% or more]`, fontSize: '9.3px' },
@@ -65,8 +79,8 @@ export class McRmcMapComponentForMCsComponent {
     private renderer: Renderer2,
     private elRef: ElementRef,
     private district : DistrictService,
-    private downloadPdf$ : DownloadPdf,
-    // private countryService: CountryService,
+    private downloadPdf$ : MCRMCDownloadStatistics,
+    // private countryService: CountryService,x
     private mcRMCService : MCRMCsService,
   ) {
 
@@ -437,6 +451,7 @@ async downloadMapImage(downloadpdf : boolean) {
           const state = feature.properties.state;
           const id1 = feature.properties['district'];
           const id2 = feature.properties['district_c'];
+          this.mcDistricts.add(id2);
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
           if (matchedData) {
@@ -450,7 +465,7 @@ async downloadMapImage(downloadpdf : boolean) {
           else {
             rainfall = -100
           }
-          const dailyrainfall = matchedData && matchedData.actual_rainfall !== null && matchedData.actual_rainfall != undefined && !Number.isNaN(matchedData.actual_rainfall) ? matchedData.actual_rainfall.toFixed(1) + ' mm' : 'NA';
+          const dailyrainfall = matchedData && matchedData.actual_rainfall !== null && matchedData.actual_rainfall != undefined && !Number.isNaN(Number(matchedData.actual_rainfall)) ? Number(matchedData.actual_rainfall).toFixed(1) + ' mm' : 'NA';
           const normalrainfall = matchedData && !Number.isNaN(matchedData.normal_rainfall) ? parseFloat(matchedData.normal_rainfall).toFixed(1) + " mm" : 'NA';
           const popupContent = `
           <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
@@ -469,38 +484,6 @@ async downloadMapImage(downloadpdf : boolean) {
             layer.closePopup();
           });
 
-
-                    // // Calculate centroid for label placement
-                    // const bounds = layer.getBounds();
-                    // const center = bounds.getCenter();
-            
-                    // // Create a unique label ID
-                    // const labelId = `label-${id2}-${id1.replace(/\s+/g, '-')}`; // Ensure unique ID by combining district code and name
-            
-                    // // Remove existing label if it exists
-                    // const existingLabel = document.getElementById(labelId);
-                    // if (existingLabel) {
-                    //   existingLabel.remove();
-                    // }
-            
-                    // // Create label using L.marker and L.divIcon
-                    // if (center.lat && center.lng) {
-                    //   const label = L.marker([center.lat, center.lng], {
-                    //     icon: L.divIcon({                              // this.isFullScreen ? 10 : 8
-                    //       className: 'district-label',
-                    //       html: `
-                    //         <div id="${labelId}" style="font-size: ${8
-
-                    //         }px; font-weight: bolder; color: white; width: 100px; text-align: center; white-space: nowrap;">
-                    //           <div>${id1}</div>
-                    //           <div>${dailyrainfall} (${rainfall === -100 ? 'NA' : rainfall}%)</div>
-                    //           <div>${normalrainfall}</div>
-                    //         </div>
-                    //       `,
-                    //       iconSize: [80, 10], // Adjust size based on fullscreen
-                    //     }),
-                    //   }).addTo(this.map);
-                    // }
                   
 
 

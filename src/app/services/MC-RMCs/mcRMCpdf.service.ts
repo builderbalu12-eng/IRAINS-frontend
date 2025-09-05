@@ -1,0 +1,420 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { EMPTY, Observable, concatMap, lastValueFrom } from 'rxjs';
+import { environment } from 'src/environment/environment';
+import { Constants } from '../constants';
+import autoTable, { Column } from 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
+import * as FileSaver from 'file-saver';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MCRMCDownloadStatistics {
+
+  private baseUrl: string = environment.baseUrl;
+  isView: boolean = false;
+
+  districtdepCurrdate: any[] = [];
+  districtdepSeasondate: any[] = [];
+
+  rows: any[][] = [];
+  data: any;
+  seasonPeriodDate: any;
+  selectedMCName: any;
+  mcDistricts: any; // Can be Set or Array
+
+  constructor(private http: HttpClient, private constants: Constants) {}
+
+  convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
+
+  async updateanddownloadpdf(mcRmcName: any) {
+    const currDate = new Date();
+    this.data = this.constants.getRangeFromDateRange();
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.mcDistricts = mcRmcName;
+    await this.updateCurrDateData(this.data, this.seasonPeriodDate, mcRmcName);
+  }
+
+  async updateanddownloadpdfFromDataEntry(mcRmcName: any) {
+    const currDate = new Date();
+    this.data = this.constants.getRangeFromDateRange();
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.mcDistricts = mcRmcName;
+    await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate, mcRmcName);
+  }
+
+  async updateandViewpdf(mcRmcName: any) {
+    this.isView = true;
+    const currDate = new Date();
+    this.data = this.constants.getRangeFromDateRange();
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.mcDistricts = mcRmcName;
+    await this.updateCurrDateData(this.data, this.seasonPeriodDate, mcRmcName);
+  }
+  
+  async updateandViewpdfFromDataEntry(mcRmcName: any) {
+    this.isView = true;
+    const currDate = new Date();
+    this.data = this.constants.getRangeFromDateRange();
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.mcDistricts = mcRmcName;
+    await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate, mcRmcName);
+  }
+
+  async updateCurrDateData(data: any, seasonPeriodDate: any, mcRmcName: any) {
+    try {
+      this.selectedMCName = mcRmcName;
+      
+      await lastValueFrom(
+        this.fetchDistrictData(data).pipe(
+          concatMap(districtData => {
+            console.log('All districts data:', districtData.data);
+            console.log('MC Districts to filter:', this.mcDistricts);
+            
+            // Filter district data based on MC districts
+            this.districtdepCurrdate = this.filterDistrictsByMC(districtData.data);
+            console.log('Filtered MC districts current date:', this.districtdepCurrdate);
+            
+            return this.fetchDistrictData(seasonPeriodDate);
+          }),
+          concatMap(seasonDistrictData => {
+            // Filter season district data based on MC districts
+            this.districtdepSeasondate = this.filterDistrictsByMC(seasonDistrictData.data);
+            console.log('Filtered MC districts season date:', this.districtdepSeasondate);
+            
+            this.downloadPdf();
+            return EMPTY;
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error fetching MC district data:', error);
+    }
+  }
+
+  async updateCurrDateDataFromDataEntry(data: any, seasonPeriodDate: any, mcRmcName: any) {
+    try {
+      this.selectedMCName = mcRmcName;
+      
+      await lastValueFrom(
+        this.fetchDistrictDataFromDataEntry(data).pipe(
+          concatMap(districtData => {
+            console.log('All districts data from data entry:', districtData.data);
+            console.log('MC Districts to filter:', this.mcDistricts);
+            
+            // Filter district data based on MC districts
+            this.districtdepCurrdate = this.filterDistrictsByMC(districtData.data);
+            console.log('Filtered MC districts current date from data entry:', this.districtdepCurrdate);
+            
+            return this.fetchDistrictDataFromDataEntry(seasonPeriodDate);
+          }),
+          concatMap(seasonDistrictData => {
+            // Filter season district data based on MC districts
+            this.districtdepSeasondate = this.filterDistrictsByMC(seasonDistrictData.data);
+            console.log('Filtered MC districts season date from data entry:', this.districtdepSeasondate);
+            
+            this.downloadPdf();
+            return EMPTY;
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error fetching MC district data from data entry:', error);
+    }
+  }
+
+  // Enhanced filtering method with better logging
+  private filterDistrictsByMC(allDistricts: any[]): any[] {
+    console.log('Starting filter with districts count:', allDistricts.length);
+    console.log('MC Districts filter set:', this.mcDistricts);
+
+    if (!this.mcDistricts) {
+      console.log('No MC districts filter provided, returning all districts');
+      return allDistricts;
+    }
+
+    // Convert mcDistricts to array if it's a Set
+    let mcDistrictsArray: any[];
+    if (this.mcDistricts instanceof Set) {
+      mcDistrictsArray = Array.from(this.mcDistricts);
+    } else if (Array.isArray(this.mcDistricts)) {
+      mcDistrictsArray = this.mcDistricts;
+    } else {
+      console.log('MC Districts is not Set or Array, returning all districts');
+      return allDistricts;
+    }
+
+    console.log('MC Districts as array:', mcDistrictsArray);
+
+    if (mcDistrictsArray.length === 0) {
+      console.log('MC districts array is empty, returning all districts');
+      return allDistricts;
+    }
+
+    // Filter based on district_code matching
+    const filtered = allDistricts.filter(district => {
+      const districtCode = district.district_code;
+      const isIncluded = mcDistrictsArray.includes(districtCode) || 
+                        mcDistrictsArray.includes(districtCode.toString()) ||
+                        mcDistrictsArray.includes(parseInt(districtCode));
+      
+      if (isIncluded) {
+        console.log(`Including district: ${district.district_name} (${districtCode})`);
+      }
+      
+      return isIncluded;
+    });
+
+    console.log(`Filtered ${filtered.length} districts out of ${allDistricts.length} total districts`);
+    return filtered;
+  }
+
+  fetchDistrictDataFromDataEntry(data: any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchDistrictData`;
+    return this.http.post<any>(url, data);
+  }
+
+  fetchDistrictData(data: any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchDistrictDataFtp`;
+    return this.http.post<any>(url, data);
+  }
+
+  exportAsExcelFile(json: any[], excelFileName: string, columns: any, columns1: any): void {
+    const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
+    
+    const startCell = 'C1';
+    const endCell = 'F1';
+    const startCell1 = 'G1';
+    const endCell1 = 'J1';
+
+    worksheet['!merges'] = [
+        { s: XLSX.utils.decode_cell(startCell), e: XLSX.utils.decode_cell(endCell) },
+        { s: XLSX.utils.decode_cell(startCell1), e: XLSX.utils.decode_cell(endCell1) }
+    ];
+
+    XLSX.utils.sheet_add_aoa(worksheet, [columns1], { origin: 'A1' });
+    XLSX.utils.sheet_add_aoa(worksheet, [columns], { origin: 'A2' });
+    XLSX.utils.sheet_add_json(worksheet, json, { origin: 'A3', skipHeader: true });
+
+    const workbook: XLSX.WorkBook = { Sheets: { 'data': worksheet }, SheetNames: ['data'] };
+    const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+    this.saveAsExcelFile(excelBuffer, excelFileName);
+  }
+
+  saveAsExcelFile(buffer: any, fileName: string): void {
+    const EXCEL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
+    const EXCEL_EXTENSION = '.xlsx';
+    const data: Blob = new Blob([buffer], { type: EXCEL_TYPE });
+    FileSaver.saveAs(data, fileName + EXCEL_EXTENSION);
+  }
+
+  public async downloadPdf() {
+    console.log('Generating MC/RMC Districts PDF', this.data.startDate, this.data.endDate);
+    console.log('Rows to be included in PDF:', this.districtdepCurrdate.length);
+
+    // If no districts are filtered, show a message
+    if (this.districtdepCurrdate.length === 0) {
+      console.error('No districts found for MC/RMC filter');
+      alert('No districts found for the selected MC/RMC filter');
+      return;
+    }
+
+    const columns1 = ['', '', 
+      {
+        content: this.data.startDate === this.data.endDate ? 
+          `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}` : 
+          `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} to ${this.convertToIndianDateFormat(this.data.endDate)}`, 
+        colSpan: 4
+      },
+      {
+        content: `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`, 
+        colSpan: 4
+      }
+    ];
+
+    const columns1forexcel = ['', '',
+      {
+        content: this.data.startDate === this.data.endDate ? 
+          `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}` : 
+          `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} to ${this.convertToIndianDateFormat(this.data.endDate)}`, 
+        colSpan: 4
+      }, '', '', '',    
+      {
+        content: `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`, 
+        colSpan: 4
+      }
+    ];
+
+    const columns = ['S.No', 'MC/RMC DISTRICTS', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
+
+    this.loadTheRows();
+
+    var newArr = this.rows.map((subArr) => {
+      return subArr.map((item: any) => {
+        if (typeof item === 'object' && item.hasOwnProperty('content')) {
+          return item.content;
+        }
+        return item;
+      });
+    });
+
+    var newcolumns1 = columns1forexcel.map((item) => {
+      if (typeof item === 'object' && item.hasOwnProperty('content')) {
+        return item.content;
+      }
+      return item;
+    });
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    const marginLeft = 10;
+    const marginTop = 10;
+    const cellHeight = 8;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const imgWidth = 15;
+    const imgMargin = 10;
+    const imgX = pageWidth - imgWidth - imgMargin;
+
+    const imgData150 = '/assets/images/IMD150(BGR).png';
+    doc.addImage(imgData150, 'PNG', imgX, marginTop, 15, 20);
+    const imgData = '/assets/images/IMDlogo_Ipart-iris.png';
+    doc.addImage(imgData, 'PNG', marginLeft, marginTop, 15, 20);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    const headingText = 'India Meteorological Department\nHydromet Division, New Delhi';
+    const headingText1 = 'MC/RMC DISTRICTS RAINFALL DISTRIBUTION';
+    doc.text(headingText, marginLeft + 25, marginTop + 8);
+    doc.text(headingText1, marginLeft + 90, marginTop + 28);
+    
+    autoTable(doc, {
+      head: [columns1, columns],
+      body: this.rows,
+      theme: 'striped',
+      startY: marginTop + cellHeight + 25,
+      margin: { left: marginLeft },
+      styles: { fontSize: 7 },
+      headStyles: { halign: 'center' },
+      didDrawCell: function (data: { cell: { text: any; x: number; y: number; width: any; height: any; }; }) {
+        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
+        doc.setDrawColor(0);
+      },
+      didParseCell: function (data: any) {
+        data.cell.styles.fontStyle = 'bold';
+      }
+    });
+
+    const columns2 = ['', 'LEGEND', ''];
+    const columns3 = ['CATEGORY', '% DEPARTURES OF RAINFALL', 'COLOUR CODE'];
+    const rows2 = [
+      ['Large Excess\n(LE or L.Excess)', '>= 60%', { content: '', styles: { fillColor: '#0096ff' } }],
+      ['Excess (E)', '>= 20% and <= 59%', { content: '', styles: { fillColor: '#32c0f8' } }],
+      ['Normal (N)', '>= -19% and <= +19%', { content: '', styles: { fillColor: '#00cd5b' } }],
+      ['Deficient (D)', '>= -59% and <= -20%', { content: '', styles: { fillColor: '#ff2700' } }],
+      ['Large Deficient\n(LD or L.Deficient)', '>= -99% and <= -60%', { content: '', styles: { fillColor: '#ffff20' } }],
+      ['No Rain(NR)', '= -100%', { content: '', styles: { fillColor: '#ffffff' } }],
+      ['Not Available', 'ND', { content: '', styles: { fillColor: '#c0c0c0' } }],
+      ['Note : ', { content: 'The rainfall values are rounded off up to one place of decimal.', colSpan: 2 }]
+    ];
+    
+    doc.addPage();
+    autoTable(doc, {
+      head: [columns2, columns3],
+      body: rows2,
+      theme: 'striped',
+      didDrawCell: function (data: { cell: { text: any; x: number; y: number; width: any; height: any; }; }) {
+        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
+        doc.setDrawColor(0);
+      },
+    });
+
+    const filename = `DISTRIBUTION_MCRMC_DISTRICTS_INDIA_cd.pdf`;
+
+    if (this.isView) {
+      const pdfBlob = doc.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl);
+    } else {
+      setTimeout(() => {
+        doc.save(filename);
+        this.exportAsExcelFile(newArr, `MCRMC_DISTRICTS_RAINFALL_DISTRIBUTION_INDIA_cd`, columns, newcolumns1);
+      }, 3000);
+    }
+  }
+
+  private loadTheRows() {
+    this.rows = [];
+    console.log('Loading rows with districts:', this.districtdepCurrdate.length);
+
+    const sortedMCDistricts = this.districtdepCurrdate.sort((a: any, b: any) => 
+      a.district_name.localeCompare(b.district_name)
+    );
+
+    for (let i = 0; i < sortedMCDistricts.length; i++) {
+      const districtDate = sortedMCDistricts[i];
+      const districtSeason = this.districtdepSeasondate.find(district => 
+        district.district_code == districtDate.district_code
+      );
+
+      const DateCat = this.getColorAndCat(districtDate.departure);
+      const SeasonCat = this.getColorAndCat(districtSeason?.departure);
+
+      this.rows.push([
+        i + 1,
+        districtDate.district_name,
+        districtDate.actual_rainfall != null ? parseFloat(districtDate.actual_rainfall).toFixed(1) : ' ',
+        parseFloat(districtDate.normal_rainfall).toFixed(1),
+        districtDate.departure != null ? Math.round(parseFloat(districtDate.departure)) : ' ',
+        { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
+        districtSeason?.actual_rainfall != null ? parseFloat(districtSeason.actual_rainfall).toFixed(1) : ' ',
+        parseFloat(districtSeason?.normal_rainfall || '0').toFixed(1),
+        districtSeason?.departure != null ? Math.round(parseFloat(districtSeason.departure)) : ' ',
+        { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
+      ]);
+    }
+    
+    console.log('Generated rows:', this.rows.length);
+  }
+
+  getColorAndCat(departure: any) {
+    let color = '';
+    let Cat = '';
+
+    if (departure == null) {
+      return {
+        color: '#c0c0c0',
+        Cat: 'ND'
+      };
+    }
+
+    const dep = parseFloat(departure);
+
+    if (dep >= 60) {
+      Cat = 'LE';
+      color = '#0096ff';
+    } else if (dep >= 20 && dep <= 59) {
+      Cat = 'E';
+      color = '#32c0f8';
+    } else if (dep >= -19 && dep <= 19) {
+      Cat = 'N';
+      color = '#00cd5b';
+    } else if (dep >= -59 && dep <= -20) {
+      Cat = 'D';
+      color = '#ff2700';
+    } else if (dep >= -99 && dep <= -60) {
+      Cat = 'LD';
+      color = '#ffff20';
+    } else if (dep === -100) {
+      Cat = 'NR';
+      color = '#ffffff';
+    }
+
+    return {
+      color: color,
+      Cat: Cat
+    };
+  }
+}
