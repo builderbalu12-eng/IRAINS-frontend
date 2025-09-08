@@ -1,505 +1,811 @@
 <mat-toolbar color="primary" class="custom-toolbar">
-    <button mat-icon-button (click)="toggleNavbar()">
-      <mat-icon>menu</mat-icon>
+  <button mat-icon-button (click)="toggleNavbar()">
+    <mat-icon>menu</mat-icon>
+  </button>
+  <span class="toolbar-title">iRAINS PRODUCTS</span>
+
+  <div class="toolbar-center">
+    <!-- <button mat-button (click)="NavigateToDashboad()" class="mode-button" [ngClass]="{'active': selectedMapType === 'Dashboard'}">Dashboard</button> -->
+    <button
+      mat-button
+      (click)="selectBlockOrRainfallMaps('RainfallMaps')"
+      class="mode-button"
+      [ngClass]="{ active: selectedMapType === 'RainfallMaps' }"
+    >
+      DRMS
     </button>
-    <span class="toolbar-title">iRAINS PRODUCTS</span>
-  
-    <div class="toolbar-center">
-      <!-- <button mat-button (click)="NavigateToDashboad()" class="mode-button" [ngClass]="{'active': selectedMapType === 'Dashboard'}">Dashboard</button> -->
-      <button mat-button (click)="selectBlockOrRainfallMaps('RainfallMaps')" class="mode-button" [ngClass]="{'active': selectedMapType === 'RainfallMaps'}">DRMS</button>
-      <button mat-button (click)="selectBlockOrRainfallMaps('Block')" class="mode-button" [ngClass]="{'active': selectedMapType === 'Block'}">BRMS</button>
+    <button
+      mat-button
+      (click)="selectBlockOrRainfallMaps('Block')"
+      class="mode-button"
+      [ngClass]="{ active: selectedMapType === 'Block' }"
+    >
+      BRMS
+    </button>
+  </div>
+</mat-toolbar>
+<div id="loader" class="loader" *ngIf="isLoading">
+  <div class="loading-message">
+    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading...
+  </div>
+</div>
+
+<div *ngIf="showDeleteConfirm" class="delete-confirmation-overlay">
+  <div class="delete-confirmation-modal">
+    <div class="modal-header">
+      <h3>Confirm Delete</h3>
+      <button
+        class="close-btn"
+        (click)="cancelDelete()"
+        [disabled]="isDeleting"
+      >
+        &times;
+      </button>
     </div>
-  </mat-toolbar>
-  <div id="loader" class="loader" *ngIf="isLoading">
-    <div class="loading-message">
-      <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading...
+    <div class="modal-body">
+      <p>Are you sure you want to delete this document?</p>
+      <p class="document-name">"{{ documentToDelete?.document_name }}"</p>
+      <p class="warning-text">This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button
+        class="btn-cancel"
+        (click)="cancelDelete()"
+        [disabled]="isDeleting"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn-delete"
+        (click)="executeDelete()"
+        [disabled]="isDeleting"
+      >
+        <span *ngIf="!isDeleting">Delete</span>
+        <span *ngIf="isDeleting">Deleting...</span>
+      </button>
     </div>
   </div>
-  
-    <div *ngIf="showDeleteConfirm" class="delete-confirmation-overlay">
-        <div class="delete-confirmation-modal">
-            <div class="modal-header">
-                <h3>Confirm Delete</h3>
-                <button class="close-btn" (click)="cancelDelete()" [disabled]="isDeleting">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this document?</p>
-                <p class="document-name">"{{ documentToDelete?.document_name }}"</p>
-                <p class="warning-text">This action cannot be undone.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" (click)="cancelDelete()" [disabled]="isDeleting">Cancel</button>
-                <button class="btn-delete" (click)="executeDelete()" [disabled]="isDeleting">
-                    <span *ngIf="!isDeleting">Delete</span>
-                    <span *ngIf="isDeleting">Deleting...</span>
-                </button>
-            </div>
-        </div>
-    </div>
+</div>
 
-<nav [ngClass]="{'open': isNavbarOpen}" class="top">
-    <ul class="nav">
-
-        <li *ngIf="hasAccess('state-map-mc-rmc')">
-            <a class="main_nav">RAINFALL MAP MC and RMC</a>
-            <ul>
-                <li>
-                    <a *ngIf="hasAccess('state-map-mc-rmc')" routerLink="../state-map-mc-rmc">STATE RAINFALL MAP</a>
-                </li>
-                <li>
-                    <a *ngIf="hasAccess('subdiv-map-mc-rmc')" routerLink="../subdiv-map-mc-rmc">SUBDIVISION RAINFALL MAP</a>
-                </li>
-                <li>
-                    <a *ngIf="hasAccess('region-map-mc-rmc')" routerLink="../region-map-mc-rmc">REGION RAINFALL MAP</a>
-                </li>
-            </ul>
-        </li>
-
-
+<nav [ngClass]="{ open: isNavbarOpen }" class="top">
+  <ul class="nav">
+    <li *ngIf="hasAccess('state-map-mc-rmc')">
+      <a class="main_nav">RAINFALL MAP MC and RMC</a>
+      <ul>
         <li>
-            <a class="main_nav">RAINFALL MAP</a>
-            <ul>
-                <!-- Actual Rainfall Section -->
+          <a
+            *ngIf="hasAccess('state-map-mc-rmc')"
+            routerLink="../state-map-mc-rmc"
+            >STATE RAINFALL MAP</a
+          >
+        </li>
+        <li>
+          <a
+            *ngIf="hasAccess('subdiv-map-mc-rmc')"
+            routerLink="../subdiv-map-mc-rmc"
+            >SUBDIVISION RAINFALL MAP</a
+          >
+        </li>
+        <li>
+          <a
+            *ngIf="hasAccess('region-map-mc-rmc')"
+            routerLink="../region-map-mc-rmc"
+            >REGION RAINFALL MAP</a
+          >
+        </li>
+      </ul>
+    </li>
+
+    <li>
+      <a class="main_nav">RAINFALL MAP</a>
+      <ul>
+        <!-- Actual Rainfall Section -->
+        <li>
+          <a>ACTUAL</a>
+          <ul>
+            <li>
+              <a>DAILY</a>
+              <ul>
                 <li>
-                    <a>ACTUAL</a>
-                    <ul>
-                        <li>
-                            <a>DAILY</a>
-                            <ul>
-                                <li>
-                                    <!-- <a (click)="goToDailyDepartureMap('State')">STATE RAINFALL MAP</a> -->
-                                    <a *ngIf="hasAccess('daily-actual-state-map')" routerLink="../daily-actual-state-map">STATE RAINFALL MAP</a>
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('daily-actual-subdivision-map')" routerLink="../daily-actual-subdivision-map">SUBDIVISION RAINFALL MAP</a>
-                                    <!-- <a (click)="goToDailyDepartureMap('SubDivision')">SUBDIVISION RAINFALL MAP</a> -->
-                                </li>
-                                <li>
-                                    <a>DISTRICT RAINFALL MAP</a>
-                                    <ul>
-                                        <li>
-                                            <!-- <a (click)="goToDailyDepartureMap('District')">PAN INDIA</a> -->
-                                            <a *ngIf="hasAccess('pan-india-region-actual')" routerLink="../pan-india-region-actual">PAN INDIA</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('daily-east-north-east-region-actual')" routerLink="../daily-east-north-east-region-actual">EAST AND NORT-EAST REGION
-                          </a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('daily-north-west-region-actual')" routerLink="../daily-north-west-region-actual">NORTH-WEST REGION</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('daily-south-peninsula-region-actual')" routerLink="../daily-south-peninsula-region-actual">SOUTH PENINSULURA REGION</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('daily-central-region-actual')" routerLink="../daily-central-region-actual">CENTRAL INDIA REGION</a>
-                                        </li>
-                                    </ul>
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('daily-actual-homogenous-map')" routerLink="../daily-actual-homogenous-map">HOMOGENOUS RAINFALL MAP</a>
-                                    <!-- <a (click)="goToDailyDepartureMap('Homogenous')">HOMOGENOUS RAINFALL MAP</a> -->
-        
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('daily-actual-country-map')" routerLink="../daily-actual-country-map">COUNTRY RAINFALL MAP
+                  <!-- <a (click)="goToDailyDepartureMap('State')">STATE RAINFALL MAP</a> -->
+                  <a
+                    *ngIf="hasAccess('daily-actual-state-map')"
+                    routerLink="../daily-actual-state-map"
+                    >STATE RAINFALL MAP</a
+                  >
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('daily-actual-subdivision-map')"
+                    routerLink="../daily-actual-subdivision-map"
+                    >SUBDIVISION RAINFALL MAP</a
+                  >
+                  <!-- <a (click)="goToDailyDepartureMap('SubDivision')">SUBDIVISION RAINFALL MAP</a> -->
+                </li>
+                <li>
+                  <a>DISTRICT RAINFALL MAP</a>
+                  <ul>
+                    <li>
+                      <!-- <a (click)="goToDailyDepartureMap('District')">PAN INDIA</a> -->
+                      <a
+                        *ngIf="hasAccess('pan-india-region-actual')"
+                        routerLink="../pan-india-region-actual"
+                        >PAN INDIA</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('daily-east-north-east-region-actual')"
+                        routerLink="../daily-east-north-east-region-actual"
+                        >EAST AND NORT-EAST REGION
                       </a>
-                                    <!-- <a (click)="goToDailyDepartureMap('Country')">COUNTRY RAINFALL MAP
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('daily-north-west-region-actual')"
+                        routerLink="../daily-north-west-region-actual"
+                        >NORTH-WEST REGION</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('daily-south-peninsula-region-actual')"
+                        routerLink="../daily-south-peninsula-region-actual"
+                        >SOUTH PENINSULURA REGION</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('daily-central-region-actual')"
+                        routerLink="../daily-central-region-actual"
+                        >CENTRAL INDIA REGION</a
+                      >
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('daily-actual-homogenous-map')"
+                    routerLink="../daily-actual-homogenous-map"
+                    >HOMOGENOUS RAINFALL MAP</a
+                  >
+                  <!-- <a (click)="goToDailyDepartureMap('Homogenous')">HOMOGENOUS RAINFALL MAP</a> -->
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('daily-actual-country-map')"
+                    routerLink="../daily-actual-country-map"
+                    >COUNTRY RAINFALL MAP
+                  </a>
+                  <!-- <a (click)="goToDailyDepartureMap('Country')">COUNTRY RAINFALL MAP
                                     </a> -->
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('actual-block-rainfall-map')" routerLink="../actual-block-rainfall-map">BLOCK RAINFALL MAP</a>
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('block-rainfall-awsorg-map-daily')" routerLink="../block-rainfall-awsorg-map-daily">BLOCK RAINFALL ORGAWS MAP</a>
-                                </li>
-                                <li>
-                                    <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
-                                </li>
-                            </ul>
-                        </li>
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('actual-block-rainfall-map')"
+                    routerLink="../actual-block-rainfall-map"
+                    >BLOCK RAINFALL MAP</a
+                  >
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('block-rainfall-awsorg-map-daily')"
+                    routerLink="../block-rainfall-awsorg-map-daily"
+                    >BLOCK RAINFALL ORGAWS MAP</a
+                  >
+                </li>
+                <li>
+                  <a
+                    style="background-color: blue"
+                    *ngIf="hasAccess('underprogress')"
+                    routerLink="../underprogress"
+                    >RIVER BASIN</a
+                  >
+                </li>
+              </ul>
+            </li>
 
+            <li>
+              <a
+                *ngIf="hasAccess('allstates-actual-maps')"
+                routerLink="../allstates-actual-maps"
+                >STATE WISE DISTRICT RAINFALL MAP</a
+              >
+            </li>
 
-        
-                        <li>
-                            <a *ngIf="hasAccess('allstates-actual-maps')" routerLink="../allstates-actual-maps">STATE WISE DISTRICT RAINFALL MAP</a>
-                        </li>
-        
-        
-        
-                        <li>
-                            <a *ngIf="hasAccess('annual-seasonal-monthly-actual-maps')" routerLink="../annual-seasonal-monthly-actual-maps">ANNUAL-SEASONAL-MONTHLY MAPS</a>
-                        </li>
+            <li>
+              <a
+                *ngIf="hasAccess('annual-seasonal-monthly-actual-maps')"
+                routerLink="../annual-seasonal-monthly-actual-maps"
+                >ANNUAL-SEASONAL-MONTHLY MAPS</a
+              >
+            </li>
 
-<!-- 
+            <!-- 
                         <li>
                             <a *ngIf="hasAccess('actual-block-rainfall')" routerLink="../actual-block-rainfall">BLOCK RAINFALL</a>
                         </li> -->
-                    </ul>
-                </li>
-        
-                <!-- Departure Rainfall Section -->
+          </ul>
+        </li>
+
+        <!-- Departure Rainfall Section -->
+        <li>
+          <a>DEPARTURE</a>
+          <ul>
+            <li>
+              <a>DAILY</a>
+              <ul>
                 <li>
-                    <a>DEPARTURE</a>
-                    <ul>
-                        <li>
-                            <a>DAILY</a>
-                            <ul>
-                                <li>
-                                    <!-- <a (click)="goToDailyDepartureMap('State')">STATE RAINFALL MAP</a> -->
-                                    <a *ngIf="hasAccess('daily-departure-state-map')" routerLink="../daily-departure-state-map">STATE RAINFALL MAP</a>
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('daily-departure-subdivision-map')" routerLink="../daily-departure-subdivision-map">SUBDIVISION RAINFALL MAP</a>
-                                    <!-- <a (click)="goToDailyDepartureMap('SubDivision')">SUBDIVISION RAINFALL MAP</a> -->
-                                </li>
-                                <li>
-                                    <a>DISTRICT RAINFALL MAP</a>
-                                    <ul>
-                                        <li>
-                                            <!-- <a (click)="goToDailyDepartureMap('District')">PAN INDIA</a> -->
-                                            <a *ngIf="hasAccess('pan-india-region')" routerLink="../pan-india-region">PAN INDIA</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('daily-east-north-east-region')" routerLink="../daily-east-north-east-region">EAST AND NORT-EAST REGION
-                          </a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('daily-north-west-region')" routerLink="../daily-north-west-region">NORTH-WEST REGION</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('daily-south-peninsula-region')" routerLink="../daily-south-peninsula-region">SOUTH PENINSULURA REGION</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('daily-central-region')" routerLink="../daily-central-region">CENTRAL INDIA REGION</a>
-                                        </li>
-                                    </ul>
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('daily-departure-homogenous-map')" routerLink="../daily-departure-homogenous-map">HOMOGENOUS RAINFALL MAP</a>
-                                    <!-- <a (click)="goToDailyDepartureMap('Homogenous')">HOMOGENOUS RAINFALL MAP</a> -->
-        
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('daily-departure-country-map')" routerLink="../daily-departure-country-map">COUNTRY RAINFALL MAP
+                  <!-- <a (click)="goToDailyDepartureMap('State')">STATE RAINFALL MAP</a> -->
+                  <a
+                    *ngIf="hasAccess('daily-departure-state-map')"
+                    routerLink="../daily-departure-state-map"
+                    >STATE RAINFALL MAP</a
+                  >
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('daily-departure-subdivision-map')"
+                    routerLink="../daily-departure-subdivision-map"
+                    >SUBDIVISION RAINFALL MAP</a
+                  >
+                  <!-- <a (click)="goToDailyDepartureMap('SubDivision')">SUBDIVISION RAINFALL MAP</a> -->
+                </li>
+                <li>
+                  <a>DISTRICT RAINFALL MAP</a>
+                  <ul>
+                    <li>
+                      <!-- <a (click)="goToDailyDepartureMap('District')">PAN INDIA</a> -->
+                      <a
+                        *ngIf="hasAccess('pan-india-region')"
+                        routerLink="../pan-india-region"
+                        >PAN INDIA</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('daily-east-north-east-region')"
+                        routerLink="../daily-east-north-east-region"
+                        >EAST AND NORT-EAST REGION
                       </a>
-                                    <!-- <a (click)="goToDailyDepartureMap('Country')">COUNTRY RAINFALL MAP
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('daily-north-west-region')"
+                        routerLink="../daily-north-west-region"
+                        >NORTH-WEST REGION</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('daily-south-peninsula-region')"
+                        routerLink="../daily-south-peninsula-region"
+                        >SOUTH PENINSULURA REGION</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('daily-central-region')"
+                        routerLink="../daily-central-region"
+                        >CENTRAL INDIA REGION</a
+                      >
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('daily-departure-homogenous-map')"
+                    routerLink="../daily-departure-homogenous-map"
+                    >HOMOGENOUS RAINFALL MAP</a
+                  >
+                  <!-- <a (click)="goToDailyDepartureMap('Homogenous')">HOMOGENOUS RAINFALL MAP</a> -->
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('daily-departure-country-map')"
+                    routerLink="../daily-departure-country-map"
+                    >COUNTRY RAINFALL MAP
+                  </a>
+                  <!-- <a (click)="goToDailyDepartureMap('Country')">COUNTRY RAINFALL MAP
                                     </a> -->
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('block-rainfall-map-daily')" routerLink="../block-rainfall-map-daily">BLOCK RAINFALL MAP</a>
-                                </li>
-                                <li>
-                                    <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
-                                </li>
-                            </ul>
-                        </li>
-        
-        
-                        <li>
-                            <a>WEEKLY</a>
-                            <ul>
-                                <li>
-                                    <!-- <a (click)="goToWeeklyMap('State')">STATE RAINFALL MAP</a> -->
-                                    <a *ngIf="hasAccess('weekly-departure-state-map')" routerLink="../weekly-departure-state-map">STATE RAINFALL MAP</a>
-                                    
-        
-                                </li>
-                                <li>
-                                    
-                                    <a *ngIf="hasAccess('weekly-departure-subdiv-map')" routerLink="../weekly-departure-subdiv-map">SUBDIVISION RAINFALL MAP
-                                        <!-- <a (click)="goToWeeklyMap('SubDivision')">SUBDIVISION RAINFALL MAP -->
-                                </a>
-                                </li>
-                                <li>
-                                    <a>DISTRICT RAINFALL MAP</a>
-                                    <ul>
-                                        <li>
-                                            <a *ngIf="hasAccess('weekly-departure-district-panindia-map')" routerLink="../weekly-departure-district-panindia-map">PAN INDIA</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('weekly-departure-eastandnortheast-map')" routerLink="../weekly-departure-eastandnortheast-map">EAST AND NORT-EAST REGION
-                          </a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('weekly-departure-northWest-map')" routerLink="../weekly-departure-northWest-map">NORTH-WEST REGION</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('weekly-departure-southPeninsular-map')" routerLink="../weekly-departure-southPeninsular-map">SOUTH PENINSULURA REGION</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('weekly-departure-centalIndia-map')" routerLink="../weekly-departure-centalIndia-map">CENTRAL INDIA REGION</a>
-                                        </li>
-                                    </ul>
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('weekly-departure-homogenous-map')" routerLink="../weekly-departure-homogenous-map">HOMOGENOUS RAINFALL MAP
-                      </a>
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('weekly-departure-country-map')" routerLink="../weekly-departure-country-map">COUNTRY RAINFALL MAP
-                      </a>
-        
-                                </li>
-                                <li>
-                                    <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
-                                </li>
-                                <li>
-                                    <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">BLOCK RAINFALL MAP</a>
-                                </li>
-                            </ul>
-                        </li>
-        
-                        <li>
-                            <a>CUMULATIVE</a>
-                            <ul>
-                                <li>
-                                    <a *ngIf="hasAccess('cummulative-departure-state-map')" routerLink="../cummulative-departure-state-map">STATE RAINFALL MAP</a>
-                                </li>
-                                <li>
-                                    <a *ngIf="hasAccess('cummulative-departure-subdiv-map')" routerLink="../cummulative-departure-subdiv-map">SUBDIVISION RAINFALL MAP 
-                      </a>
-                                </li>
-                                <li>
-                                    <a>DISTRICT RAINFALL MAP</a>
-                                    <ul>
-                                        <li>
-                                            <a *ngIf="hasAccess('cummulative-departure-district-pan-map')" routerLink="../cummulative-departure-district-pan-map">PAN INDIA</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('cummulative-departure-district-east-and-north-east-map')" routerLink="../cummulative-departure-district-east-and-north-east-map">EAST AND NORT-EAST REGION
-                          </a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('cummulative-departure-district-north-west-map')" routerLink="../cummulative-departure-district-north-west-map">NORTH-WEST REGION</a>
-                                        </li>
-                                        <li>
-                                            <a  *ngIf="hasAccess('cummulative-departure-district-south-peninsular-map')" routerLink="../cummulative-departure-district-south-peninsular-map">SOUTH PENINSULURA REGION</a>
-                                        </li>
-                                        <li>
-                                            <a *ngIf="hasAccess('cummulative-departure-district-central-India-map')" routerLink="../cummulative-departure-district-central-India-map">CENTRAL INDIA REGION</a>
-                                        </li>
-                                    </ul>
-                                </li>
-        
-                                <li>
-                                    <a *ngIf="hasAccess('cummulative-departure-region-map')" routerLink="../cummulative-departure-region-map">REGION RAINFALL MAP 
-                                    </a>
-                                </li>
-        
-                                <li>
-                                    <a *ngIf="hasAccess('cummulative-departure-country-map')" routerLink="../cummulative-departure-country-map">COUNTRY RAINFALL MAP 
-                                    </a>
-                                </li>
-        
-        
-                                <li>
-                                    <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
-                                </li>
-                                <li>
-                                    <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">BLOCK RAINFALL MAP</a>
-                                </li>
-                            </ul>
-                        </li>
-        
-                        <li>
-                            <a *ngIf="hasAccess('normal-rainfall-map')" routerLink="../normal-rainfall-map">NORMAL RAINFALL MAP</a>
-        
-                        </li>
-        
-                        <li>
-                            <a *ngIf="hasAccess('allstatemaps')" routerLink="../allstatemaps">STATE WISE DISTRICT RAINFALL MAP</a>
-                        </li>
-        
-        
-        
-                        <li>
-                            <a *ngIf="hasAccess('realTimeUpdatedRainfallMaps')" routerLink="../realTimeUpdatedRainfallMaps">ANNUAL-SEASONAL-MONTHLY MAPS</a>
-                        </li>
-        
-                    </ul>
                 </li>
-            </ul>
-        </li>
-        
-
-
-
-
-
-
-
-
-
-
-
-
-        <!-- ------------------------------------- -->
-
-
-        
-    
-
-        <li>
-            <a *ngIf="hasAccess('rainfall-graphs')" routerLink="../rainfall-graphs">RAINFALL GRAPHS</a>
-       
-        </li>
-
-        <li>
-            <a class="main_nav">NWP RAINFALL PRODUCTS</a>
-            <ul>
                 <li>
-                    <a href="https://hydro.imd.gov.in/hydrometweb/(S(btoy5c55wy5lrbemoxvhir55))/PRODUCTS/QPF/index.html">QPF-WRF/MME/GFS/NCUM PQPF-GEFS/NEFS</a>
+                  <a
+                    *ngIf="hasAccess('block-rainfall-map-daily')"
+                    routerLink="../block-rainfall-map-daily"
+                    >BLOCK RAINFALL MAP</a
+                  >
                 </li>
-            </ul>
-        </li>
-
-
-        <li>
-            <a class="main_nav">RAINFALL STATISTICS</a>
-            <ul>
                 <li>
-                    <a>DAILY & CUMULATIVE</a>
-                    <ul>
-                        <!-- <li>
+                  <a
+                    style="background-color: blue"
+                    *ngIf="hasAccess('underprogress')"
+                    routerLink="../underprogress"
+                    >RIVER BASIN</a
+                  >
+                </li>
+              </ul>
+            </li>
+
+            <li>
+              <a>WEEKLY</a>
+              <ul>
+                <li>
+                  <!-- <a (click)="goToWeeklyMap('State')">STATE RAINFALL MAP</a> -->
+                  <a
+                    *ngIf="hasAccess('weekly-departure-state-map')"
+                    routerLink="../weekly-departure-state-map"
+                    >STATE RAINFALL MAP</a
+                  >
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('weekly-departure-subdiv-map')"
+                    routerLink="../weekly-departure-subdiv-map"
+                    >SUBDIVISION RAINFALL MAP
+                    <!-- <a (click)="goToWeeklyMap('SubDivision')">SUBDIVISION RAINFALL MAP -->
+                  </a>
+                </li>
+                <li>
+                  <a>DISTRICT RAINFALL MAP</a>
+                  <ul>
+                    <li>
+                      <a
+                        *ngIf="
+                          hasAccess('weekly-departure-district-panindia-map')
+                        "
+                        routerLink="../weekly-departure-district-panindia-map"
+                        >PAN INDIA</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="
+                          hasAccess('weekly-departure-eastandnortheast-map')
+                        "
+                        routerLink="../weekly-departure-eastandnortheast-map"
+                        >EAST AND NORT-EAST REGION
+                      </a>
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('weekly-departure-northWest-map')"
+                        routerLink="../weekly-departure-northWest-map"
+                        >NORTH-WEST REGION</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="
+                          hasAccess('weekly-departure-southPeninsular-map')
+                        "
+                        routerLink="../weekly-departure-southPeninsular-map"
+                        >SOUTH PENINSULURA REGION</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="hasAccess('weekly-departure-centalIndia-map')"
+                        routerLink="../weekly-departure-centalIndia-map"
+                        >CENTRAL INDIA REGION</a
+                      >
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('weekly-departure-homogenous-map')"
+                    routerLink="../weekly-departure-homogenous-map"
+                    >HOMOGENOUS RAINFALL MAP
+                  </a>
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('weekly-departure-country-map')"
+                    routerLink="../weekly-departure-country-map"
+                    >COUNTRY RAINFALL MAP
+                  </a>
+                </li>
+                <li>
+                  <a
+                    style="background-color: blue"
+                    *ngIf="hasAccess('underprogress')"
+                    routerLink="../underprogress"
+                    >RIVER BASIN</a
+                  >
+                </li>
+                <li>
+                  <a
+                    style="background-color: blue"
+                    *ngIf="hasAccess('underprogress')"
+                    routerLink="../underprogress"
+                    >BLOCK RAINFALL MAP</a
+                  >
+                </li>
+              </ul>
+            </li>
+
+            <li>
+              <a>CUMULATIVE</a>
+              <ul>
+                <li>
+                  <a
+                    *ngIf="hasAccess('cummulative-departure-state-map')"
+                    routerLink="../cummulative-departure-state-map"
+                    >STATE RAINFALL MAP</a
+                  >
+                </li>
+                <li>
+                  <a
+                    *ngIf="hasAccess('cummulative-departure-subdiv-map')"
+                    routerLink="../cummulative-departure-subdiv-map"
+                    >SUBDIVISION RAINFALL MAP
+                  </a>
+                </li>
+                <li>
+                  <a>DISTRICT RAINFALL MAP</a>
+                  <ul>
+                    <li>
+                      <a
+                        *ngIf="
+                          hasAccess('cummulative-departure-district-pan-map')
+                        "
+                        routerLink="../cummulative-departure-district-pan-map"
+                        >PAN INDIA</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="
+                          hasAccess(
+                            'cummulative-departure-district-east-and-north-east-map'
+                          )
+                        "
+                        routerLink="../cummulative-departure-district-east-and-north-east-map"
+                        >EAST AND NORT-EAST REGION
+                      </a>
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="
+                          hasAccess(
+                            'cummulative-departure-district-north-west-map'
+                          )
+                        "
+                        routerLink="../cummulative-departure-district-north-west-map"
+                        >NORTH-WEST REGION</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="
+                          hasAccess(
+                            'cummulative-departure-district-south-peninsular-map'
+                          )
+                        "
+                        routerLink="../cummulative-departure-district-south-peninsular-map"
+                        >SOUTH PENINSULURA REGION</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        *ngIf="
+                          hasAccess(
+                            'cummulative-departure-district-central-India-map'
+                          )
+                        "
+                        routerLink="../cummulative-departure-district-central-India-map"
+                        >CENTRAL INDIA REGION</a
+                      >
+                    </li>
+                  </ul>
+                </li>
+
+                <li>
+                  <a
+                    *ngIf="hasAccess('cummulative-departure-region-map')"
+                    routerLink="../cummulative-departure-region-map"
+                    >REGION RAINFALL MAP
+                  </a>
+                </li>
+
+                <li>
+                  <a
+                    *ngIf="hasAccess('cummulative-departure-country-map')"
+                    routerLink="../cummulative-departure-country-map"
+                    >COUNTRY RAINFALL MAP
+                  </a>
+                </li>
+
+                <li>
+                  <a
+                    style="background-color: blue"
+                    *ngIf="hasAccess('underprogress')"
+                    routerLink="../underprogress"
+                    >RIVER BASIN</a
+                  >
+                </li>
+                <li>
+                  <a
+                    style="background-color: blue"
+                    *ngIf="hasAccess('underprogress')"
+                    routerLink="../underprogress"
+                    >BLOCK RAINFALL MAP</a
+                  >
+                </li>
+              </ul>
+            </li>
+
+            <li>
+              <a
+                *ngIf="hasAccess('normal-rainfall-map')"
+                routerLink="../normal-rainfall-map"
+                >NORMAL RAINFALL MAP</a
+              >
+            </li>
+
+            <li>
+              <a *ngIf="hasAccess('allstatemaps')" routerLink="../allstatemaps"
+                >STATE WISE DISTRICT RAINFALL MAP</a
+              >
+            </li>
+
+            <li>
+              <a
+                *ngIf="hasAccess('realTimeUpdatedRainfallMaps')"
+                routerLink="../realTimeUpdatedRainfallMaps"
+                >ANNUAL-SEASONAL-MONTHLY MAPS</a
+              >
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+
+    <!-- ------------------------------------- -->
+
+    <li>
+      <a *ngIf="hasAccess('rainfall-graphs')" routerLink="../rainfall-graphs"
+        >RAINFALL GRAPHS</a
+      >
+    </li>
+
+    <li>
+      <a class="main_nav">NWP RAINFALL PRODUCTS</a>
+      <ul>
+        <li>
+          <a
+            href="https://hydro.imd.gov.in/hydrometweb/(S(btoy5c55wy5lrbemoxvhir55))/PRODUCTS/QPF/index.html"
+            >QPF-WRF/MME/GFS/NCUM PQPF-GEFS/NEFS</a
+          >
+        </li>
+      </ul>
+    </li>
+
+    <li>
+      <a class="main_nav">RAINFALL STATISTICS</a>
+      <ul>
+        <li>
+          <a>DAILY & CUMULATIVE</a>
+          <ul>
+            <!-- <li>
                             <a style="background-color: blue;" *ngIf="hasAccess('daily-departure-state-map')" routerLink="../underprogress">PERFORMANCE SHEET</a>
                         </li> -->
-                        <li>
-                            <a *ngIf="hasAccess('daily-state-rf-distribution')" routerLink="../daily-state-rf-distribution">STATE RF DISTRIBUTION</a>
-
-                        </li>
-                        <li>
-                            <a *ngIf="hasAccess('daily-subdivision-rf-distribution')" routerLink="../daily-subdivision-rf-distribution">SUBDIVISION RF DISTRIBUTION</a>
-
-                        </li>
-                        <li>
-                            <a *ngIf="hasAccess('daily-district-rf-distribution')" routerLink="../daily-district-rf-distribution">DISTRICT RF DISTRIBUTION</a>
-
-                        </li>
-                        <li>
-                            <a *ngIf="hasAccess('daily-homogenous-rf-distribution')" routerLink="../daily-homogenous-rf-distribution">HOMOGENOUS RF DISTRIBUTION</a>
-                        </li>
-                        <li>
-                            <a *ngIf="hasAccess('daily-country-rf-distribution')" routerLink="../daily-country-rf-distribution">COUNTRY RF DISTRIBUTION</a>
-
-                        </li>
-                        <li>
-                            <a *ngIf="hasAccess('distribution-district-in-states-daily')" routerLink="../distribution-district-in-states-daily">CATEGORY WISE DISTRIBUTION OF DISTRICTS IN STATE</a>
-
-                        </li>
-                        <!-- <li>
+            <li>
+              <a
+                *ngIf="hasAccess('daily-state-rf-distribution')"
+                routerLink="../daily-state-rf-distribution"
+                >STATE RF DISTRIBUTION</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('daily-subdivision-rf-distribution')"
+                routerLink="../daily-subdivision-rf-distribution"
+                >SUBDIVISION RF DISTRIBUTION</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('daily-district-rf-distribution')"
+                routerLink="../daily-district-rf-distribution"
+                >DISTRICT RF DISTRIBUTION</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('daily-homogenous-rf-distribution')"
+                routerLink="../daily-homogenous-rf-distribution"
+                >HOMOGENOUS RF DISTRIBUTION</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('daily-country-rf-distribution')"
+                routerLink="../daily-country-rf-distribution"
+                >COUNTRY RF DISTRIBUTION</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('distribution-district-in-states-daily')"
+                routerLink="../distribution-district-in-states-daily"
+                >CATEGORY WISE DISTRIBUTION OF DISTRICTS IN STATE</a
+              >
+            </li>
+            <!-- <li>
                             <a style="background-color: blue;" *ngIf="hasAccess('daily-departure-state-map')" routerLink="../underprogress">GATEGORYWISE DISTRIBUTION OF DISTRICTS
                 IN STATES</a>
                         </li> -->
-                    </ul>
-                </li>
+          </ul>
+        </li>
 
-
-                <li>
-                    <a>WEEKLY & CUMULATIVE</a>
-                    <ul>
-                        <!-- <li>
+        <li>
+          <a>WEEKLY & CUMULATIVE</a>
+          <ul>
+            <!-- <li>
                             <a style="background-color: blue;" *ngIf="hasAccess('daily-departure-state-map')" routerLink="../underprogress">PERFORMANCE SHEET</a>
                         </li> -->
-                        <li>
-         
-                <a *ngIf="hasAccess('weekly-state-rf-distribution')" routerLink="../weekly-state-rf-distribution">STATE RF DISTRIBUTION</a>
-                        </li>
-                        <li>
-           
-                <a *ngIf="hasAccess('weekly-subdivision-rf-distribution')" routerLink="../weekly-subdivision-rf-distribution">SUBDIVISION RF DISTRIBUTION</a>
-                        </li>
-                        <li>
-           
-                <a *ngIf="hasAccess('weekly-district-rf-distribution')" routerLink="../weekly-district-rf-distribution">DISTRICT RF DISTRIBUTION</a>
-                        </li>
-                        <li>
-
-                <a *ngIf="hasAccess('weekly-homogenous-rf-distribution')" routerLink="../weekly-homogenous-rf-distribution">HOMOGENOUS RF DISTRIBUTION</a>
-                        </li>
-                        <li>
-                  
-                <a *ngIf="hasAccess('weekly-country-rf-distribution')" routerLink="../weekly-country-rf-distribution">COUNTRY RF DISTRIBUTION</a>
-                        </li>
-                        <!-- <li>
+            <li>
+              <a
+                *ngIf="hasAccess('weekly-state-rf-distribution')"
+                routerLink="../weekly-state-rf-distribution"
+                >STATE RF DISTRIBUTION</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('weekly-subdivision-rf-distribution')"
+                routerLink="../weekly-subdivision-rf-distribution"
+                >SUBDIVISION RF DISTRIBUTION</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('weekly-district-rf-distribution')"
+                routerLink="../weekly-district-rf-distribution"
+                >DISTRICT RF DISTRIBUTION</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('weekly-homogenous-rf-distribution')"
+                routerLink="../weekly-homogenous-rf-distribution"
+                >HOMOGENOUS RF DISTRIBUTION</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('weekly-country-rf-distribution')"
+                routerLink="../weekly-country-rf-distribution"
+                >COUNTRY RF DISTRIBUTION</a
+              >
+            </li>
+            <!-- <li>
                             <a style="background-color: blue;" *ngIf="hasAccess('daily-departure-state-map')" routerLink="../underprogress">GATEGORYWISE DISTRIBUTION OF DISTRICTS
                 IN STATES</a>
                         </li> -->
-                    </ul>
-                </li>
-
-                <li>
-                    <a *ngIf="hasAccess('last-five-year-data')" routerLink="/last-five-year-data">DISTRICT WISE RAINFALL-LAST 5 YEARS</a>
-                </li>
-            </ul>
-        </li>
-        <li>
-            <a *ngIf="hasAccess('rainfall-departure')" routerLink="../rainfall-departure" class="main_nav">RAINFALL DEPARTURES</a>
-      
+          </ul>
         </li>
 
         <li>
-            <a class="main_nav">SPATIAL ANALYSIS</a>
-            <ul>
-                <li>
-                    <a>DAILY</a>
-                    <ul>
-                        <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">DISTRICT</a>
-                            <!-- <a *ngIf="hasAccess('district-daily-spatial')" routerLink="../district-daily-spatial">DISTRICT</a> -->
-                        </li>
-                        <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
-                        </li>
-                        <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">BLOCK</a>
-                        </li>
-                    </ul>
-                </li>
-                <li>
-                    <a>WEEKLY</a>
-                    <ul>
-                        <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">DISTRICT</a>
-                            <!-- <a *ngIf="hasAccess('weekly-daily-spatial')" routerLink="../weekly-daily-spatial">DISTRICT</a> -->
-                        </li>
-                        <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
-                        </li>
-                        <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">BLOCK</a>
-                        </li>
-                    </ul>
-                </li>
-                <li>
-                    <a>CUMULATIVE</a>
-                    <ul>
-                        <li>
-                            <!-- <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">DISTRICT</a> -->
-                            <a *ngIf="hasAccess('cummulative-daily-spatial')" routerLink="../cummulative-daily-spatial">DISTRICT</a>
-
-                        </li>
-                        <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">RIVER BASIN</a>
-                        </li>
-                        <li>
-                            <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">BLOCK</a>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
+          <a
+            *ngIf="hasAccess('last-five-year-data')"
+            routerLink="/last-five-year-data"
+            >DISTRICT WISE RAINFALL-LAST 5 YEARS</a
+          >
         </li>
+      </ul>
+    </li>
+    <li>
+      <a
+        *ngIf="hasAccess('rainfall-departure')"
+        routerLink="../rainfall-departure"
+        class="main_nav"
+        >RAINFALL DEPARTURES</a
+      >
+    </li>
 
-
-
-
-
-
-        <li *ngIf="loggedInUser.data[0].mcorhq == 'hq'">
-            <a class="main_nav" (click)="uploadPopUp()">INFO UPLOAD</a>
+    <li>
+      <a class="main_nav">SPATIAL ANALYSIS</a>
+      <ul>
+        <li>
+          <a>DAILY</a>
+          <ul>
+            <li>
+              <a
+                style="background-color: blue"
+                *ngIf="hasAccess('underprogress')"
+                routerLink="../underprogress"
+                >DISTRICT</a
+              >
+              <!-- <a *ngIf="hasAccess('district-daily-spatial')" routerLink="../district-daily-spatial">DISTRICT</a> -->
+            </li>
+            <li>
+              <a
+                style="background-color: blue"
+                *ngIf="hasAccess('underprogress')"
+                routerLink="../underprogress"
+                >RIVER BASIN</a
+              >
+            </li>
+            <li>
+              <a
+                style="background-color: blue"
+                *ngIf="hasAccess('underprogress')"
+                routerLink="../underprogress"
+                >BLOCK</a
+              >
+            </li>
+          </ul>
         </li>
+        <li>
+          <a>WEEKLY</a>
+          <ul>
+            <li>
+              <a
+                style="background-color: blue"
+                *ngIf="hasAccess('underprogress')"
+                routerLink="../underprogress"
+                >DISTRICT</a
+              >
+              <!-- <a *ngIf="hasAccess('weekly-daily-spatial')" routerLink="../weekly-daily-spatial">DISTRICT</a> -->
+            </li>
+            <li>
+              <a
+                style="background-color: blue"
+                *ngIf="hasAccess('underprogress')"
+                routerLink="../underprogress"
+                >RIVER BASIN</a
+              >
+            </li>
+            <li>
+              <a
+                style="background-color: blue"
+                *ngIf="hasAccess('underprogress')"
+                routerLink="../underprogress"
+                >BLOCK</a
+              >
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a>CUMULATIVE</a>
+          <ul>
+            <li>
+              <!-- <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">DISTRICT</a> -->
+              <a
+                *ngIf="hasAccess('cummulative-daily-spatial')"
+                routerLink="../cummulative-daily-spatial"
+                >DISTRICT</a
+              >
+            </li>
+            <li>
+              <a
+                style="background-color: blue"
+                *ngIf="hasAccess('underprogress')"
+                routerLink="../underprogress"
+                >RIVER BASIN</a
+              >
+            </li>
+            <li>
+              <a
+                style="background-color: blue"
+                *ngIf="hasAccess('underprogress')"
+                routerLink="../underprogress"
+                >BLOCK</a
+              >
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </li>
 
-        <!-- <li class="main_nav">
+    <li *ngIf="loggedInUser.data[0].mcorhq == 'hq'">
+      <a class="main_nav" (click)="uploadPopUp()">INFO UPLOAD</a>
+    </li>
+
+    <!-- <li class="main_nav">
             <a class="main_nav">QPF VERIFICATION REPORT</a>
 
             <ul>
@@ -608,9 +914,7 @@
         </ul>
     </li> -->
 
-
-
-        <!-- <li class="main_nav" *ngIf="hasDocuments('QPF VERIFICATION REPORT')">
+    <!-- <li class="main_nav" *ngIf="hasDocuments('QPF VERIFICATION REPORT')">
             <a class="main_nav">QPF VERIFICATION REPORT</a>
             <ul>
                 <li *ngFor="let document of getDocumentsByType('QPF VERIFICATION REPORT')">
@@ -649,108 +953,130 @@
             </ul>
         </li> -->
 
-
-
-        <li class="main_nav" *ngIf="hasDocuments('QPF VERIFICATION REPORT')">
-            <a class="main_nav">QPF VERIFICATION REPORT</a>
-            <ul>
-                <li *ngFor="let document of getDocumentsByType('QPF VERIFICATION REPORT')" class="dropdown-item-with-delete">
-                    <div class="document-item">
-                        <a class="document-link" (click)="onDocumentClick(document.id)">
-                            {{ document.document_name }}
-                        </a>
-                        <button *ngIf="canDelete()" 
-                                class="delete-btn" 
-                                (click)="confirmDelete($event, document)"
-                                title="Delete Document">
-                            <i class="fa fa-trash"></i>
-                        </button>
-                    </div>
-                </li>
-            </ul>
-        </li>
-
-        <li *ngIf="hasDocuments('DESIGN STORM ANALYSIS')">
-            <a class="main_nav">DESIGN STORM ANALYSIS</a>
-            <ul>
-                <li *ngFor="let document of getDocumentsByType('DESIGN STORM ANALYSIS')" class="dropdown-item-with-delete">
-                    <div class="document-item">
-                        <a class="document-link" (click)="onDocumentClick(document.id)">
-                            {{ document.document_name }}
-                        </a>
-                        <button *ngIf="canDelete()" 
-                                class="delete-btn" 
-                                (click)="confirmDelete($event, document)"
-                                title="Delete Document">
-                            <i class="fa fa-trash"></i>
-                        </button>
-                    </div>
-                </li>
-            </ul>
-        </li>
-
-        <li *ngIf="hasDocuments('RAINFALL REPORTS')">
-            <a class="main_nav">RAINFALL REPORTS</a>
-            <ul>
-                <li *ngFor="let document of getDocumentsByType('RAINFALL REPORTS')" class="dropdown-item-with-delete">
-                    <div class="document-item">
-                        <a class="document-link" (click)="onDocumentClick(document.id)">
-                            {{ document.document_name }}
-                        </a>
-                        <button *ngIf="canDelete()" 
-                                class="delete-btn" 
-                                (click)="confirmDelete($event, document)"
-                                title="Delete Document">
-                            <i class="fa fa-trash"></i>
-                        </button>
-                    </div>
-                </li>
-            </ul>
-        </li>
-
-        <li *ngFor="let docType of documentTypes" 
-            [hidden]="docType.document_type === 'QPF VERIFICATION REPORT' || 
-                    docType.document_type === 'DESIGN STORM ANALYSIS' || 
-                    docType.document_type === 'RAINFALL REPORTS'">
-            <a class="main_nav">{{ docType.document_type }}</a>
-            <ul>
-                <li *ngFor="let document of docType.documents" class="dropdown-item-with-delete">
-                    <div class="document-item">
-                        <a class="document-link" (click)="onDocumentClick(document.id)">
-                            {{ document.document_name }}
-                        </a>
-                        <button *ngIf="canDelete()" 
-                                class="delete-btn" 
-                                (click)="confirmDelete($event, document)"
-                                title="Delete Document">
-                            <i class="fa fa-trash"></i>
-                        </button>
-                    </div>
-                </li>
-            </ul>
-        </li>
-
-        
-
-        <li *ngIf="hasAccess('data-entry')">
-            <a
-              class="main_nav" *ngIf="hasAccess('data-entry')" routerLink="../data-entry">
-              DATA ENTRY
+    <li class="main_nav" *ngIf="hasDocuments('QPF VERIFICATION REPORT')">
+      <a class="main_nav">QPF VERIFICATION REPORT</a>
+      <ul>
+        <li
+          *ngFor="let document of getDocumentsByType('QPF VERIFICATION REPORT')"
+          class="dropdown-item-with-delete"
+        >
+          <div class="document-item">
+            <a class="document-link" (click)="onDocumentClick(document.id)">
+              {{ document.document_name }}
             </a>
-        </li>
-          
-
-        <li  *ngIf="hasAccess('rainfalldatacm')" >
-            <a 
-            class="main_nav" 
-            *ngIf="hasAccess('rainfalldatacm')" routerLink="../rainfalldatacm"
+            <button
+              *ngIf="canDelete()"
+              class="delete-btn"
+              (click)="confirmDelete($event, document)"
+              title="Delete Document"
             >
-            SIGNIFICANT RAINFALL
-            </a>
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
         </li>
-        
-        
-        <!-- <li *ngIf="hasAccess('verification-page')" >
+      </ul>
+    </li>
+
+    <li *ngIf="hasDocuments('DESIGN STORM ANALYSIS')">
+      <a class="main_nav">DESIGN STORM ANALYSIS</a>
+      <ul>
+        <li
+          *ngFor="let document of getDocumentsByType('DESIGN STORM ANALYSIS')"
+          class="dropdown-item-with-delete"
+        >
+          <div class="document-item">
+            <a class="document-link" (click)="onDocumentClick(document.id)">
+              {{ document.document_name }}
+            </a>
+            <button
+              *ngIf="canDelete()"
+              class="delete-btn"
+              (click)="confirmDelete($event, document)"
+              title="Delete Document"
+            >
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </li>
+      </ul>
+    </li>
+
+    <li *ngIf="hasDocuments('RAINFALL REPORTS')">
+      <a class="main_nav">RAINFALL REPORTS</a>
+      <ul>
+        <li
+          *ngFor="let document of getDocumentsByType('RAINFALL REPORTS')"
+          class="dropdown-item-with-delete"
+        >
+          <div class="document-item">
+            <a class="document-link" (click)="onDocumentClick(document.id)">
+              {{ document.document_name }}
+            </a>
+            <button
+              *ngIf="canDelete()"
+              class="delete-btn"
+              (click)="confirmDelete($event, document)"
+              title="Delete Document"
+            >
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </li>
+      </ul>
+    </li>
+
+    <li
+      *ngFor="let docType of documentTypes"
+      [hidden]="
+        docType.document_type === 'QPF VERIFICATION REPORT' ||
+        docType.document_type === 'DESIGN STORM ANALYSIS' ||
+        docType.document_type === 'RAINFALL REPORTS'
+      "
+    >
+      <a class="main_nav">{{ docType.document_type }}</a>
+      <ul>
+        <li
+          *ngFor="let document of docType.documents"
+          class="dropdown-item-with-delete"
+        >
+          <div class="document-item">
+            <a class="document-link" (click)="onDocumentClick(document.id)">
+              {{ document.document_name }}
+            </a>
+            <button
+              *ngIf="canDelete()"
+              class="delete-btn"
+              (click)="confirmDelete($event, document)"
+              title="Delete Document"
+            >
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </li>
+      </ul>
+    </li>
+
+    <li *ngIf="hasAccess('data-entry')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('data-entry')"
+        routerLink="../data-entry"
+      >
+        DATA ENTRY
+      </a>
+    </li>
+
+    <li *ngIf="hasAccess('rainfalldatacm')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('rainfalldatacm')"
+        routerLink="../rainfalldatacm"
+      >
+        SIGNIFICANT RAINFALL
+      </a>
+    </li>
+
+    <!-- <li *ngIf="hasAccess('verification-page')" >
             <a 
             class="main_nav" 
             [routerLink]="isDataEntryAccessible() ? '../verification-page' : null" 
@@ -759,125 +1085,177 @@
             VERIFICATION
             </a>
         </li> -->
-        
-        <li *ngIf="hasAccess('verification-page-mc')" >
-            <a 
-            class="main_nav" 
-            *ngIf="hasAccess('verification-page-mc')" routerLink="../verification-page-mc"
-            >
-            VERIFICATION MC
-            </a>
-        </li>
-        
 
-        <li  *ngIf="hasAccess('verification-page-hq')">
-            <a 
-            class="main_nav" 
-            *ngIf="hasAccess('verification-page-hq')" routerLink="../verification-page-hq"
-            >
-            VERIFICATION HQ
-            </a>
-        </li>
-        
-        <li *ngIf="hasAccess('new-email-dissemination')">
-            <a 
-            class="main_nav" 
-            *ngIf="hasAccess('new-email-dissemination')" routerLink="../new-email-dissemination"
-            >
-            DISSEMINATION
-            </a>
-        </li>
-        
-        <li *ngIf="hasAccess('station-statistics')" >
-            <a
+    <li *ngIf="hasAccess('verification-page-mc')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('verification-page-mc')"
+        routerLink="../verification-page-mc"
+      >
+        VERIFICATION MC
+      </a>
+    </li>
 
-            >STATION STATISTICS</a>
-            <ul>
-            <li >
-                <a 
-                class="main_nav"
-            *ngIf="hasAccess('station-statistics')" routerLink="../station-statistics"
-                >
-                STATISTICS
-                </a>
-            </li>
+    <li *ngIf="hasAccess('verification-page-hq')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('verification-page-hq')"
+        routerLink="../verification-page-hq"
+      >
+        VERIFICATION HQ
+      </a>
+    </li>
 
+    <li *ngIf="hasAccess('new-email-dissemination')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('new-email-dissemination')"
+        routerLink="../new-email-dissemination"
+      >
+        DISSEMINATION
+      </a>
+    </li>
 
-
-            <li>
-                <a *ngIf="hasAccess('underprogress')"  style="background-color: blue;" routerLink="../underprogress">ARG/AWS CUMULATIVE RAINFALL REAL TIME
-        STATION</a>
-            </li>
-
-
-            </ul>
-        </li>
-        
-        <li *ngIf="hasAccess('yearlystationstatistics')">
-            <a 
-            class="main_nav"
-            *ngIf="hasAccess('yearlystationstatistics')" routerLink="../yearlystationstatistics"
-            >
-            YEARLY STATION STATISTICS
-            </a>
-        </li>
-        
-        <li *ngIf="hasAccess('log-info')">
-            <a 
-            class="main_nav"
-            *ngIf="hasAccess('log-info')" routerLink="../log-info"
-            >
-            LOG INFO
-            </a>
-        </li>
-        
-
+    <li *ngIf="hasAccess('station-statistics')">
+      <a>STATION STATISTICS</a>
+      <ul>
         <li>
-           <a class="main_nav">RIVER BASINS</a>
-           <ul>
-             <li>
-                <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">GANGA RIVER BASIN</a>
-             </li>
-             <li>
-                <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">BRAHMAPUTRA RIVER BASIN</a>
-             </li>
-
-             <li>
-                <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">INDUS RIVER BASIN</a>
-             </li>
-
-             <li>
-                <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">GODAVARI RIVER BASIN</a>
-             </li>
-
-             <li>
-                <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">KRISHNA RIVER BASIN</a>
-             </li>
-
-             <li>
-                <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">CAUVERY (KAVERI) RIVER BASIN</a>
-             </li>
-
-             <li>
-                <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">MAHANADI RIVER BASIN</a>
-             </li>
-
-             <li>
-                <a style="background-color: blue;" *ngIf="hasAccess('underprogress')" routerLink="../underprogress">NARMADA RIVER BASIN</a>
-             </li>
-             
-           </ul>
+          <a
+            class="main_nav"
+            *ngIf="hasAccess('station-statistics')"
+            routerLink="../station-statistics"
+          >
+            STATISTICS
+          </a>
         </li>
 
         <li>
-            <a class="main_nav" *ngIf="hasAccess('about')" routerLink="../about">ABOUT</a>
+          <a
+            *ngIf="hasAccess('underprogress')"
+            style="background-color: blue"
+            routerLink="../underprogress"
+            >ARG/AWS CUMULATIVE RAINFALL REAL TIME STATION</a
+          >
         </li>
-    </ul>
+      </ul>
+    </li>
+
+    <li *ngIf="hasAccess('yearlystationstatistics')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('yearlystationstatistics')"
+        routerLink="../yearlystationstatistics"
+      >
+        YEARLY STATION STATISTICS
+      </a>
+    </li>
+
+    <li *ngIf="hasAccess('spatial-table')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('spatial-table')"
+        routerLink="../spatial-table"
+      >
+        SPATIAL DISTRIBUTION
+      </a>
+    </li>
+
+    <li *ngIf="hasAccess('log-info')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('log-info')"
+        routerLink="../log-info"
+      >
+        LOG INFO
+      </a>
+    </li>
+
+    <li>
+      <a class="main_nav">RIVER BASINS</a>
+      <ul>
+        <li>
+          <a
+            style="background-color: blue"
+            *ngIf="hasAccess('underprogress')"
+            routerLink="../underprogress"
+            >GANGA RIVER BASIN</a
+          >
+        </li>
+        <li>
+          <a
+            style="background-color: blue"
+            *ngIf="hasAccess('underprogress')"
+            routerLink="../underprogress"
+            >BRAHMAPUTRA RIVER BASIN</a
+          >
+        </li>
+
+        <li>
+          <a
+            style="background-color: blue"
+            *ngIf="hasAccess('underprogress')"
+            routerLink="../underprogress"
+            >INDUS RIVER BASIN</a
+          >
+        </li>
+
+        <li>
+          <a
+            style="background-color: blue"
+            *ngIf="hasAccess('underprogress')"
+            routerLink="../underprogress"
+            >GODAVARI RIVER BASIN</a
+          >
+        </li>
+
+        <li>
+          <a
+            style="background-color: blue"
+            *ngIf="hasAccess('underprogress')"
+            routerLink="../underprogress"
+            >KRISHNA RIVER BASIN</a
+          >
+        </li>
+
+        <li>
+          <a
+            style="background-color: blue"
+            *ngIf="hasAccess('underprogress')"
+            routerLink="../underprogress"
+            >CAUVERY (KAVERI) RIVER BASIN</a
+          >
+        </li>
+
+        <li>
+          <a
+            style="background-color: blue"
+            *ngIf="hasAccess('underprogress')"
+            routerLink="../underprogress"
+            >MAHANADI RIVER BASIN</a
+          >
+        </li>
+
+        <li>
+          <a
+            style="background-color: blue"
+            *ngIf="hasAccess('underprogress')"
+            routerLink="../underprogress"
+            >NARMADA RIVER BASIN</a
+          >
+        </li>
+      </ul>
+    </li>
+
+    <li>
+      <a class="main_nav" *ngIf="hasAccess('about')" routerLink="../about"
+        >ABOUT</a
+      >
+    </li>
+  </ul>
 </nav>
 
 <div *ngIf="showPopup" class="popup">
-    <button class="close-btn" (click)="cancel()">X</button>
-    <!-- <app-upload-file></app-upload-file> -->
-    <app-upload-file-pdf></app-upload-file-pdf>
-
+  <button class="close-btn" (click)="cancel()">X</button>
+  <!-- <app-upload-file></app-upload-file> -->
+  <app-upload-file-pdf></app-upload-file-pdf>
 </div>
