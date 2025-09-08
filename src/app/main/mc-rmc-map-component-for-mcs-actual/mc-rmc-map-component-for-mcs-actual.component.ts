@@ -9,6 +9,8 @@ import jsPDF from 'jspdf';
 // import { CountryService } from 'src/app/services/country/country.service';
 import { MCRMCsService } from 'src/app/services/MC-RMCs/mcRmc.service';
 import { Constants } from 'src/app/services/constants';
+import { MCRMCDownloadStatistics } from 'src/app/services/MC-RMCs/mcRMCpdf.service';
+
 @Component({
   selector: 'app-mc-rmc-map-component-for-mcs-actual',
   templateUrl: './mc-rmc-map-component-for-mcs-actual.component.html',
@@ -26,15 +28,28 @@ export class McRmcMapComponentForMcsActualComponent {
   countryDeparture: any;
   isLoading = false;
   displayMcName: any;
+  mcDistricts = new Set();
+
 
   async downloadMapData() {
     this.isLoading = true; 
     try {
-      this.isLoading = true; 
-      await this.downloadPdf$.updateanddownloadpdfFromDataEntry();
+      // Check if Set is empty
+      if (this.mcDistricts.size === 0) {
+        alert('Please select at least one MC/RMC district');
+        this.isLoading = false;
+        return;
+      }
+  
+      // Convert Set to Array before passing
+      const mcDistrictsArray = Array.from(this.mcDistricts);
+      console.log('MC Districts selected:', mcDistrictsArray);
+      
+      await this.downloadPdf$.updateanddownloadpdfFromDataEntry(mcDistrictsArray);
       this.isLoading = false; 
     } catch (error) {
       console.error('Error downloading map data:', error);
+      this.isLoading = false;
     } 
   }
 
@@ -79,10 +94,10 @@ export class McRmcMapComponentForMcsActualComponent {
     private renderer: Renderer2,
     private elRef: ElementRef,
     private district : DistrictService,
-    private downloadPdf$ : DownloadPdf,
+    private downloadPdf$ : MCRMCDownloadStatistics,
     // private countryService: CountryService,
     private mcRMCService : MCRMCsService,
-    private constants : Constants
+    private constants : Constants,
   ) {
 
     const currentDate = new Date();
@@ -437,7 +452,7 @@ async downloadMapImage(downloadpdf : boolean) {
           else {
             rainfall = ' '
           }
-          const dailyrainfall = matchedData && matchedData.actual_rainfall !== null && matchedData.actual_rainfall != undefined && !Number.isNaN(matchedData.actual_rainfall) ? matchedData.actual_rainfall.toFixed(1) : 'NA';
+          const dailyrainfall = matchedData && matchedData.actual_rainfall !== null && matchedData.actual_rainfall != undefined && !Number.isNaN(Number(matchedData.actual_rainfall)) ? Number(matchedData.actual_rainfall).toFixed(1) : 'NA';
           const color = this.constants.getActualColorForRainfall(dailyrainfall);
           return {
             fillColor: color,
@@ -452,6 +467,7 @@ async downloadMapImage(downloadpdf : boolean) {
           const state = feature.properties.state;
           const id1 = feature.properties['district'];
           const id2 = feature.properties['district_c'];
+          this.mcDistricts.add(id2);
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
           if (matchedData) {
@@ -465,7 +481,7 @@ async downloadMapImage(downloadpdf : boolean) {
           else {
             rainfall = -100
           }
-          const dailyrainfall = matchedData && matchedData.actual_rainfall !== null && matchedData.actual_rainfall != undefined && !Number.isNaN(matchedData.actual_rainfall) ? matchedData.actual_rainfall.toFixed(1) + ' mm' : 'NA';
+          const dailyrainfall = matchedData && matchedData.actual_rainfall !== null && matchedData.actual_rainfall != undefined && !Number.isNaN(Number(matchedData.actual_rainfall)) ? Number(matchedData.actual_rainfall).toFixed(1) + ' mm' : 'NA';
           const normalrainfall = matchedData && !Number.isNaN(matchedData.normal_rainfall) ? parseFloat(matchedData.normal_rainfall).toFixed(1) + " mm" : 'NA';
           const popupContent = `
           <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
