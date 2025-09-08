@@ -105,6 +105,7 @@ import { BlockActualRainfallMapIncAwsComponent } from './main/rainfall-actual-ma
 import { BlockRainfallMainPageComponent } from './main/block-rainfall-main-page/block-rainfall-main-page.component';
 import { BlockrainfallMapDailyActualMainPageComponent } from './main/block-rainfall-main-page/block/blockrainfall-map-daily-actual-main-page/blockrainfall-map-daily-actual-main-page.component';
 import { DashboardComponent } from './main/irains-dashboard/dashboard/dashboard.component';
+import { SpatialTableComponent } from './spatial-table/spatial-table.component';
 
 export const routes: Routes = [
  { path: 'irains-dashboard', component: DashboardComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
@@ -128,6 +129,7 @@ export const routes: Routes = [
  { path: 'block-rainfall-awsorg-map-daily', component: BlockActualRainfallMapIncAwsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall', component: BlockRainfallMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall-actual', component: BlockrainfallMapDailyActualMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ { path: 'spatial-table', component: SpatialTableComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
 
 //  BlockActualRainfallMapIncAwsComponent
 

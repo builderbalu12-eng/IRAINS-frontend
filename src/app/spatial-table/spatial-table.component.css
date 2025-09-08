@@ -1,0 +1,4 @@
+.bg-orange {
+    background-color: orange !important;
+    color: #000 !important; /* ensure text is visible */
+  }

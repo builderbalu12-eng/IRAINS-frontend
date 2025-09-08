@@ -164,15 +164,16 @@ import { CummulativeDistrictSpatialComponent } from "./main/spatial-maps/cummula
 import { BlockRainfallMapDailyComponent } from "./main/rainfallMapsNav/dailyMaps/block-rainfall-map-daily/block-rainfall-map-daily.component";
 import { BlockActualRainfallMapIncAwsComponent } from "./main/rainfall-actual-maps/Actual/block-actual-rainfall-map-inc-aws/block-actual-rainfall-map-inc-aws.component";
 import { MatCardModule } from "@angular/material/card";
-import { BlockRainfallMainPageComponent } from './main/block-rainfall-main-page/block-rainfall-main-page.component';
-import { BlockRainfallMapDailyMainPageComponent } from './main/block-rainfall-main-page/block/block-rainfall-map-daily-main-page/block-rainfall-map-daily-main-page.component';
-import { BlockrainfallMapDailyActualMainPageComponent } from './main/block-rainfall-main-page/block/blockrainfall-map-daily-actual-main-page/blockrainfall-map-daily-actual-main-page.component';
-import { DashboardComponent } from './main/irains-dashboard/dashboard/dashboard.component';
+import { BlockRainfallMainPageComponent } from "./main/block-rainfall-main-page/block-rainfall-main-page.component";
+import { BlockRainfallMapDailyMainPageComponent } from "./main/block-rainfall-main-page/block/block-rainfall-map-daily-main-page/block-rainfall-map-daily-main-page.component";
+import { BlockrainfallMapDailyActualMainPageComponent } from "./main/block-rainfall-main-page/block/blockrainfall-map-daily-actual-main-page/blockrainfall-map-daily-actual-main-page.component";
+import { DashboardComponent } from "./main/irains-dashboard/dashboard/dashboard.component";
 import { DashboardMaincontainerComponent } from "./main/irains-dashboard/dashboard-maincontainer/dashboard-maincontainer.component";
 import { MapDashboardcontainerComponent } from "./main/irains-dashboard/dashboard-maincontainer/map-dashboardcontainer/map-dashboardcontainer.component";
 import { MapNavBarComponent } from "./main/irains-dashboard/dashboard-maincontainer/map-nav-bar/map-nav-bar.component";
 import { MapChartsComponent } from "./main/irains-dashboard/dashboard-maincontainer/map-charts/map-charts.component";
 import { ComparisonComponent } from "./main/irains-dashboard/dashboard-maincontainer/comparision/comparison.component";
+import { SpatialTableComponent } from "./spatial-table/spatial-table.component";
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -321,6 +322,7 @@ import { ComparisonComponent } from "./main/irains-dashboard/dashboard-mainconta
     MapNavBarComponent,
     MapChartsComponent,
     ComparisonComponent,
+    SpatialTableComponent,
   ],
   imports: [
     MatCardModule,
@@ -358,7 +360,7 @@ import { ComparisonComponent } from "./main/irains-dashboard/dashboard-mainconta
     MatTableModule,
     // DashboardComponent,
   ],
-  
+
   providers: [AuthGuard, DatePipe],
   bootstrap: [AppComponent],
 })
