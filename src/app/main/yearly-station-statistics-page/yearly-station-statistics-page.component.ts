@@ -940,7 +940,13 @@ export class YearlyStationStatisticsPageComponent {
       const date = new Date(entry.collection_date).toISOString().split("T")[0];
 
       if (!stationMap[entry.station_name]) {
-        stationMap[entry.station_name] = { station_name: entry.station_name };
+        stationMap[entry.station_name] = { 
+          district_name: entry.district_name,
+          station_name: entry.station_name,
+          state_name : entry.state_name,
+          latitude: parseFloat(entry.latitude).toFixed(4),
+          longitude: parseFloat(entry.longitude).toFixed(4)
+        };
         uniqueDates.forEach((d: any) => {
           stationMap[entry.station_name][d] = null;
         });
@@ -950,10 +956,11 @@ export class YearlyStationStatisticsPageComponent {
     });
 
     return {
-      columns: ["station_name", ...uniqueDates],
+      columns: ["state_name", "district_name", "station_name", "latitude", "longitude", ...uniqueDates],
       rows: Object.values(stationMap),
     };
   }
+
 
   // async fetchUnifiedFileFromBackend() {
   //   this.isLoading = true; // Set loading to true before starting the API call
@@ -1017,6 +1024,7 @@ async fetchUnifiedFileFromBackend() {
     const result = this.groupByDates(this.stationData);
     this.DailyWiseStationcolumns = result.columns;
     this.DailyWiseStationRows = result.rows;
+    console.log('result.rows', result.rows)
   } catch (error) {
     console.error("Error fetching data:", error);
   } finally {
@@ -1038,29 +1046,305 @@ formatDateToDDMMYYYY(dateString: string): string {
 }
 
 
-
 onDownload() {
   if (!this.DailyWiseStationcolumns || !this.DailyWiseStationRows) {
     console.error("No data available for download.");
     return;
   }
 
+  // Format dates for display
+  const fromDateFormatted = this.formatDateToDDMMYYYY(this.enteredFromDate || this.getCurrentDateFormatted());
+  const toDateFormatted = this.formatDateToDDMMYYYY(this.enteredEndDate || this.getCurrentDateFormatted());
+  
+  // Create dynamic title based on selections
+  let titleParts = [];
+  
+  if (this.selectedRegion && this.selectedRegion.length > 0) {
+    const regionNames = this.regions
+      .filter(r => this.selectedRegion.includes(r.value))
+      .map(r => r.label)
+      .join(', ');
+    titleParts.push(`Region: ${regionNames}`);
+  }
+  
+  if (this.selectedMCData && this.selectedMCData.length > 0) {
+    const mcNames = this.selectedMCData.map(mc => mc.centre_name).join(', ');
+    titleParts.push(`MC: ${mcNames}`);
+  }
+  
+  if (this.selectedRMCData && this.selectedRMCData.length > 0) {
+    const rmcNames = this.selectedRMCData.map(rmc => rmc.centre_name).join(', ');
+    titleParts.push(`RMC: ${rmcNames}`);
+  }
+  
+  if (this.selectedStateData && this.selectedStateData.length > 0) {
+    const stateNames = this.selectedStateData.map(state => state.state_name).join(', ');
+    titleParts.push(`States: ${stateNames}`);
+  }
+  
+  if (this.selectedDistrictData && this.selectedDistrictData.length > 0) {
+    const districtNames = this.selectedDistrictData.map(district => district.district_name).join(', ');
+    titleParts.push(`Districts: ${districtNames}`);
+  }
+
+  const titleRow = titleParts.length > 0 ? titleParts.join(' | ') : 'All Stations';
+  const dateRange = `Period: ${fromDateFormatted} to ${toDateFormatted}`;
+  
+  // Create header information
+  const headerInfo = [
+    ['IMD Rainfall Information System - Daily Station Data'],
+    [''], // Empty row
+    [titleRow],
+    [dateRange],
+    ['Generated on: ' + new Date().toLocaleDateString('en-IN', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })],
+    [''], // Empty row
+    ['IMPORTANT NOTES:'],
+    ['• All rainfall values are in millimeters (mm)'],
+    ['• "-999.9" indicates no data available or not entered data'],
+    ['• Data source: India Meteorological Department (IMD)'],
+    [''], // Empty row before data table
+  ];
+
   // Ensure rows are in array format
   const formattedRows = this.DailyWiseStationRows.map((row: any) => {
-    // If row is an object, extract its values
-    return Array.isArray(row) ? row : Object.values(row);
+    if (Array.isArray(row)) {
+      return row;
+    } else {
+      return this.DailyWiseStationcolumns.map((col: string | number) => row[col]);
+    }
   });
 
-  // Combine headers and rows into a 2D array
-  const worksheetData = [this.DailyWiseStationcolumns, ...formattedRows];
+  // Combine header info, column headers, and data rows
+  const worksheetData = [
+    ...headerInfo,
+    this.DailyWiseStationcolumns, // Column headers
+    ...formattedRows // Data rows
+  ];
 
   try {
     // Create a worksheet
     const worksheet: XLSX.WorkSheet = XLSX.utils.aoa_to_sheet(worksheetData);
 
+    // Calculate optimal column widths
+    const columnWidths: any[] = [];
+    const dataStartRow = headerInfo.length; // Row where actual data starts
+    
+    // Calculate width for each column
+    this.DailyWiseStationcolumns.forEach((header: string, colIndex: number) => {
+      let maxWidth = header.length; // Start with header length
+      
+      // Check all data rows for this column
+      formattedRows.forEach((row: any[]) => {
+        const cellValue = row[colIndex];
+        if (cellValue !== null && cellValue !== undefined) {
+          const cellLength = cellValue.toString().length;
+          maxWidth = Math.max(maxWidth, cellLength);
+        }
+      });
+      
+      // Set minimum width of 15 and maximum of 30, add padding
+      const adjustedWidth = Math.min(Math.max(maxWidth + 3, 15), 30);
+      columnWidths.push({ wch: adjustedWidth });
+    });
+
+    // Apply column widths (extend to cover header info rows)
+    const maxColumns = Math.max(this.DailyWiseStationcolumns.length, 1);
+    worksheet['!cols'] = Array.from({ length: maxColumns }, (_, i) => 
+      columnWidths[i] || { wch: 20 }
+    );
+
+    // Style the main title (Row 1)
+    const titleCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
+    if (worksheet[titleCell]) {
+      worksheet[titleCell].s = {
+        font: { 
+          bold: true, 
+          italic: true,
+          sz: 16, 
+          color: { rgb: "FFFFFF" },
+          name: "Calibri"
+        },
+        fill: { fgColor: { rgb: "1F4E79" } }, // Deep blue
+        alignment: { horizontal: "center", vertical: "center" }
+      };
+    }
+
+    // Style the selection info (Row 3)
+    const selectionCell = XLSX.utils.encode_cell({ r: 2, c: 0 });
+    if (worksheet[selectionCell]) {
+      worksheet[selectionCell].s = {
+        font: { 
+          bold: true, 
+          italic: true,
+          sz: 12,
+          color: { rgb: "1F4E79" },
+          name: "Calibri"
+        },
+        fill: { fgColor: { rgb: "E7F3FF" } }, // Light blue
+        alignment: { horizontal: "center", vertical: "center" }
+      };
+    }
+
+    // Style the date range (Row 4)
+    const dateCell = XLSX.utils.encode_cell({ r: 3, c: 0 });
+    if (worksheet[dateCell]) {
+      worksheet[dateCell].s = {
+        font: { 
+          bold: true, 
+          italic: true,
+          sz: 11,
+          color: { rgb: "1F4E79" },
+          name: "Calibri"
+        },
+        fill: { fgColor: { rgb: "E7F3FF" } }, // Light blue
+        alignment: { horizontal: "center", vertical: "center" }
+      };
+    }
+
+    // Style the generation date (Row 5)
+    const genCell = XLSX.utils.encode_cell({ r: 4, c: 0 });
+    if (worksheet[genCell]) {
+      worksheet[genCell].s = {
+        font: { 
+          italic: true,
+          sz: 10,
+          color: { rgb: "666666" },
+          name: "Calibri"
+        },
+        fill: { fgColor: { rgb: "F8F9FA" } }, // Very light gray
+        alignment: { horizontal: "center", vertical: "center" }
+      };
+    }
+
+    // Style the "IMPORTANT NOTES:" header (Row 7)
+    const notesHeaderCell = XLSX.utils.encode_cell({ r: 6, c: 0 });
+    if (worksheet[notesHeaderCell]) {
+      worksheet[notesHeaderCell].s = {
+        font: { 
+          bold: true, 
+          sz: 12,
+          color: { rgb: "B91C1C" }, // Red color for emphasis
+          name: "Calibri"
+        },
+        fill: { fgColor: { rgb: "FEF3C7" } }, // Light yellow
+        alignment: { horizontal: "left", vertical: "center" }
+      };
+    }
+
+    // Style the notes bullets (Rows 8-10)
+    for (let row = 7; row <= 9; row++) {
+      const noteCell = XLSX.utils.encode_cell({ r: row, c: 0 });
+      if (worksheet[noteCell]) {
+        worksheet[noteCell].s = {
+          font: { 
+            italic: true,
+            sz: 10,
+            color: { rgb: "374151" }, // Dark gray
+            name: "Calibri"
+          },
+          fill: { fgColor: { rgb: "FFFBEB" } }, // Very light yellow
+          alignment: { horizontal: "left", vertical: "center" }
+        };
+      }
+    }
+
+    // Style the data headers with enhanced bold formatting
+    for (let col = 0; col < this.DailyWiseStationcolumns.length; col++) {
+      const headerCell = XLSX.utils.encode_cell({ r: dataStartRow, c: col });
+      if (worksheet[headerCell]) {
+        worksheet[headerCell].s = {
+          font: { 
+            bold: true,
+            b: true,  // Additional bold property for better compatibility
+            color: { rgb: "FFFFFF" },
+            sz: 12,   // Increased font size for better visibility
+            name: "Calibri"
+          },
+          fill: { fgColor: { rgb: "4A90A4" } }, // Your IMD blue color
+          alignment: { horizontal: "center", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "FFFFFF" } },
+            bottom: { style: "thin", color: { rgb: "FFFFFF" } },
+            left: { style: "thin", color: { rgb: "FFFFFF" } },
+            right: { style: "thin", color: { rgb: "FFFFFF" } }
+          }
+        };
+      }
+    }
+
+    // Style data cells with conditional formatting for -999.9 values
+    for (let row = dataStartRow + 1; row < worksheetData.length; row++) {
+      for (let col = 0; col < this.DailyWiseStationcolumns.length; col++) {
+        const dataCell = XLSX.utils.encode_cell({ r: row, c: col });
+        if (worksheet[dataCell]) {
+          const cellValue = worksheet[dataCell].v;
+          
+          // Highlight missing data values
+          if (cellValue === -999.9 || cellValue === "-999.9") {
+            worksheet[dataCell].s = {
+              font: { 
+                color: { rgb: "B91C1C" }, // Red text for missing data
+                sz: 10,
+                name: "Calibri"
+              },
+              fill: { fgColor: { rgb: "FEE2E2" } }, // Light red background
+              alignment: { horizontal: "center", vertical: "center" },
+              border: {
+                top: { style: "thin", color: { rgb: "E5E7EB" } },
+                bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+                left: { style: "thin", color: { rgb: "E5E7EB" } },
+                right: { style: "thin", color: { rgb: "E5E7EB" } }
+              }
+            };
+          } else {
+            // Regular data cells with alternating row colors
+            const isEvenRow = (row - dataStartRow) % 2 === 0;
+            worksheet[dataCell].s = {
+              font: { 
+                color: { rgb: "374151" },
+                sz: 10,
+                name: "Calibri"
+              },
+              fill: { fgColor: { rgb: isEvenRow ? "F9FAFB" : "FFFFFF" } }, // Alternating row colors
+              alignment: { 
+                horizontal: this.isNumeric(cellValue) ? "right" : "left", 
+                vertical: "center" 
+              },
+              border: {
+                top: { style: "thin", color: { rgb: "E5E7EB" } },
+                bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+                left: { style: "thin", color: { rgb: "E5E7EB" } },
+                right: { style: "thin", color: { rgb: "E5E7EB" } }
+              }
+            };
+          }
+        }
+      }
+    }
+
+    // Set merge ranges for header info
+    const lastCol = Math.max(this.DailyWiseStationcolumns.length - 1, 4);
+    worksheet['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: lastCol } }, // Main title
+      { s: { r: 2, c: 0 }, e: { r: 2, c: lastCol } }, // Selection info
+      { s: { r: 3, c: 0 }, e: { r: 3, c: lastCol } }, // Date range
+      { s: { r: 4, c: 0 }, e: { r: 4, c: lastCol } }, // Generation date
+      { s: { r: 6, c: 0 }, e: { r: 6, c: lastCol } }, // Notes header
+      { s: { r: 7, c: 0 }, e: { r: 7, c: lastCol } }, // Note 1
+      { s: { r: 8, c: 0 }, e: { r: 8, c: lastCol } }, // Note 2
+      { s: { r: 9, c: 0 }, e: { r: 9, c: lastCol } }, // Note 3
+    ];
+
     // Create a workbook and append the worksheet
     const workbook: XLSX.WorkBook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Daily Wise Station Data");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Daily Station Data");
 
     // Generate Excel file and trigger download
     const excelBuffer: any = XLSX.write(workbook, {
@@ -1070,12 +1354,40 @@ onDownload() {
 
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
 
+    // Generate descriptive filename
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filenamePrefix = titleParts.length > 0 ? 
+      titleParts[0].replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20) : 
+      'AllStations';
+    const filename = `IMD_Station_Data_${filenamePrefix}_${fromDateFormatted.replace(/-/g, '')}_to_${toDateFormatted.replace(/-/g, '')}.xlsx`;
+
     // Save the file using FileSaver
-    saveAs(blob, "DailyWiseStationData.xlsx");
+    saveAs(blob, filename);
+    
+    console.log("Excel file downloaded successfully with enhanced header styling.");
   } catch (error) {
     console.error("Error generating Excel file:", error);
   }
 }
+
+
+
+
+
+formatCellValue(value: any): string {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  if (typeof value === 'number') {
+    return value.toLocaleString();
+  }
+  return value.toString();
+}
+
+isNumeric(value: any): boolean {
+  return typeof value === 'number' || (!isNaN(value) && !isNaN(parseFloat(value)));
+}
+
 
 
 

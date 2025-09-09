@@ -416,3 +416,143 @@ pointer-events: none; /* Disables clicking */
 opacity: 0.6; /* Makes the text look faded */
 }
 
+
+
+.unified-file-container {
+  padding: 40px;
+  background-color: #f8f9fa;
+  min-height: 400px;
+}
+
+.data-table-wrapper {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  position: relative;
+  margin: 0 auto;
+  max-width: 95%;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.table-container {
+  overflow-x: auto;
+  max-height: 2000px;
+  overflow-y: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.data-table thead {
+  background-color: #4a90a4;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.data-table th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+}
+
+.data-table th:last-child {
+  border-right: none;
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+  background-color: #f1f5f9;
+}
+
+.data-table tbody tr.even-row {
+  background-color: #f9fafb;
+}
+
+.data-table tbody tr.even-row:hover {
+  background-color: #f1f5f9;
+}
+
+.data-table td {
+  padding: 10px 8px;
+  border-right: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.data-table td:last-child {
+  border-right: none;
+}
+
+.data-table td.numeric {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.no-data {
+  text-align: center !important;
+  color: #6b7280;
+  font-style: italic;
+  padding: 40px !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .unified-file-container {
+    padding: 10px;
+  }
+  
+  .data-table-wrapper {
+    max-width: 100%;
+  }
+  
+  .data-table {
+    font-size: 12px;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 8px 6px;
+  }
+}
