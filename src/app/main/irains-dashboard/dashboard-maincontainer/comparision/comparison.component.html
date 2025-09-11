@@ -1,208 +1,5 @@
 <!-- 
-<div>
-<div id="loader" class="loader" *ngIf="isBuffering">
-  <div class="loading-message">
-    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
-    Loading...
-  </div>
-</div>
-<div class="main_container_box" style="padding: 10px 5px 5px 5px ; background-color: rgb(237, 237, 237);">
 
-  
-
-  <div class="map_box row g-3">
-     <div class="datebox">
-    {{ dateRangeLabel }}
-  </div>
-  
-    <div class="col-md-4">
-      <div class="map_card">
-        
-        <div id="state-map" class="comparison-map">
-          <h6 class="text-center mapheadings">State Map</h6>
-        </div>
-        <div class="summary-table mt-1">
-          <table class="table table-sm table-bordered text-center">
-            <thead class="table-light">
-              <tr>
-                <th></th>
-                <th>Actual</th>
-                <th>Normal</th>
-                <th>Departure</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Highest</td>
-                <td>
-                  {{ stateSummary.highest.daily.value !== null ? stateSummary.highest.daily.value : 'NA' }}
-                  <br/>
-                  <div style="font-size: 10px; margin-top: -3px;">
-                    {{ stateSummary.highest.daily.name || '-' }}
-                  </div>
-                </td>
-                <td>
-                  {{ stateSummary.highest.normal.value !== null ? stateSummary.highest.normal.value : 'NA' }}
-                  <br />
-                  <div style="font-size: 10px; margin-top: -3px;">
-                    {{ stateSummary.highest.normal.name || '-' }}
-                  </div>
-                </td>
-                <td>
-                  {{ stateSummary.highest.departure.value !== null ? stateSummary.highest.departure.value : 'NA' }}
-                  <br />
-                  <div style="font-size: 10px; margin-top: -3px;">
-                    {{ stateSummary.highest.departure.name || '-' }}
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>Lowest</td>
-                <td>
-                  {{ stateSummary.lowest.daily.value !== null ? stateSummary.lowest.daily.value : 'NA' }}
-                  <br />
-                  <div style="font-size: 10px; margin-top: -3px;">
-                    {{ stateSummary.lowest.daily.name || '-' }}
-                  </div>
-                </td>
-                <td>
-                  {{ stateSummary.lowest.normal.value !== null ? stateSummary.lowest.normal.value : 'NA' }}
-                  <br />
-                  <div style="font-size: 10px; margin-top: -3px;">
-                    {{ stateSummary.lowest.normal.name || '-' }}
-                  </div>
-                </td>
-                <td>
-                  {{ stateSummary.lowest.departure.value !== null ? stateSummary.lowest.departure.value : 'NA' }}
-                  <br />
-                  <div style="font-size: 10px; margin-top: -3px;">
-                    {{ stateSummary.lowest.departure.name || '-' }}
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-4">
-      <div class="map_card">
-        <div id="district-map" class="comparison-map">
-          <h6 class="text-center mapheadings">
-          <span *ngIf="selectedState">{{ toCamelCase(selectedState.properties.state_name) }}</span>
-          District Map
-        </h6>
-        </div>
-        <div class="summary-table mt-1">
-          <table class="table table-sm table-bordered text-center">
-            <thead class="table-light">
-              <tr>
-                <th></th>
-                <th>Actual</th>
-                <th>Normal</th>
-                <th>Departure</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Highest</td>
-                <td>
-                  {{ districtSummary.highest.daily.value !== null ? districtSummary.highest.daily.value : 'NA' }}
-                  <br />
-                  <div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.daily.name || '-' }}</div>
-                </td>
-                <td>
-                  {{ districtSummary.highest.normal.value !== null ? districtSummary.highest.normal.value : 'NA' }}
-                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.normal.name || '-' }}</div>
-                </td>
-                <td>
-                  {{ districtSummary.highest.departure.value !== null ? districtSummary.highest.departure.value : 'NA' }}
-                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.departure.name || '-' }}</div>
-                </td>
-              </tr>
-              <tr>
-                <td>Lowest</td>
-                <td>
-                  {{ districtSummary.lowest.daily.value !== null ? districtSummary.lowest.daily.value : 'NA' }}
-                  <br /><div style="font-size: 10px;">{{ districtSummary.lowest.daily.name || '-' }}</div>
-                </td>
-                <td>
-                  {{ districtSummary.lowest.normal.value !== null ? districtSummary.lowest.normal.value : 'NA' }}
-                  <br /><div style="font-size: 10px;">{{ districtSummary.lowest.normal.name || '-' }}</div>
-                </td>
-                <td>
-                  {{ districtSummary.lowest.departure.value !== null ? districtSummary.lowest.departure.value : 'NA' }}
-                  <br /><div style="font-size: 10px;">{{ districtSummary.lowest.departure.name || '-' }}</div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-4">
-      <div class="map_card">
-        <div id="block-map" class="comparison-map">
-          <h6 class="text-center mapheadings">
-          <span *ngIf="selectedDistrict">{{ toCamelCase(selectedDistrict.properties.district) }}</span>
-          <span *ngIf="!selectedDistrict && selectedState">{{ toCamelCase(selectedState.properties.state_name) }}</span>
-          Block Map
-        </h6>
-        </div>
-        <div class="summary-table mt-1">
-          <table class="table table-sm table-bordered text-center">
-            <thead class="table-light">
-              <tr>
-                <th></th>
-                <th>Actual</th>
-                <th>Normal</th>
-                <th>Departure</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Highest</td>
-                <td>
-                  {{ blockSummary.highest.daily.value !== null ? blockSummary.highest.daily.value : 'NA' }}
-                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.daily.name || '-' }}</div>
-                </td>
-                <td>
-                  {{ blockSummary.highest.normal.value !== null ? blockSummary.highest.normal.value : 'NA' }}
-                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.normal.name || '-' }}</div>
-                </td>
-                <td>
-                  {{ blockSummary.highest.departure.value !== null ? blockSummary.highest.departure.value : 'NA' }}
-                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.departure.name || '-' }}</div>
-                </td>
-              </tr>
-              <tr>
-                <td>Lowest</td>
-                <td>
-                  {{ blockSummary.lowest.daily.value !== null ? blockSummary.lowest.daily.value : 'NA' }}
-                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.daily.name || '-' }}</div>
-                </td>
-                <td>
-                  {{ blockSummary.lowest.normal.value !== null ? blockSummary.lowest.normal.value : 'NA' }}
-                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.normal.name || '-' }}</div>
-                </td>
-                <td>
-                  {{ blockSummary.lowest.departure.value !== null ? blockSummary.lowest.departure.value : 'NA' }}
-                  <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.departure.name || '-' }}</div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-</div> -->
-
-
-<!-- 
 <div>
   <div id="loader" class="loader" *ngIf="isBuffering">
     <div class="loading-message">
@@ -210,240 +7,117 @@
       Loading...
     </div>
   </div>
-  <div class="main_container_box" style="padding: 10px 5px 5px 5px ; background-color: rgb(237, 237, 237);">
+  <div class="main_container_box" style="padding: 10px 5px 5px 5px; background-color: rgb(237, 237, 237);">
     <div class="map_box row g-3">
-      <div class="datebox">
-        {{ dateRangeLabel }}
-      </div>
-
-      <div class="col-md-4">
+      <div class="col-md-4" *ngIf="selectedLevels[0]">
         <div class="map_card">
-          <div id="state-map" class="comparison-map">
-            <h6 class="text-center mapheadings">State Map</h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('state-map')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button>
+          <div id="map1" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[0], 0) }}</h6>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color"
+                       class="d-inline-block border border-1 border-black me-2"
+                       style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize"
+                       class="text-black fw-bold text-size"
+                       [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
-           
             <table class="table table-sm table-bordered text-center">
               <thead class="table-light">
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
                   <th>Departure</th>
+                  <th>Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ stateSummary.highest.daily.value !== null ? stateSummary.highest.daily.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ stateSummary.highest.daily.name || '-' }}
-                    </div>
-                  </td>
-                  <td>
-                    {{ stateSummary.highest.normal.value !== null ? stateSummary.highest.normal.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ stateSummary.highest.normal.name || '-' }}
-                    </div>
-                  </td>
-                  <td>
-                    {{ stateSummary.highest.departure.value !== null ? stateSummary.highest.departure.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ stateSummary.highest.departure.name || '-' }}
-                    </div>
-                  </td>
+                  <td><b>Highest</b> ({{ map1Summary.highest.actual.name || '-' }})</td>
+                  <td>{{ map1Summary.highest.actual.actual !== null ? map1Summary.highest.actual.actual : 'NA' }}</td>
+                  <td>{{ map1Summary.highest.actual.departure !== null ? map1Summary.highest.actual.departure : 'NA' }}</td>
+                  <td>{{ map1Summary.highest.actual.normal !== null ? map1Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ stateSummary.lowest.daily.value !== null ? stateSummary.lowest.daily.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ stateSummary.lowest.daily.name || '-' }}
-                    </div>
-                  </td>
-                  <td>
-                    {{ stateSummary.lowest.normal.value !== null ? stateSummary.lowest.normal.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ stateSummary.lowest.normal.name || '-' }}
-                    </div>
-                  </td>
-                  <td>
-                    {{ stateSummary.lowest.departure.value !== null ? stateSummary.lowest.departure.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ stateSummary.lowest.departure.name || '-' }}
-                    </div>
-                  </td>
+                  <td><b>Lowest</b> ({{ map1Summary.lowest.actual.name || '-' }})</td>
+                  <td>{{ map1Summary.lowest.actual.actual !== null ? map1Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td>{{ map1Summary.lowest.actual.departure !== null ? map1Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td>{{ map1Summary.lowest.actual.normal !== null ? map1Summary.lowest.actual.normal : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
-
-      <div class="col-md-4">
+      <div class="col-md-4" *ngIf="selectedLevels[1]">
         <div class="map_card">
-          <div id="district-map" class="comparison-map">
-            <h6 class="text-center mapheadings">
-              <span *ngIf="selectedState">{{ toCamelCase(selectedState.properties.state_name) }}</span> District Map
-            </h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('district-map')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button>
+          <div id="map2" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[1], 1) }}</h6>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color"
+                       class="d-inline-block border border-1 border-black me-2"
+                       style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize"
+                       class="text-black fw-bold text-size"
+                       [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
-            
             <table class="table table-sm table-bordered text-center">
               <thead class="table-light">
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
                   <th>Departure</th>
+                  <th>Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ districtSummary.highest.daily.value !== null ? districtSummary.highest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ districtSummary.highest.normal.value !== null ? districtSummary.highest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ districtSummary.highest.departure.value !== null ? districtSummary.highest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.departure.name || '-' }}</div>
-                  </td>
+                  <td><b>Highest</b> ({{ map2Summary.highest.actual.name || '-' }})</td>
+                  <td>{{ map2Summary.highest.actual.actual !== null ? map2Summary.highest.actual.actual : 'NA' }}</td>
+                  <td>{{ map2Summary.highest.actual.departure !== null ? map2Summary.highest.actual.departure : 'NA' }}</td>
+                  <td>{{ map2Summary.highest.actual.normal !== null ? map2Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ districtSummary.lowest.daily.value !== null ? districtSummary.lowest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ districtSummary.lowest.normal.value !== null ? districtSummary.lowest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ districtSummary.lowest.departure.value !== null ? districtSummary.lowest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.departure.name || '-' }}</div>
-                  </td>
+                  <td><b>Lowest</b> ({{ map2Summary.lowest.actual.name || '-' }})</td>
+                  <td>{{ map2Summary.lowest.actual.actual !== null ? map2Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td>{{ map2Summary.lowest.actual.departure !== null ? map2Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td>{{ map2Summary.lowest.actual.normal !== null ? map2Summary.lowest.actual.normal : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
-
-      <div class="col-md-4">
+      <div class="col-md-4" *ngIf="selectedLevels[2]">
         <div class="map_card">
-          <div id="block-map" class="comparison-map">
-            <h6 class="text-center mapheadings">
-              <span *ngIf="selectedDistrict">{{ toCamelCase(selectedDistrict.properties.district) }}</span>
-              <span *ngIf="!selectedDistrict && selectedState">{{ toCamelCase(selectedState.properties.state_name) }}</span>
-              Block Map
-            </h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('block-map')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="summary-table mt-1">
-            
-            <table class="table table-sm table-bordered text-center">
-              <thead class="table-light">
-                <tr>
-                  <th></th>
-                  <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ blockSummary.highest.daily.value !== null ? blockSummary.highest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ blockSummary.highest.normal.value !== null ? blockSummary.highest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ blockSummary.highest.departure.value !== null ? blockSummary.highest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.departure.name || '-' }}</div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ blockSummary.lowest.daily.value !== null ? blockSummary.lowest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ blockSummary.lowest.normal.value !== null ? blockSummary.lowest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ blockSummary.lowest.departure.value !== null ? blockSummary.lowest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.departure.name || '-' }}</div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div> -->
-
-
-
-
-
-
-<!-- 
-<div>
-  <div id="loader" class="loader" *ngIf="isBuffering">
-    <div class="loading-message">
-      <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
-      Loading...
-    </div>
-  </div>
-  <div class="main_container_box" style="padding: 10px 5px 5px 5px ; background-color: rgb(237, 237, 237);">
-    <div class="map_box row g-3">
-      <div class="datebox">
-        {{ dateRangeLabel }}
-      </div>
-      <div class="template-select">
-        <select [(ngModel)]="template" (change)="onTemplateChange()">
-          <option value="state">Template 1: State</option>
-          <option value="region">Template 2: Region</option>
-          <option value="subdivision">Template 3: Subdivision</option>
-        </select>
-      </div>
-
-      <div class="col-md-4">
-        <div class="map_card">
-          <div id="top-map" class="comparison-map">
-            <h6 class="text-center mapheadings">{{ getTopLevelName() }} Map</h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('top-map')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button>
+          <div id="map3" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[2], 2) }}</h6>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color"
+                       class="d-inline-block border border-1 border-black me-2"
+                       style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize"
+                       class="text-black fw-bold text-size"
+                       [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -451,174 +125,22 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
                   <th>Departure</th>
+                  <th>Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ topSummary.highest.daily.value !== null ? topSummary.highest.daily.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ topSummary.highest.daily.name || '-' }}
-                    </div>
-                  </td>
-                  <td>
-                    {{ topSummary.highest.normal.value !== null ? topSummary.highest.normal.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ topSummary.highest.normal.name || '-' }}
-                    </div>
-                  </td>
-                  <td>
-                    {{ topSummary.highest.departure.value !== null ? topSummary.highest.departure.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ topSummary.highest.departure.name || '-' }}
-                    </div>
-                  </td>
+                  <td><b>Highest</b> ({{ map3Summary.highest.actual.name || '-' }})</td>
+                  <td>{{ map3Summary.highest.actual.actual !== null ? map3Summary.highest.actual.actual : 'NA' }}</td>
+                  <td>{{ map3Summary.highest.actual.departure !== null ? map3Summary.highest.actual.departure : 'NA' }}</td>
+                  <td>{{ map3Summary.highest.actual.normal !== null ? map3Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ topSummary.lowest.daily.value !== null ? topSummary.lowest.daily.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ topSummary.lowest.daily.name || '-' }}
-                    </div>
-                  </td>
-                  <td>
-                    {{ topSummary.lowest.normal.value !== null ? topSummary.lowest.normal.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ topSummary.lowest.normal.name || '-' }}
-                    </div>
-                  </td>
-                  <td>
-                    {{ topSummary.lowest.departure.value !== null ? topSummary.lowest.departure.value : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">
-                      {{ topSummary.lowest.departure.name || '-' }}
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="map_card">
-          <div id="district-map" class="comparison-map">
-            <h6 class="text-center mapheadings">
-              <span *ngIf="getSelectedTopLevel()">{{ toCamelCase(getSelectedTopLevel().properties[getNameProp()]) }}</span> District Map
-            </h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('district-map')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="summary-table mt-1">
-            <table class="table table-sm table-bordered text-center">
-              <thead class="table-light">
-                <tr>
-                  <th></th>
-                  <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ districtSummary.highest.daily.value !== null ? districtSummary.highest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ districtSummary.highest.normal.value !== null ? districtSummary.highest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ districtSummary.highest.departure.value !== null ? districtSummary.highest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ districtSummary.highest.departure.name || '-' }}</div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ districtSummary.lowest.daily.value !== null ? districtSummary.lowest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ districtSummary.lowest.normal.value !== null ? districtSummary.lowest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ districtSummary.lowest.departure.value !== null ? districtSummary.lowest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px;">{{ districtSummary.lowest.departure.name || '-' }}</div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="map_card">
-          <div id="block-map" class="comparison-map">
-            <h6 class="text-center mapheadings">
-              <span *ngIf="selectedDistrict">{{ toCamelCase(selectedDistrict.properties.district) }}</span>
-              <span *ngIf="!selectedDistrict && getSelectedTopLevel()">{{ toCamelCase(getSelectedTopLevel().properties[getNameProp()]) }}</span>
-              Block Map
-            </h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('block-map')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="summary-table mt-1">
-            <table class="table table-sm table-bordered text-center">
-              <thead class="table-light">
-                <tr>
-                  <th></th>
-                  <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ blockSummary.highest.daily.value !== null ? blockSummary.highest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ blockSummary.highest.normal.value !== null ? blockSummary.highest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ blockSummary.highest.departure.value !== null ? blockSummary.highest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.highest.departure.name || '-' }}</div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ blockSummary.lowest.daily.value !== null ? blockSummary.lowest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ blockSummary.lowest.normal.value !== null ? blockSummary.lowest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ blockSummary.lowest.departure.value !== null ? blockSummary.lowest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ blockSummary.lowest.departure.name || '-' }}</div>
-                  </td>
+                  <td><b>Lowest</b> ({{ map3Summary.lowest.actual.name || '-' }})</td>
+                  <td>{{ map3Summary.lowest.actual.actual !== null ? map3Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td>{{ map3Summary.lowest.actual.departure !== null ? map3Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td>{{ map3Summary.lowest.actual.normal !== null ? map3Summary.lowest.actual.normal : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -643,9 +165,19 @@
         <div class="map_card">
           <div id="map1" class="comparison-map">
             <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[0], 0) }}</h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('map1')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color"
+                       class="d-inline-block border border-1 border-black me-2"
+                       style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize"
+                       class="text-black fw-bold text-size"
+                       [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -653,40 +185,22 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ map1Summary.highest.daily.value !== null ? map1Summary.highest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map1Summary.highest.normal.value !== null ? map1Summary.highest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map1Summary.highest.departure.value !== null ? map1Summary.highest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.departure.name || '-' }}</div>
-                  </td>
+                  <td><b>Highest</b> ({{ map1Summary.highest.actual.name || '-' }})</td>
+                  <td>{{ map1Summary.highest.actual.actual !== null ? map1Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.highest.actual.departure !== null ? map1Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.highest.actual.normal !== null ? map1Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ map1Summary.lowest.daily.value !== null ? map1Summary.lowest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map1Summary.lowest.normal.value !== null ? map1Summary.lowest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map1Summary.lowest.departure.value !== null ? map1Summary.lowest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.departure.name || '-' }}</div>
-                  </td>
+                  <td><b>Lowest</b> ({{ map1Summary.lowest.actual.name || '-' }})</td>
+                  <td>{{ map1Summary.lowest.actual.actual !== null ? map1Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.lowest.actual.departure !== null ? map1Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.lowest.actual.normal !== null ? map1Summary.lowest.actual.normal : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -697,9 +211,19 @@
         <div class="map_card">
           <div id="map2" class="comparison-map">
             <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[1], 1) }}</h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('map2')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color"
+                       class="d-inline-block border border-1 border-black me-2"
+                       style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize"
+                       class="text-black fw-bold text-size"
+                       [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -707,40 +231,22 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ map2Summary.highest.daily.value !== null ? map2Summary.highest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map2Summary.highest.normal.value !== null ? map2Summary.highest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map2Summary.highest.departure.value !== null ? map2Summary.highest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.departure.name || '-' }}</div>
-                  </td>
+                  <td><b>Highest</b> ({{ map2Summary.highest.actual.name || '-' }})</td>
+                  <td>{{ map2Summary.highest.actual.actual !== null ? map2Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.highest.actual.departure !== null ? map2Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.highest.actual.normal !== null ? map2Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ map2Summary.lowest.daily.value !== null ? map2Summary.lowest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map2Summary.lowest.normal.value !== null ? map2Summary.lowest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map2Summary.lowest.departure.value !== null ? map2Summary.lowest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.departure.name || '-' }}</div>
-                  </td>
+                  <td><b>Lowest</b> ({{ map2Summary.lowest.actual.name || '-' }})</td>
+                  <td>{{ map2Summary.lowest.actual.actual !== null ? map2Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.lowest.actual.departure !== null ? map2Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.lowest.actual.normal !== null ? map2Summary.lowest.actual.normal : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -751,9 +257,19 @@
         <div class="map_card">
           <div id="map3" class="comparison-map">
             <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[2], 2) }}</h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('map3')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color"
+                       class="d-inline-block border border-1 border-black me-2"
+                       style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize"
+                       class="text-black fw-bold text-size"
+                       [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -761,40 +277,22 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ map3Summary.highest.daily.value !== null ? map3Summary.highest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map3Summary.highest.normal.value !== null ? map3Summary.highest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map3Summary.highest.departure.value !== null ? map3Summary.highest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.departure.name || '-' }}</div>
-                  </td>
+                  <td><b>Highest</b> ({{ map3Summary.highest.actual.name || '-' }})</td>
+                  <td>{{ map3Summary.highest.actual.actual !== null ? map3Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.highest.actual.departure !== null ? map3Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.highest.actual.normal !== null ? map3Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ map3Summary.lowest.daily.value !== null ? map3Summary.lowest.daily.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.daily.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map3Summary.lowest.normal.value !== null ? map3Summary.lowest.normal.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.normal.name || '-' }}</div>
-                  </td>
-                  <td>
-                    {{ map3Summary.lowest.departure.value !== null ? map3Summary.lowest.departure.value : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.departure.name || '-' }}</div>
-                  </td>
+                  <td><b>Lowest</b> ({{ map3Summary.lowest.actual.name || '-' }})</td>
+                  <td>{{ map3Summary.lowest.actual.actual !== null ? map3Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.lowest.actual.departure !== null ? map3Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.lowest.actual.normal !== null ? map3Summary.lowest.actual.normal : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -804,7 +302,6 @@
     </div>
   </div>
 </div> -->
-
 
 <!-- 
 <div>
@@ -820,9 +317,19 @@
         <div class="map_card">
           <div id="map1" class="comparison-map">
             <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[0], 0) }}</h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('map1')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('map1')" title="Toggle Fullscreen">
+              <i class="fa fa-expand"></i>
             </button>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color" class="d-inline-block border border-1 border-black me-2"
+                    style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize" class="text-black fw-bold text-size" [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -830,64 +337,26 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ map1Summary.highest.actual.actual !== null ? map1Summary.highest.actual.actual : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.actual.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map1Summary.highest.actual.normal !== null ? map1Summary.highest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map1Summary.highest.actual.departure !== null ? map1Summary.highest.actual.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map1Summary.highest.normal.normal !== null ? map1Summary.highest.normal.normal : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.normal.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map1Summary.highest.normal.actual !== null ? map1Summary.highest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map1Summary.highest.normal.departure !== null ? map1Summary.highest.normal.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map1Summary.highest.departure.departure !== null ? map1Summary.highest.departure.departure : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.departure.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map1Summary.highest.departure.actual !== null ? map1Summary.highest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map1Summary.highest.departure.normal !== null ? map1Summary.highest.departure.normal : 'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Highest</b> (<span class="name-text">{{ map1Summary.highest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map1Summary.highest.actual.actual !== null ? map1Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.highest.actual.departure !== null ?
+                    map1Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.highest.actual.normal !== null ?
+                    map1Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ map1Summary.lowest.actual.actual !== null ? map1Summary.lowest.actual.actual : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.actual.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map1Summary.lowest.actual.normal !== null ? map1Summary.lowest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map1Summary.lowest.actual.departure !== null ? map1Summary.lowest.actual.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map1Summary.lowest.normal.normal !== null ? map1Summary.lowest.normal.normal : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.normal.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map1Summary.lowest.normal.actual !== null ? map1Summary.lowest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map1Summary.lowest.normal.departure !== null ? map1Summary.lowest.normal.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map1Summary.lowest.departure.departure !== null ? map1Summary.lowest.departure.departure : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.departure.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map1Summary.lowest.departure.actual !== null ? map1Summary.lowest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map1Summary.lowest.departure.normal !== null ? map1Summary.lowest.departure.normal : 'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Lowest</b> (<span class="name-text">{{ map1Summary.lowest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map1Summary.lowest.actual.actual !== null ? map1Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.lowest.actual.departure !== null ?
+                    map1Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.lowest.actual.normal !== null ? map1Summary.lowest.actual.normal
+                    : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -898,9 +367,19 @@
         <div class="map_card">
           <div id="map2" class="comparison-map">
             <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[1], 1) }}</h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('map2')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('map2')" title="Toggle Fullscreen">
+              <i class="fa fa-expand"></i>
             </button>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color" class="d-inline-block border border-1 border-black me-2"
+                    style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize" class="text-black fw-bold text-size" [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -908,64 +387,26 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ map2Summary.highest.actual.actual !== null ? map2Summary.highest.actual.actual : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.actual.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map2Summary.highest.actual.normal !== null ? map2Summary.highest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map2Summary.highest.actual.departure !== null ? map2Summary.highest.actual.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map2Summary.highest.normal.normal !== null ? map2Summary.highest.normal.normal : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.normal.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map2Summary.highest.normal.actual !== null ? map2Summary.highest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map2Summary.highest.normal.departure !== null ? map2Summary.highest.normal.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map2Summary.highest.departure.departure !== null ? map2Summary.highest.departure.departure : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.departure.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map2Summary.highest.departure.actual !== null ? map2Summary.highest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map2Summary.highest.departure.normal !== null ? map2Summary.highest.departure.normal : 'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Highest</b> (<span class="name-text">{{ map2Summary.highest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map2Summary.highest.actual.actual !== null ? map2Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.highest.actual.departure !== null ?
+                    map2Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.highest.actual.normal !== null ?
+                    map2Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ map2Summary.lowest.actual.actual !== null ? map2Summary.lowest.actual.actual : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.actual.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map2Summary.lowest.actual.normal !== null ? map2Summary.lowest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map2Summary.lowest.actual.departure !== null ? map2Summary.lowest.actual.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map2Summary.lowest.normal.normal !== null ? map2Summary.lowest.normal.normal : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.normal.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map2Summary.lowest.normal.actual !== null ? map2Summary.lowest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map2Summary.lowest.normal.departure !== null ? map2Summary.lowest.normal.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map2Summary.lowest.departure.departure !== null ? map2Summary.lowest.departure.departure : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.departure.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map2Summary.lowest.departure.actual !== null ? map2Summary.lowest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map2Summary.lowest.departure.normal !== null ? map2Summary.lowest.departure.normal : 'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Lowest</b> (<span class="name-text">{{ map2Summary.lowest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map2Summary.lowest.actual.actual !== null ? map2Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.lowest.actual.departure !== null ?
+                    map2Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.lowest.actual.normal !== null ? map2Summary.lowest.actual.normal
+                    : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -976,9 +417,19 @@
         <div class="map_card">
           <div id="map3" class="comparison-map">
             <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[2], 2) }}</h6>
-            <button class="fullscreen-toggle" (click)="toggleFullScreen('map3')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
+            <button class="fullscreen-toggle" (click)="toggleFullScreen('map3')" title="Toggle Fullscreen">
+              <i class="fa fa-expand"></i>
             </button>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color" class="d-inline-block border border-1 border-black me-2"
+                    style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize" class="text-black fw-bold text-size" [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -986,64 +437,26 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ map3Summary.highest.actual.actual !== null ? map3Summary.highest.actual.actual : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.actual.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map3Summary.highest.actual.normal !== null ? map3Summary.highest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map3Summary.highest.actual.departure !== null ? map3Summary.highest.actual.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map3Summary.highest.normal.normal !== null ? map3Summary.highest.normal.normal : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.normal.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map3Summary.highest.normal.actual !== null ? map3Summary.highest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map3Summary.highest.normal.departure !== null ? map3Summary.highest.normal.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map3Summary.highest.departure.departure !== null ? map3Summary.highest.departure.departure : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.departure.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map3Summary.highest.departure.actual !== null ? map3Summary.highest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map3Summary.highest.departure.normal !== null ? map3Summary.highest.departure.normal : 'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Highest</b> (<span class="name-text">{{ map3Summary.highest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map3Summary.highest.actual.actual !== null ? map3Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.highest.actual.departure !== null ?
+                    map3Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.highest.actual.normal !== null ?
+                    map3Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ map3Summary.lowest.actual.actual !== null ? map3Summary.lowest.actual.actual : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.actual.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map3Summary.lowest.actual.normal !== null ? map3Summary.lowest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map3Summary.lowest.actual.departure !== null ? map3Summary.lowest.actual.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map3Summary.lowest.normal.normal !== null ? map3Summary.lowest.normal.normal : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.normal.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map3Summary.lowest.normal.actual !== null ? map3Summary.lowest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map3Summary.lowest.normal.departure !== null ? map3Summary.lowest.normal.departure : 'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map3Summary.lowest.departure.departure !== null ? map3Summary.lowest.departure.departure : 'NA' }}
-                    <br /><div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.departure.name || '-' }}</div>
-                    <br /><div style="display: flex; font-size: 10px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map3Summary.lowest.departure.actual !== null ? map3Summary.lowest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map3Summary.lowest.departure.normal !== null ? map3Summary.lowest.departure.normal : 'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Lowest</b> (<span class="name-text">{{ map3Summary.lowest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map3Summary.lowest.actual.actual !== null ? map3Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.lowest.actual.departure !== null ?
+                    map3Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.lowest.actual.normal !== null ? map3Summary.lowest.actual.normal
+                    : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -1053,11 +466,7 @@
     </div>
   </div>
 </div> -->
-
-
-
-
-
+<!-- 
 <div>
   <div id="loader" class="loader" *ngIf="isBuffering">
     <div class="loading-message">
@@ -1071,9 +480,16 @@
         <div class="map_card">
           <div id="map1" class="comparison-map">
             <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[0], 0) }}</h6>
-            <!-- <button class="fullscreen-toggle" (click)="toggleFullScreen('map1')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button> -->
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color" class="d-inline-block border border-1 border-black me-2"
+                    style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize" class="text-black fw-bold text-size" [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -1081,97 +497,26 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ map1Summary.highest.actual.actual !== null ? map1Summary.highest.actual.actual : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.actual.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map1Summary.highest.actual.normal !== null ?
-                        map1Summary.highest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map1Summary.highest.actual.departure !== null ? map1Summary.highest.actual.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map1Summary.highest.normal.normal !== null ? map1Summary.highest.normal.normal : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.normal.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map1Summary.highest.normal.actual !== null ?
-                        map1Summary.highest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map1Summary.highest.normal.departure !== null ? map1Summary.highest.normal.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map1Summary.highest.departure.departure !== null ? map1Summary.highest.departure.departure : 'NA'
-                    }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.highest.departure.name || '-' }}
-                    </div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map1Summary.highest.departure.actual !== null ?
-                        map1Summary.highest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map1Summary.highest.departure.normal !== null ? map1Summary.highest.departure.normal :
-                        'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Highest</b> (<span class="name-text">{{ map1Summary.highest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map1Summary.highest.actual.actual !== null ? map1Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.highest.actual.departure !== null ?
+                    map1Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.highest.actual.normal !== null ?
+                    map1Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ map1Summary.lowest.actual.actual !== null ? map1Summary.lowest.actual.actual : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.actual.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map1Summary.lowest.actual.normal !== null ?
-                        map1Summary.lowest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map1Summary.lowest.actual.departure !== null ? map1Summary.lowest.actual.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map1Summary.lowest.normal.normal !== null ? map1Summary.lowest.normal.normal : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.normal.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map1Summary.lowest.normal.actual !== null ?
-                        map1Summary.lowest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map1Summary.lowest.normal.departure !== null ? map1Summary.lowest.normal.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map1Summary.lowest.departure.departure !== null ? map1Summary.lowest.departure.departure : 'NA'
-                    }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map1Summary.lowest.departure.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map1Summary.lowest.departure.actual !== null ?
-                        map1Summary.lowest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map1Summary.lowest.departure.normal !== null ? map1Summary.lowest.departure.normal :
-                        'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Lowest</b> (<span class="name-text">{{ map1Summary.lowest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map1Summary.lowest.actual.actual !== null ? map1Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.lowest.actual.departure !== null ?
+                    map1Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.lowest.actual.normal !== null ? map1Summary.lowest.actual.normal
+                    : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -1182,9 +527,16 @@
         <div class="map_card">
           <div id="map2" class="comparison-map">
             <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[1], 1) }}</h6>
-            <!-- <button class="fullscreen-toggle" (click)="toggleFullScreen('map2')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button> -->
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color" class="d-inline-block border border-1 border-black me-2"
+                    style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize" class="text-black fw-bold text-size" [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -1192,97 +544,26 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ map2Summary.highest.actual.actual !== null ? map2Summary.highest.actual.actual : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.actual.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map2Summary.highest.actual.normal !== null ?
-                        map2Summary.highest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map2Summary.highest.actual.departure !== null ? map2Summary.highest.actual.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map2Summary.highest.normal.normal !== null ? map2Summary.highest.normal.normal : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.normal.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map2Summary.highest.normal.actual !== null ?
-                        map2Summary.highest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map2Summary.highest.normal.departure !== null ? map2Summary.highest.normal.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map2Summary.highest.departure.departure !== null ? map2Summary.highest.departure.departure : 'NA'
-                    }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.highest.departure.name || '-' }}
-                    </div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map2Summary.highest.departure.actual !== null ?
-                        map2Summary.highest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map2Summary.highest.departure.normal !== null ? map2Summary.highest.departure.normal :
-                        'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Highest</b> (<span class="name-text">{{ map2Summary.highest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map2Summary.highest.actual.actual !== null ? map2Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.highest.actual.departure !== null ?
+                    map2Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.highest.actual.normal !== null ?
+                    map2Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ map2Summary.lowest.actual.actual !== null ? map2Summary.lowest.actual.actual : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.actual.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map2Summary.lowest.actual.normal !== null ?
-                        map2Summary.lowest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map2Summary.lowest.actual.departure !== null ? map2Summary.lowest.actual.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map2Summary.lowest.normal.normal !== null ? map2Summary.lowest.normal.normal : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.normal.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map2Summary.lowest.normal.actual !== null ?
-                        map2Summary.lowest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map2Summary.lowest.normal.departure !== null ? map2Summary.lowest.normal.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map2Summary.lowest.departure.departure !== null ? map2Summary.lowest.departure.departure : 'NA'
-                    }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map2Summary.lowest.departure.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map2Summary.lowest.departure.actual !== null ?
-                        map2Summary.lowest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map2Summary.lowest.departure.normal !== null ? map2Summary.lowest.departure.normal :
-                        'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Lowest</b> (<span class="name-text">{{ map2Summary.lowest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map2Summary.lowest.actual.actual !== null ? map2Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.lowest.actual.departure !== null ?
+                    map2Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.lowest.actual.normal !== null ? map2Summary.lowest.actual.normal
+                    : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -1293,9 +574,16 @@
         <div class="map_card">
           <div id="map3" class="comparison-map">
             <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[2], 2) }}</h6>
-            <!-- <button class="fullscreen-toggle" (click)="toggleFullScreen('map3')" title="Toggle full screen">
-              <i class="fa fa-expand" aria-hidden="true"></i>
-            </button> -->
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color" class="d-inline-block border border-1 border-black me-2"
+                    style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize" class="text-black fw-bold text-size" [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="summary-table mt-1">
             <table class="table table-sm table-bordered text-center">
@@ -1303,123 +591,190 @@
                 <tr>
                   <th></th>
                   <th>Actual</th>
-                  <th>Normal</th>
-                  <th>Departure</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Highest</td>
-                  <td>
-                    {{ map3Summary.highest.actual.actual !== null ? map3Summary.highest.actual.actual : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.actual.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map3Summary.highest.actual.normal !== null ?
-                        map3Summary.highest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map3Summary.highest.actual.departure !== null ? map3Summary.highest.actual.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map3Summary.highest.normal.normal !== null ? map3Summary.highest.normal.normal : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.normal.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map3Summary.highest.normal.actual !== null ?
-                        map3Summary.highest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map3Summary.highest.normal.departure !== null ? map3Summary.highest.normal.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map3Summary.highest.departure.departure !== null ? map3Summary.highest.departure.departure : 'NA'
-                    }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.highest.departure.name || '-' }}
-                    </div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map3Summary.highest.departure.actual !== null ?
-                        map3Summary.highest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map3Summary.highest.departure.normal !== null ? map3Summary.highest.departure.normal :
-                        'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Highest</b> (<span class="name-text">{{ map3Summary.highest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map3Summary.highest.actual.actual !== null ? map3Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.highest.actual.departure !== null ?
+                    map3Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.highest.actual.normal !== null ?
+                    map3Summary.highest.actual.normal : 'NA' }}</td>
                 </tr>
                 <tr>
-                  <td>Lowest</td>
-                  <td>
-                    {{ map3Summary.lowest.actual.actual !== null ? map3Summary.lowest.actual.actual : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.actual.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">N: {{ map3Summary.lowest.actual.normal !== null ?
-                        map3Summary.lowest.actual.normal : 'NA' }}</span>
-                      <span>D: {{ map3Summary.lowest.actual.departure !== null ? map3Summary.lowest.actual.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map3Summary.lowest.normal.normal !== null ? map3Summary.lowest.normal.normal : 'NA' }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.normal.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map3Summary.lowest.normal.actual !== null ?
-                        map3Summary.lowest.normal.actual : 'NA' }}</span>
-                      <span>D: {{ map3Summary.lowest.normal.departure !== null ? map3Summary.lowest.normal.departure :
-                        'NA' }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {{ map3Summary.lowest.departure.departure !== null ? map3Summary.lowest.departure.departure : 'NA'
-                    }}
-                    <br />
-                    <div style="font-size: 10px; margin-top: -3px;">{{ map3Summary.lowest.departure.name || '-' }}</div>
-                    <br />
-                    <div
-                      style="display: flex; font-size: 12px; margin-top: -20px; justify-content: center; align-items: center;">
-                      <span style="margin-right: 5px;">A: {{ map3Summary.lowest.departure.actual !== null ?
-                        map3Summary.lowest.departure.actual : 'NA' }}</span>
-                      <span>N: {{ map3Summary.lowest.departure.normal !== null ? map3Summary.lowest.departure.normal :
-                        'NA' }}</span>
-                    </div>
-                  </td>
+                  <td><b>Lowest</b> (<span class="name-text">{{ map3Summary.lowest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map3Summary.lowest.actual.actual !== null ? map3Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.lowest.actual.departure !== null ?
+                    map3Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.lowest.actual.normal !== null ? map3Summary.lowest.actual.normal
+                    : 'NA' }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
-      <!-- Wrapper with max-width and centered -->
-        <!-- Outer centered container with styling -->
-<div class="legend-container">
-  <div class="d-flex flex-wrap w-100">
-    <div *ngFor="let item of legendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
-      <div [style.background-color]="item.color"
-           class="d-inline-block border border-1 border-black me-2"
-           style="width: 9px; height: 9px"></div>
+    </div>
+  </div>
+</div> -->
 
-      <div [style.font-size]="item.fontSize"
-           class="text-black fw-bold text-size"
-           [innerHTML]="item.text">
+
+<div>
+  <div id="loader" class="loader" *ngIf="isBuffering">
+    <div class="loading-message">
+      <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+      Loading...
+    </div>
+  </div>
+  <div class="main_container_box" style="padding: 10px 5px 5px 5px; background-color: rgb(237, 237, 237);">
+    <div class="map_box row g-3">
+      <div class="col-md-4" *ngIf="selectedLevels[0]">
+        <div class="map_card" #mapCard1>
+          <div id="map1" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[0], 0) }}</h6>
+            <button class="fullscreen-btn" (click)="toggleFullscreen(0)"><i class="fa fa-expand"></i></button>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color" class="d-inline-block border border-1 border-black me-2"
+                    style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize" class="text-black fw-bold text-size" [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="summary-table mt-1" *ngIf="fullscreenMapIndex !== 0">
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>Highest</b> (<span class="name-text">{{ map1Summary.highest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map1Summary.highest.actual.actual !== null ? map1Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.highest.actual.departure !== null ?
+                    map1Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.highest.actual.normal !== null ?
+                    map1Summary.highest.actual.normal : 'NA' }}</td>
+                </tr>
+                <tr>
+                  <td><b>Lowest</b> (<span class="name-text">{{ map1Summary.lowest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map1Summary.lowest.actual.actual !== null ? map1Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.lowest.actual.departure !== null ?
+                    map1Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map1Summary.lowest.actual.normal !== null ? map1Summary.lowest.actual.normal
+                    : 'NA' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4" *ngIf="selectedLevels[1]">
+        <div class="map_card" #mapCard2>
+          <div id="map2" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[1], 1) }}</h6>
+            <button class="fullscreen-btn" (click)="toggleFullscreen(1)"><i class="fa fa-expand"></i></button>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color" class="d-inline-block border border-1 border-black me-2"
+                    style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize" class="text-black fw-bold text-size" [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="summary-table mt-1" *ngIf="fullscreenMapIndex !== 1">
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>Highest</b> (<span class="name-text">{{ map2Summary.highest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map2Summary.highest.actual.actual !== null ? map2Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.highest.actual.departure !== null ?
+                    map2Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.highest.actual.normal !== null ?
+                    map2Summary.highest.actual.normal : 'NA' }}</td>
+                </tr>
+                <tr>
+                  <td><b>Lowest</b> (<span class="name-text">{{ map2Summary.lowest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map2Summary.lowest.actual.actual !== null ? map2Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.lowest.actual.departure !== null ?
+                    map2Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map2Summary.lowest.actual.normal !== null ? map2Summary.lowest.actual.normal
+                    : 'NA' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4" *ngIf="selectedLevels[2]">
+        <div class="map_card" #mapCard3>
+          <div id="map3" class="comparison-map">
+            <h6 class="text-center mapheadings">{{ getMapTitle(selectedLevels[2], 2) }}</h6>
+            <button class="fullscreen-btn" (click)="toggleFullscreen(2)"><i class="fa fa-expand"></i></button>
+            <div class="legend-container">
+              <div class="d-flex flex-wrap w-100">
+                <div *ngFor="let item of currentLegendItems" class="d-flex align-items-center me-3 flex-grow-1 mb-1">
+                  <div [style.background-color]="item.color" class="d-inline-block border border-1 border-black me-2"
+                    style="width: 8px; height: 8px"></div>
+                  <div [style.font-size]="item.fontSize" class="text-black fw-bold text-size" [innerHTML]="item.text">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="summary-table mt-1" *ngIf="fullscreenMapIndex !== 2">
+            <table class="table table-sm table-bordered text-center">
+              <thead class="table-light">
+                <tr>
+                  <th></th>
+                  <th>Actual</th>
+                  <th *ngIf="!isActual">Departure</th>
+                  <th *ngIf="!isActual">Normal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>Highest</b> (<span class="name-text">{{ map3Summary.highest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map3Summary.highest.actual.actual !== null ? map3Summary.highest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.highest.actual.departure !== null ?
+                    map3Summary.highest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.highest.actual.normal !== null ?
+                    map3Summary.highest.actual.normal : 'NA' }}</td>
+                </tr>
+                <tr>
+                  <td><b>Lowest</b> (<span class="name-text">{{ map3Summary.lowest.actual.name || '-' }}</span>)</td>
+                  <td>{{ map3Summary.lowest.actual.actual !== null ? map3Summary.lowest.actual.actual : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.lowest.actual.departure !== null ?
+                    map3Summary.lowest.actual.departure : 'NA' }}</td>
+                  <td *ngIf="!isActual">{{ map3Summary.lowest.actual.normal !== null ? map3Summary.lowest.actual.normal
+                    : 'NA' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-</div>
-
-
-    </div>
-
-  </div>
-
 </div>

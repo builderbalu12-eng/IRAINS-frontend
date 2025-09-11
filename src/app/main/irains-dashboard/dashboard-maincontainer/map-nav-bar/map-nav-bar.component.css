@@ -1,6 +1,9 @@
 
 .custom-navbar {
   background-color: #fff;
+
+  z-index: 900;
+
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   padding: 0.5rem 1rem;
@@ -164,7 +167,7 @@ label.form-label {
   position: absolute;
   top: 105%;
   right: -100%;
-  z-index: 1000;
+  z-index: 950;
   background-color: #fff;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -258,3 +261,4 @@ label.form-label {
 .btn-secondary.btn-sm:hover {
   background-color: #5a6268;
 }
+

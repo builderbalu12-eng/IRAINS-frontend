@@ -1,7 +1,4 @@
-
-
-@import "~leaflet/dist/leaflet.css";
-
+/* @import "~leaflet/dist/leaflet.css";
 
 .main_container_box {
   border-radius: 10px;
@@ -12,17 +9,12 @@
   margin: -2px 2px 2px 2px; 
   background: #fff;
   border-radius: 8px;
+}
 
-}
-#map1 {
+#map1, #map2, #map3 {
   z-index: 99;
 }
-#map2 {
-  z-index: 99;
-}
-#map3 {
-  z-index: 99;
-}
+
 .map_card {
   min-height: 550px;
   display: flex;
@@ -33,25 +25,25 @@
 
 .comparison-map {
   position: relative;
-  height: 550px;
+  height: 500px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   margin-bottom: 5px;
 }
+
 .mapheadings {
   position: absolute;
-  top: 10px;    /* distance from top edge */
-  right: 38px;  /* distance from right edge */
-  background-color: rgba(255, 255, 255, 0.8); /* optional: semi-transparent background */
+  top: 10px;
+  right: 38px;
+  background-color: rgba(255, 255, 255, 0.8);
   padding: 4px 8px;
   border-radius: 4px;
-  z-index: 1000; /* to show on top of map */
+  z-index: 1000;
   font-weight: bold;
   cursor: default;
   user-select: none;
-  box-shadow: 0 0 3px rgba(0,0,0,0.3); /* subtle shadow */
+  box-shadow: 0 0 3px rgba(0,0,0,0.3);
 }
-
 
 .leaflet-container:focus,
 .leaflet-interactive:focus,
@@ -59,6 +51,7 @@
   outline: none !important;
   box-shadow: none !important;
 }
+
 path.leaflet-interactive:focus {
   outline: none !important;
 }
@@ -76,7 +69,6 @@ path.leaflet-interactive:focus {
   align-items: center;
 }
 
-/* Loading message box styling */
 .loading-message {
   background-color: white;
   padding: 20px;
@@ -88,20 +80,16 @@ path.leaflet-interactive:focus {
   align-items: center;
 }
 
-/* Spinner icon styling */
 .loading-message i {
   margin-right: 10px;
   font-size: 24px;
 }
 
-.datebox{
+.datebox {
   display: flex;
   align-items: right;
   justify-content: right;
-
 }
-
-
 
 .comparison-map.fullscreen {
   position: fixed !important;
@@ -111,10 +99,6 @@ path.leaflet-interactive:focus {
   height: 100vh !important;
   z-index: 9999;
   background: white;
-}
-
-.comparison-map {
-  position: relative;
 }
 
 .fullscreen-toggle {
@@ -134,17 +118,708 @@ path.leaflet-interactive:focus {
   outline: none;
 }
 
-.tablebodystyle{
+.tablebodystyle {
   margin-top: -19px;
   font-size: 12px !important;
 }
 
 .legend-container {
-  max-width: 700px;
   width: 100%;
-  margin: -5px auto 5px auto;
-  padding: 5px 5px 5px 20px ;
+  padding: 5px 10px;
   box-sizing: border-box;
-  border-radius: 20px;
-  border: 1px solid rgba(128, 128, 128, 0.4); 
+  border-radius: 8px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  background-color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 5px;
+} */
+
+
+/* 
+@import "~leaflet/dist/leaflet.css";
+
+.main_container_box {
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+.map_box {
+  margin: -2px 2px 2px 2px; 
+  background: #fff;
+  border-radius: 8px;
+}
+
+#map1, #map2, #map3 {
+  z-index: 99;
+}
+
+.map_card {
+  min-height: 550px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.comparison-map {
+  position: relative;
+  height: 500px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  margin-bottom: 5px;
+}
+
+.mapheadings {
+  position: absolute;
+  top: 10px;
+  right: 38px;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+  z-index: 1000;
+  font-weight: bold;
+  cursor: default;
+  user-select: none;
+  box-shadow: 0 0 3px rgba(0,0,0,0.3);
+}
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+path.leaflet-interactive:focus {
+  outline: none !important;
+}
+
+.loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-message {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+  font-size: 16px;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.loading-message i {
+  margin-right: 10px;
+  font-size: 24px;
+}
+
+.datebox {
+  display: flex;
+  align-items: right;
+  justify-content: right;
+}
+
+.comparison-map.fullscreen {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999;
+  background: white;
+}
+
+.fullscreen-toggle {
+  position: absolute;
+  top: 10px;
+  right: 5px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  padding: 5px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.fullscreen-toggle:focus {
+  outline: none;
+}
+
+.tablebodystyle {
+  margin-top: -19px;
+  font-size: 12px !important;
+}
+
+.legend-container {
+  width: 100%;
+  padding: 3px 8px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  background-color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  overflow-x: auto; 
+  white-space: nowrap; 
+}
+
+.legend-container::-webkit-scrollbar {
+  height: 4px; 
+}
+
+.legend-container::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 4px;
+}
+
+.legend-container .d-flex {
+  flex-wrap: nowrap; 
+}
+
+.legend-container .d-flex .me-3 {
+  margin-right: 8px !important;
+  margin-bottom: 0 !important; 
+}
+
+.legend-container .text-size {
+  font-size: 10px !important; 
+}
+
+.legend-container .d-inline-block {
+  width: 8px; 
+  height: 8px;
+  margin-right: 4px; 
+} */
+/* 
+
+@import "~leaflet/dist/leaflet.css";
+
+.main_container_box {
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+.map_box {
+  margin: -2px 2px 2px 2px; 
+  background: #fff;
+  border-radius: 8px;
+}
+
+#map1, #map2, #map3 {
+  z-index: 0;
+}
+
+.map_card {
+  min-height: 550px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.comparison-map {
+  position: relative;
+  height: 650px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(181, 179, 179, 0.4);
+  margin-bottom: 5px;
+}
+
+.mapheadings {
+  position: absolute;
+  top: 10px;
+  right: 38px;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+  z-index: 1000;
+  font-weight: bold;
+  cursor: default;
+  user-select: none;
+  box-shadow: 0 0 3px rgba(0,0,0,0.3);
+}
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+path.leaflet-interactive:focus {
+  outline: none !important;
+}
+
+.loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-message {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+  font-size: 16px;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.loading-message i {
+  margin-right: 10px;
+  font-size: 24px;
+}
+
+.datebox {
+  display: flex;
+  align-items: right;
+  justify-content: right;
+}
+
+.comparison-map.fullscreen {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999;
+  background: white;
+}
+
+.fullscreen-toggle {
+  position: absolute;
+  top: 10px;
+  right: 5px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  padding: 5px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.fullscreen-toggle:focus {
+  outline: none;
+}
+
+.tablebodystyle {
+  margin-top: -19px;
+  font-size: 12px !important;
+}
+
+.legend-container {
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  padding: 3px 8px;
+  box-sizing: border-box;
+  border-radius: 0px 0px 0px 0px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  background-color: rgba(255, 255, 255, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.legend-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.legend-container::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 4px;
+}
+
+.legend-container .d-flex {
+  flex-wrap: nowrap;
+}
+
+.legend-container .d-flex .me-3 {
+  margin-right: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.legend-container .text-size {
+  font-size: 10px !important;
+}
+
+.legend-container .d-inline-block {
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+} */
+
+/* 
+
+@import "~leaflet/dist/leaflet.css";
+
+.main_container_box {
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+.map_box {
+  margin: -2px 2px 2px 2px; 
+  background: #fff;
+  border-radius: 8px;
+}
+
+#map1, #map2, #map3 {
+  z-index: 0;
+}
+
+.map_card {
+  min-height: 550px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.comparison-map {
+  position: relative;
+  height: 650px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(181, 179, 179, 0.4);
+  margin-bottom: 5px;
+}
+
+.mapheadings {
+  position: absolute;
+  top: 10px;
+  right: 38px;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+  z-index: 1000;
+  font-weight: bold;
+  cursor: default;
+  user-select: none;
+  box-shadow: 0 0 3px rgba(0,0,0,0.3);
+}
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+path.leaflet-interactive:focus {
+  outline: none !important;
+}
+
+.loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1200;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-message {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+  font-size: 16px;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.loading-message i {
+  margin-right: 10px;
+  font-size: 24px;
+}
+
+.datebox {
+  display: flex;
+  align-items: right;
+  justify-content: right;
+}
+
+.tablebodystyle {
+  margin-top: -19px;
+  font-size: 12px !important;
+}
+
+.legend-container {
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  padding: 3px 8px;
+  box-sizing: border-box;
+  border-radius: 0px 0px 0px 0px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  background-color: rgba(255, 255, 255, 0.5);
+  z-index: 1101;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.legend-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.legend-container::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 4px;
+}
+
+.legend-container .d-flex {
+  flex-wrap: nowrap;
+}
+
+.legend-container .d-flex .me-3 {
+  margin-right: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.legend-container .text-size {
+  font-size: 10px !important;
+}
+
+.legend-container .d-inline-block {
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+}
+
+.summary-table .name-text {
+  font-size: 11px;
+  display: inline-block;
+} */
+
+
+
+@import "~leaflet/dist/leaflet.css";
+
+.main_container_box {
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+.map_box {
+  margin: -2px 2px 2px 2px; 
+  background: #fff;
+  border-radius: 8px;
+}
+
+#map1, #map2, #map3 {
+  z-index: 0; 
+}
+
+.map_card {
+  min-height: 550px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  transition: all 0.3s ease;
+}
+
+.map_card.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2000;
+  background: white;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.map_card.fullscreen .comparison-map {
+  height: calc(100% - 40px); /* Adjusted for legend height */
+}
+
+.comparison-map {
+  position: relative;
+  height: 650px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(181, 179, 179, 0.4);
+  margin-bottom: 5px;
+}
+
+.mapheadings {
+  position: absolute;
+  top: 10px;
+  right: 38px;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+  z-index: 1000;
+  font-weight: bold;
+  cursor: default;
+  user-select: none;
+  box-shadow: 0 0 3px rgba(0,0,0,0.3);
+}
+
+.fullscreen-btn,
+.exit-fullscreen-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  z-index: 1001;
+  box-shadow: 0 0 3px rgba(0,0,0,0.3);
+}
+
+.fullscreen-btn:hover,
+.exit-fullscreen-btn:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+.leaflet-container:focus,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+path.leaflet-interactive:focus {
+  outline: none !important;
+}
+
+.loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1200;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-message {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+  font-size: 16px;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.loading-message i {
+  margin-right: 10px;
+  font-size: 24px;
+}
+
+.datebox {
+  display: flex;
+  align-items: right;
+  justify-content: right;
+}
+
+.tablebodystyle {
+  margin-top: -19px;
+  font-size: 12px !important;
+}
+
+.legend-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 3px 8px 3px 16px; /* Added left padding */
+  box-sizing: border-box;
+  border-radius: 0;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  background-color: rgba(255, 255, 255, 0.5);
+  z-index: 1101;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.map_card.fullscreen .legend-container {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+  left: 0;
+  right: 0;
+  padding: 3px 8px 3px 16px; /* Maintain left padding in fullscreen */
+  font-size: 12px !important;
+}
+
+.legend-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.legend-container::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 4px;
+}
+
+.legend-container .d-flex {
+  flex-wrap: nowrap;
+}
+
+.legend-container .d-flex .me-3 {
+  margin-right: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.legend-container .text-size {
+  font-size: 10px !important;
+}
+
+.legend-container .d-inline-block {
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+}
+
+.summary-table .name-text {
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-block;
 }
