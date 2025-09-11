@@ -943,6 +943,7 @@ export class YearlyStationStatisticsPageComponent {
         stationMap[entry.station_name] = { 
           district_name: entry.district_name,
           station_name: entry.station_name,
+          station_id: entry.station_id,
           state_name : entry.state_name,
           latitude: parseFloat(entry.latitude).toFixed(4),
           longitude: parseFloat(entry.longitude).toFixed(4)
@@ -956,7 +957,7 @@ export class YearlyStationStatisticsPageComponent {
     });
 
     return {
-      columns: ["state_name", "district_name", "station_name", "latitude", "longitude", ...uniqueDates],
+      columns: ["state_name", "district_name", "station_name", "station_id", "latitude", "longitude", ...uniqueDates],
       rows: Object.values(stationMap),
     };
   }
@@ -1387,9 +1388,5 @@ formatCellValue(value: any): string {
 isNumeric(value: any): boolean {
   return typeof value === 'number' || (!isNaN(value) && !isNaN(parseFloat(value)));
 }
-
-
-
-
 
 }
