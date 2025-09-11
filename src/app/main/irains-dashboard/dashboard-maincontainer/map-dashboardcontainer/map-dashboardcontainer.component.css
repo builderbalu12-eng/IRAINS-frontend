@@ -1,41 +1,85 @@
-/* .map-container {
-  padding: 10px;
-}
-
-#map {
-  border: 1px solid #ccc;
-} */
-
-
 .map-container {
   position: relative;
-  /* min-height: 800px; */
+  height: 720px; /* Fixed height to constrain the map */
+  width: 100%; /* Full width of the parent container */
+  overflow: hidden; /* Prevents content from spilling out */
 }
 
 #map {
-  height: 720px;
-  width: 100%;
+  position: absolute;
+  /* top: 0;
+  left: 0; */
+  height: 720px; /* Fills the container height */
+  width: 498px; /* Fills the container width */
   border: 1px solid #ccc;
   border-radius: 7px;
+  z-index: 1; /* Base layer for the map */
 }
 
-/* Floating Filter Overlay (expanded) */
+#map path, #map polygon {
+  cursor: pointer; /* Change cursor to pointer on hover over features */
+}
+
+.buffering-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.legend {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+  z-index: 600; /* Above the map but below the filter overlay */
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 9.3px;
+}
+
+.color-box {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  margin-right: 5px;
+  border: 1px solid #ccc;
+}
+
 .map-filter-overlay {
   position: absolute;
   top: 20px;
   right: 20px;
   min-width: 260px;
-  background: rgba(255,255,255,0.97);
+  background: rgba(255, 255, 255, 0.97);
   border-radius: 10px;
   padding: 18px 14px 14px 14px;
-  z-index: 500;
-  box-shadow: 0 6px 20px 0 rgba(16,21,60,0.11);
+  z-index: 700; /* Above the legend and map */
+  box-shadow: 0 6px 20px 0 rgba(16, 21, 60, 0.11);
   animation: slide-down 0.23s ease;
 }
 
 @keyframes slide-down {
-  from { opacity: 0; transform: translateY(-8px) scale(0.95);}
-  to { opacity: 1; transform: translateY(0) scale(1);}
+  from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .filter-header {
@@ -49,10 +93,15 @@
   color: #5b6270;
   margin-bottom: 2px;
 }
-.gap-2 > * { margin-right: 10px; }
-.gap-2 > *:last-child { margin-right: 0; }
 
-/* Floating collapsed FAB "Filter" button style (top right) */
+.gap-2 > * {
+  margin-right: 10px;
+}
+
+.gap-2 > *:last-child {
+  margin-right: 0;
+}
+
 .filter-fab {
   position: absolute;
   top: 24px;
@@ -60,7 +109,7 @@
   background: #fff;
   color: #3b82f6;
   border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(56,123,241,0.13);
+  box-shadow: 0 2px 8px rgba(56, 123, 241, 0.13);
   min-width: 84px;
   min-height: 40px;
   display: flex;
@@ -69,12 +118,31 @@
   padding: 6px 16px 6px 13px;
   font-weight: 500;
   font-size: 16px;
-  z-index: 501;
+  z-index: 650; /* Above the map and legend, below the filter overlay */
   transition: box-shadow 0.18s, background 0.18s;
   border: 1.5px solid #e1eaff;
   gap: 8px;
 }
-.filter-fab:hover, .filter-fab:focus {
+
+.filter-fab:hover,
+.filter-fab:focus {
   background: #f3f7ff;
-  box-shadow: 0 3px 18px 0 rgba(59,130,246,0.14);
+  box-shadow: 0 3px 18px 0 rgba(59, 130, 246, 0.14);
+}
+
+.custom-tooltip {
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.tooltip-content .tooltip-title {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.tooltip-content .tooltip-row {
+  margin-bottom: 2px;
 }
