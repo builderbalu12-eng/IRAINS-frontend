@@ -1,8 +1,8 @@
-import { Component, OnInit, ViewChild, ElementRef } from "@angular/core";
-import { SpatialDistributionService } from "../services/spatialDistribution/spatial-distribution.service";
+import { Component, ElementRef, OnInit, ViewChild } from "@angular/core";
 import { MatPaginator } from "@angular/material/paginator";
 import { MatSort } from "@angular/material/sort";
 import { MatTableDataSource } from "@angular/material/table";
+import { SpatialDistributionService } from "../services/spatialDistribution/spatial-distribution.service";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -22,15 +22,22 @@ export class SpatialTableComponent implements OnInit {
   dataSource = new MatTableDataSource<any>([]);
   loading = true;
 
-  // 🔹 Single-day
-  selectedDate: string = "";
+  // Modes
+  mode: "date" | "period" | "daywise" = "date";
 
-  // 🔹 Period
-  isPeriodMode: boolean = false;
+  // Date values
+  selectedDate: string = "";
   startDate: string = "";
   endDate: string = "";
+
   originalData: any[] = [];
-  private categorySorted = false; // toggle flag
+  private categorySorted = false;
+
+  // 🔹 Daywise support
+  daywiseGrouped: Record<string, any[]> = {};
+  daywiseDates: string[] = [];
+  currentDayIndex: number = 0;
+  private daywiseRes: any = null; // keep full res
 
   // Category sorting order
   private categoryOrder: Record<string, number> = {
@@ -49,119 +56,118 @@ export class SpatialTableComponent implements OnInit {
   ngOnInit() {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-
     this.selectedDate = yesterday.toISOString().split("T")[0];
-    this.fetchData(this.selectedDate);
+    this.fetchData(this.selectedDate, "date");
   }
 
-  // ngOnInit() {
-  //   const yesterday = new Date();
-  //   yesterday.setDate(yesterday.getDate() - 1);
+  // 🔹 Switch mode
+  setMode(selected: "date" | "period" | "daywise") {
+    this.mode = selected;
+    this.dataSource.data = []; // clear table
+    this.originalData = [];
+    this.categorySorted = false;
+  }
 
-  //   this.selectedDate = yesterday.toISOString().split("T")[0];
-  //   this.fetchData(this.selectedDate);
+  // 🔹 Single date
+  fetchData(date?: string, mode: string = "date") {
+    this.loading = true;
+    this.spatialService.getSpatialDistribution(date, mode).subscribe({
+      next: (res) => {
+        this.originalData = [...res.data];
+        this.dataSource.data = res.data;
+        this.dataSource.paginator = this.paginator;
+        this.dataSource.sort = this.sort;
+        this.loading = false;
+        this.categorySorted = false;
+      },
+      error: (err) => {
+        console.error(err);
+        this.loading = false;
+      },
+    });
+  }
 
-  //   // ✅ custom sorting for category
-  //   this.dataSource.sortingDataAccessor = (item, property) => {
-  //     if (property === "category") {
-  //       const order: Record<string, number> = {
-  //         Isolated: 1,
-  //         Scattered: 2,
-  //         "Fairly Widespread": 3,
-  //         Widespread: 4,
-  //       };
+  // 🔹 Period
+  fetchPeriodData(start: string, end: string, mode: string = "period") {
+    if (!start || !end) return;
+    this.loading = true;
+    this.spatialService
+      .getSpatialDistributionPeriod(start, end, mode)
+      .subscribe({
+        next: (res) => {
+          this.originalData = [...res.data];
+          this.dataSource.data = res.data;
+          this.dataSource.paginator = this.paginator;
+          this.dataSource.sort = this.sort;
+          this.loading = false;
+          this.categorySorted = false;
+        },
+        error: (err) => {
+          console.error(err);
+          this.loading = false;
+        },
+      });
+  }
 
-  //       return order[item.category as keyof typeof order] ?? 5;
-  //     }
-  //     return (item as any)[property];
-  //   };
-  // }
+  // 🔹 Daywise
+  fetchDaywiseData(start: string, end: string) {
+    if (!start || !end) return;
+    this.loading = true;
 
-  // 🔹 Toggle between single-day & period mode
-  toggleMode() {
-    this.isPeriodMode = !this.isPeriodMode;
-    if (!this.isPeriodMode) {
-      // Reset period values when going back to single-day
-      this.startDate = "";
-      this.endDate = "";
-      this.fetchData(this.selectedDate);
+    this.spatialService
+      .getSpatialDistributionPeriod(start, end, "daywise")
+      .subscribe({
+        next: (res) => {
+          // ✅ Backend already sends grouped dictionary
+          this.daywiseGrouped = res.data;
+
+          this.daywiseDates = Object.keys(this.daywiseGrouped).sort();
+          this.currentDayIndex = 0;
+
+          this.updateDaywiseTable();
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error(err);
+          this.loading = false;
+        },
+      });
+  }
+
+  updateDaywiseTable() {
+    if (this.daywiseDates.length === 0) return;
+    const currentDate = this.daywiseDates[this.currentDayIndex];
+    const rows = this.daywiseGrouped[currentDate] || [];
+
+    this.originalData = [...rows];
+    this.dataSource.data = rows;
+    console.log("datasource", this.dataSource);
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
+    this.categorySorted = false;
+  }
+
+  // 🔹 Navigation
+  previousDay() {
+    if (this.currentDayIndex > 0) {
+      this.currentDayIndex--;
+      this.updateDaywiseTable();
     }
   }
 
-  // 🔹 Fetch for single date
-  // fetchData(date?: string) {
-  //   this.loading = true;
-  //   this.spatialService.getSpatialDistribution(date).subscribe({
-  //     next: (res) => {
-  //       this.dataSource.data = res.data;
-  //       this.dataSource.paginator = this.paginator;
-  //       this.dataSource.sort = this.sort;
-  //       this.loading = false;
-  //     },
-  //     error: (err) => {
-  //       console.error(err);
-  //       this.loading = false;
-  //     },
-  //   });
-  // }
-
-  // // 🔹 Fetch for period
-  // fetchPeriodData(start: string, end: string) {
-  //   if (!start || !end) return;
-  //   this.loading = true;
-  //   this.spatialService.getSpatialDistributionPeriod(start, end).subscribe({
-  //     next: (res) => {
-  //       this.dataSource.data = res.data;
-  //       this.dataSource.paginator = this.paginator;
-  //       this.dataSource.sort = this.sort;
-  //       this.loading = false;
-  //     },
-  //     error: (err) => {
-  //       console.error(err);
-  //       this.loading = false;
-  //     },
-  //   });
-  // }
-
-  // 🔹 Fetch for single date
-  fetchData(date?: string) {
-    this.loading = true;
-    this.spatialService.getSpatialDistribution(date).subscribe({
-      next: (res) => {
-        this.originalData = [...res.data]; // keep a copy
-        this.dataSource.data = res.data;
-        this.dataSource.paginator = this.paginator;
-        this.dataSource.sort = this.sort;
-        this.loading = false;
-        this.categorySorted = false; // reset toggle
-      },
-      error: (err) => {
-        console.error(err);
-        this.loading = false;
-      },
-    });
+  nextDay() {
+    if (this.currentDayIndex < this.daywiseDates.length - 1) {
+      this.currentDayIndex++;
+      this.updateDaywiseTable();
+    }
   }
 
-  // 🔹 Fetch for period
-  fetchPeriodData(start: string, end: string) {
-    if (!start || !end) return;
-    this.loading = true;
-    this.spatialService.getSpatialDistributionPeriod(start, end).subscribe({
-      next: (res) => {
-        this.originalData = [...res.data]; // keep a copy
-        this.dataSource.data = res.data;
-        this.dataSource.paginator = this.paginator;
-        this.dataSource.sort = this.sort;
-        this.loading = false;
-        this.categorySorted = false; // reset toggle
-      },
-      error: (err) => {
-        console.error(err);
-        this.loading = false;
-      },
-    });
+  // 🔹 Current day label
+  get currentDay(): string {
+    return this.daywiseDates[this.currentDayIndex] || "";
   }
 
+  // 🔹 Search filter
   applyFilter(event: Event) {
     const filterValue = (event.target as HTMLInputElement).value
       .trim()
@@ -169,13 +175,11 @@ export class SpatialTableComponent implements OnInit {
     this.dataSource.filter = filterValue;
   }
 
-  // 🔹 Toggle category sorting
+  // 🔹 Category sorting
   sortByCategory() {
     if (this.categorySorted) {
-      // Restore original order
       this.dataSource.data = [...this.originalData];
     } else {
-      // Apply custom sort
       this.dataSource.data = [...this.dataSource.data].sort((a, b) => {
         const orderA =
           this.categoryOrder[a.category as keyof typeof this.categoryOrder] ??
@@ -186,52 +190,108 @@ export class SpatialTableComponent implements OnInit {
         return orderA - orderB;
       });
     }
-    this.categorySorted = !this.categorySorted; // toggle state
+    this.categorySorted = !this.categorySorted;
   }
 
-  // 🔹 Download PDF (works for both modes)
-  downloadPDF() {
+  getImageDimensions(src: string): Promise<{ w: number; h: number }> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.width, h: img.height });
+      img.src = src;
+    });
+  }
+
+  async downloadPDF() {
     const doc = new jsPDF();
-
-    // // Header
-    // doc.setFontSize(16);
-    // doc.text("Spatial Distribution Overview", 14, 20);
-    // doc.setFontSize(10);
-
-    // if (this.isPeriodMode) {
-    //   doc.text(`Period: ${this.startDate} → ${this.endDate}`, 14, 28);
-    // } else {
-    //   doc.text(`Date: ${this.selectedDate || "All Dates"}`, 14, 28);
-    // }
 
     const primaryColor: [number, number, number] = [41, 128, 185];
     const secondaryColor: [number, number, number] = [100, 100, 100];
 
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, doc.internal.pageSize.getWidth(), 25, "F");
+    const width = doc.internal.pageSize.getWidth();
+    const marginTop = 5;
 
+    // 🔹 Logo paths
+    const leftLogo = "/assets/images/IMDlogo_Ipart-iris.png";
+    const rightLogo = "/assets/images/IMD150(BGR).png";
+
+    // 🔹 Get natural dimensions
+    const leftDim = await this.getImageDimensions(leftLogo);
+    const rightDim = await this.getImageDimensions(rightLogo);
+
+    // 🔹 Different heights
+    const leftLogoHeight = 24; // ⬅️ bigger
+    const rightLogoHeight = 20; // ⬅️ smaller
+
+    // 🔹 Maintain aspect ratio
+    const leftLogoWidth = (leftDim.w / leftDim.h) * leftLogoHeight;
+    const rightLogoWidth = (rightDim.w / rightDim.h) * rightLogoHeight;
+
+    // ✅ Add Left Logo (bigger)
+    doc.addImage(leftLogo, "PNG", 10, marginTop, leftLogoWidth, leftLogoHeight);
+
+    // ✅ Add Right Logo (smaller)
+    doc.addImage(
+      rightLogo,
+      "PNG",
+      width - rightLogoWidth - 10,
+      marginTop,
+      rightLogoWidth,
+      rightLogoHeight
+    );
+
+    // ✅ Title in the center
     doc.setFontSize(18);
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "bold");
-    doc.text("Spatial Distribution Overview", 14, 17);
+    doc.text("Spatial Distribution Overview", width / 2, 33, {
+      align: "center",
+    });
 
+    // Subheading (date/period/daywise)
     doc.setFontSize(11);
     doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
     doc.setFont("helvetica", "normal");
 
-    if (this.isPeriodMode) {
-      doc.text(`Period: ${this.startDate} → ${this.endDate}`, 14, 32);
+    if (this.mode === "period") {
+      doc.text(`Period: ${this.startDate} to ${this.endDate}`, 14, 42);
+    } else if (this.mode === "daywise") {
+      doc.text(`Date: ${this.currentDay}`, 14, 42);
     } else {
-      doc.text(`Date: ${this.selectedDate || "All Dates"}`, 14, 32);
+      doc.text(`Date: ${this.selectedDate || "All Dates"}`, 14, 42);
     }
 
+    // Divider line
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.5);
-    doc.line(14, 36, doc.internal.pageSize.getWidth() - 14, 36);
+    doc.line(14, 36, width - 14, 36);
 
-    // Table
+    // 🔹 Prepare table data
+    let tableData: any[] = [];
+    if (this.mode === "daywise") {
+      const currentDate = this.daywiseDates[this.currentDayIndex];
+      const rows = this.daywiseGrouped[currentDate] || [];
+      tableData = rows.map((row: any, i: number) => [
+        i + 1,
+        row.subdivision_name,
+        row.total_stations,
+        row.station_reported_rainfall,
+        row.percentage + "%",
+        row.category,
+      ]);
+    } else {
+      tableData = this.dataSource.data.map((row: any, i: number) => [
+        i + 1,
+        row.subdivision_name,
+        row.total_stations,
+        row.station_reported_rainfall,
+        row.percentage + "%",
+        row.category,
+      ]);
+    }
+
+    // 🔹 Table
     autoTable(doc, {
-      startY: 35,
+      startY: 45,
       head: [
         [
           "S. No.",
@@ -242,32 +302,19 @@ export class SpatialTableComponent implements OnInit {
           "Category",
         ],
       ],
-      body: this.dataSource.data.map((row: any, i: number) => [
-        i + 1, // 🔹 Serial No.
-        row.subdivision_name,
-        row.total_stations,
-        row.station_reported_rainfall,
-        row.percentage + "%",
-        row.category,
-      ]),
+      body: tableData,
       theme: "grid",
       styles: { fontSize: 11, cellPadding: 3 },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 12 },
-
-      // 🔹 Dynamic coloring for category column
       didParseCell: (data) => {
         if (data.section === "body" && data.column.index === 5) {
-          // ⬅️ index changed (Category is now 5)
           const category = String(data.cell.raw || "");
-
-          // Category colors
           const categoryColors: Record<string, [number, number, number]> = {
-            Isolated: [220, 53, 69],
-            Scattered: [255, 165, 0],
-            "Fairly Widespread": [255, 193, 7],
-            Widespread: [40, 167, 69],
+            Isolated: [3, 255, 63],
+            Scattered: [0, 104, 58],
+            "Fairly Widespread": [0, 252, 241],
+            Widespread: [52, 0, 246],
           };
-
           if (category && categoryColors[category]) {
             data.cell.styles.fillColor = categoryColors[category];
             data.cell.styles.textColor = [255, 255, 255];
@@ -278,21 +325,19 @@ export class SpatialTableComponent implements OnInit {
       },
     });
 
-    // ✅ Category summary counts
+    // ✅ Category summary
     const categoryCounts: Record<string, number> = {
       Isolated: 0,
       Scattered: 0,
       "Fairly Widespread": 0,
       Widespread: 0,
     };
-
-    this.dataSource.data.forEach((row: any) => {
-      if (row.category && categoryCounts[row.category] !== undefined) {
-        categoryCounts[row.category]++;
+    tableData.forEach((row: any) => {
+      if (row[5] && categoryCounts[row[5]] !== undefined) {
+        categoryCounts[row[5]]++;
       }
     });
 
-    // Position after the table
     let y = (doc as any).lastAutoTable.finalY + 10;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
@@ -300,50 +345,53 @@ export class SpatialTableComponent implements OnInit {
     doc.setFont("helvetica", "normal");
     y += 6;
 
-    // Category colors (same as frontend badges)
     const categoryColors: Record<string, number[]> = {
-      Isolated: [220, 53, 69], // red
-      Scattered: [255, 165, 0], // orange
-      "Fairly Widespread": [255, 193, 7], // yellow
-      Widespread: [40, 167, 69], // green
+      Isolated: [220, 53, 69],
+      Scattered: [255, 165, 0],
+      "Fairly Widespread": [255, 193, 7],
+      Widespread: [40, 167, 69],
     };
 
-    // 🔹 Print all categories in a single row
     let x = 16;
     Object.keys(categoryCounts).forEach((cat) => {
       const color = categoryColors[cat];
       doc.setFillColor(color[0], color[1], color[2]);
-
-      // Draw dot
       doc.circle(x, y - 1.5, 3, "F");
       x += 5;
-
-      // Write text next to dot
       doc.setTextColor(0, 0, 0);
       doc.text(`${categoryCounts[cat]} ${cat}`, x, y);
-      x += 43; // spacing for next category
+      x += 43;
     });
 
-    // ------------------- NEW PAGE: SOURCES / NOTES -------------------
+    // ✅ File save
+    const fileName =
+      this.mode === "period"
+        ? `Spatial_Distribution_${this.startDate}_to_${this.endDate}.pdf`
+        : this.mode === "daywise"
+        ? `Spatial_Distribution_${this.currentDay}.pdf`
+        : `Spatial_Distribution_${this.selectedDate}.pdf`;
+
+    // ✅ New Page for Notes + Classification
     doc.addPage();
 
-    const width = doc.internal.pageSize.getWidth();
-    const height = doc.internal.pageSize.getHeight();
+    const wi = doc.internal.pageSize.getWidth();
+    const he = doc.internal.pageSize.getHeight();
 
-    // Background header
+    // 🔹 Page Header
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, width, 30, "F");
+    doc.rect(0, 0, wi, 30, "F");
 
     doc.setFontSize(18);
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.text("Sources & Notes", 14, 20);
 
-    // Divider line
+    // 🔹 Divider Line
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.5);
-    doc.line(14, 32, width - 14, 32);
+    doc.line(14, 32, wi - 14, 32);
 
+    // 🔹 Notes Section
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(50, 50, 50);
@@ -351,40 +399,76 @@ export class SpatialTableComponent implements OnInit {
     const margin = 14;
     let currentY = 40;
 
-    // Notes with colored bullet points
     const notes = [
-      "This spatial distribution data is provided by the Hydromet Department.",
       "All measurements are validated and updated daily based on the station reports.",
       "Percentages indicate the proportion of stations reporting rainfall above the threshold.",
       "Category distribution (Isolated, Scattered, Fairly Widespread, Widespread) is computed based on total stations reporting rainfall.",
-      "This report is intended for professional and official use; accuracy depends on the source data.",
     ];
 
     const bulletColors: [number, number, number][] = [
-      [41, 128, 185], // blue
-      [41, 128, 185], // blue
-      [41, 128, 185], // blue
-      [41, 128, 185], // blue
-      [41, 128, 185], // blue
+      [41, 128, 185],
+      [41, 128, 185],
+      [41, 128, 185],
     ];
 
+    // ✅ Render notes
     notes.forEach((note, index) => {
-      // Draw bullet circle
       doc.setFillColor(...bulletColors[index]);
       doc.circle(margin + 2, currentY - 2, 2.5, "F");
 
-      // Write note text
       doc.setFont("helvetica", "normal");
       doc.setTextColor(30, 30, 30);
       doc.text(note, margin + 10, currentY, {
         maxWidth: width - margin * 2 - 10,
       });
-      currentY += 10; // spacing between points
+
+      currentY += 10;
     });
 
-    const fileName = this.isPeriodMode
-      ? `Spatial_Distribution_${this.startDate}_to_${this.endDate}.pdf`
-      : `Spatial_Distribution_${this.selectedDate}.pdf`;
+    currentY += 10; // spacing after notes
+
+    // 🔹 Classification Table
+    const rows2 = [
+      ["Isolated", "<= 25%", { content: "", styles: { fillColor: "#03ff3f" } }],
+      [
+        "Scattered",
+        ">=26% and <=50%",
+        { content: "", styles: { fillColor: "#00683a" } },
+      ],
+      [
+        "Fairly Widespread",
+        ">=51% and <=75%",
+        { content: "", styles: { fillColor: "#00fcf1" } },
+      ],
+      [
+        "Widespread",
+        ">=76% and <=100%",
+        { content: "", styles: { fillColor: "#3400f6" } },
+      ],
+    ];
+
+    autoTable(doc, {
+      head: [["Category", "Criteria", "Color"]],
+      body: rows2,
+      theme: "grid",
+      styles: {
+        fontSize: 10,
+        cellPadding: 3,
+        halign: "center",
+        valign: "middle",
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      columnStyles: {
+        0: { halign: "left" },
+        1: { halign: "center" },
+        2: { halign: "center" },
+      },
+      startY: currentY,
+    });
 
     doc.save(fileName);
   }

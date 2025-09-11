@@ -13,64 +13,142 @@
     </div>
   </div>
 
-<!-- Date Filter Section -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-  
-  <!-- Left side: search + toggle -->
-  <div class="d-flex align-items-center gap-2">
-    <input
-      type="text"
-      placeholder="🔍 Search subdivision"
-      class="form-control w-auto"
-      (keyup)="applyFilter($event)"
-    />
-    <button class="btn btn-outline-primary" (click)="toggleMode()">
-      {{ isPeriodMode ? "📅 Switch to Single Day" : "📆 Switch to Period" }}
-    </button>
-  </div>
+  <!-- Controls Row -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- Left Side: Search + Dates + PDF -->
+    <div class="d-flex align-items-center gap-3">
+      <!-- Search -->
+      <input
+        type="text"
+        placeholder="🔍 Search subdivision"
+        class="form-control w-auto"
+        (keyup)="applyFilter($event)"
+      />
 
-  <!-- Right side: date(s) + PDF -->
-  <div *ngIf="!isPeriodMode" class="d-flex gap-2">
-    <input
-      type="date"
-      class="form-control w-auto"
-      [(ngModel)]="selectedDate"
-      (change)="fetchData(selectedDate)"
-    />
-    <button class="btn btn-outline-success" (click)="downloadPDF()">
-      ⬇️ Download PDF
-    </button>
-  </div>
+      <!-- Date Inputs -->
+      <ng-container [ngSwitch]="mode">
+        <!-- Single Day -->
+        <div *ngSwitchCase="'date'" class="d-flex gap-2 align-items-center">
+          <input
+            type="date"
+            class="form-control w-auto"
+            [(ngModel)]="selectedDate"
+            (change)="fetchData(selectedDate, 'date')"
+          />
+        </div>
 
-  <div *ngIf="isPeriodMode" class="d-flex gap-2">
-    <input
-      type="date"
-      class="form-control w-auto"
-      [(ngModel)]="startDate"
-      placeholder="Start Date"
-    />
-    <input
-      type="date"
-      class="form-control w-auto"
-      [(ngModel)]="endDate"
-      placeholder="End Date"
-    />
-    <button class="btn btn-outline-primary" (click)="fetchPeriodData(startDate, endDate)">
-      Submit
-    </button>
-    <button class="btn btn-outline-success" (click)="downloadPDF()">
-      ⬇️ Download PDF
-    </button>
-  </div>
+        <!-- Period -->
+        <div *ngSwitchCase="'period'" class="d-flex gap-2 align-items-center">
+          <input
+            type="date"
+            class="form-control w-auto"
+            [(ngModel)]="startDate"
+          />
+          <input
+            type="date"
+            class="form-control w-auto"
+            [(ngModel)]="endDate"
+          />
+          <button
+            class="btn btn-outline-primary"
+            (click)="fetchPeriodData(startDate, endDate, 'period')"
+          >
+            Submit
+          </button>
+        </div>
 
-</div>
+        <!-- Daywise -->
+        <div *ngSwitchCase="'daywise'" class="d-flex gap-2 align-items-center">
+          <input
+            type="date"
+            class="form-control w-auto"
+            [(ngModel)]="startDate"
+          />
+          <input
+            type="date"
+            class="form-control w-auto"
+            [(ngModel)]="endDate"
+          />
+          <button
+            class="btn btn-outline-primary"
+            (click)="fetchDaywiseData(startDate, endDate)"
+          >
+            Submit
+          </button>
+        </div>
+      </ng-container>
+
+      <!-- PDF Button -->
+      <button class="btn btn-outline-success" (click)="downloadPDF()">
+        ⬇️ PDF
+      </button>
+    </div>
+
+    <!-- Right Side: Mode Selection -->
+    <div class="btn-group">
+      <button
+        class="btn"
+        [ngClass]="{
+          'btn-primary': mode === 'date',
+          'btn-outline-primary': mode !== 'date'
+        }"
+        (click)="setMode('date')"
+      >
+        📆 Single Day
+      </button>
+      <button
+        class="btn"
+        [ngClass]="{
+          'btn-primary': mode === 'period',
+          'btn-outline-primary': mode !== 'period'
+        }"
+        (click)="setMode('period')"
+      >
+        📊 Period
+      </button>
+      <button
+        class="btn"
+        [ngClass]="{
+          'btn-primary': mode === 'daywise',
+          'btn-outline-primary': mode !== 'daywise'
+        }"
+        (click)="setMode('daywise')"
+      >
+        📅 Daywise
+      </button>
+    </div>
+  </div>
 
   <!-- Loader -->
   <div *ngIf="loading" class="d-flex justify-content-center p-5">
     <mat-spinner></mat-spinner>
   </div>
+  <div
+    *ngIf="mode === 'daywise' && daywiseDates.length > 0"
+    class="d-flex justify-content-center align-items-center gap-3 p-3 bg-light rounded mb-4"
+  >
+    <button
+      class="btn btn-outline-primary d-flex align-items-center"
+      (click)="previousDay()"
+      [disabled]="currentDayIndex === 0"
+    >
+      <i class="bi bi-chevron-left me-1"></i> Prev
+    </button>
 
-  <!-- Table -->
+    <h4 class="mb-0 text-primary fw-semibold px-3">
+      {{ currentDay }}
+    </h4>
+
+    <button
+      class="btn btn-outline-primary d-flex align-items-center"
+      (click)="nextDay()"
+      [disabled]="currentDayIndex === daywiseDates.length - 1"
+    >
+      Next <i class="bi bi-chevron-right ms-1"></i>
+    </button>
+  </div>
+
+  <!-- Main Table (used for date, period, and daywise) -->
   <div *ngIf="!loading" class="table-responsive" #tableContent>
     <table
       mat-table
@@ -80,7 +158,12 @@
     >
       <!-- Subdivision -->
       <ng-container matColumnDef="subdivision_name">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header class="bg-primary fs-5 text-white">
+        <th
+          mat-header-cell
+          *matHeaderCellDef
+          mat-sort-header
+          class="bg-primary fs-5 text-white"
+        >
           Subdivision
         </th>
         <td mat-cell *matCellDef="let element" class="fw-semibold">
@@ -90,7 +173,12 @@
 
       <!-- Total Stations -->
       <ng-container matColumnDef="total_stations">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header class="bg-primary fs-5 text-white text-center">
+        <th
+          mat-header-cell
+          *matHeaderCellDef
+          mat-sort-header
+          class="bg-primary fs-5 text-white text-center"
+        >
           Total Stations
         </th>
         <td mat-cell *matCellDef="let element" class="text-center fs-5">
@@ -100,8 +188,13 @@
 
       <!-- Stations Reported Rainfall -->
       <ng-container matColumnDef="station_reported_rainfall">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header class="bg-primary fs-5 text-white text-center">
-         Stations Reported Rainfall
+        <th
+          mat-header-cell
+          *matHeaderCellDef
+          mat-sort-header
+          class="bg-primary fs-5 text-white text-center"
+        >
+          Stations Reported Rainfall
         </th>
         <td mat-cell *matCellDef="let element" class="text-center fs-5">
           {{ element.station_reported_rainfall }}
@@ -110,7 +203,12 @@
 
       <!-- Percentage -->
       <ng-container matColumnDef="percentage">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header class="bg-primary fs-5 text-white text-center">
+        <th
+          mat-header-cell
+          *matHeaderCellDef
+          mat-sort-header
+          class="bg-primary fs-5 text-white text-center"
+        >
           Percentage
         </th>
         <td mat-cell *matCellDef="let element" class="text-center fs-5">
@@ -121,57 +219,35 @@
       </ng-container>
 
       <!-- Category -->
-      <!-- <ng-container matColumnDef="category">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header class="bg-primary fs-5 text-white text-center">
+      <ng-container matColumnDef="category">
+        <th
+          mat-header-cell
+          *matHeaderCellDef
+          class="bg-primary fs-5 text-white text-center"
+        >
           Category
+          <button
+            class="btn btn-sm btn-light ms-2 p-1"
+            (click)="sortByCategory()"
+            title="Sort by Category"
+          >
+            <i class="bi bi-funnel"></i>
+          </button>
         </th>
         <td mat-cell *matCellDef="let element" class="text-center fs-5">
           <span
             class="badge px-3 py-2"
             [ngClass]="{
-              'bg-success': element.category === 'Widespread',
-              'bg-warning text-dark': element.category === 'Fairly Widespread',
-              'bg-orange text-dark': element.category === 'Scattered',
-              'bg-danger': element.category === 'Isolated'
+              'cat-isolated': element.category === 'Isolated',
+              'cat-scattered': element.category === 'Scattered',
+              'cat-fairly': element.category === 'Fairly Widespread',
+              'cat-widespread': element.category === 'Widespread'
             }"
           >
             {{ element.category || "N/A" }}
           </span>
         </td>
-      </ng-container> -->
-
-      <!-- Category -->
-<!-- Category -->
-<ng-container matColumnDef="category">
-  <th
-    mat-header-cell
-    *matHeaderCellDef
-    class="bg-primary fs-5 text-white text-center"
-  >
-    Category
-    <button
-      class="btn btn-sm btn-light ms-2 p-1"
-      (click)="sortByCategory()"
-      title="Sort by Category"
-    >
-      <i class="bi bi-funnel"></i> <!-- Bootstrap icon -->
-    </button>
-  </th>
-  <td mat-cell *matCellDef="let element" class="text-center fs-5">
-    <span
-      class="badge px-3 py-2"
-      [ngClass]="{
-        'bg-success': element.category === 'Widespread',
-        'bg-warning text-dark': element.category === 'Fairly Widespread',
-        'bg-orange text-dark': element.category === 'Scattered',
-        'bg-danger': element.category === 'Isolated'
-      }"
-    >
-      {{ element.category || "N/A" }}
-    </span>
-  </td>
-</ng-container>
-
+      </ng-container>
 
       <!-- Render rows -->
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
