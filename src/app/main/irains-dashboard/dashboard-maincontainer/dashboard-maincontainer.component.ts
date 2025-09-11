@@ -139,7 +139,7 @@ export class DashboardMaincontainerComponent {
   @ViewChild('mapNavBar') mapNavBarComponent!: MapNavBarComponent;
 
   selectedLayer = 'country';
-  showComparison = false;
+  showComparison = true;
   lastActiveLayer = 'country';
   startDate = '';
   endDate = '';
