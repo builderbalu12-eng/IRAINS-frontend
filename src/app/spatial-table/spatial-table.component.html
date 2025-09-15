@@ -2,7 +2,7 @@
   <app-header></app-header>
 </div>
 
-<mat-card class="shadow-lg rounded-3 p-4 bg-light border-0">
+<mat-card class="bg-custom-green shadow-lg rounded-3 p-4 bg-light border-0">
   <!-- Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="text-center w-100">
@@ -13,9 +13,37 @@
     </div>
   </div>
 
+  <!-- Toggle State/Subdivision -->
+  <div class="d-flex align-items-center gap-3 mb-2">
+    <label class="fw-semibold text-primary">mode:</label>
+    <div class="btn-group">
+      <button
+        class="btn"
+        [ngClass]="{
+          'btn-primary': viewMode === 'subdivision',
+          'btn-outline-primary': viewMode !== 'subdivision'
+        }"
+        (click)="setViewMode('subdivision')"
+      >
+        Subdivision
+      </button>
+      <button
+        class="btn"
+        [ngClass]="{
+          'btn-primary': viewMode === 'state',
+          'btn-outline-primary': viewMode !== 'state'
+        }"
+        (click)="setViewMode('state')"
+      >
+        State
+      </button>
+    </div>
+  </div>
+
   <!-- Controls Row -->
   <div class="d-flex justify-content-between align-items-center mb-3">
     <!-- Left Side: Search + Dates + PDF -->
+
     <div class="d-flex align-items-center gap-3">
       <!-- Search -->
       <input
@@ -28,14 +56,14 @@
       <!-- Date Inputs -->
       <ng-container [ngSwitch]="mode">
         <!-- Single Day -->
-        <div *ngSwitchCase="'date'" class="d-flex gap-2 align-items-center">
+        <!-- <div *ngSwitchCase="'date'" class="d-flex gap-2 align-items-center">
           <input
             type="date"
             class="form-control w-auto"
             [(ngModel)]="selectedDate"
             (change)="fetchData(selectedDate, 'date')"
           />
-        </div>
+        </div> -->
 
         <!-- Period -->
         <div *ngSwitchCase="'period'" class="d-flex gap-2 align-items-center">
@@ -86,7 +114,7 @@
 
     <!-- Right Side: Mode Selection -->
     <div class="btn-group">
-      <button
+      <!-- <button
         class="btn"
         [ngClass]="{
           'btn-primary': mode === 'date',
@@ -95,7 +123,7 @@
         (click)="setMode('date')"
       >
         📆 Single Day
-      </button>
+      </button> -->
       <button
         class="btn"
         [ngClass]="{
@@ -149,6 +177,7 @@
   </div>
 
   <!-- Main Table (used for date, period, and daywise) -->
+   
   <div *ngIf="!loading" class="table-responsive" #tableContent>
     <table
       mat-table
@@ -156,18 +185,21 @@
       matSort
       class="table table-hover align-middle border shadow-sm rounded"
     >
-      <!-- Subdivision -->
-      <ng-container matColumnDef="subdivision_name">
+      <ng-container matColumnDef="name">
         <th
           mat-header-cell
           *matHeaderCellDef
           mat-sort-header
           class="bg-primary fs-5 text-white"
         >
-          Subdivision
+          {{ viewMode === "subdivision" ? "Subdivision" : "State" }}
         </th>
         <td mat-cell *matCellDef="let element" class="fw-semibold">
-          {{ element.subdivision_name }}
+          {{
+            viewMode === "subdivision"
+              ? element.subdivision_name
+              : element.state_name
+          }}
         </td>
       </ng-container>
 
@@ -253,5 +285,25 @@
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
     </table>
+  </div>
+
+  <div class="mt-4 mx-auto">
+    <h4 class="fw-bold text-primary mb-3">
+      🗺 Spatial Distribution Map ({{ viewMode | titlecase }})
+    </h4>
+
+    <!-- Subdivision Map -->
+    <app-spatial-table-maps
+      *ngIf="viewMode === 'subdivision'"
+      [tableData]="dataSource.data"
+      [mapType]="'subdivision'"
+    ></app-spatial-table-maps>
+
+    <!-- State Map -->
+    <app-spatial-table-maps
+      *ngIf="viewMode === 'state'"
+      [tableData]="dataSource.data"
+      [mapType]="'state'"
+    ></app-spatial-table-maps>
   </div>
 </mat-card>

@@ -1,3 +1,295 @@
+// import { Component, ElementRef, OnInit, ViewChild } from "@angular/core";
+// import { MatPaginator } from "@angular/material/paginator";
+// import { MatSort } from "@angular/material/sort";
+// import { MatTableDataSource } from "@angular/material/table";
+// import { SpatialDistributionService } from "../services/spatialDistribution/spatial-distribution.service";
+// import jsPDF from "jspdf";
+// import autoTable from "jspdf-autotable";
+
+// @Component({
+//   selector: "app-spatial-table",
+//   templateUrl: "./spatial-table.component.html",
+//   styleUrls: ["./spatial-table.component.css"],
+// })
+// export class SpatialTableComponent implements OnInit {
+//   displayedColumns: string[] = [
+//     "name", // 👈 will show subdivision_name or state_name dynamically
+//     "subdivision_name",
+//     "total_stations",
+//     "station_reported_rainfall",
+//     "percentage",
+//     "category",
+//   ];
+//   dataSource = new MatTableDataSource<any>([]);
+//   loading = true;
+
+//   // Modes
+//   mode: "date" | "period" | "daywise" = "period";
+
+//   // 👇 NEW: Subdivision / State toggle
+//   viewMode: "subdivision" | "state" = "subdivision";
+
+//   // Date values
+//   selectedDate: string = "";
+//   startDate: string = "";
+//   endDate: string = "";
+
+//   originalData: any[] = [];
+//   private categorySorted = false;
+
+//   // 🔹 Daywise support
+//   daywiseGrouped: Record<string, any[]> = {};
+//   daywiseDates: string[] = [];
+//   currentDayIndex: number = 0;
+//   private daywiseRes: any = null; // keep full res
+
+//   // Category sorting order
+//   private categoryOrder: Record<string, number> = {
+//     Isolated: 1,
+//     Scattered: 2,
+//     "Fairly Widespread": 3,
+//     Widespread: 4,
+//   };
+
+//   @ViewChild(MatPaginator) paginator!: MatPaginator;
+//   @ViewChild(MatSort) sort!: MatSort;
+//   @ViewChild("tableContent", { static: false }) tableContent!: ElementRef;
+
+//   constructor(private spatialService: SpatialDistributionService) {}
+
+//   ngOnInit() {
+//     const today = new Date();
+//     const lastWeek = new Date();
+//     lastWeek.setDate(today.getDate() - 7);
+
+//     this.startDate = lastWeek.toISOString().split("T")[0];
+//     this.endDate = today.toISOString().split("T")[0];
+
+//     // fetch initial period data
+//     this.fetchPeriodData(this.startDate, this.endDate, "period");
+//   }
+
+//   // 🔹 Switch mode
+//   setMode(selected: "date" | "period" | "daywise") {
+//     this.mode = selected;
+//     this.dataSource.data = []; // clear table
+//     this.originalData = [];
+//     this.categorySorted = false;
+//   }
+
+//   // 🔹 Single date
+//   // fetchData(date?: string, mode: string = "date") {
+//   //   this.loading = true;
+//   //   this.spatialService.getSpatialDistribution(date, mode).subscribe({
+//   //     next: (res) => {
+//   //       this.originalData = [...res.data];
+//   //       this.dataSource.data = res.data;
+//   //       this.dataSource.paginator = this.paginator;
+//   //       this.dataSource.sort = this.sort;
+//   //       this.loading = false;
+//   //       this.categorySorted = false;
+//   //     },
+//   //     error: (err) => {
+//   //       console.error(err);
+//   //       this.loading = false;
+//   //     },
+//   //   });
+//   // }
+
+//   // 🔹 Single date
+//   fetchData(date?: string, mode: string = "date") {
+//     if (!date) return;
+//     this.loading = true;
+
+//     const apiCall =
+//       this.viewMode === "subdivision"
+//         ? this.spatialService.getSpatialDistribution(date, mode)
+//         : this.spatialService.getSpatialDistributionState(date, mode); // 👈 state API
+
+//     apiCall.subscribe({
+//       next: (res) => {
+//         this.originalData = [...res.data];
+//         this.dataSource.data = res.data;
+//         this.dataSource.paginator = this.paginator;
+//         this.dataSource.sort = this.sort;
+//         this.loading = false;
+//         this.categorySorted = false;
+//       },
+//       error: (err) => {
+//         console.error(err);
+//         this.loading = false;
+//       },
+//     });
+//   }
+
+//   // 🔹 Period
+//   // fetchPeriodData(start: string, end: string, mode: string = "period") {
+//   //   if (!start || !end) return;
+//   //   this.loading = true;
+//   //   this.spatialService
+//   //     .getSpatialDistributionPeriod(start, end, mode)
+//   //     .subscribe({
+//   //       next: (res) => {
+//   //         this.originalData = [...res.data];
+//   //         this.dataSource.data = res.data;
+//   //         this.dataSource.paginator = this.paginator;
+//   //         this.dataSource.sort = this.sort;
+//   //         this.loading = false;
+//   //         this.categorySorted = false;
+//   //       },
+//   //       error: (err) => {
+//   //         console.error(err);
+//   //         this.loading = false;
+//   //       },
+//   //     });
+//   // }
+
+//   // 🔹 Period
+//   fetchPeriodData(start: string, end: string, mode: string = "period") {
+//     if (!start || !end) return;
+//     this.loading = true;
+
+//     const apiCall =
+//       this.viewMode === "subdivision"
+//         ? this.spatialService.getSpatialDistributionPeriod(start, end, mode)
+//         : this.spatialService.getSpatialDistributionStatePeriod(
+//             start,
+//             end,
+//             mode
+//           ); // 👈 state API
+
+//     apiCall.subscribe({
+//       next: (res) => {
+//         this.originalData = [...res.data];
+//         this.dataSource.data = res.data;
+//         this.dataSource.paginator = this.paginator;
+//         this.dataSource.sort = this.sort;
+//         this.loading = false;
+//         this.categorySorted = false;
+//       },
+//       error: (err) => {
+//         console.error(err);
+//         this.loading = false;
+//       },
+//     });
+//   }
+
+//   // 🔹 Daywise
+//   // fetchDaywiseData(start: string, end: string) {
+//   //   if (!start || !end) return;
+//   //   this.loading = true;
+
+//   //   this.spatialService
+//   //     .getSpatialDistributionPeriod(start, end, "daywise")
+//   //     .subscribe({
+//   //       next: (res) => {
+//   //         // ✅ Backend already sends grouped dictionary
+//   //         this.daywiseGrouped = res.data;
+
+//   //         this.daywiseDates = Object.keys(this.daywiseGrouped).sort();
+//   //         this.currentDayIndex = 0;
+
+//   //         this.updateDaywiseTable();
+//   //         this.loading = false;
+//   //       },
+//   //       error: (err) => {
+//   //         console.error(err);
+//   //         this.loading = false;
+//   //       },
+//   //     });
+//   // }
+//   // 🔹 Daywise
+//   fetchDaywiseData(start: string, end: string) {
+//     if (!start || !end) return;
+//     this.loading = true;
+
+//     const apiCall =
+//       this.viewMode === "subdivision"
+//         ? this.spatialService.getSpatialDistributionPeriod(
+//             start,
+//             end,
+//             "daywise"
+//           )
+//         : this.spatialService.getSpatialDistributionStatePeriod(
+//             start,
+//             end,
+//             "daywise"
+//           ); // 👈 state API
+
+//     apiCall.subscribe({
+//       next: (res) => {
+//         this.daywiseGrouped = res.data;
+//         this.daywiseDates = Object.keys(this.daywiseGrouped).sort();
+//         this.currentDayIndex = 0;
+//         this.updateDaywiseTable();
+//         this.loading = false;
+//       },
+//       error: (err) => {
+//         console.error(err);
+//         this.loading = false;
+//       },
+//     });
+//   }
+
+//   updateDaywiseTable() {
+//     if (this.daywiseDates.length === 0) return;
+//     const currentDate = this.daywiseDates[this.currentDayIndex];
+//     const rows = this.daywiseGrouped[currentDate] || [];
+
+//     this.originalData = [...rows];
+//     this.dataSource.data = rows;
+//     console.log("datasource", this.dataSource);
+//     this.dataSource.paginator = this.paginator;
+//     this.dataSource.sort = this.sort;
+//     this.categorySorted = false;
+//   }
+
+//   // 🔹 Navigation
+//   previousDay() {
+//     if (this.currentDayIndex > 0) {
+//       this.currentDayIndex--;
+//       this.updateDaywiseTable();
+//     }
+//   }
+
+//   nextDay() {
+//     if (this.currentDayIndex < this.daywiseDates.length - 1) {
+//       this.currentDayIndex++;
+//       this.updateDaywiseTable();
+//     }
+//   }
+
+//   // 🔹 Current day label
+//   get currentDay(): string {
+//     return this.daywiseDates[this.currentDayIndex] || "";
+//   }
+
+//   // 🔹 Search filter
+//   applyFilter(event: Event) {
+//     const filterValue = (event.target as HTMLInputElement).value
+//       .trim()
+//       .toLowerCase();
+//     this.dataSource.filter = filterValue;
+//   }
+
+//   // 🔹 Category sorting
+//   sortByCategory() {
+//     if (this.categorySorted) {
+//       this.dataSource.data = [...this.originalData];
+//     } else {
+//       this.dataSource.data = [...this.dataSource.data].sort((a, b) => {
+//         const orderA =
+//           this.categoryOrder[a.category as keyof typeof this.categoryOrder] ??
+//           99;
+//         const orderB =
+//           this.categoryOrder[b.category as keyof typeof this.categoryOrder] ??
+//           99;
+//         return orderA - orderB;
+//       });
+//     }
+//     this.categorySorted = !this.categorySorted;
+//   }
+
 import { Component, ElementRef, OnInit, ViewChild } from "@angular/core";
 import { MatPaginator } from "@angular/material/paginator";
 import { MatSort } from "@angular/material/sort";
@@ -13,7 +305,7 @@ import autoTable from "jspdf-autotable";
 })
 export class SpatialTableComponent implements OnInit {
   displayedColumns: string[] = [
-    "subdivision_name",
+    "name", // 👈 will show subdivision_name or state_name dynamically
     "total_stations",
     "station_reported_rainfall",
     "percentage",
@@ -23,7 +315,10 @@ export class SpatialTableComponent implements OnInit {
   loading = true;
 
   // Modes
-  mode: "date" | "period" | "daywise" = "date";
+  mode: "date" | "period" | "daywise" = "period";
+
+  // 👇 NEW: Subdivision / State toggle
+  viewMode: "subdivision" | "state" = "subdivision";
 
   // Date values
   selectedDate: string = "";
@@ -37,7 +332,6 @@ export class SpatialTableComponent implements OnInit {
   daywiseGrouped: Record<string, any[]> = {};
   daywiseDates: string[] = [];
   currentDayIndex: number = 0;
-  private daywiseRes: any = null; // keep full res
 
   // Category sorting order
   private categoryOrder: Record<string, number> = {
@@ -54,13 +348,18 @@ export class SpatialTableComponent implements OnInit {
   constructor(private spatialService: SpatialDistributionService) {}
 
   ngOnInit() {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    this.selectedDate = yesterday.toISOString().split("T")[0];
-    this.fetchData(this.selectedDate, "date");
+    const today = new Date();
+    const lastWeek = new Date();
+    lastWeek.setDate(today.getDate() - 7);
+
+    this.startDate = lastWeek.toISOString().split("T")[0];
+    this.endDate = today.toISOString().split("T")[0];
+
+    // fetch initial period data
+    this.fetchPeriodData(this.startDate, this.endDate, "period");
   }
 
-  // 🔹 Switch mode
+  // 🔹 Switch mode (date / period / daywise)
   setMode(selected: "date" | "period" | "daywise") {
     this.mode = selected;
     this.dataSource.data = []; // clear table
@@ -68,10 +367,32 @@ export class SpatialTableComponent implements OnInit {
     this.categorySorted = false;
   }
 
+  // 🔹 NEW: Switch viewMode (subdivision / state)
+  setViewMode(mode: "subdivision" | "state") {
+    this.viewMode = mode;
+    this.dataSource.data = [];
+    this.originalData = [];
+    this.categorySorted = false;
+
+    // refetch with new mode
+    if (this.mode === "period") {
+      this.fetchPeriodData(this.startDate, this.endDate, "period");
+    } else if (this.mode === "daywise") {
+      this.fetchDaywiseData(this.startDate, this.endDate);
+    }
+  }
+
   // 🔹 Single date
   fetchData(date?: string, mode: string = "date") {
+    if (!date) return;
     this.loading = true;
-    this.spatialService.getSpatialDistribution(date, mode).subscribe({
+
+    const apiCall =
+      this.viewMode === "subdivision"
+        ? this.spatialService.getSpatialDistribution(date, mode)
+        : this.spatialService.getSpatialDistributionState(date, mode); // 👈 state API
+
+    apiCall.subscribe({
       next: (res) => {
         this.originalData = [...res.data];
         this.dataSource.data = res.data;
@@ -91,22 +412,30 @@ export class SpatialTableComponent implements OnInit {
   fetchPeriodData(start: string, end: string, mode: string = "period") {
     if (!start || !end) return;
     this.loading = true;
-    this.spatialService
-      .getSpatialDistributionPeriod(start, end, mode)
-      .subscribe({
-        next: (res) => {
-          this.originalData = [...res.data];
-          this.dataSource.data = res.data;
-          this.dataSource.paginator = this.paginator;
-          this.dataSource.sort = this.sort;
-          this.loading = false;
-          this.categorySorted = false;
-        },
-        error: (err) => {
-          console.error(err);
-          this.loading = false;
-        },
-      });
+
+    const apiCall =
+      this.viewMode === "subdivision"
+        ? this.spatialService.getSpatialDistributionPeriod(start, end, mode)
+        : this.spatialService.getSpatialDistributionStatePeriod(
+            start,
+            end,
+            mode
+          ); // 👈 state API
+
+    apiCall.subscribe({
+      next: (res) => {
+        this.originalData = [...res.data];
+        this.dataSource.data = res.data;
+        this.dataSource.paginator = this.paginator;
+        this.dataSource.sort = this.sort;
+        this.loading = false;
+        this.categorySorted = false;
+      },
+      error: (err) => {
+        console.error(err);
+        this.loading = false;
+      },
+    });
   }
 
   // 🔹 Daywise
@@ -114,24 +443,32 @@ export class SpatialTableComponent implements OnInit {
     if (!start || !end) return;
     this.loading = true;
 
-    this.spatialService
-      .getSpatialDistributionPeriod(start, end, "daywise")
-      .subscribe({
-        next: (res) => {
-          // ✅ Backend already sends grouped dictionary
-          this.daywiseGrouped = res.data;
+    const apiCall =
+      this.viewMode === "subdivision"
+        ? this.spatialService.getSpatialDistributionPeriod(
+            start,
+            end,
+            "daywise"
+          )
+        : this.spatialService.getSpatialDistributionStatePeriod(
+            start,
+            end,
+            "daywise"
+          ); // 👈 state API
 
-          this.daywiseDates = Object.keys(this.daywiseGrouped).sort();
-          this.currentDayIndex = 0;
-
-          this.updateDaywiseTable();
-          this.loading = false;
-        },
-        error: (err) => {
-          console.error(err);
-          this.loading = false;
-        },
-      });
+    apiCall.subscribe({
+      next: (res) => {
+        this.daywiseGrouped = res.data;
+        this.daywiseDates = Object.keys(this.daywiseGrouped).sort();
+        this.currentDayIndex = 0;
+        this.updateDaywiseTable();
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error(err);
+        this.loading = false;
+      },
+    });
   }
 
   updateDaywiseTable() {
@@ -141,7 +478,6 @@ export class SpatialTableComponent implements OnInit {
 
     this.originalData = [...rows];
     this.dataSource.data = rows;
-    console.log("datasource", this.dataSource);
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
     this.categorySorted = false;
@@ -289,6 +625,7 @@ export class SpatialTableComponent implements OnInit {
       ]);
     }
 
+    console.log(tableData);
     // 🔹 Table
     autoTable(doc, {
       startY: 45,
