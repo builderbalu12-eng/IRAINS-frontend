@@ -1,4 +1,28 @@
 .bg-orange {
-    background-color: orange !important;
-    color: #000 !important; /* ensure text is visible */
-  }
+  background-color: orange !important;
+  color: #fff !important; /* ensure text is visible */
+}
+
+.cat-isolated {
+  background-color: #03ff3f !important;
+  color: #000 !important;
+}
+
+.cat-scattered {
+  background-color: #00683a !important;
+  color: #fff !important;
+}
+
+.cat-fairly {
+  background-color: #00fcf1 !important;
+  color: #000 !important;
+}
+
+.cat-widespread {
+  background-color: #3400f6 !important;
+  color: #fff !important;
+}
+
+.bg-custom-green {
+  background-color: #a2c5b6 !important;
+}
