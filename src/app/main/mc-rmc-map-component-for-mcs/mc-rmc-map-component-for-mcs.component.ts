@@ -108,6 +108,7 @@ export class McRmcMapComponentForMCsComponent {
       this.calculateInitialZoom();
       
       this.fetchBackend();
+      this.resetMap()
     });
 
   }

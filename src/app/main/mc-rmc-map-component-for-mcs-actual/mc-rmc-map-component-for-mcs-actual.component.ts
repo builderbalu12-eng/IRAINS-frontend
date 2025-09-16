@@ -124,10 +124,11 @@ export class McRmcMapComponentForMcsActualComponent {
       this.calculateInitialZoom();
       
       this.fetchBackend();
+      this.resetMap()
+
     });
 
   }
-
   resetMapSmallScreen(): void {
     this.map.setView(this.mcRMCService.getCordinates(this.selectedMcName), this.initialZoom);
   }
