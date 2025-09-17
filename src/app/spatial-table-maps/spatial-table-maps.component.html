@@ -41,16 +41,20 @@
                       >
                         Map Download
                       </button>
-                      <button mat-button class="mode-button mb-2">
+                      <button
+                        mat-button
+                        class="mode-button mb-2"
+                        (click)="downloadMappdf()"
+                      >
                         Map Pdf Download
                       </button>
-                      <button
+                      <!-- <button
                         mat-button
                         class="mode-button mb-2 custom-z-index"
                         (click)="resetMapSmallScreen()"
                       >
                         Reset Position
-                      </button>
+                      </button> -->
                     </div>
                   </div>
                 </div>
@@ -74,7 +78,23 @@
                         class="text-black fw-bold"
                         style="font-family: Arial; font-size: 14px"
                       >
-                        SUB DIVISION WISE RAINFALL MAP (mm)
+                        Date : {{ formatDate(startDate) }}
+                      </label>
+                      <label
+                        *ngIf="endDate && startDate !== endDate"
+                        class="text-black fw-bold ms-2"
+                        style="font-family: Arial; font-size: 14px"
+                      >
+                        to {{ formatDate(endDate) }}
+                      </label>
+                    </div>
+
+                    <div>
+                      <label
+                        class="text-black fw-bold"
+                        style="font-family: Arial; font-size: 14px"
+                      >
+                        {{ mapType.toUpperCase() }} SPATIAL MAP
                       </label>
                     </div>
                   </div>
@@ -121,6 +141,30 @@
                   class="position-absolute"
                   style="bottom: 15%; right: 30%"
                 ></div>
+              </div>
+              <div class="leaflet-bottom" id="leaflet-bottom-subdiv">
+                <div
+                  class="info_legend leaflet-control d-flex justify-content-center align-items-center flex-wrap gap-5 mb-5"
+                  id="legends-subdiv"
+                  style="width: auto; height: 30px; padding-top: 14px"
+                >
+                  <div
+                    *ngFor="let item of legendItems"
+                    class="d-flex align-items-center me-3"
+                  >
+                    <div
+                      [style.background-color]="item.color"
+                      class="d-inline-block border-1 border-black"
+                      style="width: 19px; height: 19px"
+                    ></div>
+                    <div
+                      [style.font-size]="item.fontSize"
+                      class="text-black fw-bold mx-2"
+                    >
+                      <div class="text-size" [innerHTML]="item.text"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
