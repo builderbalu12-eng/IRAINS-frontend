@@ -77,7 +77,13 @@
                         class="text-black fw-bold"
                         style="font-family: Arial; font-size: 12px"
                       >
-                        INDIA METEOROLOGICAL DEPARTMENT, NEW DELHI
+                      भारत मौसम विज्ञान विभाग
+                      <br>
+                      INDIA METEOROLOGICAL DEPARTMENT, NEW DELHI
+                      <br>
+                      जल मौसम विज्ञान प्रभाग, नई दिल्ली
+                      <br>
+                      Hydromet Division, New Delhi 
                       </label>
                     </div>
                     <div>
@@ -110,7 +116,7 @@
                         class="text-black fw-bold"
                         style="font-family: Arial; font-size: 14px"
                       >
-                        DISTRICT WISE RAINFALL MAP (mm)
+                        DISTRICT WISE ACTUAL RAINFALL MAP (mm)
                       </label>
                     </div>
                   </div>
@@ -329,31 +335,30 @@
               </div>
             </div> -->
 
-                <div class="leaflet-bottom" id="leaflet-bottom-district">
+            <div class="leaflet-bottom" id="leaflet-bottom-stateNavbar">
+              <div
+                class="info_legend leaflet-control justify-content-center d-flex mb-5"
+                id="legends-stateNavbar"
+                style="width: auto; height: 30px"
+              >
+                <div
+                  *ngFor="let item of legendItems"
+                  class="d-flex align-items-center me-3"
+                >
                   <div
-                    class="info_legend leaflet-control d-flex flex-nowrap align-items-center mb-4 px-2 py-1"
-                    id="legends-district"
-                    style="width: auto; height: auto; overflow-x: auto"
+                    [style.background-color]="item.color"
+                    class="d-inline-block"
+                    style="width: 11px; height: 11px"
+                  ></div>
+                  <div
+                    [style.font-size]="item.fontSize"
+                    class="text-black fw-bold mx-2"
                   >
-                    <div
-                      *ngFor="let item of legendItems"
-                      class="d-flex align-items-center me-2"
-                      style="white-space: nowrap"
-                    >
-                      <div
-                        [style.background-color]="item.color"
-                        class="d-inline-block"
-                        style="width: 12px; height: 12px; border-radius: 2px"
-                      ></div>
-                      <div
-                        [style.font-size]="item.fontSize || '10px'"
-                        class="text-black fw-semibold mx-1"
-                      >
-                        <span [innerHTML]="item.text"></span>
-                      </div>
-                    </div>
+                    <span [innerHTML]="item.text"></span>
                   </div>
                 </div>
+              </div>
+            </div>
               </div>
             </div>
           </div>

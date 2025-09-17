@@ -49,36 +49,38 @@ export class SubdivisionActualMapComponent {
 
   legendItems = [
     {
-      color: "#277620",
-      text: `Very light to light <br>[0 to 15.5]mm`,
-      fontSize: "11.6px",
+      color: "#abf200",
+      text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
+      fontSize: "9.3px",
     },
     {
-      color: "#1f9ee7",
-      text: "Moderate <br>[15.6 to 64.4]mm",
-      fontSize: "11.6px",
+      color: "#03ff00",
+      text: "Light Rainfall <br>[>2.4mm to 15.5mm]",
+      fontSize: "9.3px",
     },
     {
-      color: "#f3e821",
-      text: "Heavy <br>[64.5 to 115.5]mm",
-      fontSize: "11.6px",
+      color: "#03ffff",
+      text: "Moderate Rainfall <br>[>15.5mm to 64.4mm]",
+      fontSize: "9.3px",
     },
     {
-      color: "#ff8b00",
-      text: "Very Heavy <br>[115.6 to 204.4]mm",
-      fontSize: "11.6px",
+      color: "#ffff00",
+      text: "Heavy Rainfall <br>[>64.4mm to 115.5mm]",
+      fontSize: "9.3px",
     },
     {
-      color: "#da1b1e",
-      text: "Extremely Heavy <br>[>=204.5]mm",
-      fontSize: "11.6px",
+      color: "#ff8c00",
+      text: "Very Heavy Rainfall <br>[>115.5mm to 204.4mm]",
+      fontSize: "9.3px",
     },
     {
-      color: "#c0c0c0",
-      text: "No Data",
-      fontSize: "11.6px",
+      color: "#ff0000",
+      text: "Extremely Heavy Rainfall <br>[>204.4]",
+      fontSize: "9.3px",
     },
+    { color: "#c0c0c0", text: "No <br>Data", fontSize: "9.3px" },
   ];
+
 
   formatteddate: any;
   StartDate: any;
@@ -117,13 +119,10 @@ export class SubdivisionActualMapComponent {
         let fromAndToDates = JSON.parse(value);
         this.StartDate = fromAndToDates.fromDate;
         this.EndDate = fromAndToDates.toDate;
-        // console.log(typeof this.StartDate, this.EndDate);
       } else {
         // If no value is emitted, use the current date as the default
         this.StartDate = `${year}-${mon}-${dd}`;
         this.EndDate = `${year}-${mon}-${dd}`;
-        console.log(this.StartDate);
-        console.log(this.EndDate);
       }
       this.calculateInitialZoom();
       this.fetchBackend();
@@ -143,6 +142,14 @@ export class SubdivisionActualMapComponent {
       startDate: this.StartDate || `${year}-${mon}-${dd}`,
       endDate: this.EndDate || `${year}-${mon}-${dd}`,
     };
+    console.log('dates check', this.StartDate, this.EndDate)
+    this.subdivisionService.fetchData(data).subscribe((res) => {
+      this.subdivisiondatacum = res.data;
+      this.loadGeoJSON(false);
+      this.StartDate = this.convertToIndianDateFormat(this.StartDate);
+      this.EndDate = this.convertToIndianDateFormat(this.EndDate);
+
+    });
 
     this.countryService.fetchDataFtp(data).subscribe((res) => {
       this.countrydatacum = res.data;
@@ -153,23 +160,10 @@ export class SubdivisionActualMapComponent {
         parseFloat(this.countrydatacum[0].rainfall_normal_value)
       );
       this.countryDeparture = Math.round(this.countrydatacum[0].departure);
-      console.log(
-        "country dep data",
-        this.countrydatacum,
-        this.countryActual,
-        this.countryDeparture,
-        this.countryNormal
-      );
     });
 
-    this.subdivisionService.fetchData(data).subscribe((res) => {
-      this.subdivisiondatacum = res.data;
-      // console.log('SUBDIV DATA', res.data);
-      // console.log(typeof data.startDate, typeof data.endDate)
-      this.loadGeoJSON(false);
-      this.StartDate = this.convertToIndianDateFormat(this.StartDate);
-      this.endDate = this.convertToIndianDateFormat(this.endDate);
-    });
+    console.log('dates check', this.StartDate, this.EndDate)
+
   }
 
   filter = (node: HTMLElement) => {

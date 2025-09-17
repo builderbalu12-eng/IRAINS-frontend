@@ -158,7 +158,7 @@ export class SubdivisionMapComponent {
       // console.log(typeof data.startDate, typeof data.endDate)
       this.loadGeoJSON(false);
       this.StartDate = this.convertToIndianDateFormat(this.StartDate);
-      this.endDate = this.convertToIndianDateFormat(this.endDate);
+      this.EndDate = this.convertToIndianDateFormat(this.EndDate);
     });
   }
 
