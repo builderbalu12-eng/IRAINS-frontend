@@ -244,6 +244,14 @@ export class SpatialTableComponent implements OnInit {
       img.src = src;
     });
   }
+  private formatDate(dateStr: string): string {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
 
   async downloadPDF() {
     const doc = new jsPDF();
@@ -296,12 +304,32 @@ export class SpatialTableComponent implements OnInit {
     doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
     doc.setFont("helvetica", "normal");
 
+    // if (this.mode === "period") {
+    //   doc.text(`Period: ${this.startDate} to ${this.endDate}`, 14, 42);
+    // } else if (this.mode === "daywise") {
+    //   doc.text(`Date: ${this.currentDay}`, 14, 42);
+    // } else {
+    //   doc.text(`Date: ${this.selectedDate || "All Dates"}`, 14, 42);
+    // }
+
     if (this.mode === "period") {
-      doc.text(`Period: ${this.startDate} to ${this.endDate}`, 14, 42);
+      doc.text(
+        `Period: ${this.formatDate(this.startDate)} to ${this.formatDate(
+          this.endDate
+        )}`,
+        14,
+        42
+      );
     } else if (this.mode === "daywise") {
-      doc.text(`Date: ${this.currentDay}`, 14, 42);
+      doc.text(`Date: ${this.formatDate(this.currentDay)}`, 14, 42);
     } else {
-      doc.text(`Date: ${this.selectedDate || "All Dates"}`, 14, 42);
+      doc.text(
+        `Date: ${
+          this.selectedDate ? this.formatDate(this.selectedDate) : "All Dates"
+        }`,
+        14,
+        42
+      );
     }
 
     // Divider line
@@ -310,13 +338,35 @@ export class SpatialTableComponent implements OnInit {
     doc.line(14, 36, width - 14, 36);
 
     // 🔹 Prepare table data
+    // let tableData: any[] = [];
+    // if (this.mode === "daywise") {
+    //   const currentDate = this.daywiseDates[this.currentDayIndex];
+    //   const rows = this.daywiseGrouped[currentDate] || [];
+    //   tableData = rows.map((row: any, i: number) => [
+    //     i + 1,
+    //     row.subdivision_name,
+    //     row.total_stations,
+    //     row.station_reported_rainfall,
+    //     row.percentage + "%",
+    //     row.category,
+    //   ]);
+    // } else {
+    //   tableData = this.dataSource.data.map((row: any, i: number) => [
+    //     i + 1,
+    //     row.subdivision_name,
+    //     row.total_stations,
+    //     row.station_reported_rainfall,
+    //     row.percentage + "%",
+    //     row.category,
+    //   ]);
+    // }
     let tableData: any[] = [];
     if (this.mode === "daywise") {
       const currentDate = this.daywiseDates[this.currentDayIndex];
       const rows = this.daywiseGrouped[currentDate] || [];
       tableData = rows.map((row: any, i: number) => [
         i + 1,
-        row.subdivision_name,
+        this.viewMode === "state" ? row.state_name : row.subdivision_name,
         row.total_stations,
         row.station_reported_rainfall,
         row.percentage + "%",
@@ -325,14 +375,13 @@ export class SpatialTableComponent implements OnInit {
     } else {
       tableData = this.dataSource.data.map((row: any, i: number) => [
         i + 1,
-        row.subdivision_name,
+        this.viewMode === "state" ? row.state_name : row.subdivision_name,
         row.total_stations,
         row.station_reported_rainfall,
         row.percentage + "%",
         row.category,
       ]);
     }
-
     console.log(tableData);
     // 🔹 Table
     autoTable(doc, {
@@ -340,7 +389,7 @@ export class SpatialTableComponent implements OnInit {
       head: [
         [
           "S. No.",
-          "Subdivision",
+          this.viewMode === "state" ? "State" : "Subdivision",
           "Total Stations",
           "Stations Reported Rainfall",
           "Percentage",
@@ -391,10 +440,10 @@ export class SpatialTableComponent implements OnInit {
     y += 6;
 
     const categoryColors: Record<string, number[]> = {
-      Isolated: [220, 53, 69],
-      Scattered: [255, 165, 0],
-      "Fairly Widespread": [255, 193, 7],
-      Widespread: [40, 167, 69],
+      Isolated: [3, 255, 63],
+      Scattered: [0, 104, 58],
+      "Fairly Widespread": [0, 252, 241],
+      Widespread: [52, 0, 246],
     };
 
     let x = 16;

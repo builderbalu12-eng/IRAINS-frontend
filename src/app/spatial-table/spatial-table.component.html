@@ -15,7 +15,7 @@
 
   <!-- Toggle State/Subdivision -->
   <div class="d-flex align-items-center gap-3 mb-2">
-    <label class="fw-semibold text-primary">mode:</label>
+    <label class="fw-semibold text-primary">Mode:</label>
     <div class="btn-group">
       <button
         class="btn"
@@ -55,16 +55,6 @@
 
       <!-- Date Inputs -->
       <ng-container [ngSwitch]="mode">
-        <!-- Single Day -->
-        <!-- <div *ngSwitchCase="'date'" class="d-flex gap-2 align-items-center">
-          <input
-            type="date"
-            class="form-control w-auto"
-            [(ngModel)]="selectedDate"
-            (change)="fetchData(selectedDate, 'date')"
-          />
-        </div> -->
-
         <!-- Period -->
         <div *ngSwitchCase="'period'" class="d-flex gap-2 align-items-center">
           <input
@@ -164,7 +154,7 @@
     </button>
 
     <h4 class="mb-0 text-primary fw-semibold px-3">
-      {{ currentDay }}
+      {{ currentDay | date : "dd-MM-yyyy" }}
     </h4>
 
     <button

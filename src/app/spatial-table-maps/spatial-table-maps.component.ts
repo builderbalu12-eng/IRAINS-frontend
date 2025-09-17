@@ -27,7 +27,7 @@ export class SpatialTableMapsComponent implements OnChanges {
   private map!: L.Map;
   private geojsonLayer!: L.GeoJSON;
 
-  private initialZoom = 3.8;
+  private initialZoom = 4.8955;
   private defaultFontSizeonMap = 8;
   isLoading: boolean = false;
 
@@ -61,33 +61,29 @@ export class SpatialTableMapsComponent implements OnChanges {
     {
       color: "#03ff3f",
       text: `Isolated <br>[<= 25%]`,
-      fontSize: "18px",
+      fontSize: "12px",
     },
     {
       color: "#00683a",
       text: "Scattered <br>[>=26% to <=50%]%",
-      fontSize: "18px",
+      fontSize: "12px",
     },
     {
       color: "#00fcf1",
       text: "Fairly Widespread <br>[>=51% to <=75%]%",
-      fontSize: "18px",
+      fontSize: "12px",
     },
     {
       color: "#3400f6",
       text: "Widespread <br>[>=76% to <=100%]%",
-      fontSize: "18px",
+      fontSize: "12px",
+    },
+    {
+      color: "#c0c0c0",
+      text: "No Data",
+      fontSize: "12px",
     },
   ];
-
-  formatDate(dateStr?: string): string {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  }
 
   private calculateInitialZoom(): void {
     const cardWidth = window.innerWidth * 0.8;
@@ -97,7 +93,7 @@ export class SpatialTableMapsComponent implements OnChanges {
   }
 
   private calculateZoomLevel(width: number, height: number): number {
-    const zoomLevel = Math.log2(Math.max(width, height) / 57);
+    const zoomLevel = Math.log2(Math.max(width, height) / 59);
 
     return zoomLevel;
   }
@@ -117,10 +113,10 @@ export class SpatialTableMapsComponent implements OnChanges {
     }
 
     this.map = L.map("map-subdivision", {
-      center: [24, 81.9629], // India center
+      center: [22.5, 81.9629], // India center
       zoom: this.initialZoom, // use your initial zoom
       scrollWheelZoom: false,
-      zoomSnap: 0.6,
+      zoomSnap: 0.9,
       zoomDelta: 0.1,
       touchZoom: false,
       dragging: false,
@@ -523,15 +519,16 @@ export class SpatialTableMapsComponent implements OnChanges {
           layer.bindPopup(
             `<strong>${nameField}</strong><br/>
              Total Stations: ${stations}<br/>
-             Reported: ${reported}<br/>
-             Percentage: ${perc}<br/>
-             Category: ${category}`
+             Reported Stations: ${reported}<br/>
+             Percentage: ${perc}%<br/>
+             <strong>Category: ${category}</strong>`
           );
         },
       });
 
       this.geojsonLayer.addTo(this.map);
-      this.map.fitBounds(this.geojsonLayer.getBounds());
+      // this.map.fitBounds(this.geojsonLayer.getBounds());
+      this.map.setView([22, 80.5], this.initialZoom);
     });
   }
 
