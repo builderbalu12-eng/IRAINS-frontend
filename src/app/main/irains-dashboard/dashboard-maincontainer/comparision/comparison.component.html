@@ -629,7 +629,28 @@
       Loading...
     </div>
   </div>
-  <div class="main_container_box" style="padding: 10px 5px 5px 5px; background-color: rgb(237, 237, 237);">
+  <div class="main_container_box" style="padding: 10px 5px 5px 5px; background-color: rgb(255, 255, 255); margin-top: 5px;">
+    <div class="title-date-container text-center mb-2">
+      <h5 style="color: rgba(71, 93, 114, 0.842); margin-bottom: -10px; font-size: 24px;">
+        {{ isActual ? 'Daily Actual Rainfall Maps' : 'Departure Rainfall Maps' }} (
+          <ng-container *ngIf="startDate === endDate; else dateRange">
+    {{ formatDateShort(startDate) }}
+  </ng-container>
+  <ng-template #dateRange>
+  {{ formatDateShort(startDate) }} to {{ formatDateShort(endDate) }}
+  </ng-template> )
+      </h5>
+      <!-- <div class="date-label" style="font-size: 18px; margin-bottom: -5px;">
+  <ng-container *ngIf="startDate === endDate; else dateRange">
+    Date : {{ formatDateShort(startDate) }}
+  </ng-container>
+  <ng-template #dateRange>
+    Date : {{ formatDateShort(startDate) }} to Date : {{ formatDateShort(endDate) }}
+  </ng-template>
+</div> -->
+
+    </div>
+
     <div class="map_box row g-3">
       <div class="col-md-4" *ngIf="selectedLevels[0]">
         <div class="map_card" #mapCard1>
@@ -652,8 +673,8 @@
               <thead class="table-light">
                 <tr>
                   <th></th>
-                  <th>Actual</th>
-                  <th *ngIf="!isActual">Departure</th>
+                  <th>Actual (mm)</th>
+                  <th *ngIf="!isActual">Departure (%)</th>
                   <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
@@ -700,8 +721,8 @@
               <thead class="table-light">
                 <tr>
                   <th></th>
-                  <th>Actual</th>
-                  <th *ngIf="!isActual">Departure</th>
+                  <th>Actual (mm)</th>
+                  <th *ngIf="!isActual">Departure (%)</th>
                   <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>
@@ -748,8 +769,8 @@
               <thead class="table-light">
                 <tr>
                   <th></th>
-                  <th>Actual</th>
-                  <th *ngIf="!isActual">Departure</th>
+                  <th>Actual (mm)</th>
+                  <th *ngIf="!isActual">Departure (%)</th>
                   <th *ngIf="!isActual">Normal</th>
                 </tr>
               </thead>

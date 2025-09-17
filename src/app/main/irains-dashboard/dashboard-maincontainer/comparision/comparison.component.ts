@@ -3781,6 +3781,16 @@ export class ComparisonComponent implements OnInit, OnChanges, AfterViewInit {
     return this.isActual ? this.actualLegendItems : this.departureLegendItems;
   }
 
+  formatDateShort(dateStr: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+
   constructor(
     private http: HttpClient,
     private stateService: StateService,
