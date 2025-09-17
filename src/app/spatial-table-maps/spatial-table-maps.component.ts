@@ -20,6 +20,8 @@ import * as htmlToImage from "html-to-image";
 })
 export class SpatialTableMapsComponent implements OnChanges {
   @Input() mapType: "subdivision" | "state" = "subdivision";
+  @Input() startDate!: string;
+  @Input() endDate!: string;
 
   @Input() tableData: any[] = [];
   private map!: L.Map;
@@ -50,14 +52,45 @@ export class SpatialTableMapsComponent implements OnChanges {
       this.calculateInitialZoom();
       if (this.map) {
         this.map.setZoom(this.initialZoom);
-        console.log("hii");
         this.map.setView([24, 81.9629], this.initialZoom);
       }
     }
   }
 
+  legendItems = [
+    {
+      color: "#03ff3f",
+      text: `Isolated <br>[<= 25%]`,
+      fontSize: "18px",
+    },
+    {
+      color: "#00683a",
+      text: "Scattered <br>[>=26% to <=50%]%",
+      fontSize: "18px",
+    },
+    {
+      color: "#00fcf1",
+      text: "Fairly Widespread <br>[>=51% to <=75%]%",
+      fontSize: "18px",
+    },
+    {
+      color: "#3400f6",
+      text: "Widespread <br>[>=76% to <=100%]%",
+      fontSize: "18px",
+    },
+  ];
+
+  formatDate(dateStr?: string): string {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
   private calculateInitialZoom(): void {
-    const cardWidth = window.innerWidth * 0.9;
+    const cardWidth = window.innerWidth * 0.8;
     const cardHeight = window.innerHeight * 0.7;
     this.initialZoom = this.calculateZoomLevel(cardWidth, cardHeight);
     this.defaultFontSizeonMap = this.initialZoom * 2;
@@ -85,9 +118,9 @@ export class SpatialTableMapsComponent implements OnChanges {
 
     this.map = L.map("map-subdivision", {
       center: [24, 81.9629], // India center
-      zoom: this.initialZoom || 5, // use your initial zoom
+      zoom: this.initialZoom, // use your initial zoom
       scrollWheelZoom: false,
-      zoomSnap: 0.1,
+      zoomSnap: 0.6,
       zoomDelta: 0.1,
       touchZoom: false,
       dragging: false,
@@ -101,15 +134,15 @@ export class SpatialTableMapsComponent implements OnChanges {
       this.toggleLogoPosition(this.isFullscreen());
     });
 
-    const fullscreenControl = new (L.Control as any).Fullscreen({
-      title: {
-        false: "View Fullscreen",
-        true: "Exit Fullscreen",
-      },
-      content: '<i class="bi bi-arrows-fullscreen"></i>',
-    });
+    // const fullscreenControl = new (L.Control as any).Fullscreen({
+    //   title: {
+    //     false: "View Fullscreen",
+    //     true: "Exit Fullscreen",
+    //   },
+    //   content: '<i class="bi bi-arrows-fullscreen"></i>',
+    // });
 
-    this.map.addControl(fullscreenControl);
+    // this.map.addControl(fullscreenControl);
   }
 
   filter = (node: HTMLElement) => {
