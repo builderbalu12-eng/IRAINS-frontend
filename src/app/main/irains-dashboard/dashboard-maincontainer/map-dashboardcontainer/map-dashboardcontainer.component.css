@@ -1,23 +1,21 @@
 .map-container {
   position: relative;
-  height: 720px; /* Fixed height to constrain the map */
-  width: 100%; /* Full width of the parent container */
-  overflow: hidden; /* Prevents content from spilling out */
+  height: 720px;
+  width: 100%;
+  overflow: hidden;
 }
 
 #map {
   position: absolute;
-  /* top: 0;
-  left: 0; */
-  height: 720px; /* Fills the container height */
-  width: 498px; /* Fills the container width */
+  height: 720px;
+  width: 498px;
   border: 1px solid #ccc;
   border-radius: 7px;
-  z-index: 1; /* Base layer for the map */
+  z-index: 1;
 }
 
 #map path, #map polygon {
-  cursor: pointer; /* Change cursor to pointer on hover over features */
+  cursor: pointer;
 }
 
 .buffering-overlay {
@@ -47,7 +45,7 @@
   display: flex;
   flex-direction: row;
   gap: 15px;
-  z-index: 600; /* Above the map but below the filter overlay */
+  z-index: 600;
 }
 
 .legend-item {
@@ -72,7 +70,7 @@
   background: rgba(255, 255, 255, 0.97);
   border-radius: 10px;
   padding: 18px 14px 14px 14px;
-  z-index: 700; /* Above the legend and map */
+  z-index: 700;
   box-shadow: 0 6px 20px 0 rgba(16, 21, 60, 0.11);
   animation: slide-down 0.23s ease;
 }
@@ -118,7 +116,7 @@
   padding: 6px 16px 6px 13px;
   font-weight: 500;
   font-size: 16px;
-  z-index: 650; /* Above the map and legend, below the filter overlay */
+  z-index: 650;
   transition: box-shadow 0.18s, background 0.18s;
   border: 1.5px solid #e1eaff;
   gap: 8px;
@@ -145,4 +143,48 @@
 
 .tooltip-content .tooltip-row {
   margin-bottom: 2px;
+}
+
+/* Layer selection panel styles inspired by LiveMapComponent */
+.layer-selection-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #1e40af; /* Blue background like LiveMapComponent */
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000; /* Above map and other controls */
+}
+
+.layer-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.layer-btn {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #bfdbfe; /* Light blue text for inactive buttons */
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.layer-btn:hover {
+  color: #ffffff;
+  background: #3b82f6; /* Hover effect like LiveMapComponent */
+}
+
+.layer-btn.active {
+  background: #2563eb; /* Active button background */
+  color: #ffffff;
+  font-weight: 600;
 }
