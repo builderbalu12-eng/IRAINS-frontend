@@ -411,7 +411,7 @@
 </div> -->
 
 
-
+<!-- 
 
 <div class="map-dashboard-container">
   <div class="map-wrapper d-flex flex-column h-100 w-100">
@@ -453,6 +453,64 @@
             <label for="endDate" class="form-label small fw-semibold filter-text">End Date</label>
             <input type="date" class="form-control form-control-sm" id="endDate" [(ngModel)]="endDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
           </div>
+        </div>
+      </div>
+
+      <div *ngIf="isBuffering" class="buffering-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 z-3">
+        <div class="spinner-border text-primary me-2" role="status" style="width: 3rem; height: 3rem;">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <span class="text-white h4">Loading...</span>
+      </div>
+
+      <div class="legend-container position-absolute bottom-0 start-0 end-0 bg-white rounded-top shadow p-2 z-3 custom-legend">
+        <div class="d-flex flex-row flex-nowrap overflow-auto">
+          <div *ngFor="let item of currentLegendItems; let idx = index" class="legend-item me-3">
+            <div class="d-flex align-items-center">
+              <span class="color-box me-2 flex-shrink-0"
+                [style.background-color]="item.color"
+                style="width: 16px; height: 16px; border: 1px solid #dee2e6; border-radius: 3px;">
+              </span>
+              <span class="small" [innerHTML]="item.text" [style.font-size]="item.fontSize"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+
+<div class="map-dashboard-container">
+  <div class="map-wrapper d-flex flex-column h-100 w-100">
+    <div class="layer-navbar rounded-bottom shadow p-2 custom-navbar-bg z-3">
+      <div class="d-flex justify-content-between align-items-center w-100">
+        <div class="d-flex flex-row flex-nowrap overflow-auto">
+          <button *ngFor="let item of navItems; let i = index"
+            (click)="onSelectLayer(item.id)"
+            class="btn btn-sm layer-btn custom-layer-btn me-1"
+            [ngClass]="{'active-btn': item.active, 'inactive-btn': !item.active}"
+            [attr.aria-pressed]="item.active">
+            {{ item.label }}
+          </button>
+        </div>
+        <div class="d-flex align-items-center">
+          <span class="small fw-semibold filter-text text-white">Departure</span>
+          <div class="form-check form-switch m-0 mx-2">
+            <input class="form-check-input" type="checkbox" id="modeSwitch" [(ngModel)]="isActual" (ngModelChange)="onModeChange()" name="mode">
+          </div>
+          <span class="small fw-semibold filter-text text-white">Actual Rainfall</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-container position-relative flex-grow-1">
+      <div #map id="map" class="map-viewport h-100 w-100" style="z-index: 1"></div>
+
+      <div class="controls custom-controls position-absolute">
+        <div>
+          <label for="selectDate" class="form-label small fw-semibold filter-text">Select Date</label>
+          <input type="date" class="form-control form-control-sm" id="selectDate" [(ngModel)]="selectedDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
         </div>
       </div>
 

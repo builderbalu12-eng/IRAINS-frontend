@@ -172,7 +172,7 @@
         </app-comparison>
       </div>
     </ng-container>
-
+<!-- 
     <ng-template #mainContent>
       <div class="content-row">
         <div class="map-column">
@@ -190,7 +190,31 @@
         </div>
       </div>
     </ng-template>
-  
+   -->
+
+   <ng-template #mainContent>
+  <div class="content-row">
+    <div class="map-column">
+      <app-map-dashboardcontainer 
+        [selectedLayer]="selectedLayer"
+        [startDate]="startDate || maxDate"
+        [endDate]="endDate || maxDate"
+        [isActual]="isActual"
+        [maxDate]="maxDate"
+        (layerSelected)="onLayerSelected($event)"
+        (dateChanged)="onDateChanged($event)">
+      </app-map-dashboardcontainer>
+    </div>
+    <div class="charts-column">
+      <app-map-charts
+        [selectedLayer]="selectedLayer"
+        [startDate]="startDate || maxDate"
+        [endDate]="endDate || maxDate"
+        [isActual]="isActual">
+      </app-map-charts>
+    </div>
+  </div>
+</ng-template>
     
   </div>
   
