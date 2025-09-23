@@ -1,4 +1,4 @@
-.charts-container {
+/* .charts-container {
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -19,4 +19,77 @@
 .table th, .table td {
   padding: 5px;
   text-align: left;
+} */
+
+
+/* Custom CSS to complement Bootstrap 5 */
+.container-fluid {
+  overflow: hidden; /* Prevent scrolling issues */
+}
+
+/* Gradient header for cards */
+.card-header.bg-gradient {
+  background-color: #6c757d; /* Matches gray-600 to gray-700 */
+}
+
+/* Ensure consistent card height and content fit */
+.card.h-100 {
+  max-height: 16rem; /* Matches h-64 (1rem = 16px, so 16rem = 256px) */
+}
+
+/* Custom scrollbar styling */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Adjust font sizes and padding for compact look */
+.card-body {
+  padding: 0.5rem; /* Matches p-2 for tight spacing */
+}
+
+.fs-6 {
+  font-size: 0.875rem; /* Bootstrap's fs-6 */
+}
+
+.text-muted {
+  color: #6c757d; /* Bootstrap's text-muted */
+}
+
+/* Ensure badges have consistent styling */
+.badge {
+  padding: 0.25em 0.5em;
+  font-weight: 500;
+}
+
+/* Subtle background colors for rows */
+.bg-light {
+  background-color: #f8f9fa; /* Bootstrap light bg */
+}
+
+/* Custom colors if needed */
+.text-teal {
+  color: #20c997; /* Teal for total loss */
+}
+
+.text-orange {
+  color: #fd7e14; /* Orange for affected people */
+}
+
+.small {
+  font-size: 0.75rem; /* Smaller text */
 }
