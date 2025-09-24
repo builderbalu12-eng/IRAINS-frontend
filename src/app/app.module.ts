@@ -173,6 +173,8 @@ import { MapDashboardcontainerComponent } from "./main/irains-dashboard/dashboar
 import { MapNavBarComponent } from "./main/irains-dashboard/dashboard-maincontainer/map-nav-bar/map-nav-bar.component";
 import { MapChartsComponent } from "./main/irains-dashboard/dashboard-maincontainer/map-charts/map-charts.component";
 import { ComparisonComponent } from "./main/irains-dashboard/dashboard-maincontainer/comparision/comparison.component";
+import { MainChartsComponent } from "./main/irains-dashboard/dashboard-maincontainer/main-charts/main-charts";
+
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -321,6 +323,7 @@ import { ComparisonComponent } from "./main/irains-dashboard/dashboard-mainconta
     MapNavBarComponent,
     MapChartsComponent,
     ComparisonComponent,
+    MainChartsComponent,
   ],
   imports: [
     MatCardModule,

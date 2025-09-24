@@ -347,7 +347,7 @@
 <nav class="custom-navbar navbar navbar-expand-lg">
   <div class="container-fluid justify-content-between align-items-center d-flex">
     <!-- Marquee when comparison is inactive -->
-    <div *ngIf="!showComparison" class="live-updates-container">
+    <!-- <div *ngIf="!showComparison" class="live-updates-container">
       <div class="liveupdated">
         <div>
           <i class="fa fa-bell" aria-hidden="true"></i>
@@ -367,7 +367,26 @@
           </div>
         </div>
       </div>
+    </div> -->
+
+
+    <div *ngIf="!showComparison" class="live-updates-container">
+  <div class="liveupdated">
+    <i class="fa fa-bell" aria-hidden="true"></i>
+    <span>Station Statistics</span>
+  </div>
+  <div class="marquee">
+    <div class="animate-marquee d-flex align-items-center">
+      <span>Top 5 station statistics are:</span>
+      <ng-container *ngFor="let station of topStations; let first = first">
+        <i *ngIf="!first" class="fa fa-diamond mx-2" aria-hidden="true" style="color: #1d4ed8;"></i>
+        <span style="font-size: 12px;">{{ station.station_name }} has recorded</span>
+        <span style="font-size: 17px;">{{ station.data }} mm</span>
+      </ng-container>
     </div>
+  </div>
+</div>
+
 
     <!-- Filter controls when comparison is active -->
     <div *ngIf="showComparison" class="d-flex align-items-center filter_box_container">
