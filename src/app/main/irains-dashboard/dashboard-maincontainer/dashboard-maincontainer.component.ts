@@ -486,6 +486,102 @@
 // }
 
 
+// import { Component, ViewChild } from '@angular/core';
+// import { ComparisonComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/comparision/comparison.component';
+// import { MapNavBarComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/map-nav-bar/map-nav-bar.component';
+
+// @Component({
+//   selector: 'app-dashboard-maincontainer',
+//   templateUrl: './dashboard-maincontainer.component.html',
+//   styleUrls: ['./dashboard-maincontainer.component.css']
+// })
+// export class DashboardMaincontainerComponent {
+//   @ViewChild('comparisonComp') comparisonComponent!: ComparisonComponent;
+//   @ViewChild('mapNavBar') mapNavBarComponent!: MapNavBarComponent;
+
+//   selectedLayer = 'country';
+//   showComparison = false;
+//   lastActiveLayer = 'country';
+//   startDate = '';
+//   endDate = '';
+//   isActual = false;
+//   maxDate = new Date().toISOString().split('T')[0];
+//   selectedLevels: string[] = ['state', 'district', 'block'];
+//   mode: string = 'state';
+//   selectedPlace: { layer: string; name: string } = { layer: 'country', name: 'India' };
+
+//   ngAfterViewInit() {
+//     if (this.mapNavBarComponent) {
+//       this.selectedLevels = this.mapNavBarComponent.selectedLevels || ['state', 'district', 'block'];
+//       this.mode = this.mapNavBarComponent.mode || 'state';
+//       this.startDate = this.mapNavBarComponent.startDate || this.maxDate;
+//       this.endDate = this.mapNavBarComponent.endDate || this.maxDate;
+//       this.isActual = this.mapNavBarComponent.isActual;
+//     }
+//   }
+
+//   onLayerSelected(layerName: string) {
+//     this.selectedLayer = layerName;
+//     this.lastActiveLayer = layerName;
+//     this.showComparison = false;
+//   }
+
+//   onDateChanged(event: { startDate: string; endDate: string }) {
+//     this.startDate = event.startDate;
+//     this.endDate = event.endDate;
+//   }
+
+//   onPlaceSelected(event: { layer: string; name: string }) {
+//     this.selectedPlace = event;
+//   }
+
+//   onToggleComparison() {
+//     this.showComparison = !this.showComparison;
+//     if (!this.showComparison) {
+//       this.selectedLayer = this.lastActiveLayer;
+//     } else {
+//       if (this.mapNavBarComponent) {
+//         this.selectedLevels = this.mapNavBarComponent.selectedLevels || ['state', 'district', 'block'];
+//         this.mode = this.mapNavBarComponent.mode || 'state';
+//         this.startDate = this.mapNavBarComponent.startDate || this.maxDate;
+//         this.endDate = this.mapNavBarComponent.endDate || this.maxDate;
+//         this.isActual = this.mapNavBarComponent.isActual;
+//       }
+//     }
+//   }
+
+//   onFilterChange(filter: { startDate: string; endDate: string; isActual: boolean }) {
+//     this.startDate = filter.startDate;
+//     this.endDate = filter.endDate;
+//     this.isActual = filter.isActual;
+//   }
+
+//   onFilterSettingsChange(settings: { selectedLevels: string[]; mode: string }) {
+//     this.selectedLevels = settings.selectedLevels;
+//     this.mode = settings.mode;
+//   }
+
+//   onResetMapView() {
+//     if (this.showComparison && this.comparisonComponent) {
+//       this.comparisonComponent.resetMapView();
+//     } else if (this.mapNavBarComponent) {
+//       this.startDate = this.maxDate;
+//       this.endDate = this.maxDate;
+//       this.isActual = false;
+//       this.mapNavBarComponent.startDate = this.maxDate;
+//       this.mapNavBarComponent.endDate = this.maxDate;
+//       this.mapNavBarComponent.isActual = false;
+//       this.mapNavBarComponent.onFilterChange();
+//       this.selectedPlace = { layer: 'country', name: 'India' };
+//     }
+//   }
+
+//   onClosePopup() {
+//     this.showComparison = false;
+//   }
+// }
+
+
 import { Component, ViewChild } from '@angular/core';
 import { ComparisonComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/comparision/comparison.component';
 import { MapNavBarComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/map-nav-bar/map-nav-bar.component';
@@ -508,7 +604,7 @@ export class DashboardMaincontainerComponent {
   maxDate = new Date().toISOString().split('T')[0];
   selectedLevels: string[] = ['state', 'district', 'block'];
   mode: string = 'state';
-  selectedPlace: { layer: string; name: string } = { layer: 'country', name: 'India' };
+  selectedPlace: { layer: string; code: string; name: string } = { layer: 'country', code: 'INDIA', name: 'India' };
 
   ngAfterViewInit() {
     if (this.mapNavBarComponent) {
@@ -531,7 +627,7 @@ export class DashboardMaincontainerComponent {
     this.endDate = event.endDate;
   }
 
-  onPlaceSelected(event: { layer: string; name: string }) {
+  onPlaceSelected(event: { layer: string; code: string; name: string }) {
     this.selectedPlace = event;
   }
 
@@ -572,7 +668,7 @@ export class DashboardMaincontainerComponent {
       this.mapNavBarComponent.endDate = this.maxDate;
       this.mapNavBarComponent.isActual = false;
       this.mapNavBarComponent.onFilterChange();
-      this.selectedPlace = { layer: 'country', name: 'India' };
+      this.selectedPlace = { layer: 'country', code: 'INDIA', name: 'India' };
     }
   }
 
