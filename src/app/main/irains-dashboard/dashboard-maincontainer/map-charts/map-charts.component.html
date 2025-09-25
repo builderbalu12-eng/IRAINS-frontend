@@ -171,6 +171,7 @@
   </div>
 </div> -->
 
+
 <div class="container-fluid">
   <!-- First row: Three cards in responsive grid -->
   <div class="row row-cols-1 row-cols-md-3 g-3 mb-3">
@@ -187,15 +188,15 @@
               <div class="fw-medium text-dark small">{{region.name}}</div>
               <div class="d-flex justify-content-between align-items-center">
                 <div class="text-center">
-                  <div class="fw-bold small text-teal">{{region.actual}}</div>
+                  <div class="fw-bold  text-success">{{region.actual}}</div>
                   <div class="text-muted small">Actual (mm)</div>
                 </div>
                 <div class="text-center">
-                  <div class="fw-bold small text-danger">{{region.departure}}</div>
+                  <div class="fw-bold  text-dark">{{region.departure}}</div>
                   <div class="text-muted small">Departure</div>
                 </div>
                 <div class="text-center">
-                  <div class="fw-bold small text-orange">{{region.normal}}</div>
+                  <div class="fw-bold  text-primary">{{region.normal}}</div>
                   <div class="text-muted small">Normal (mm)</div>
                 </div>
               </div>
@@ -216,11 +217,10 @@
             <div *ngFor="let item of top5; let last = last" class="d-flex justify-content-between align-items-center p-1 bg-light rounded" [ngClass]="{'mb-1': !last}">
               <div>
                 <div class="fw-medium text-dark small">{{item.name}}</div>
-                <div class="small text-muted">Daily Actual Rainfall</div>
+                <div class="small text-muted">Daily Actual Rainfall (mm)</div>
               </div>
               <div class="text-end">
-                <div class="fw-bold small" [ngClass]="item.colorClass">{{item.actual}}</div>
-                <div class="small text-muted">mm</div>
+                <div class="fw-bold text-success">{{item.actual}}</div>
               </div>
             </div>
           </div>
@@ -239,11 +239,10 @@
             <div *ngFor="let item of highestRecorded; let last = last" class="d-flex justify-content-between align-items-center p-1 bg-light rounded" [ngClass]="{'mb-1': !last}">
               <div>
                 <div class="fw-medium text-dark small">{{item.date}}</div>
-                <div class="small text-muted">Highest Recorded Value</div>
+                <div class="small text-muted">Highest Recorded Value (mm)</div>
               </div>
               <div class="text-end">
-                <div class="fw-bold small" [ngClass]="item.colorClass">{{item.actual}}</div>
-                <div class="small text-muted">mm</div>
+                <div class="fw-bold text-success">{{item.actual}}</div>
               </div>
             </div>
           </div>

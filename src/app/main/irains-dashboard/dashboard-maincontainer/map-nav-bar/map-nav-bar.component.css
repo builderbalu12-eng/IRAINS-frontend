@@ -270,20 +270,41 @@ label.form-label {
   position: relative;
 }
 
-.animate-marquee {
+/* .animate-marquee {
   display: inline-block;
   animation: marquee 40s linear infinite;
-}
+} */
 
 @keyframes marquee {
   0%   { transform: translateX(100%); }
   100% { transform: translateX(-100%); }
 }
 
-.animate-marquee i.fa-diamond {
-  margin: 0 0.5rem;  /* Space around diamonds */
-  font-size: 12px;   /* Tweak as needed */
+/* .animate-marquee i.fa-diamond {
+  margin: 0 0.5rem; 
+  font-size: 12px;   
   vertical-align: middle;
-}
+} */
 
 /* Remove old .marquee::before unless seamless loop is needed */
+
+
+.animate-marquee {
+  display: inline-flex; /* Changed to inline-flex for better alignment */
+  animation: marquee 40s linear infinite;
+  gap: 0.2rem; /* Consistent spacing between all elements */
+  align-items: center; /* Ensure vertical alignment */
+}
+
+.animate-marquee span {
+  font-size: 14px; /* Uniform font size for all text (station names and values) */
+  color: #000000; /* Black color for all text */
+  font-weight: 500; /* Medium weight for clarity and elegance */
+}
+
+.animate-marquee i.fa-diamond {
+  margin: 0; /* Remove previous margins for consistency */
+  font-size: 10px; /* Slightly smaller icon for balance */
+  color: #1d4ed8; /* Retain existing icon color as per original styling */
+  vertical-align: middle;
+}
