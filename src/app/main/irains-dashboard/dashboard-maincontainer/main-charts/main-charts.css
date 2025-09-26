@@ -33,3 +33,23 @@
   color: #666;
   margin-top: 20px;
 }
+
+/* .rainfall-filter-buttons button.active {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+} */
+
+
+.rainfall-filter-buttons button.active {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+.mt-3 {
+  margin-top: 1rem !important;
+}
+.mb-0 {
+  margin-bottom: 0 !important;
+}
