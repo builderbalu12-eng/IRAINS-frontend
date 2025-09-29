@@ -26,4 +26,14 @@ export class SubdivisionService {
     const url = `${this.baseUrl}/api/v1/fetchSubDivisionOfBunchDate`;
     return this.http.post<any>(url, data);
   }
+
+
+  fetchTopNSubdivisions(data : any){
+    const url = `${this.baseUrl}/api/v1/fetchTopNSubdivisions`;
+    return this.http.post<any>(url, data);
+  }
+  fetchSubdivisionRangeStatistics(data : any){
+    const url = `${this.baseUrl}/api/v1/fetchSubdivisionRangeStatistics`;
+    return this.http.post<any>(url, data);
+  }
 }

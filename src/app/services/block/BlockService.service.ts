@@ -30,4 +30,12 @@ export class BlockService {
     const url = `${this.baseUrl}/api/v1/fetchBlockRainfallAnalysis`;
     return this.http.post<any>(url, data);
   }
+  fetchTopNBlocks(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchTopNBlocks`;
+    return this.http.post<any>(url, data);
+  }
+  fetchBlockRangeStatistics(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchBlockRangeStatistics`;
+    return this.http.post<any>(url, data);
+  }
 }

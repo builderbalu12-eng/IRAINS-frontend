@@ -21,4 +21,14 @@ export class DistrictService {
     console.log('called fetchDataFtp');
     return this.http.post<any>(url, data);
   }
+
+  fetchTopNDistricts(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchTopNDistricts`;
+    return this.http.post<any>(url, data);
+  }
+  
+  fetchDistrictRangeStatistics(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchDistrictRangeStatistics`;
+    return this.http.post<any>(url, data);
+  }
 }

@@ -29,4 +29,12 @@ export class RegionService {
     const url = `${this.baseUrl}/api/v1/fetchCummulativeRegionData`;
     return this.http.post<any>(url, data);
   }
+  fetchTopNRegions(data : any) : Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchTopNRegions`;
+    return this.http.post<any>(url, data);
+  }
+  fetchRegionRangeStatistics(data : any) : Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchRegionRangeStatistics`;
+    return this.http.post<any>(url, data);
+  }
 }
