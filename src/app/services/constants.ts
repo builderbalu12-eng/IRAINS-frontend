@@ -263,29 +263,42 @@ export class Constants {
 
   getCurrentSeason(date: Date): string {
     const year = date.getFullYear();
-
+  
+    // Normalize input date to midnight
+    const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+    // Define season boundaries and normalize to midnight
     const winterStart = new Date(year, 0, 1);
+    winterStart.setHours(0, 0, 0, 0);
     const winterEnd = new Date(year, 1, this.isLeapYear(year) ? 29 : 28);
-
+    winterEnd.setHours(23, 59, 59, 999);
+  
     const premonsoonStart = new Date(year, 2, 1);
+    premonsoonStart.setHours(0, 0, 0, 0);
     const premonsoonEnd = new Date(year, 4, 31);
-
+    premonsoonEnd.setHours(23, 59, 59, 999);
+  
     const monsoonStart = new Date(year, 5, 1);
-    const monsoonEnd = new Date(year, 8, 30);
-
+    monsoonStart.setHours(0, 0, 0, 0);
+    const monsoonEnd = new Date(year, 8, 30); // September 30
+    monsoonEnd.setHours(23, 59, 59, 999);
+  
     const postmonsoonStart = new Date(year, 9, 1);
+    postmonsoonStart.setHours(0, 0, 0, 0);
     const postmonsoonEnd = new Date(year, 11, 31);
-
-    if (date >= winterStart && date <= winterEnd) {
-      return "Winter";
-    } else if (date >= premonsoonStart && date <= premonsoonEnd) {
-      return "PreMonsoon";
-    } else if (date >= monsoonStart && date <= monsoonEnd) {
-      return "Monsoon";
-    } else if (date >= postmonsoonStart && date <= postmonsoonEnd) {
-      return "PostMonsoon";
+    postmonsoonEnd.setHours(23, 59, 59, 999);
+  
+  
+    if (normalizedDate >= winterStart && normalizedDate <= winterEnd) {
+      return 'Winter';
+    } else if (normalizedDate >= premonsoonStart && normalizedDate <= premonsoonEnd) {
+      return 'PreMonsoon';
+    } else if (normalizedDate >= monsoonStart && normalizedDate <= monsoonEnd) {
+      return 'Monsoon';
+    } else if (normalizedDate >= postmonsoonStart && normalizedDate <= postmonsoonEnd) {
+      return 'PostMonsoon';
     } else {
-      throw new Error("Unable to determine the season for the given date.");
+      throw new Error('Unable to determine the season for the given date.');
     }
   }
 
