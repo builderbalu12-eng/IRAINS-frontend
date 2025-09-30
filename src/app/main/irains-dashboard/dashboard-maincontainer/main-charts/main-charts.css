@@ -114,7 +114,7 @@
 .card-header.bg-gradient {
   background: linear-gradient(90deg, #0d6efd, #6610f2);
 } */
-
+/* 
 .no-data-message {
   text-align: center;
   font-size: 18px;
@@ -130,4 +130,131 @@
 
 .chart {
   position: relative;
+} */
+
+.container-fluid {
+  margin-top: 10px;
+}
+
+.card {
+  background-color: #fff;
+  border-radius: 0.5rem;
+}
+
+.card-header.bg-gradient {
+  background: linear-gradient(90deg, #0d6efd, #6610f2);
+}
+
+.no-data-message {
+  text-align: center;
+  font-size: 18px;
+  color: #666;
+  margin-top: 20px;
+}
+
+.rainfall-filter-buttons {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.rainfall-filter-buttons button.btn-xs {
+  min-width: 80px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  height: 24px; /* Minimal height for buttons */
+}
+
+.rainfall-filter-buttons button.active {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+.date-picker-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.date-label {
+  margin-right: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.date-picker {
+  min-width: 140px !important;
+  max-width: 120px;
+}
+
+/* Customize mat-form-field for minimalistic look */
+mat-form-field.date-picker {
+  display: inline-flex;
+  align-items: center;
+}
+
+mat-form-field.date-picker .mat-form-field-wrapper {
+  padding-bottom: 0;
+}
+
+mat-form-field.date-picker .mat-form-field-flex {
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  background: transparent;
+  height: 24px; /* Minimal height for input */
+}
+
+mat-form-field.date-picker .mat-form-field-infix {
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+mat-form-field.date-picker input.mat-input-element {
+  font-size: 0.75rem;
+  height: 10px; /* Minimal input height */
+}
+
+mat-form-field.date-picker .mat-datepicker-toggle {
+  margin-left: 4px;
+  font-size: 0.75rem;
+}
+
+mat-form-field.date-picker .mat-datepicker-toggle .mat-icon-button {
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+}
+
+mat-form-field.date-picker .mat-datepicker-toggle .mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+/* Remove the floating label */
+mat-form-field.date-picker .mat-form-field-label {
+  display: none;
+}
+
+/* Ensure horizontal scrollbar is styled for filter buttons if needed */
+.rainfall-filter-buttons::-webkit-scrollbar {
+  height: 6px;
+}
+
+.rainfall-filter-buttons::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.rainfall-filter-buttons::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.rainfall-filter-buttons::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }

@@ -170,13 +170,13 @@
     </div>
   </div>
 </div> -->
-
+<!-- 
 
 <div class="container-fluid">
-  <!-- First row: Three cards in responsive grid -->
+
   <div class="row row-cols-1 row-cols-md-3 g-3 mb-3">
     
-    <!-- Daily Statistics Card -->
+
     <div class="col">
       <div class="card shadow-sm border-0 rounded-3 h-100" style="max-height: 16rem;">
         <div class="card-header bg-gradient text-white border-0">
@@ -197,6 +197,103 @@
                 </div>
                 <div class="text-center">
                   <div class="fw-bold  text-primary">{{region.normal}}</div>
+                  <div class="text-muted small">Normal (mm)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="col">
+      <div class="card shadow-sm border-0 rounded-3 h-100" style="max-height: 16rem;">
+        <div class="card-header bg-gradient text-white border-0">
+          <h6 class="mb-0 fw-semibold">{{top5Title}}</h6>
+        </div>
+        <div class="card-body p-2">
+          <div class="overflow-y-auto" style="max-height: 12rem;">
+            <div *ngFor="let item of top5; let last = last" class="d-flex justify-content-between align-items-center p-1 bg-light rounded" [ngClass]="{'mb-1': !last}">
+              <div>
+                <div class="fw-medium text-dark small">{{item.name}}</div>
+                <div class="small text-muted">Daily Actual Rainfall (mm)</div>
+              </div>
+              <div class="text-end">
+                <div class="fw-bold text-success">{{item.actual}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="col">
+      <div class="card shadow-sm border-0 rounded-3 h-100" style="max-height: 16rem;">
+        <div class="card-header bg-gradient text-white border-0">
+          <h6 class="mb-0 fw-semibold">{{highestRecordedTitle}}</h6>
+        </div>
+        <div class="card-body p-2">
+          <div class="overflow-y-auto" style="max-height: 12rem;">
+            <div *ngFor="let item of highestRecorded; let last = last" class="d-flex justify-content-between align-items-center p-1 bg-light rounded" [ngClass]="{'mb-1': !last}">
+              <div>
+                <div class="fw-medium text-dark small">{{item.date}}</div>
+                <div class="small text-muted">Highest Recorded Value (mm)</div>
+              </div>
+              <div class="text-end">
+                <div class="fw-bold text-success">{{item.actual}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <div class="card shadow-sm border-0 rounded-3">
+    <div class="card-header bg-gradient text-white border-0">
+      <h6 class="mb-0 fw-semibold">Daily Rainfall (Last 30 Days)</h6>
+    </div>
+    <div class="card-body p-3 position-relative">
+      <div *ngIf="isChartLoading" class="position-absolute top-50 start-50 translate-middle text-center">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+      <chart [ngClass]="{'opacity-50': isChartLoading}" [chart]="chart" style="width: 100%; height: 400px; display: block;"></chart>
+    </div>
+  </div>
+</div> -->
+
+
+<div class="container-fluid">
+  <!-- First row: Three cards in responsive grid -->
+  <div class="row row-cols-1 row-cols-md-3 g-3 mb-3">
+    
+    <!-- Daily Statistics Card -->
+    <div class="col">
+      <div class="card shadow-sm border-0 rounded-3 h-100" style="max-height: 16rem;">
+        <div class="card-header bg-gradient text-white border-0">
+          <h6 class="mb-0 fw-semibold">Daily Statistics</h6>
+        </div>
+        <div class="card-body p-2">
+          <div class="overflow-y-auto" style="max-height: 12rem;">
+            <div *ngFor="let region of regions" class="d-flex flex-column p-1 bg-light rounded mb-1">
+              <div class="fw-medium text-dark small">{{region.name}}</div>
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="text-center">
+                  <div class="fw-bold text-success">{{region.actual}}</div>
+                  <div class="text-muted small">Actual (mm)</div>
+                </div>
+                <div class="text-center">
+                  <div class="fw-bold text-dark">{{region.departure}}</div>
+                  <div class="text-muted small">Departure</div>
+                </div>
+                <div class="text-center">
+                  <div class="fw-bold text-primary">{{region.normal}}</div>
                   <div class="text-muted small">Normal (mm)</div>
                 </div>
               </div>
@@ -239,11 +336,14 @@
             <div *ngFor="let item of highestRecorded; let last = last" class="d-flex justify-content-between align-items-center p-1 bg-light rounded" [ngClass]="{'mb-1': !last}">
               <div>
                 <div class="fw-medium text-dark small">{{item.date}}</div>
-                <div class="small text-muted">Highest Recorded Value (mm)</div>
+                <div class="small text-muted">Highest Recorded Actual Value (mm)</div>
               </div>
               <div class="text-end">
                 <div class="fw-bold text-success">{{item.actual}}</div>
               </div>
+            </div>
+            <div *ngIf="highestRecorded.length === 0" class="p-1 text-muted small text-center">
+              No highest recorded data available.
             </div>
           </div>
         </div>
