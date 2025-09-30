@@ -49,7 +49,7 @@
 .mb-0 {
   margin-bottom: 0 !important;
 } */
-
+/* 
 
 
 .loader {
@@ -99,4 +99,35 @@
 }
 .mb-0 {
   margin-bottom: 0 !important;
+} */
+
+
+/* .container-fluid {
+  padding: 1rem;
+}
+
+.card {
+  background-color: #fff;
+  border-radius: 0.5rem;
+}
+
+.card-header.bg-gradient {
+  background: linear-gradient(90deg, #0d6efd, #6610f2);
+} */
+
+.no-data-message {
+  text-align: center;
+  font-size: 18px;
+  color: #666;
+  margin-top: 20px;
+}
+
+.rainfall-filter-buttons button.active {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+.chart {
+  position: relative;
 }
