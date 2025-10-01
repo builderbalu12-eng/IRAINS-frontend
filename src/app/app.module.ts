@@ -176,6 +176,8 @@ import { ComparisonComponent } from "./main/irains-dashboard/dashboard-mainconta
 import { SpatialTableComponent } from "./spatial-table/spatial-table.component";
 import { SpatialTableMapsComponent } from './spatial-table-maps/spatial-table-maps.component';
 import { BlockRainfallMapActualOrgawsMainPageComponent } from './main/block-rainfall-main-page/block/block-rainfall-map-actual-orgaws-main-page/block-rainfall-map-actual-orgaws-main-page.component';
+import { MainChartsComponent } from "./main/irains-dashboard/dashboard-maincontainer/main-charts/main-charts";
+
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -327,6 +329,7 @@ import { BlockRainfallMapActualOrgawsMainPageComponent } from './main/block-rain
     SpatialTableComponent,
     SpatialTableMapsComponent,
     BlockRainfallMapActualOrgawsMainPageComponent,
+    MainChartsComponent,
   ],
   imports: [
     MatCardModule,

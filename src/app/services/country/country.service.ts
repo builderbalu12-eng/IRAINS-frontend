@@ -31,4 +31,13 @@ export class CountryService {
     return this.http.post<any>(url, data);
   }
 
+  fetchTopNCountries(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchTopNCountries`;
+    return this.http.post<any>(url, data);
+  }
+  fetchCountryRangeStatistics(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchCountryRangeStatistics`;
+    return this.http.post<any>(url, data);
+  }
+
 }

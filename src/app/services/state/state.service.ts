@@ -20,4 +20,12 @@ export class StateService {
     const url = `${this.baseUrl}/api/v1/fetchStateDataFtp`;
     return this.http.post<any>(url, data);
   }
+  fetchTopNStates(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchTopNStates`;
+    return this.http.post<any>(url, data);
+  }
+  fetchStateRangeStatistics(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchStateRangeStatistics`;
+    return this.http.post<any>(url, data);
+  }
 }

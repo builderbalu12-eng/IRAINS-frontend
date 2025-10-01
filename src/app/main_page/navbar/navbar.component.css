@@ -90,7 +90,7 @@ nav ul {
   position: absolute;
   white-space: nowrap;
   border-bottom: 5px solid #fffdd0;
-  z-index: 1;
+  z-index: 200;
   left: -99999em;
 }
 .nav > li:hover > ul {
@@ -207,7 +207,7 @@ nav ul {
   position: absolute;
   white-space: nowrap;
   border-bottom: 5px solid #fffdd0;
-  z-index: 1;
+  z-index: 200;
   left: -99999em;
 }
 .nav > li:hover > ul {
@@ -739,5 +739,5 @@ nav ul {
 /* Ensure proper behavior for all dropdown types */
 .nav ul li.dropdown-item-with-delete:hover {
   background-color: green; 
-  z-index: -100;
+  z-index: 200;
 }

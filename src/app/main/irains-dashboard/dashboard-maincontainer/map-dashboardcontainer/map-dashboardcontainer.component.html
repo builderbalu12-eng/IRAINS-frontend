@@ -2,11 +2,11 @@
   <div id="map" style="height: 800px; width: 100%;"></div>
 </div>  -->
 
-<div class="map-container" style="position:relative;">
+<!-- <div class="map-container" style="position:relative;">
   <!-- MAP -->
   <div id="map"></div>
 
-  <!-- FILTER: Collapsed Button -->
+<!-- 
   <div
     *ngIf="!isFilterOpen"
     class="filter-fab shadow-sm"
@@ -20,7 +20,7 @@
     <span>Filter</span>
   </div>
 
-  <!-- FILTER: Expanded Panel -->
+
   <div *ngIf="isFilterOpen" class="map-filter-overlay shadow animate-slide-down">
     <div class="filter-header d-flex justify-content-between align-items-center mb-2">
       <span class="fw-bold text-primary">Filter</span>
@@ -57,5 +57,483 @@
       </div>
       <button type="submit" class="btn btn-primary btn-sm w-100">Apply Filter</button>
     </form>
+  </div>
+</div>  -->
+<!-- 
+<div class="map-container">
+  <div id="map"></div>
+  <div *ngIf="isBuffering" class="buffering-overlay">Loading...</div>
+  <div class="legend">
+    <div *ngFor="let item of currentLegendItems" class="legend-item">
+      <span class="color-box" [style.background-color]="item.color"></span>
+      <span [innerHTML]="item.text" [style.font-size]="item.fontSize"></span>
+    </div>
+  </div>
+  <div *ngIf="!isFilterOpen" class="filter-fab shadow-sm" (click)="openFilter()" tabindex="0" title="Show Filter">
+    <svg width="20" height="20" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4h12M4 8h12M4 12h6"></path>
+    </svg>
+    <span>Filter</span>
+  </div>
+  <div *ngIf="isFilterOpen" class="map-filter-overlay shadow animate-slide-down">
+    <div class="filter-header d-flex justify-content-between align-items-center mb-2">
+      <span class="fw-bold text-primary">Filter</span>
+      <button type="button" class="btn-close btn-close-sm" aria-label="Close" (click)="closeFilter()"></button>
+    </div>
+    <form (ngSubmit)="applyFilter()" class="map-filter-form">
+      <div class="d-flex gap-2 mb-2" *ngIf="!isActual">
+        <div>
+          <label for="startDate" class="form-label form-label-sm">Start</label>
+          <input type="date" class="form-control form-control-sm" id="startDate" [(ngModel)]="startDate" name="startDate" [max]="maxDate" required />
+        </div>
+        <div>
+          <label for="endDate" class="form-label form-label-sm">End</label>
+          <input type="date" class="form-control form-control-sm" id="endDate" [(ngModel)]="endDate" name="endDate" [max]="maxDate" required />
+        </div>
+      </div>
+      <div class="d-flex gap-2 mb-2" *ngIf="isActual">
+        <div>
+          <label for="selectDate" class="form-label form-label-sm">Select Date</label>
+          <input type="date" class="form-control form-control-sm" id="selectDate" [(ngModel)]="endDate" name="endDate" [max]="maxDate" required />
+        </div>
+      </div>
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="me-2 small fw-bold">Actual</span>
+        <div class="form-check form-switch m-0">
+          <input class="form-check-input" type="checkbox" id="modeSwitch" [(ngModel)]="isActual" name="mode" (ngModelChange)="onModeChange()">
+        </div>
+        <span class="ms-2 small fw-bold">Departure</span>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm w-100">Apply Filter</button>
+    </form>
+  </div>
+</div> -->
+
+
+<!-- 
+<div class="map-dashboard-container">
+
+  <div class="layer-navbar bg-primary rounded-bottom shadow p-2">
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-6 g-2">
+      <div *ngFor="let item of navItems" class="col">
+        <button 
+          (click)="onSelectLayer(item.id)"
+          class="btn btn-sm w-100 layer-btn transition-all"
+          [ngClass]="{'btn-primary text-white': item.active, 'btn-outline-primary text-primary hover-bg-primary': !item.active}"
+          [attr.aria-pressed]="item.active">
+          {{ item.label }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="map-wrapper position-relative flex-grow-1">
+    <div #map id="map" class="map-viewport"></div>
+
+ 
+    <div *ngIf="isBuffering" class="buffering-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 z-3">
+      <div class="spinner-border text-primary me-2" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <span class="text-white h4">Loading...</span>
+    </div>
+
+    <button 
+      *ngIf="!isFilterOpen" 
+      class="filter-fab position-absolute bottom-0 end-0 m-3 p-3 bg-white rounded-circle shadow-lg d-flex align-items-center justify-content-center z-2"
+      (click)="openFilter()" 
+      type="button"
+      aria-label="Open Filter"
+      style="width: 50px; height: 50px;">
+      <i class="bi bi-funnel fs-5 text-primary"></i>
+    </button>
+
+    
+    <div *ngIf="isFilterOpen" class="filter-overlay position-absolute bottom-0 start-0 w-100 bg-white shadow-lg rounded-top z-3 animate-slide-up" style="max-height: 80vh; overflow-y: auto;">
+      <div class="filter-header d-flex justify-content-between align-items-center p-3 border-bottom">
+        <h6 class="mb-0 fw-bold text-primary">Filter Options</h6>
+        <button type="button" class="btn-close" aria-label="Close" (click)="closeFilter()"></button>
+      </div>
+      <form (ngSubmit)="applyFilter()" class="p-3">
+        <div class="row g-2 mb-3" *ngIf="!isActual">
+          <div class="col-6">
+            <label for="startDate" class="form-label small fw-semibold">Start Date</label>
+            <input type="date" class="form-control form-control-sm" id="startDate" [(ngModel)]="startDate" name="startDate" [max]="maxDate" required>
+          </div>
+          <div class="col-6">
+            <label for="endDate" class="form-label small fw-semibold">End Date</label>
+            <input type="date" class="form-control form-control-sm" id="endDate" [(ngModel)]="endDate" name="endDate" [max]="maxDate" required>
+          </div>
+        </div>
+        <div class="row g-2 mb-3" *ngIf="isActual">
+          <div class="col-12">
+            <label for="selectDate" class="form-label small fw-semibold">Select Date</label>
+            <input type="date" class="form-control form-control-sm" id="selectDate" [(ngModel)]="endDate" name="endDate" [max]="maxDate" required>
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mb-3 p-2 bg-light rounded">
+          <span class="small fw-semibold text-muted">Actual Rainfall</span>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="modeSwitch" [(ngModel)]="isActual" name="mode" (ngModelChange)="onModeChange()">
+          </div>
+          <span class="small fw-semibold text-muted">Departure</span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm w-100">Apply Filter</button>
+      </form>
+    </div>
+  </div>
+
+
+  <div class="legend-container bg-white rounded shadow p-3 mt-2">
+    <h6 class="fw-bold text-primary mb-3 text-center">Rainfall Legend</h6>
+    <div class="row g-2">
+      <div *ngFor="let item of currentLegendItems; let i = index" class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="d-flex align-items-center legend-item">
+          <span class="color-box me-2 flex-shrink-0" [style.background-color]="item.color" style="width: 24px; height: 24px; border: 1px solid #dee2e6; border-radius: 3px;"></span>
+          <span class="small" [innerHTML]="item.text" [style.font-size]="item.fontSize"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+<!-- 
+<div class="map-dashboard-container">
+  <div class="map-wrapper position-relative h-100 w-100">
+    <div #map id="map" class="map-viewport h-100 w-100" style="z-index: 1"></div>
+
+
+    <div class="layer-navbar position-absolute top-0 start-0 end-0 bg-primary rounded-bottom shadow p-2 z-3">
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-2 mx-0">
+        <div *ngFor="let item of navItems" class="col">
+          <button 
+            (click)="onSelectLayer(item.id)"
+            class="btn btn-sm w-100 layer-btn transition-all"
+            [ngClass]="{'btn-primary text-white': item.active, 'btn-outline-primary text-primary hover-bg-primary': !item.active}"
+            [attr.aria-pressed]="item.active">
+            {{ item.label }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="controls position-absolute" style="top: 80px; right: 1rem; z-index: 1000; min-width: 250px; background: rgba(255, 255, 255, 0.95); border-radius: 0.5rem; padding: 1rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="small fw-semibold text-muted">Actual Rainfall</span>
+        <div class="form-check form-switch m-0">
+          <input class="form-check-input" type="checkbox" id="modeSwitch" [(ngModel)]="isActual" (ngModelChange)="onModeChange()" name="mode">
+        </div>
+        <span class="small fw-semibold text-muted">Departure</span>
+      </div>
+
+
+      <div *ngIf="isActual" class="mb-2">
+        <label for="selectDate" class="form-label small fw-semibold">Select Date</label>
+        <input type="date" class="form-control form-control-sm" id="selectDate" [(ngModel)]="endDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+      </div>
+      <div *ngIf="!isActual" class="row g-2">
+        <div class="col-6">
+          <label for="startDate" class="form-label small fw-semibold">Start Date</label>
+          <input type="date" class="form-control form-control-sm" id="startDate" [(ngModel)]="startDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+        </div>
+        <div class="col-6">
+          <label for="endDate" class="form-label small fw-semibold">End Date</label>
+          <input type="date" class="form-control form-control-sm" id="endDate" [(ngModel)]="endDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+        </div>
+      </div>
+    </div>
+
+
+    <div *ngIf="isBuffering" class="buffering-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 z-3">
+      <div class="spinner-border text-primary me-2" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <span class="text-white h4">Loading...</span>
+    </div>
+
+
+    <div class="legend-container position-absolute bottom-0 start-0 end-0 bg-white rounded-top shadow p-3 z-3">
+      <h6 class="fw-bold text-primary mb-3 text-center">Rainfall Legend</h6>
+      <div class="row g-2">
+        <div *ngFor="let item of currentLegendItems; let i = index" class="col-12 col-sm-6 col-md-4 col-lg-3">
+          <div class="d-flex align-items-center legend-item">
+            <span class="color-box me-2 flex-shrink-0" [style.background-color]="item.color" style="width: 24px; height: 24px; border: 1px solid #dee2e6; border-radius: 3px;"></span>
+            <span class="small" [innerHTML]="item.text" [style.font-size]="item.fontSize"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+<!-- 
+
+<div class="map-dashboard-container">
+  <div class="map-wrapper position-relative h-100 w-100">
+
+    <div #map id="map" class="map-viewport h-100 w-100" style="z-index: 1"></div>
+
+    <div class="layer-navbar position-absolute top-0 start-0 end-0 rounded-bottom shadow p-2 z-3 custom-navbar-bg">
+      <div class="row mx-0">
+        <div *ngFor="let item of navItems; let i = index" class="col-6 col-md-3 p-1">
+          <button 
+            (click)="onSelectLayer(item.id)"
+            class="btn btn-sm w-100 layer-btn custom-layer-btn"
+            [ngClass]="{'active-btn': item.active, 'inactive-btn': !item.active}"
+            [attr.aria-pressed]="item.active">
+            {{ item.label }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  
+    <div class="controls custom-controls position-absolute">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="small fw-semibold filter-text">Actual Rainfall</span>
+        <div class="form-check form-switch m-0">
+          <input class="form-check-input" type="checkbox" id="modeSwitch" [(ngModel)]="isActual" (ngModelChange)="onModeChange()" name="mode">
+        </div>
+        <span class="small fw-semibold filter-text">Departure</span>
+      </div>
+      <div *ngIf="isActual" class="mb-2">
+        <label for="selectDate" class="form-label small fw-semibold filter-text">Select Date</label>
+        <input type="date" class="form-control form-control-sm" id="selectDate" [(ngModel)]="endDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+      </div>
+      <div *ngIf="!isActual" class="row g-2">
+        <div class="col-6">
+          <label for="startDate" class="form-label small fw-semibold filter-text">Start Date</label>
+          <input type="date" class="form-control form-control-sm" id="startDate" [(ngModel)]="startDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+        </div>
+        <div class="col-6">
+          <label for="endDate" class="form-label small fw-semibold filter-text">End Date</label>
+          <input type="date" class="form-control form-control-sm" id="endDate" [(ngModel)]="endDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+        </div>
+      </div>
+    </div>
+
+    
+    <div *ngIf="isBuffering" class="buffering-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 z-3">
+      <div class="spinner-border text-primary me-2" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <span class="text-white h4">Loading...</span>
+    </div>
+
+ 
+    <div class="legend-container position-absolute bottom-0 start-0 end-0 bg-white rounded-top shadow p-2 z-3 custom-legend">
+      <div class="container-fluid">
+        <div class="row justify-content-center">
+          <ng-container *ngFor="let item of currentLegendItems; let idx = index">
+            <div class="col-6 col-md-3 p-1 legend-col">
+              <div class="d-flex align-items-center legend-item justify-content-center">
+                <span class="color-box me-2 flex-shrink-0"
+                  [style.background-color]="item.color"
+                  style="width: 16px; height: 16px; border: 1px solid #dee2e6; border-radius: 3px;">
+                </span>
+                <span class="small" [innerHTML]="item.text" [style.font-size]="item.fontSize"></span>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 
+ -->
+
+<!-- 
+ <div class="map-dashboard-container">
+  <div class="map-wrapper position-relative h-100 w-100">
+
+    <div #map id="map" class="map-viewport h-100 w-100" style="z-index: 1"></div>
+
+    <div class="layer-navbar position-absolute top-0 start-0 end-0 rounded-bottom shadow p-2 z-3 custom-navbar-bg">
+      <div class="d-flex flex-row flex-nowrap overflow-auto">
+        <button *ngFor="let item of navItems; let i = index"
+          (click)="onSelectLayer(item.id)"
+          class="btn btn-sm layer-btn custom-layer-btn me-1"
+          [ngClass]="{'active-btn': item.active, 'inactive-btn': !item.active}"
+          [attr.aria-pressed]="item.active">
+          {{ item.label }}
+        </button>
+      </div>
+    </div>
+
+    <div class="controls custom-controls position-absolute">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="small fw-semibold filter-text">Actual Rainfall</span>
+        <div class="form-check form-switch m-0">
+          <input class="form-check-input" type="checkbox" id="modeSwitch" [(ngModel)]="isActual" (ngModelChange)="onModeChange()" name="mode">
+        </div>
+        <span class="small fw-semibold filter-text">Departure</span>
+      </div>
+      <div *ngIf="isActual" class="mb-2">
+        <label for="selectDate" class="form-label small fw-semibold filter-text">Select Date</label>
+        <input type="date" class="form-control form-control-sm" id="selectDate" [(ngModel)]="endDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+      </div>
+      <div *ngIf="!isActual" class="row g-2">
+        <div class="col-6">
+          <label for="startDate" class="form-label small fw-semibold filter-text">Start Date</label>
+          <input type="date" class="form-control form-control-sm" id="startDate" [(ngModel)]="startDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+        </div>
+        <div class="col-6">
+          <label for="endDate" class="form-label small fw-semibold filter-text">End Date</label>
+          <input type="date" class="form-control form-control-sm" id="endDate" [(ngModel)]="endDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="isBuffering" class="buffering-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 z-3">
+      <div class="spinner-border text-primary me-2" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <span class="text-white h4">Loading...</span>
+    </div>
+
+    <div class="legend-container position-absolute bottom-0 start-0 end-0 bg-white rounded-top shadow p-2 z-3 custom-legend">
+      <div class="d-flex flex-row flex-nowrap overflow-auto">
+        <div *ngFor="let item of currentLegendItems; let idx = index" class="legend-item me-3">
+          <div class="d-flex align-items-center">
+            <span class="color-box me-2 flex-shrink-0"
+              [style.background-color]="item.color"
+              style="width: 16px; height: 16px; border: 1px solid #dee2e6; border-radius: 3px;">
+            </span>
+            <span class="small" [innerHTML]="item.text" [style.font-size]="item.fontSize"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+
+<!-- 
+
+<div class="map-dashboard-container">
+  <div class="map-wrapper d-flex flex-column h-100 w-100">
+    <div class="layer-navbar rounded-bottom shadow p-2 custom-navbar-bg z-3">
+      <div class="d-flex justify-content-between align-items-center w-100">
+        <div class="d-flex flex-row flex-nowrap overflow-auto">
+          <button *ngFor="let item of navItems; let i = index"
+            (click)="onSelectLayer(item.id)"
+            class="btn btn-sm layer-btn custom-layer-btn me-1"
+            [ngClass]="{'active-btn': item.active, 'inactive-btn': !item.active}"
+            [attr.aria-pressed]="item.active">
+            {{ item.label }}
+          </button>
+        </div>
+        <div class="d-flex align-items-center">
+          <span class="small fw-semibold filter-text text-white">Actual Rainfall</span>
+          <div class="form-check form-switch m-0 mx-2">
+            <input class="form-check-input" type="checkbox" id="modeSwitch" [(ngModel)]="isActual" (ngModelChange)="onModeChange()" name="mode">
+          </div>
+          <span class="small fw-semibold filter-text text-white">Departure</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-container position-relative flex-grow-1">
+      <div #map id="map" class="map-viewport h-100 w-100" style="z-index: 1"></div>
+
+      <div class="controls custom-controls position-absolute">
+        <div *ngIf="isActual" class="mb-2">
+          <label for="selectDate" class="form-label small fw-semibold filter-text">Select Date</label>
+          <input type="date" class="form-control form-control-sm" id="selectDate" [(ngModel)]="endDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+        </div>
+        <div *ngIf="!isActual" class="row g-2">
+          <div class="col-6">
+            <label for="startDate" class="form-label small fw-semibold filter-text">Start Date</label>
+            <input type="date" class="form-control form-control-sm" id="startDate" [(ngModel)]="startDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+          </div>
+          <div class="col-6">
+            <label for="endDate" class="form-label small fw-semibold filter-text">End Date</label>
+            <input type="date" class="form-control form-control-sm" id="endDate" [(ngModel)]="endDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="isBuffering" class="buffering-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 z-3">
+        <div class="spinner-border text-primary me-2" role="status" style="width: 3rem; height: 3rem;">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <span class="text-white h4">Loading...</span>
+      </div>
+
+      <div class="legend-container position-absolute bottom-0 start-0 end-0 bg-white rounded-top shadow p-2 z-3 custom-legend">
+        <div class="d-flex flex-row flex-nowrap overflow-auto">
+          <div *ngFor="let item of currentLegendItems; let idx = index" class="legend-item me-3">
+            <div class="d-flex align-items-center">
+              <span class="color-box me-2 flex-shrink-0"
+                [style.background-color]="item.color"
+                style="width: 16px; height: 16px; border: 1px solid #dee2e6; border-radius: 3px;">
+              </span>
+              <span class="small" [innerHTML]="item.text" [style.font-size]="item.fontSize"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+
+<div class="map-dashboard-container">
+  <div class="map-wrapper d-flex flex-column h-100 w-100">
+    <div class="layer-navbar rounded-bottom shadow p-2 custom-navbar-bg z-3">
+      <div class="d-flex justify-content-between align-items-center w-100">
+        <div class="d-flex flex-row flex-nowrap overflow-auto">
+          <button *ngFor="let item of navItems; let i = index"
+            (click)="onSelectLayer(item.id)"
+            class="btn btn-sm layer-btn custom-layer-btn me-1"
+            [ngClass]="{'active-btn': item.active, 'inactive-btn': !item.active}"
+            [attr.aria-pressed]="item.active">
+            {{ item.label }}
+          </button>
+        </div>
+        <div class="d-flex align-items-center">
+          <span class="small fw-semibold filter-text text-white">Departure</span>
+          <div class="form-check form-switch m-0 mx-2">
+            <input class="form-check-input" type="checkbox" id="modeSwitch" [(ngModel)]="isActual" (ngModelChange)="onModeChange()" name="mode">
+          </div>
+          <span class="small fw-semibold filter-text text-white">Actual Rainfall</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-container position-relative flex-grow-1">
+      <div #map id="map" class="map-viewport h-100 w-100" style="z-index: 1"></div>
+
+      <div class="controls custom-controls position-absolute">
+        <div>
+          <label for="selectDate" class="form-label small fw-semibold filter-text">Select Date</label>
+          <input type="date" class="form-control form-control-sm" id="selectDate" [(ngModel)]="selectedDate" (ngModelChange)="onDateChange()" [max]="maxDate" required>
+        </div>
+      </div>
+
+      <div *ngIf="isBuffering" class="buffering-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 z-3">
+        <div class="spinner-border text-primary me-2" role="status" style="width: 3rem; height: 3rem;">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <span class="text-white h4">Loading...</span>
+      </div>
+
+      <div class="legend-container position-absolute bottom-0 start-0 end-0 bg-white rounded-top shadow p-2 z-3 custom-legend">
+        <div class="d-flex flex-row flex-nowrap overflow-auto">
+          <div *ngFor="let item of currentLegendItems; let idx = index" class="legend-item me-3">
+            <div class="d-flex align-items-center">
+              <span class="color-box me-2 flex-shrink-0"
+                [style.background-color]="item.color"
+                style="width: 16px; height: 16px; border: 1px solid #dee2e6; border-radius: 3px;">
+              </span>
+              <span class="small" [innerHTML]="item.text" [style.font-size]="item.fontSize"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

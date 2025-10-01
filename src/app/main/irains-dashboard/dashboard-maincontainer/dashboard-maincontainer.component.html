@@ -1,132 +1,40 @@
-<!-- <div class="main-body" style="height: 100vh; display: flex; flex-direction: column;">
-  <div class="dashboard-container" style="flex-grow: 1; display: flex; gap: 10px; height: 100%;">
-    
-
-    <div class="left-column" style="flex: 0 0 70%; display: flex; flex-direction: column; gap: 10px; height: 100%;">
-      <app-map-nav-bar ></app-map-nav-bar>
-      <app-map-dashboardcontainer style="flex-grow: 1;"></app-map-dashboardcontainer>
-    </div>
-
-
-    <div class="right-column" style="flex: 0 0 30%; border-left: 1px solid #ddd; overflow-y: auto; height: 100%;">
-      <app-map-charts></app-map-charts>
-    </div>
-  </div>
-</div> -->
-
-
 <!-- <div class="main-body">
-  <div class="dashboard-container">
-    <div class="left-column">
-      <app-map-nav-bar (layerSelected)="onLayerSelected($event)"(toggleComparison)="onToggleComparison()"></app-map-nav-bar>
-      <app-comparison [showComparison]="showComparison" (closePopup)="onClosePopup()"></app-comparison>
-      <app-map-dashboardcontainer [selectedLayer]="selectedLayer"></app-map-dashboardcontainer>
-    </div>
-    <div class="right-column">
-      <app-map-charts></app-map-charts>
-    </div>
-  </div>
-</div>   -->
 
-<!-- 
-<div class="main-body">
   <div class="dashboard-container">
 
-    
     <div class="navbar-row">
       <app-map-nav-bar 
-        (layerSelected)="onLayerSelected($event)" 
-        (toggleComparison)="onToggleComparison()">
-      </app-map-nav-bar>
-    </div>
-
-    
-    <div class="comparison-row" *ngIf="showComparison">
-      <app-comparison 
         [showComparison]="showComparison" 
-        (closePopup)="onClosePopup()">
-      </app-comparison>
-    </div>
-
-    
-    <div class="content-row">
-      
-      <div class="map-column">
-        <app-map-dashboardcontainer [selectedLayer]="selectedLayer"></app-map-dashboardcontainer>
-      </div>
-
-      
-      <div class="charts-column">
-        <app-map-charts></app-map-charts>
-      </div>
-    </div>
-
-  </div>
-</div>  -->
-
-
-<!-- 
-<div class="main-body">
-  <div class="dashboard-container">
-
-  
-    <div class="navbar-row">
-      <app-map-nav-bar 
-        [showComparison]="showComparison"
+        [maxDate]="maxDate" 
+        [lastActiveLayer]="lastActiveLayer"
         (layerSelected)="onLayerSelected($event)" 
-        (toggleComparison)="onToggleComparison()">
+        (toggleComparison)="onToggleComparison()"
+        (filterChange)="onFilterChange($event)" 
+        (resetMap)="onResetMapView()">
       </app-map-nav-bar>
     </div>
-
-  
-    <div class="comparison-row" *ngIf="showComparison">
-      <app-comparison [showComparison]="showComparison" (closePopup)="onClosePopup()"></app-comparison>
-    </div>
-
-   
-    <div class="content-row">
-      <div class="map-column">
-        <app-map-dashboardcontainer [selectedLayer]="selectedLayer"></app-map-dashboardcontainer>
-      </div>
-      <div class="charts-column">
-        <app-map-charts></app-map-charts>
-      </div>
-    </div>
-  </div>
-</div> -->
-
-
-
-<div class="main-body">
-  <div class="dashboard-container">
-
-  
-    <div class="navbar-row">
-      <app-map-nav-bar
-        [showComparison]="showComparison"
-        (layerSelected)="onLayerSelected($event)"
-        (toggleComparison)="onToggleComparison()">
-      </app-map-nav-bar>
-    </div>
-
 
     <ng-container *ngIf="showComparison; else mainContent">
-      
       <div class="comparison-row">
-        <app-comparison
-          [showComparison]="showComparison"
+
+        <app-comparison 
+          #comparisonComp 
+          [showComparison]="showComparison" 
+          [startDate]="startDate || maxDate"
+          [endDate]="endDate || maxDate" 
+          [isActual]="isActual" 
           (closePopup)="onClosePopup()">
         </app-comparison>
+
       </div>
     </ng-container>
 
     <ng-template #mainContent>
       <div class="content-row">
-       
         <div class="map-column">
           <app-map-dashboardcontainer [selectedLayer]="selectedLayer"></app-map-dashboardcontainer>
         </div>
-       
+
         <div class="charts-column">
           <app-map-charts></app-map-charts>
         </div>
@@ -134,70 +42,316 @@
     </ng-template>
 
   </div>
-</div> 
+</div> -->
 
 
 <!-- 
-<div class="comparison-bar container-fluid py-3 bg-light border-bottom">
+<div class="main-body">
+  <div class="dashboard-container">
+    <div class="navbar-row">
+      <app-map-nav-bar 
+        #mapNavBar
+        [showComparison]="showComparison" 
+        [maxDate]="maxDate" 
+        [lastActiveLayer]="lastActiveLayer"
+        (layerSelected)="onLayerSelected($event)" 
+        (toggleComparison)="onToggleComparison()"
+        (filterChange)="onFilterChange($event)" 
+        (resetMap)="onResetMapView()"
+        (filterSettingsChange)="onFilterSettingsChange($event)">
+      </app-map-nav-bar>
+    </div>
 
- 
-  <div class="row g-3 align-items-center mb-3">
-    <div class="col-auto">
-      <label for="startDate" class="form-label mb-0 me-2">Start Date:</label>
-      <input type="date" class="form-control"
-             id="startDate"
-             [(ngModel)]="startDate"
-             [max]="maxDate"
-             (change)="onDateOrModeChange()" />
-    </div>
-    <div class="col-auto">
-      <label for="endDate" class="form-label mb-0 me-2">End Date:</label>
-      <input type="date" class="form-control"
-             id="endDate"
-             [(ngModel)]="endDate"
-             [max]="maxDate"
-             (change)="onDateOrModeChange()" />
-    </div>
-    <div class="col-auto d-flex align-items-center">
-      <span class="me-2 fw-bold">Actual</span>
-      <div class="form-check form-switch m-0">
-        <input class="form-check-input" type="checkbox" id="modeToggle"
-               [(ngModel)]="isActual"
-               (change)="onDateOrModeChange()" />
+    <ng-container *ngIf="showComparison; else mainContent">
+      <div class="comparison-row">
+        <app-comparison 
+          #comparisonComp 
+          [showComparison]="showComparison" 
+          [startDate]="startDate || maxDate"
+          [endDate]="endDate || maxDate" 
+          [isActual]="isActual" 
+          [selectedLevels]="selectedLevels"
+          [mode]="mode"
+          (closePopup)="onClosePopup()">
+        </app-comparison>
       </div>
-      <span class="ms-2 fw-bold">Departure</span>
-    </div>
-  </div>
+    </ng-container>
 
-  
-  <div class="row g-3">
-    <div class="col-md-4">
-      <h5 class="text-center">State Map</h5>
-      <div id="state-map" class="comparison-map" style="height: 600px;"></div>
-    </div>
-    <div class="col-md-4">
-      <h5 class="text-center">
-        District Map {{ selectedState ? '(' + selectedState.properties.state_name + ')' : '(All)' }}
-      </h5>
-      <div id="district-map" class="comparison-map" style="height: 600px;"></div>
-    </div>
-    <div class="col-md-4">
-      <h5 class="text-center">
-        Block Map {{ selectedDistrict ? '(' + selectedDistrict.properties.district + ')' : '(All)' }}
-      </h5>
-      <div id="block-map" class="comparison-map" style="height: 600px;"></div>
-    </div>
-  </div>
-
-  
-  <div class="row mt-4">
-    <div class="col text-center">
-      <div class="d-inline-flex flex-wrap justify-content-center gap-3">
-        <div *ngFor="let item of legendItems" style="white-space: nowrap;">
-          <span style="display:inline-block;width:18px;height:18px;border-radius:3px;margin-right:4px;border:1px solid #888;background:{{item.color}}"></span>
-          <span [innerHTML]="item.text" style="font-size:9.3px;"></span>
+    <ng-template #mainContent>
+      <div class="content-row">
+        <div class="map-column">
+          <app-map-dashboardcontainer [selectedLayer]="selectedLayer"></app-map-dashboardcontainer>
+        </div>
+        <div class="charts-column">
+          <app-map-charts></app-map-charts>
         </div>
       </div>
-    </div>
+    </ng-template>
   </div>
 </div> -->
+
+
+<!-- 
+<div class="main-body">
+  <div class="dashboard-container">
+    <div class="navbar-row">
+      <app-map-nav-bar 
+        #mapNavBar
+        [showComparison]="showComparison" 
+        [maxDate]="maxDate" 
+        [lastActiveLayer]="lastActiveLayer"
+        (layerSelected)="onLayerSelected($event)" 
+        (toggleComparison)="onToggleComparison()"
+        (filterChange)="onFilterChange($event)" 
+        (resetMap)="onResetMapView()"
+        (filterSettingsChange)="onFilterSettingsChange($event)">
+      </app-map-nav-bar>
+    </div>
+
+    <ng-container *ngIf="showComparison; else mainContent">
+      <div class="comparison-row">
+        <app-comparison 
+          #comparisonComp 
+          [showComparison]="showComparison" 
+          [startDate]="startDate || maxDate"
+          [endDate]="endDate || maxDate" 
+          [isActual]="isActual" 
+          [selectedLevels]="selectedLevels"
+          [mode]="mode"
+          (closePopup)="onClosePopup()">
+        </app-comparison>
+      </div>
+    </ng-container>
+
+    <ng-template #mainContent>
+      <div class="content-row">
+        <div class="map-column">
+          <app-map-dashboardcontainer 
+            [selectedLayer]="selectedLayer"
+            [startDate]="startDate || maxDate"
+            [endDate]="endDate || maxDate"
+            [isActual]="isActual"
+            [maxDate]="maxDate">
+          </app-map-dashboardcontainer>
+        </div>
+        <div class="charts-column">
+          <app-map-charts></app-map-charts>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+</div> -->
+
+<!-- 
+<div class="main-body">
+  <div class="dashboard-container">
+    <div class="navbar-row">
+      <app-map-nav-bar 
+        #mapNavBar
+        [showComparison]="showComparison" 
+        [maxDate]="maxDate" 
+        [lastActiveLayer]="lastActiveLayer"
+        (toggleComparison)="onToggleComparison()"
+        (filterChange)="onFilterChange($event)" 
+        (resetMap)="onResetMapView()"
+        (filterSettingsChange)="onFilterSettingsChange($event)">
+      </app-map-nav-bar>
+    </div>
+
+    <ng-container *ngIf="showComparison; else mainContent">
+      <div class="comparison-row">
+        <app-comparison 
+          #comparisonComp 
+          [showComparison]="showComparison" 
+          [startDate]="startDate || maxDate"
+          [endDate]="endDate || maxDate" 
+          [isActual]="isActual" 
+          [selectedLevels]="selectedLevels"
+          [mode]="mode"
+          (closePopup)="onClosePopup()">
+        </app-comparison>
+      </div>
+    </ng-container> -->
+<!-- 
+    <ng-template #mainContent>
+      <div class="content-row">
+        <div class="map-column">
+          <app-map-dashboardcontainer 
+            [selectedLayer]="selectedLayer"
+            [startDate]="startDate || maxDate"
+            [endDate]="endDate || maxDate"
+            [isActual]="isActual"
+            [maxDate]="maxDate"
+            (layerSelected)="onLayerSelected($event)">
+          </app-map-dashboardcontainer>
+        </div>
+        <div class="charts-column">
+          <app-map-charts></app-map-charts>
+        </div>
+      </div>
+    </ng-template>
+   -->
+<!-- 
+  
+   <ng-template #mainContent>
+  <div class="content-row">
+    <div class="map-column">
+      <app-map-dashboardcontainer 
+        [selectedLayer]="selectedLayer"
+        [startDate]="startDate || maxDate"
+        [endDate]="endDate || maxDate"
+        [isActual]="isActual"
+        [maxDate]="maxDate"
+        (layerSelected)="onLayerSelected($event)"
+        (dateChanged)="onDateChanged($event)"
+        (placeSelected)="onPlaceSelected($event)">
+      </app-map-dashboardcontainer>
+    </div>
+    <div class="charts-column">
+      <app-map-charts
+        [selectedLayer]="selectedLayer"
+        [startDate]="startDate || maxDate"
+        [endDate]="endDate || maxDate"
+        [isActual]="isActual"
+        [selectedPlace]="selectedPlace">
+      </app-map-charts>
+    </div>
+  </div>
+</ng-template>
+
+  </div>
+  <main-charts></main-charts>
+</div> -->
+
+
+
+<!-- 
+<div class="main-body">
+  <div class="dashboard-container">
+    <div class="navbar-row">
+      <app-map-nav-bar 
+        #mapNavBar
+        [showComparison]="showComparison" 
+        [maxDate]="maxDate" 
+        [lastActiveLayer]="lastActiveLayer"
+        (toggleComparison)="onToggleComparison()"
+        (filterChange)="onFilterChange($event)" 
+        (resetMap)="onResetMapView()"
+        (filterSettingsChange)="onFilterSettingsChange($event)">
+      </app-map-nav-bar>
+    </div>
+
+    <ng-container *ngIf="showComparison; else mainContent">
+      <div class="comparison-row">
+        <app-comparison 
+          #comparisonComp 
+          [showComparison]="showComparison" 
+          [startDate]="startDate || maxDate"
+          [endDate]="endDate || maxDate" 
+          [isActual]="isActual" 
+          [selectedLevels]="selectedLevels"
+          [mode]="mode"
+          (closePopup)="onClosePopup()">
+        </app-comparison>
+      </div>
+    </ng-container>
+
+    <ng-template #mainContent>
+      <div class="content-row">
+        <div class="map-column">
+          <app-map-dashboardcontainer 
+            [selectedLayer]="selectedLayer"
+            [startDate]="startDate || maxDate"
+            [endDate]="endDate || maxDate"
+            [isActual]="isActual"
+            [maxDate]="maxDate"
+            (layerSelected)="onLayerSelected($event)"
+            (dateChanged)="onDateChanged($event)"
+            (placeSelected)="onPlaceSelected($event)">
+          </app-map-dashboardcontainer>
+        </div>
+        <div class="charts-column">
+          <app-map-charts
+            [selectedLayer]="selectedLayer"
+            [startDate]="startDate || maxDate"
+            [endDate]="endDate || maxDate"
+            [isActual]="isActual"
+            [selectedPlace]="selectedPlace">
+          </app-map-charts>
+        </div>
+      </div>
+    </ng-template>
+
+  </div>
+ 
+   <main-charts
+  [selectedLayer]="selectedLayer"
+  [selectedPlace]="selectedPlace"
+></main-charts>
+</div> -->
+
+
+<div class="main-body">
+  <div class="dashboard-container">
+    <div class="navbar-row">
+      <app-map-nav-bar 
+        #mapNavBar
+        [showComparison]="showComparison" 
+        [maxDate]="maxDate" 
+        [lastActiveLayer]="lastActiveLayer"
+        (toggleComparison)="onToggleComparison()"
+        (filterChange)="onFilterChange($event)" 
+        (resetMap)="onResetMapView()"
+        (filterSettingsChange)="onFilterSettingsChange($event)">
+      </app-map-nav-bar>
+    </div>
+
+    <ng-container *ngIf="showComparison; else mainContent">
+      <div class="comparison-row">
+        <app-comparison 
+          #comparisonComp 
+          [showComparison]="showComparison" 
+          [startDate]="startDate || maxDate"
+          [endDate]="endDate || maxDate" 
+          [isActual]="isActual" 
+          [selectedLevels]="selectedLevels"
+          [mode]="mode"
+          (closePopup)="onClosePopup()">
+        </app-comparison>
+      </div>
+    </ng-container>
+
+    <ng-template #mainContent>
+      <div class="content-row">
+        <div class="map-column">
+          <app-map-dashboardcontainer 
+            [selectedLayer]="selectedLayer"
+            [startDate]="startDate || maxDate"
+            [endDate]="endDate || maxDate"
+            [isActual]="isActual"
+            [maxDate]="maxDate"
+            (layerSelected)="onLayerSelected($event)"
+            (dateChanged)="onDateChanged($event)"
+            (placeSelected)="onPlaceSelected($event)">
+          </app-map-dashboardcontainer>
+        </div>
+        <div class="charts-column">
+          <app-map-charts
+            [selectedLayer]="selectedLayer"
+            [startDate]="startDate || maxDate"
+            [endDate]="endDate || maxDate"
+            [isActual]="isActual"
+            [selectedPlace]="selectedPlace">
+          </app-map-charts>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+  
+  <!-- Conditionally display main-charts when showComparison is false -->
+  <main-charts
+    *ngIf="!showComparison"
+    [selectedLayer]="selectedLayer"
+    [selectedPlace]="selectedPlace">
+  </main-charts>
+</div>
