@@ -289,22 +289,89 @@ label.form-label {
 /* Remove old .marquee::before unless seamless loop is needed */
 
 
+
+.custom-navbar {
+  width: 100%;
+  box-sizing: border-box; /* Ensure padding/margins don't cause overflow */
+  padding: 0.5rem 1rem; /* Adjust padding as needed */
+}
+
+.container-fluid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Maintains spacing between elements */
+  width: 100%;
+  max-width: 100%; /* Prevent overflow */
+  flex-wrap: nowrap; /* Prevent wrapping to keep elements in a single row */
+}
+
+.live-updates-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 1; /* Take available space, but respect other elements */
+  max-width: calc(100% - 120px); /* Reserve space for the Compare button */
+  min-width: 0; /* Allow flex shrinkage */
+}
+
+.liveupdated {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+}
+
+.liveupdated i,
+.liveupdated span {
+  color: #1d4ed8;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.marquee {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0.5rem;
+  background-color: #e4e4e4;
+  border-radius: 0 5px 5px 0;
+  position: relative;
+}
+
 .animate-marquee {
-  display: inline-flex; /* Changed to inline-flex for better alignment */
+  display: inline-flex;
   animation: marquee 40s linear infinite;
-  gap: 0.2rem; /* Consistent spacing between all elements */
-  align-items: center; /* Ensure vertical alignment */
+  gap: 0.2rem;
+  align-items: center;
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
 }
 
 .animate-marquee span {
-  font-size: 14px; /* Uniform font size for all text (station names and values) */
-  color: #000000; /* Black color for all text */
-  font-weight: 500; /* Medium weight for clarity and elegance */
+  font-size: 14px;
+  color: #000000;
+  font-weight: 500;
 }
 
 .animate-marquee i.fa-diamond {
-  margin: 0; /* Remove previous margins for consistency */
-  font-size: 10px; /* Slightly smaller icon for balance */
-  color: #1d4ed8; /* Retain existing icon color as per original styling */
+  font-size: 10px;
+  color: #1d4ed8;
   vertical-align: middle;
+}
+
+.filter_box_container {
+  flex: 1;
+  max-width: calc(100% - 120px); /* Reserve space for the Compare button */
+  min-width: 0; /* Allow flex shrinkage */
+}
+
+.compare-btn {
+  flex: 0 0 auto; /* Prevent button from stretching */
+  width: 100px; /* Fixed width for consistency */
+  margin-left: 1rem; /* Space between content and button */
+  white-space: nowrap; /* Prevent text wrapping */
 }
