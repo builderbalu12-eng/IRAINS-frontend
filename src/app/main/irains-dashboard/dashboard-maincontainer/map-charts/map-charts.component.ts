@@ -21,7 +21,7 @@ interface RainfallData {
   country_name?: string;
   region_name?: string;
   state_name?: string;
-  subdivision_name?: string;
+  subdiv_name?: string;
   district_name?: string;
   block_name?: string;
   r_code?: string;
@@ -31,8 +31,10 @@ interface RainfallData {
   subdivision_code?: string;
   district_code?: string;
   block_code?: string;
-  country_id?: string;
+  country_code?: string;
   actual_rainfall?: number | string;
+  actual_state_rainfall?: number | string;
+  actual_subdiv_rainfall?: number | string;
   rainfall_normal_value?: number | string;
   normal_rainfall?: number | string;
   departure?: number | string;
@@ -52,18 +54,18 @@ interface Place {
   styleUrls: ['./map-charts.component.css']
 })
 export class MapChartsComponent implements OnInit, OnChanges {
-  @Input() selectedLayer: string = 'subdivision';
-  @Input() startDate: string = '2025-08-01';
-  @Input() endDate: string = '2025-08-12';
+  @Input() selectedLayer: string = 'country';
+  @Input() startDate: string = '';
+  @Input() endDate: string = '';
   @Input() isActual: boolean = false;
-  @Input() selectedPlace: { layer: string; code: string; name: string } = { layer: 'subdivision', code: '401', name: 'ANDAMAN & NICOBAR ISLANDS' };
+  @Input() selectedPlace: { layer: string; code: string; name: string } = { layer: 'country', code: 'INDIA', name: 'India' };
   @Output() selectedPlaceChange = new EventEmitter<{ layer: string; code: string; name: string }>();
 
   regions: any[] = [];
   top5: any[] = [];
   top5Title: string = 'Top 5 Blocks - Current Day';
   highestRecorded: any[] = [];
-  highestRecordedTitle: string = 'Chhattisgarh Highest Recorded';
+  highestRecordedTitle: string = 'India Highest Recorded';
   countryData: RainfallData[] = [];
   regionData: RainfallData[] = [];
   stateData: RainfallData[] = [];
@@ -212,6 +214,11 @@ export class MapChartsComponent implements OnInit, OnChanges {
   ngOnInit(): void {
     console.log('ngOnInit called at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
     Exporting(Highcharts);
+    const today = new Date();
+    this.endDate = this.endDate || this.formatDate(today);
+    const start = new Date(today);
+    start.setDate(today.getDate() - 29);
+    this.startDate = this.startDate || this.formatDate(start);
     this.highestRecordedTitle = `${this.selectedPlace.name} Highest Recorded`;
     this.fetchPlaces();
     this.fetchDailyStatsData();
@@ -255,9 +262,10 @@ export class MapChartsComponent implements OnInit, OnChanges {
   private fetchPlaces(): void {
     this.availablePlaces = [];
     if (this.selectedLayer === 'country') {
-      this.availablePlaces = [{ code: '1', name: 'India' }];
-      this.selectedPlace = { layer: 'country', code: '1', name: 'India' };
+      this.availablePlaces = [{ code: 'INDIA', name: 'India' }];
+      this.selectedPlace = { layer: 'country', code: 'INDIA', name: 'India' };
       console.log('Fetched places for country:', this.availablePlaces);
+      this.cdr.detectChanges();
       return;
     }
 
@@ -265,6 +273,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
     if (!service) {
       console.error(`No service available for layer: ${this.selectedLayer} at`, new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
       this.availablePlaces = [];
+      this.cdr.detectChanges();
       return;
     }
 
@@ -280,15 +289,18 @@ export class MapChartsComponent implements OnInit, OnChanges {
             name: this.availablePlaces[0].name
           };
           this.highestRecordedTitle = `${this.selectedPlace.name} Highest Recorded`;
+          this.selectedPlaceChange.emit(this.selectedPlace);
           this.fetchDailyStatsData();
           this.fetchTop5Data();
           this.fetchChartData();
         }
         console.log('Available places after mapping:', this.availablePlaces);
+        this.cdr.detectChanges();
       },
       error: (err: any) => {
         console.error(`Error fetching places for ${this.selectedLayer}:`, err, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
         this.availablePlaces = [];
+        this.cdr.detectChanges();
       }
     });
   }
@@ -320,8 +332,6 @@ export class MapChartsComponent implements OnInit, OnChanges {
           code: item.block_code || '',
           name: item.block_name || 'Unknown'
         }));
-      case 'country':
-        return [{ code: '1', name: 'India' }];
       default:
         return [];
     }
@@ -340,10 +350,10 @@ export class MapChartsComponent implements OnInit, OnChanges {
 
   private getLast30Days(): string[] {
     const dates: string[] = [];
-    const endDate = new Date(this.endDate || '2025-08-12');
+    const today = new Date(this.endDate || new Date().toISOString().split('T')[0]);
     for (let i = 29; i >= 0; i--) {
-      const date = new Date(endDate);
-      date.setDate(endDate.getDate() - i);
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
       dates.push(this.formatDate(date));
     }
     console.log('Generated dates for chart:', dates);
@@ -357,10 +367,11 @@ export class MapChartsComponent implements OnInit, OnChanges {
     const service = this.getServiceForLayer(this.selectedPlace.layer);
     const method = this.getFetchMethodName(this.selectedPlace.layer);
     if (!service || !method) {
-      console.error(`No service or method available for layer: ${this.selectedPlace.layer} at`, new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+      console.error(`No service or method available for layer: ${this.selectedPlace.layer}`);
       this.isChartLoading = false;
       this.isHighestRecordedLoading = false;
       this.highestRecorded = [];
+      this.updateChart();
       return;
     }
 
@@ -397,14 +408,16 @@ export class MapChartsComponent implements OnInit, OnChanges {
       this.dates.forEach(date => {
         const item = this.findItemForPlaceByDate(uniqueData, this.selectedPlace.layer, this.selectedPlace.code, date);
         if (item) {
-          const actualValue = parseFloat(item.actual_rainfall as string ?? '0');
-          const normalValue = parseFloat(item.normal_rainfall as string ?? '0');
+          const actualKey = this.getActualKey(this.selectedPlace.layer);
+          const normalKey = this.getNormalKey(this.selectedPlace.layer);
+          const actualValue = parseFloat(item[actualKey] as string ?? '0');
+          const normalValue = parseFloat(item[normalKey] as string ?? '0');
           const departureValue = parseFloat(item.departure as string ?? '0');
           this.actualData.push(actualValue);
           this.normalData.push(normalValue);
           this.departureData.push(departureValue);
         } else {
-          console.warn(`No data found for date ${date} and code ${this.selectedPlace.code} in layer ${this.selectedPlace.layer}`);
+          console.warn(`No chart data found for date ${date} and code ${this.selectedPlace.code} in layer ${this.selectedPlace.layer}`);
           this.actualData.push(0);
           this.normalData.push(0);
           this.departureData.push(0);
@@ -418,7 +431,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
         this.highestRecorded = [];
       } else {
         const codeKey = this.getTopNCodeKey(this.selectedPlace.layer);
-        const codeValue = this.selectedPlace.layer === 'country' ? '1' : this.selectedPlace.code;
+        const codeValue = this.selectedPlace.layer === 'country' ? 'INDIA' : this.selectedPlace.code;
         const topNParams = { [codeKey]: codeValue };
         console.log(`Fetching highest recorded data with params for ${this.selectedPlace.layer} (${codeValue}):`, topNParams);
 
@@ -459,6 +472,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
       this.updateChart();
       this.isChartLoading = false;
       this.isHighestRecordedLoading = false;
+      this.cdr.detectChanges();
     } catch (error) {
       console.error('Error fetching chart data:', error, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
       this.isChartLoading = false;
@@ -468,12 +482,13 @@ export class MapChartsComponent implements OnInit, OnChanges {
       this.departureData = Array(this.dates.length).fill(0);
       this.highestRecorded = [];
       this.updateChart();
+      this.cdr.detectChanges();
     }
   }
 
   private formatDateToDDMMYYYY(dateStr: string): string {
     if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      console.warn(`Invalid date format: ${dateStr} at`, new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+      console.warn(`Invalid date format: ${dateStr}`);
       return 'Invalid Date';
     }
     const [year, month, day] = dateStr.split('-');
@@ -494,7 +509,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
 
   private getTopNCodeKey(layer: string): string {
     switch (layer) {
-      case 'country': return 'country_id';
+      case 'country': return 'country_code';
       case 'region': return 'region_code';
       case 'state': return 'state_code';
       case 'subdivision': return 'subdivision_code';
@@ -531,17 +546,43 @@ export class MapChartsComponent implements OnInit, OnChanges {
   private findItemForPlaceByDate(data: RainfallData[], layer: string, code: string, date: string): RainfallData | undefined {
     const codeKey = this.getDataCodeKey(layer);
     console.log(`Searching for code ${code} and date ${date} with key ${codeKey} in`, data);
-    return data.find(d => d.date === date && String(d[codeKey] ?? '').trim() === String(code).trim());
+    return data.find(d => d.date === date && (
+      layer === 'country' ? (d.country_name?.trim() === code.trim()) : String(d[codeKey] ?? '').trim() === String(code).trim()
+    ));
   }
 
   private getDataCodeKey(layer: string): string {
     switch (layer) {
-      case 'country': return 'country_id';
+      case 'country': return 'country_name';
       case 'region': return 'region_code';
       case 'state': return 'state_code';
       case 'subdivision': return 'subdivision_code';
       case 'district': return 'district_code';
       case 'block': return 'block_code';
+      default: return '';
+    }
+  }
+
+  private getActualKey(layer: string): string {
+    switch (layer) {
+      case 'country': return 'actual_rainfall';
+      case 'region': return 'actual_rainfall';
+      case 'state': return 'actual_rainfall';
+      case 'subdivision': return 'actual_rainfall';
+      case 'district': return 'actual_rainfall';
+      case 'block': return 'actual_rainfall';
+      default: return '';
+    }
+  }
+
+  private getNormalKey(layer: string): string {
+    switch (layer) {
+      case 'country': return 'normal_rainfall';
+      case 'region': return 'normal_rainfall';
+      case 'state': return 'normal_rainfall';
+      case 'subdivision': return 'normal_rainfall';
+      case 'district': return 'normal_rainfall';
+      case 'block': return 'normal_rainfall';
       default: return '';
     }
   }
@@ -570,174 +611,167 @@ export class MapChartsComponent implements OnInit, OnChanges {
       chart.update({
         title: {
           text: `Daily Rainfall (Last 30 Days) - ${this.selectedPlace.name || 'India'}`,
-        style: {
-          color: '#333',
-          fontSize: '15px',
-          fontWeight: 'normal',
-          fontFamily: 'Arial, sans-serif'
-        }
-      },
-      xAxis: {
-        categories: formattedDates,
-        title: {
-          text: 'Date',
-          style: { fontSize: '12px' }
-        },
-        labels: {
-          rotation: -45,
-          step: 2,
           style: {
-            fontSize: '10px'
-          }
-        }
-      },
-      yAxis: {
-        min: 0,
-        max: roundedMax,
-        tickInterval: tickInterval,
-        title: {
-          text: 'Rainfall (mm)',
-          style: { fontSize: '12px' }
-        }
-      },
-      series: [
-        {
-          name: 'Actual',
-          type: 'column',
-          data: this.actualData,
-          color: 'green',
-          dataLabels: {
-            enabled: true,
-            formatter: (function(component) {
-              return function(this: any) {
-                const index = this.point.index ?? 0;
-                const departure = component.departureData[index].toFixed(1) + '%';
-                return departure;
-              };
-            })(this),
-            style: {
-              color: 'black',
-              fontSize: '10px',
-              fontWeight: '400',
-              textOutline: '1px contrast'
-            },
-            verticalAlign: 'top',
-            inside: false,
-            y: -25
+            color: '#333',
+            fontSize: '15px',
+            fontWeight: 'normal',
+            fontFamily: 'Arial, sans-serif'
           }
         },
-        {
-          name: 'Normal',
-          type: 'line',
-          data: this.normalData,
-          color: 'darkblue'
-        },
-        {
-          name: 'Departure',
-          type: 'line',
-          data: [],
-          color: 'black',
-          showInLegend: true,
-          marker: {
-            enabled: false
+        xAxis: {
+          categories: formattedDates,
+          title: {
+            text: 'Date',
+            style: { fontSize: '12px' }
           },
-          enableMouseTracking: false,
-          events: {
-            legendItemClick: function () {
-              const chart = this.chart;
-              const actualSeries = chart.series[0];
-              const visible = this.visible;
-              actualSeries.update({
-                dataLabels: {
-                  enabled: !visible
-                },
-                type: 'column'
-              });
-              return true;
+          labels: {
+            rotation: -45,
+            step: 2,
+            style: {
+              fontSize: '10px'
             }
           }
-        }
-      ]
+        },
+        yAxis: {
+          min: 0,
+          max: roundedMax,
+          tickInterval: tickInterval,
+          title: {
+            text: 'Rainfall (mm)',
+            style: { fontSize: '12px' }
+          }
+        },
+        series: [
+          {
+            name: 'Actual',
+            type: 'column',
+            data: this.actualData,
+            color: 'green',
+            dataLabels: {
+              enabled: true,
+              formatter: (function(component) {
+                return function(this: any) {
+                  const index = this.point.index ?? 0;
+                  const departure = component.departureData[index].toFixed(1) + '%';
+                  return departure;
+                };
+              })(this),
+              style: {
+                color: 'black',
+                fontSize: '10px',
+                fontWeight: '400',
+                textOutline: '1px contrast'
+              },
+              verticalAlign: 'top',
+              inside: false,
+              y: -25
+            }
+          },
+          {
+            name: 'Normal',
+            type: 'line',
+            data: this.normalData,
+            color: 'darkblue'
+          },
+          {
+            name: 'Departure',
+            type: 'line',
+            data: [],
+            color: 'black',
+            showInLegend: true,
+            marker: {
+              enabled: false
+            },
+            enableMouseTracking: false,
+            events: {
+              legendItemClick: function () {
+                const chart = this.chart;
+                const actualSeries = chart.series[0];
+                const visible = this.visible;
+                actualSeries.update({
+                  dataLabels: {
+                    enabled: !visible
+                  },
+                  type: 'column'
+                });
+                return true;
+              }
+            }
+          }
+        ]
+      });
+      console.log('Chart updated with data:', { actualData: this.actualData, normalData: this.normalData, dates: formattedDates });
     });
-    console.log('Chart updated with data:', { actualData: this.actualData, normalData: this.normalData, dates: formattedDates });
-  });
-}
+    this.cdr.detectChanges();
+  }
 
   private fetchDailyStatsData() {
-    this.isDailyStatsLoading = true;
+    this.isDailyStatsLoading = true; // Set loading state
     const params = {
       startDate: this.startDate,
       endDate: this.endDate,
-      mode: this.isActual ? 'Actual' : 'Departure'
+      mode: this.isActual ? 'Actual' : 'Departure',
+      country_code: '1' // Add country_code for India
     };
-    console.log('Fetching daily stats with params:', params);
-
+  
     this.countryService.fetchData(params).subscribe({
-      next: (countryRes: any) => {
-        this.countryData = Array.isArray(countryRes.data) ? countryRes.data : [];
-        console.log('Country data fetched:', this.countryData);
-
-        this.regionService.fetchData(params).subscribe({
-          next: (regionRes: any) => {
-            this.regionData = Array.isArray(regionRes.data) ? regionRes.data : [];
-            console.log('Region data fetched:', this.regionData);
+      next: countryRes => {
+        this.countryData = countryRes.data || [];
+        console.log('Country data fetched:', this.countryData); // Debug log
+        this.regionService.fetchData({
+          startDate: this.startDate,
+          endDate: this.endDate,
+          mode: this.isActual ? 'Actual' : 'Departure'
+        }).subscribe({
+          next: regionRes => {
+            this.regionData = regionRes.data || [];
+            console.log('Region data fetched:', this.regionData); // Debug log
             this.updateRegions();
-            this.isDailyStatsLoading = false;
-            this.cdr.detectChanges();
+            this.isDailyStatsLoading = false; // Clear loading state
           },
-          error: (err: any) => {
-            console.error('Error fetching region data:', err, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+          error: err => {
+            console.error('Error fetching region data:', err);
             this.regionData = [];
             this.updateRegions();
-            this.isDailyStatsLoading = false;
-            this.cdr.detectChanges();
+            this.isDailyStatsLoading = false; // Clear loading state
           }
         });
       },
-      error: (err: any) => {
-        console.error('Error fetching country data:', err, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+      error: err => {
+        console.error('Error fetching country data:', err);
         this.countryData = [];
         this.regionData = [];
         this.updateRegions();
-        this.isDailyStatsLoading = false;
-        this.cdr.detectChanges();
+        this.isDailyStatsLoading = false; // Clear loading state
       }
     });
   }
-
+  
   private updateRegions() {
-    // Handle country data
-    const country = this.countryData[0] as RainfallData | undefined;
-    const countryItem = {
-      name: country?.name || 'India',
-      actual: country && !isNaN(parseFloat(country.actual_rainfall as string))
-        ? parseFloat(country.actual_rainfall as string).toFixed(1)
-        : '0.0',
-      normal: country && !isNaN(parseFloat(country.normal_rainfall as string || country.rainfall_normal_value as string))
-        ? parseFloat((country.normal_rainfall || country.rainfall_normal_value) as string).toFixed(1)
-        : '0.0',
-      departure: country && !isNaN(parseFloat(country.departure as string))
-        ? parseFloat(country.departure as string).toFixed(1) + '%'
-        : '0.0%'
+    // Ensure country data is processed correctly
+    const country = this.countryData.find(d => d.country_code === '1') as RainfallData || {
+      name: 'India',
+      actual_rainfall: '0',
+      rainfall_normal_value: '0',
+      departure: '0'
     };
-
-    // Handle region data
-    const regionsItems = this.regionData.map((r: RainfallData) => ({
-      name: r.name || r.region_name || 'Unknown',
-      actual: !isNaN(parseFloat(r.actual_rainfall as string))
-        ? parseFloat(r.actual_rainfall as string).toFixed(1)
-        : '0.0',
-      normal: !isNaN(parseFloat(r.rainfall_normal_value as string || r.normal_rainfall as string))
-        ? parseFloat((r.rainfall_normal_value || r.normal_rainfall) as string).toFixed(1)
-        : '0.0',
-      departure: !isNaN(parseFloat(r.departure as string))
-        ? parseFloat(r.departure as string).toFixed(1) + '%'
-        : '0.0%'
+  
+    const countryItem = {
+      name: country.name || 'India',
+      actual: parseFloat(country.actual_rainfall as string ?? '0').toFixed(1),
+      normal: parseFloat(country.rainfall_normal_value as string ?? '0').toFixed(1),
+      departure: parseFloat(country.departure as string ?? '0').toFixed(1) + '%'
+    };
+  
+    const regionsItems = this.regionData.map(r => ({
+      name: r.name || 'Unknown',
+      actual: parseFloat(r.actual_rainfall as string ?? '0').toFixed(1),
+      normal: parseFloat(r.rainfall_normal_value as string ?? '0').toFixed(1),
+      departure: parseFloat(r.departure as string ?? '0').toFixed(1) + '%'
     }));
-
+  
     this.regions = [countryItem, ...regionsItems];
-    console.log('Updated regions:', this.regions);
-    this.cdr.detectChanges();
+    console.log('Updated regions:', this.regions); // Debug log
   }
 
   private fetchTop5Data() {
@@ -784,6 +818,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
         console.error('Invalid layer for top 5 data:', this.selectedLayer);
         this.top5 = [];
         this.isTop5Loading = false;
+        this.cdr.detectChanges();
         return;
     }
 
@@ -810,6 +845,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
         console.error('Error fetching top 5 data:', err);
         this.top5 = [];
         this.isTop5Loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
