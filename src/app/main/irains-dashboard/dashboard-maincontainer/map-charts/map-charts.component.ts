@@ -87,7 +87,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
       height: 400
     },
     title: {
-      text: `Daily Rainfall (Last 12 Days) - ${this.selectedPlace.name}`,
+      text: `Daily Rainfall (Last 30 Days) - ${this.selectedPlace.name}`,
       style: {
         color: '#333',
         fontSize: '15px',
@@ -103,7 +103,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
       },
       labels: {
         rotation: -45,
-        step: 1,
+        step: 2,
         style: {
           fontSize: '10px'
         }
@@ -206,7 +206,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
     private getDistrictService: getDistrictService,
     private getSubDivisionService: getSubDivisionService,
     private getBlockService: getBlockService,
-    private cdr: ChangeDetectorRef // Added for change detection
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -298,7 +298,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
       case 'region':
         return data.map(item => ({
           code: item.region_code || '',
-          name: item.region_name || 'Unknown'
+          name: item.region_name || item.name || 'Unknown'
         }));
       case 'state':
         return data.map(item => ({
@@ -338,10 +338,10 @@ export class MapChartsComponent implements OnInit, OnChanges {
     }
   }
 
-  private getLast12Days(): string[] {
+  private getLast30Days(): string[] {
     const dates: string[] = [];
     const endDate = new Date(this.endDate || '2025-08-12');
-    for (let i = 11; i >= 0; i--) {
+    for (let i = 29; i >= 0; i--) {
       const date = new Date(endDate);
       date.setDate(endDate.getDate() - i);
       dates.push(this.formatDate(date));
@@ -353,7 +353,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
   private async fetchChartData(): Promise<void> {
     this.isChartLoading = true;
     this.isHighestRecordedLoading = true;
-    this.dates = this.getLast12Days();
+    this.dates = this.getLast30Days();
     const service = this.getServiceForLayer(this.selectedPlace.layer);
     const method = this.getFetchMethodName(this.selectedPlace.layer);
     if (!service || !method) {
@@ -413,10 +413,14 @@ export class MapChartsComponent implements OnInit, OnChanges {
 
       const topNService = this.getServiceForLayer(this.selectedPlace.layer);
       const topNMethod = this.getTopNMethodName(this.selectedPlace.layer);
-      if (topNService && topNMethod) {
+      if (!topNService || !topNMethod) {
+        console.error(`No service or topN method available for layer: ${this.selectedPlace.layer}`);
+        this.highestRecorded = [];
+      } else {
         const codeKey = this.getTopNCodeKey(this.selectedPlace.layer);
         const codeValue = this.selectedPlace.layer === 'country' ? '1' : this.selectedPlace.code;
-        const topNParams = { [codeKey]: codeValue, startDate: this.startDate, endDate: this.endDate };
+        const topNParams = { [codeKey]: codeValue };
+        console.log(`Fetching highest recorded data with params for ${this.selectedPlace.layer} (${codeValue}):`, topNParams);
 
         try {
           const topNRes = await lastValueFrom((topNService as any)[topNMethod](topNParams)) as {
@@ -438,6 +442,10 @@ export class MapChartsComponent implements OnInit, OnChanges {
                 date: this.formatDateToDDMMYYYY(item.date),
                 actual: parseFloat(item.actual_rainfall as string ?? '0').toFixed(1)
               }));
+            console.log(`Filtered highest recorded data for ${this.selectedPlace.layer} (${codeValue}):`, this.highestRecorded);
+            if (this.highestRecorded.length === 0) {
+              console.warn(`No valid highest recorded data found for ${this.selectedPlace.layer} (${codeValue})`);
+            }
           } else {
             console.warn(`No valid highest recorded data for ${this.selectedPlace.layer}:`, topNRes.message);
             this.highestRecorded = [];
@@ -446,9 +454,6 @@ export class MapChartsComponent implements OnInit, OnChanges {
           console.error(`Error fetching highest recorded data for ${this.selectedPlace.layer}:`, error);
           this.highestRecorded = [];
         }
-      } else {
-        console.warn(`No topN method available for layer: ${this.selectedPlace.layer}`);
-        this.highestRecorded = [];
       }
 
       this.updateChart();
@@ -564,99 +569,99 @@ export class MapChartsComponent implements OnInit, OnChanges {
     this.chart.ref$.subscribe(chart => {
       chart.update({
         title: {
-          text: `Daily Rainfall (Last 12 Days) - ${this.selectedPlace.name || 'India'}`,
+          text: `Daily Rainfall (Last 30 Days) - ${this.selectedPlace.name || 'India'}`,
+        style: {
+          color: '#333',
+          fontSize: '15px',
+          fontWeight: 'normal',
+          fontFamily: 'Arial, sans-serif'
+        }
+      },
+      xAxis: {
+        categories: formattedDates,
+        title: {
+          text: 'Date',
+          style: { fontSize: '12px' }
+        },
+        labels: {
+          rotation: -45,
+          step: 2,
           style: {
-            color: '#333',
-            fontSize: '15px',
-            fontWeight: 'normal',
-            fontFamily: 'Arial, sans-serif'
+            fontSize: '10px'
           }
-        },
-        xAxis: {
-          categories: formattedDates,
-          title: {
-            text: 'Date',
-            style: { fontSize: '12px' }
-          },
-          labels: {
-            rotation: -45,
-            step: 1,
+        }
+      },
+      yAxis: {
+        min: 0,
+        max: roundedMax,
+        tickInterval: tickInterval,
+        title: {
+          text: 'Rainfall (mm)',
+          style: { fontSize: '12px' }
+        }
+      },
+      series: [
+        {
+          name: 'Actual',
+          type: 'column',
+          data: this.actualData,
+          color: 'green',
+          dataLabels: {
+            enabled: true,
+            formatter: (function(component) {
+              return function(this: any) {
+                const index = this.point.index ?? 0;
+                const departure = component.departureData[index].toFixed(1) + '%';
+                return departure;
+              };
+            })(this),
             style: {
-              fontSize: '10px'
-            }
-          }
-        },
-        yAxis: {
-          min: 0,
-          max: roundedMax,
-          tickInterval: tickInterval,
-          title: {
-            text: 'Rainfall (mm)',
-            style: { fontSize: '12px' }
-          }
-        },
-        series: [
-          {
-            name: 'Actual',
-            type: 'column',
-            data: this.actualData,
-            color: 'green',
-            dataLabels: {
-              enabled: true,
-              formatter: (function(component) {
-                return function(this: any) {
-                  const index = this.point.index ?? 0;
-                  const departure = component.departureData[index].toFixed(1) + '%';
-                  return departure;
-                };
-              })(this),
-              style: {
-                color: 'black',
-                fontSize: '10px',
-                fontWeight: '400',
-                textOutline: '1px contrast'
-              },
-              verticalAlign: 'top',
-              inside: false,
-              y: -25
-            }
-          },
-          {
-            name: 'Normal',
-            type: 'line',
-            data: this.normalData,
-            color: 'darkblue'
-          },
-          {
-            name: 'Departure',
-            type: 'line',
-            data: [],
-            color: 'black',
-            showInLegend: true,
-            marker: {
-              enabled: false
+              color: 'black',
+              fontSize: '10px',
+              fontWeight: '400',
+              textOutline: '1px contrast'
             },
-            enableMouseTracking: false,
-            events: {
-              legendItemClick: function () {
-                const chart = this.chart;
-                const actualSeries = chart.series[0];
-                const visible = this.visible;
-                actualSeries.update({
-                  dataLabels: {
-                    enabled: !visible
-                  },
-                  type: 'column'
-                });
-                return true;
-              }
+            verticalAlign: 'top',
+            inside: false,
+            y: -25
+          }
+        },
+        {
+          name: 'Normal',
+          type: 'line',
+          data: this.normalData,
+          color: 'darkblue'
+        },
+        {
+          name: 'Departure',
+          type: 'line',
+          data: [],
+          color: 'black',
+          showInLegend: true,
+          marker: {
+            enabled: false
+          },
+          enableMouseTracking: false,
+          events: {
+            legendItemClick: function () {
+              const chart = this.chart;
+              const actualSeries = chart.series[0];
+              const visible = this.visible;
+              actualSeries.update({
+                dataLabels: {
+                  enabled: !visible
+                },
+                type: 'column'
+              });
+              return true;
             }
           }
-        ]
-      });
-      console.log('Chart updated with data:', { actualData: this.actualData, normalData: this.normalData, dates: formattedDates });
+        }
+      ]
     });
-  }
+    console.log('Chart updated with data:', { actualData: this.actualData, normalData: this.normalData, dates: formattedDates });
+  });
+}
 
   private fetchDailyStatsData() {
     this.isDailyStatsLoading = true;
@@ -669,57 +674,70 @@ export class MapChartsComponent implements OnInit, OnChanges {
 
     this.countryService.fetchData(params).subscribe({
       next: (countryRes: any) => {
-        this.countryData = countryRes.data || [];
+        this.countryData = Array.isArray(countryRes.data) ? countryRes.data : [];
         console.log('Country data fetched:', this.countryData);
+
         this.regionService.fetchData(params).subscribe({
           next: (regionRes: any) => {
-            this.regionData = regionRes.data || [];
+            this.regionData = Array.isArray(regionRes.data) ? regionRes.data : [];
             console.log('Region data fetched:', this.regionData);
             this.updateRegions();
             this.isDailyStatsLoading = false;
+            this.cdr.detectChanges();
           },
           error: (err: any) => {
-            console.error('Error fetching region data:', err);
+            console.error('Error fetching region data:', err, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
             this.regionData = [];
             this.updateRegions();
             this.isDailyStatsLoading = false;
+            this.cdr.detectChanges();
           }
         });
       },
       error: (err: any) => {
-        console.error('Error fetching country data:', err);
+        console.error('Error fetching country data:', err, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
         this.countryData = [];
         this.regionData = [];
         this.updateRegions();
         this.isDailyStatsLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
 
   private updateRegions() {
-    const country = this.countryData[0] as RainfallData || {
-      name: 'India',
-      actual_rainfall: '0',
-      normal_rainfall: '0',
-      departure: '0'
-    };
-
+    // Handle country data
+    const country = this.countryData[0] as RainfallData | undefined;
     const countryItem = {
-      name: country.name || 'India',
-      actual: parseFloat(country.actual_rainfall as string ?? '0').toFixed(1),
-      normal: parseFloat(country.normal_rainfall as string ?? '0').toFixed(1),
-      departure: parseFloat(country.departure as string ?? '0').toFixed(1) + '%'
+      name: country?.name || 'India',
+      actual: country && !isNaN(parseFloat(country.actual_rainfall as string))
+        ? parseFloat(country.actual_rainfall as string).toFixed(1)
+        : '0.0',
+      normal: country && !isNaN(parseFloat(country.normal_rainfall as string || country.rainfall_normal_value as string))
+        ? parseFloat((country.normal_rainfall || country.rainfall_normal_value) as string).toFixed(1)
+        : '0.0',
+      departure: country && !isNaN(parseFloat(country.departure as string))
+        ? parseFloat(country.departure as string).toFixed(1) + '%'
+        : '0.0%'
     };
 
-    const regionsItems = this.regionData.map((r: any) => ({
-      name: r.region_name || 'Unknown',
-      actual: parseFloat(r.actual_rainfall as string ?? '0').toFixed(1),
-      normal: parseFloat(r.normal_rainfall as string ?? '0').toFixed(1),
-      departure: parseFloat(r.departure as string ?? '0').toFixed(1) + '%'
+    // Handle region data
+    const regionsItems = this.regionData.map((r: RainfallData) => ({
+      name: r.name || r.region_name || 'Unknown',
+      actual: !isNaN(parseFloat(r.actual_rainfall as string))
+        ? parseFloat(r.actual_rainfall as string).toFixed(1)
+        : '0.0',
+      normal: !isNaN(parseFloat(r.rainfall_normal_value as string || r.normal_rainfall as string))
+        ? parseFloat((r.rainfall_normal_value || r.normal_rainfall) as string).toFixed(1)
+        : '0.0',
+      departure: !isNaN(parseFloat(r.departure as string))
+        ? parseFloat(r.departure as string).toFixed(1) + '%'
+        : '0.0%'
     }));
 
     this.regions = [countryItem, ...regionsItems];
     console.log('Updated regions:', this.regions);
+    this.cdr.detectChanges();
   }
 
   private fetchTop5Data() {
@@ -786,7 +804,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
           actual: parseFloat(d[actualKey] as string ?? '0').toFixed(1)
         }));
         this.isTop5Loading = false;
-        this.cdr.detectChanges(); // Force change detection
+        this.cdr.detectChanges();
       },
       error: err => {
         console.error('Error fetching top 5 data:', err);
