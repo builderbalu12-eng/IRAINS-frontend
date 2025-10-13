@@ -1,4 +1,3 @@
-
 <div class="main-body">
   <div class="dashboard-container">
     <div class="navbar-row">
@@ -49,7 +48,8 @@
             [startDate]="startDate || maxDate"
             [endDate]="endDate || maxDate"
             [isActual]="isActual"
-            [selectedPlace]="selectedPlace">
+            [selectedPlace]="selectedPlace"
+            (selectedPlaceChange)="onSelectedPlaceChange($event)">
           </app-map-charts>
         </div>
       </div>
@@ -60,6 +60,7 @@
   <main-charts
     *ngIf="!showComparison"
     [selectedLayer]="selectedLayer"
-    [selectedPlace]="selectedPlace">
+    [selectedPlace]="selectedPlace"
+    (filterDatesChange)="onFilterDatesChange($event)">
   </main-charts>
 </div>

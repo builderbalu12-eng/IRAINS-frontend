@@ -122,7 +122,7 @@ export class DistrictMapComponent implements AfterViewInit {
     dateString.split("-").reverse().join("-");
 
   async fetchBackend() {
-    this.isBuffering = true
+    this.isBuffering = true;
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
     const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
@@ -132,35 +132,59 @@ export class DistrictMapComponent implements AfterViewInit {
       startDate: this.StartDate,
       endDate: this.EndDate,
     };
-    this.district.fetchData(data).subscribe((res) => {
-      this.districtdatacum = res.data;
-      console.log("fbdudusdubsudbsud", res.data);
-      this.loadGeoJSON();
-      console.log("look date", this.StartDate, typeof this.StartDate);
-      this.StartDate = this.convertToIndianDateFormat(this.StartDate);
-      this.EndDate = this.convertToIndianDateFormat(this.EndDate);
-      this.isBuffering = false
-
+    console.log("Fetching district data with dates:", data);
+    this.district.fetchData(data).subscribe({
+      next: (res) => {
+        this.districtdatacum = res.data || [];
+        console.log(
+          "Fetched district data length:",
+          this.districtdatacum.length
+        );
+        console.log(
+          "Sample district data (first 5 entries):",
+          this.districtdatacum.slice(0, 5)
+        ); // Log first 5 entries
+        if (this.districtdatacum.length === 0) {
+          console.warn("Warning: districtdatacum is empty!");
+        }
+        this.loadGeoJSON(); // Trigger GeoJSON loading after data is fetched
+        this.StartDate = this.convertToIndianDateFormat(this.StartDate);
+        this.EndDate = this.convertToIndianDateFormat(this.EndDate);
+        this.isBuffering = false;
+      },
+      error: (err) => {
+        console.error("Error fetching district data:", err);
+        this.isBuffering = false;
+        this.districtdatacum = []; // Reset to empty array on error
+        console.warn(
+          "Loading GeoJSON with empty districtdatacum due to error."
+        );
+        this.loadGeoJSON(); // Attempt to load with empty data for debugging
+      },
     });
 
-    this.countryService.fetchData(data).subscribe((res) => {
-      this.countrydatacum = res.data;
-      this.countryActual = this.constants.trimToOneDecimals(
-        this.countrydatacum[0].actual_rainfall
-      );
-      this.countryNormal = this.constants.trimToOneDecimals(
-        parseFloat(this.countrydatacum[0].rainfall_normal_value)
-      );
-      this.countryDeparture = Math.round(this.countrydatacum[0].departure);
-      console.log(
-        "country dep data",
-        this.countrydatacum,
-        this.countryActual,
-        this.countryDeparture,
-        this.countryNormal
-      );
+    this.countryService.fetchData(data).subscribe({
+      next: (res) => {
+        this.countrydatacum = res.data;
+        this.countryActual = this.constants.trimToOneDecimals(
+          this.countrydatacum[0].actual_rainfall
+        );
+        this.countryNormal = this.constants.trimToOneDecimals(
+          parseFloat(this.countrydatacum[0].rainfall_normal_value)
+        );
+        this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+        console.log(
+          "Country data:",
+          this.countrydatacum,
+          this.countryActual,
+          this.countryDeparture,
+          this.countryNormal
+        );
+      },
+      error: (err) => {
+        console.error("Error fetching country data:", err);
+      },
     });
-
   }
 
   filter = (node: HTMLElement) => {
@@ -181,14 +205,20 @@ export class DistrictMapComponent implements AfterViewInit {
   };
 
   findMatchingData(id: number): any | null {
+    console.log(
+      "Searching for district code:",
+      id,
+      "in districtdatacum:",
+      this.districtdatacum
+    );
     const matchedData = this.districtdatacum?.find((data: any) => {
-      return data.district_code === id.toString();
+      const dataId =
+        data.district_code?.toString() || data.districtCode?.toString(); // Try alternate key
+
+      return dataId === id.toString();
     });
-    if (matchedData) {
-      return matchedData;
-    } else {
-      return null;
-    }
+    console.log("Match found:", matchedData);
+    return matchedData || null;
   }
 
   downloadMappdf() {
@@ -341,8 +371,8 @@ export class DistrictMapComponent implements AfterViewInit {
   }
 
   // ngAfterViewInit(): void {
-  //   this.loadStateGeoJSON(); // Load state layer first
-  //   this.loadGeoJSON();
+  // this.loadStateGeoJSON(); // Load state layer first
+  // this.loadGeoJSON();
   // }
   async ngAfterViewInit(): Promise<void> {
     await this.loadStateGeoJSON(); // Wait for state GeoJSON to load
@@ -408,12 +438,12 @@ export class DistrictMapComponent implements AfterViewInit {
     this.map.addControl(fullscreenControl);
   }
   // public isFullscreen(): boolean {
-  //   return !!(
-  //     document.fullscreenElement ||
-  //     document.fullscreenElement ||
-  //     document.fullscreenElement ||
-  //     document.fullscreenElement
-  //   );
+  // return !!(
+  // document.fullscreenElement ||
+  // document.fullscreenElement ||
+  // document.fullscreenElement ||
+  // document.fullscreenElement
+  // );
   // }
   public isFullscreen(): boolean {
     return !!(
@@ -546,15 +576,16 @@ export class DistrictMapComponent implements AfterViewInit {
       this.http.get("assets/geojson/INDIA_STATE.json").subscribe({
         next: (res: any) => {
           console.log(
-            "State GeoJSON loaded, first feature properties:",
-            res.features[0]?.properties
+            "State GeoJSON loaded, number of features:",
+            res.features.length
           );
+          console.log("First feature properties:", res.features[0]?.properties);
           const stateLayer = L.geoJSON(res, {
-            style: () => ({
-              fillOpacity: 0,
-              weight: 0,
-              color: "transparent",
-              opacity: 0,
+            style: (feature: any) => ({
+              fillOpacity: 0, // Transparent fill to avoid covering districts
+              weight: 1, // Reduced to 1 for thinner borders (adjust as needed)
+              color: "#000000", // Black color for state boundaries
+              opacity: 1, // Fully opaque
             }),
             onEachFeature: (feature: any, layer: any) => {
               const stateName = feature.properties.state_name?.toLowerCase();
@@ -567,8 +598,16 @@ export class DistrictMapComponent implements AfterViewInit {
                   feature.properties
                 );
               }
+              // Ensure each state feature is styled individually
+              layer.setStyle({
+                fillOpacity: 0,
+                weight: 1, // Reduced to 1 for thinner borders (adjust as needed)
+                color: "#000000",
+                opacity: 1,
+              });
             },
           }).addTo(this.map);
+          stateLayer.bringToFront();
           console.log("State layers populated:", Object.keys(this.stateLayers));
           resolve();
         },
@@ -584,22 +623,38 @@ export class DistrictMapComponent implements AfterViewInit {
     this.http
       .get("assets/geojson/INDIA_DISTRICT.json")
       .subscribe((res: any) => {
-        // console.log(
-        //   "District GeoJSON loaded, first feature properties:",
-        //   res.features[0]?.properties
-        // );
+        console.log(
+          "District GeoJSON loaded, number of features:",
+          res.features.length
+        );
+        console.log(
+          "First district feature properties:",
+          res.features[0]?.properties
+        );
+        if (this.districtLayer) {
+          this.map.removeLayer(this.districtLayer); // Remove existing layer to avoid conflicts
+        }
         this.districtLayer = L.geoJSON(res, {
           style: (feature: any) => {
             const id2 = feature.properties["district_c"];
+            console.log("Processing district code from GeoJSON:", id2);
             const matchedData = this.findMatchingData(id2);
             let rainfall: any;
-            if (matchedData?.departure != null) {
+            if (matchedData && matchedData.departure != null) {
               rainfall = matchedData.departure;
+              console.log("Matched rainfall for district", id2, ":", rainfall);
             } else {
               rainfall = "NA";
+              console.log(
+                "No match or no departure for district code:",
+                id2,
+                "districtdatacum sample:",
+                this.districtdatacum.slice(0, 2)
+              );
             }
-            const color = this.constants.getColorForRainfall(rainfall);
-
+            const color =
+              this.constants.getColorForRainfall(rainfall) || "#C0C0C0"; // Default to gray if no color
+            console.log("Assigned color for rainfall", rainfall, ":", color);
             return {
               fillColor: color,
               weight: 0.4,
@@ -614,12 +669,12 @@ export class DistrictMapComponent implements AfterViewInit {
               feature.properties.State?.toLowerCase() ||
               feature.properties.state_name?.toLowerCase() ||
               feature.properties.ST_NM?.toLowerCase();
-            // console.log(
-            //   "District state:",
-            //   state,
-            //   "Properties:",
-            //   feature.properties
-            // );
+            console.log(
+              "District state:",
+              state,
+              "Properties:",
+              feature.properties
+            );
             const id1 = feature.properties["district"];
             const id2 = feature.properties["district_c"];
             const matchedData = this.findMatchingData(id2);
@@ -649,19 +704,28 @@ export class DistrictMapComponent implements AfterViewInit {
                   ) + " mm"
                 : "NA";
             const popupContent = `
-            <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-              <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${
-                state || "Unknown"
-              }</div>
-              <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${id1}</div>
-              <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-              <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
-              <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall} % </div>
-            </div>
-          `;
+  <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
+  <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${
+    state || "Unknown"
+  }</div>
+  <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${id1}</div>
+  <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
+  <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
+  <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall} % </div>
+  </div>
+  `;
             layer.bindPopup(popupContent);
 
-            layer.on("mouseover", () => {
+            // Enable interactivity for the layer
+            layer.options.interactive = true;
+
+            layer.on("mouseover", (e: any) => {
+              console.log(
+                "Mouseover event triggered for district:",
+                id1,
+                "state:",
+                state
+              );
               layer.openPopup();
               const stateLayer = this.stateLayers[state];
               if (stateLayer) {
@@ -672,7 +736,6 @@ export class DistrictMapComponent implements AfterViewInit {
                   fillColor: "#FFFFFF",
                   fillOpacity: 0.1,
                 });
-                // Apply blur effect to districts outside the hovered state
                 if (this.districtLayer) {
                   this.districtLayer.eachLayer((district: any) => {
                     const districtState =
@@ -690,17 +753,17 @@ export class DistrictMapComponent implements AfterViewInit {
               }
             });
 
-            layer.on("mouseout", () => {
+            layer.on("mouseout", (e: any) => {
+              console.log("Mouseout event triggered for district:", id1);
               layer.closePopup();
               const stateLayer = this.stateLayers[state];
               if (stateLayer) {
                 stateLayer.setStyle({
-                  weight: 0,
-                  color: "transparent",
-                  opacity: 0,
+                  weight: 3,
+                  color: "#000000",
+                  opacity: 1,
                   fillOpacity: 0,
                 });
-                // Restore district layer opacity
                 if (this.districtLayer) {
                   this.districtLayer.eachLayer((district: any) => {
                     district.setStyle({
@@ -712,7 +775,12 @@ export class DistrictMapComponent implements AfterViewInit {
             });
           },
         }).addTo(this.map);
-        console.log("District layer added");
+        this.districtLayer.bringToBack();
+        console.log(
+          "District layer added, layer count:",
+          this.districtLayer.getLayers().length
+        );
+        this.map.invalidateSize(); // Force map to recalculate layer positions
       });
   }
 

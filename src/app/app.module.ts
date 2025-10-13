@@ -13,6 +13,7 @@ import { AuthGuard } from "./auth-guard";
 // import { DataentryComponent } from './main_page/dataentry/dataentry.component';
 import { TableModule } from "primeng/table";
 import { PaginatorModule } from "primeng/paginator";
+// import { SortIconModule } from "primeng/sorticon";
 import { StationLevelDataComponent } from "./station-level-data/station-level-data.component";
 import { BrowserAnimationsModule } from "@angular/platform-browser/animations";
 import { MatSnackBarModule } from "@angular/material/snack-bar";
@@ -177,11 +178,13 @@ import { SpatialTableComponent } from "./spatial-table/spatial-table.component";
 import { SpatialTableMapsComponent } from './spatial-table-maps/spatial-table-maps.component';
 import { BlockRainfallMapActualOrgawsMainPageComponent } from './main/block-rainfall-main-page/block/block-rainfall-map-actual-orgaws-main-page/block-rainfall-map-actual-orgaws-main-page.component';
 import { MainChartsComponent } from "./main/irains-dashboard/dashboard-maincontainer/main-charts/main-charts";
-
+import { MatCheckboxModule } from "@angular/material/checkbox";
+import { MatRadioModule } from "@angular/material/radio";
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
 // import { DistrictMapComponent } from './district-map/district-map.component';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -341,7 +344,6 @@ import { MainChartsComponent } from "./main/irains-dashboard/dashboard-mainconta
     ReactiveFormsModule,
     AppRoutingModule,
     CommonModule,
-    FormsModule,
     TableModule,
     PaginatorModule,
     BrowserAnimationsModule,
@@ -360,14 +362,12 @@ import { MainChartsComponent } from "./main/irains-dashboard/dashboard-mainconta
     MatTabsModule,
     MultiSelectModule,
     MatSelectModule,
-    MatFormFieldModule,
-    MatButtonModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatTableModule,
-    // DashboardComponent,
+    MatCheckboxModule,
+    MatRadioModule,
   ],
-
   providers: [AuthGuard, DatePipe],
   bootstrap: [AppComponent],
 })

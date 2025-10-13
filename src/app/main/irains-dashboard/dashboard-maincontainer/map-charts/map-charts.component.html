@@ -91,18 +91,29 @@
 
   </div>
 
-  <!-- Second row: Full-width chart card -->
-  <div class="card shadow-sm border-0 rounded-3">
-    <div class="card-header bg-gradient text-white border-0">
-      <h6 class="mb-0 fw-semibold">Daily Rainfall (Last 30 Days)</h6>
-    </div>
-    <div class="card-body p-3 position-relative">
-      <div *ngIf="isChartLoading" class="position-absolute top-50 start-50 translate-middle text-center">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </div>
-      <chart [ngClass]="{'opacity-50': isChartLoading}" [chart]="chart" style="width: 100%; height: 400px; display: block;"></chart>
+<!-- Second row: Full-width chart card -->
+<div class="card shadow-sm border-0 rounded-3">
+  <div class="card-header bg-gradient text-white border-0 d-flex justify-content-between align-items-center">
+    <h6 class="mb-0 fw-semibold">Daily Rainfall (Last 30 Days)</h6>
+    <div class="d-flex align-items-center">
+      <!-- Place Dropdown (disabled for country layer) -->
+      <select 
+        class="form-select form-select-sm" 
+        [(ngModel)]="selectedPlace.code" 
+        (change)="onPlaceChange()" 
+        [disabled]="selectedLayer === 'country'"
+      >
+        <option *ngFor="let place of availablePlaces" [value]="place.code">{{ place.name }}</option>
+      </select>
     </div>
   </div>
+  <div class="card-body p-3 position-relative">
+    <div *ngIf="isChartLoading" class="position-absolute top-50 start-50 translate-middle text-center">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+    <chart [ngClass]="{'opacity-50': isChartLoading}" [chart]="chart" style="width: 100%; height: 400px; display: block;"></chart>
+  </div>
+</div>
 </div>

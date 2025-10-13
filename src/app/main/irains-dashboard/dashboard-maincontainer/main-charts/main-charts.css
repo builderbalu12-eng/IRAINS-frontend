@@ -259,3 +259,100 @@ mat-form-field.date-picker .mat-form-field-label {
   background: #555;
 }
 
+
+
+
+.container-fluid {
+  padding: 20px;
+}
+
+.card-header {
+  background-color: #777F87;
+  color: white;
+  padding: 0.8rem;
+  text-align: center;
+}
+
+.d-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.place-selector,
+.mode-selector,
+.unit-selector,
+.season-selector,
+.year-selector,
+.date-picker,
+.custom-range-input {
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.date-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.date-label {
+  font-size: 14px;
+  color: #333;
+}
+
+.rainfall-filter-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.rainfall-filter-buttons .btn {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.rainfall-filter-buttons .btn.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.custom-range-inputs {
+  display: flex;
+  gap: 10px;
+}
+
+.no-data-message {
+  text-align: center;
+  color: red;
+  font-size: 16px;
+  margin: 20px 0;
+}
+
+.card {
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card-body {
+  position: relative;
+  padding: 20px;
+}
+
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+chart {
+  display: block;
+  width: 100%;
+  height: 600px;
+}

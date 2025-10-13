@@ -4,7 +4,7 @@
     <h6 class="mb-0 fw-semibold">RAINFALL STATISTICS GRAPH {{ selectedPlace.name | uppercase }}</h6>
   </div>
 
-  <!-- Mode selector and filters -->
+  <!-- Mode selector, unit toggle, and filters -->
   <div class="d-flex justify-content-center align-items-center mb-3 gap-3 flex-wrap">
     <!-- Mode Dropdown -->
     <mat-form-field appearance="fill" class="mode-selector">
@@ -12,6 +12,15 @@
       <mat-select [(ngModel)]="mode" (selectionChange)="onModeChange($event.value)">
         <mat-option value="custom">Custom</mat-option>
         <mat-option value="season">Season</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Unit Toggle -->
+    <mat-form-field appearance="fill" class="unit-selector">
+      <mat-label>Unit</mat-label>
+      <mat-select [(ngModel)]="unit" (selectionChange)="onUnitChange($event.value)">
+        <mat-option value="mm">mm</mat-option>
+        <mat-option value="cm">cm</mat-option>
       </mat-select>
     </mat-form-field>
 
@@ -77,6 +86,34 @@
       >
         {{ filter.label }} - {{ filter.count }}
       </button>
+    </div>
+
+    <!-- Custom Range Inputs -->
+    <div *ngIf="mode === 'custom' && selectedRainfallFilter?.label === 'Custom'" class="custom-range-inputs d-flex align-items-center gap-2">
+      <mat-form-field appearance="fill" class="custom-range-input">
+        <mat-label>Min {{ unit }}</mat-label>
+        <input
+          matInput
+          type="number"
+          [(ngModel)]="customMin"
+          (ngModelChange)="onCustomRangeChange()"
+          placeholder="Min"
+          min="0"
+          step="0.1"
+        />
+      </mat-form-field>
+      <mat-form-field appearance="fill" class="custom-range-input">
+        <mat-label>Max {{ unit }}</mat-label>
+        <input
+          matInput
+          type="number"
+          [(ngModel)]="customMax"
+          (ngModelChange)="onCustomRangeChange()"
+          placeholder="Max"
+          min="0"
+          step="0.1"
+        />
+      </mat-form-field>
     </div>
   </div>
 

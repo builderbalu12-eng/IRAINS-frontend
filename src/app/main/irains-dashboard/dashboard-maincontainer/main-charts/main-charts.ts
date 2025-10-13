@@ -64,19 +64,23 @@ interface DailySeasonData {
   styleUrls: ['./main-charts.css']
 })
 export class MainChartsComponent implements OnInit, OnChanges {
-  @Input() selectedLayer: string = 'country';
-  @Input() selectedPlace: { layer: string; code: string; name: string } = { layer: 'country', code: 'INDIA', name: 'India' };
+  @Input() selectedLayer: string = 'subdivision';
+  @Input() selectedPlace: { layer: string; code: string; name: string } = { layer: 'subdivision', code: '401', name: 'ANDAMAN & NICOBAR ISLANDS' };
   @Output() filterDatesChange = new EventEmitter<string[]>();
 
   isLoading = false;
   noDataMessage: string | null = null;
+  unit: 'mm' | 'cm' = 'mm';
+  customMin: number | null = null;
+  customMax: number | null = null;
 
   rainfallFilters: RainfallFilter[] = [
     { label: '10mm', min: 0.1, max: 10, count: 0 },
     { label: '50mm', min: 11, max: 50, count: 0 },
     { label: '100mm', min: 51, max: 100, count: 0 },
     { label: '200mm', min: 101, max: 200, count: 0 },
-    { label: '>300mm', min: 301, max: Infinity, count: 0 }
+    { label: '>300mm', min: 301, max: Infinity, count: 0 },
+    { label: 'Custom', min: 0, max: Infinity, count: 0 }
   ];
   selectedRainfallFilter: RainfallFilter | null = null;
 
@@ -115,12 +119,14 @@ export class MainChartsComponent implements OnInit, OnChanges {
     private districtService: DistrictService,
     private blockService: BlockService,
     private constants: Constants
-  ) { }
+  ) {}
 
   ngOnInit(): void {
+    console.log('ngOnInit called at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
     Exporting(Highcharts);
     this.initializeDateRange();
     this.initializeAvailableYears();
+    console.log('Calling fetchData from ngOnInit');
     this.fetchData().then(() => {
       this.updateFilterCounts();
       this.applyRainfallFilterAndUpdateChart();
@@ -128,7 +134,17 @@ export class MainChartsComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    console.log('ngOnChanges called with changes:', changes, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
     if (changes['selectedLayer'] || changes['selectedPlace']) {
+      // Ensure selectedPlace.layer matches selectedLayer
+      if (changes['selectedPlace'] && this.selectedPlace.layer !== this.selectedLayer) {
+        console.warn(`Mismatch between selectedPlace.layer (${this.selectedPlace.layer}) and selectedLayer (${this.selectedLayer}), updating selectedLayer`);
+        this.selectedLayer = this.selectedPlace.layer;
+      }
+      console.log('Calling fetchData from ngOnChanges due to changes in:', {
+        selectedLayer: changes['selectedLayer'],
+        selectedPlace: changes['selectedPlace']
+      });
       this.fetchData().then(() => {
         this.updateFilterCounts();
         this.applyRainfallFilterAndUpdateChart();
@@ -161,7 +177,10 @@ export class MainChartsComponent implements OnInit, OnChanges {
   onModeChange(mode: 'custom' | 'season'): void {
     this.mode = mode;
     this.noDataMessage = null;
-    this.chart = null; // Clear chart to avoid old data
+    this.chart = null;
+    this.selectedRainfallFilter = null;
+    this.customMin = null;
+    this.customMax = null;
     if (mode === 'season') {
       this.fetchSeasonData().then(() => {
         this.updateSeasonChart();
@@ -212,22 +231,87 @@ export class MainChartsComponent implements OnInit, OnChanges {
     }
   }
 
+  onUnitChange(unit: 'mm' | 'cm'): void {
+    this.unit = unit;
+    this.updateRainfallFilters();
+
+    if (this.selectedRainfallFilter) {
+      const targetLabel = this.selectedRainfallFilter.label === 'Custom'
+        ? 'Custom'
+        : this.convertLabel(this.selectedRainfallFilter.label);
+      const index = this.rainfallFilters.findIndex(f => f.label === targetLabel);
+      this.selectedRainfallFilter = index !== -1 ? this.rainfallFilters[index] : null;
+
+      if (this.selectedRainfallFilter?.label === 'Custom' && this.customMin !== null && this.customMax !== null) {
+        this.selectedRainfallFilter.min = this.unit === 'mm' ? this.customMin * 10 : this.customMin;
+        this.selectedRainfallFilter.max = this.unit === 'mm' ? (this.customMax === Infinity ? Infinity : this.customMax * 10) : this.customMax;
+      }
+    }
+
+    this.updateFilterCounts();
+    this.applyRainfallFilterAndUpdateChart();
+  }
+
+  onCustomRangeChange(): void {
+    if (this.selectedRainfallFilter?.label === 'Custom' && this.customMin !== null && this.customMax !== null) {
+      if (this.customMax < this.customMin) {
+        this.noDataMessage = 'Maximum value cannot be less than minimum value';
+        this.chart = null;
+        return;
+      }
+      this.selectedRainfallFilter.min = this.unit === 'mm' ? this.customMin * 10 : this.customMin;
+      this.selectedRainfallFilter.max = this.unit === 'mm' ? (this.customMax === Infinity ? Infinity : this.customMax * 10) : this.customMax;
+      const filteredDates = this.getFilteredDates();
+      this.filterDatesChange.emit(filteredDates);
+      this.applyRainfallFilterAndUpdateChart();
+    }
+  }
+
   onRainfallFilterChange(filter: RainfallFilter): void {
     if (this.selectedRainfallFilter === filter) {
       this.selectedRainfallFilter = null;
+      this.customMin = null;
+      this.customMax = null;
       this.filterDatesChange.emit(this.graphData.date);
     } else {
       this.selectedRainfallFilter = filter;
+      if (filter.label !== 'Custom') {
+        this.customMin = null;
+        this.customMax = null;
+      }
       const filteredDates = this.getFilteredDates();
       this.filterDatesChange.emit(filteredDates);
     }
     this.applyRainfallFilterAndUpdateChart();
   }
 
+  updateRainfallFilters(): void {
+    const isMm = this.unit === 'mm';
+    this.rainfallFilters = [
+      { label: isMm ? '10mm' : '1cm', min: isMm ? 0.1 : 0.01, max: isMm ? 10 : 1, count: 0 },
+      { label: isMm ? '50mm' : '5cm', min: isMm ? 11 : 1.1, max: isMm ? 50 : 5, count: 0 },
+      { label: isMm ? '100mm' : '10cm', min: isMm ? 51 : 5.1, max: isMm ? 100 : 10, count: 0 },
+      { label: isMm ? '200mm' : '20cm', min: isMm ? 101 : 10.1, max: isMm ? 200 : 20, count: 0 },
+      { label: isMm ? '>300mm' : '>30cm', min: isMm ? 301 : 30.1, max: Infinity, count: 0 },
+      { label: 'Custom', min: 0, max: Infinity, count: 0 }
+    ];
+  }
+
+  convertLabel(label: string): string {
+    if (label === 'Custom') return 'Custom';
+    const isMm = this.unit === 'mm';
+    const value = parseFloat(label);
+    if (label.includes('>')) {
+      return isMm ? `>${value * 10}mm` : `>${value}cm`;
+    }
+    return isMm ? `${value * 10}mm` : `${value}cm`;
+  }
+
   updateFilterCounts(): void {
     this.rainfallFilters.forEach(filter => {
       filter.count = this.graphData.actual.reduce((count, actual, index) => {
-        return actual >= filter.min && actual <= filter.max ? count + 1 : count;
+        const actualInMm = actual; // Data is stored in mm
+        return actualInMm >= filter.min && actualInMm <= filter.max ? count + 1 : count;
       }, 0);
     });
   }
@@ -239,7 +323,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     const { min, max } = this.selectedRainfallFilter;
     const filteredDates: string[] = [];
     for (let i = 0; i < this.graphData.actual.length; i++) {
-      const actualVal = this.graphData.actual[i];
+      const actualVal = this.graphData.actual[i]; // Data in mm
       if (actualVal >= min && actualVal <= max) {
         filteredDates.push(this.graphData.date[i]);
       }
@@ -306,7 +390,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
         this.noDataMessage = 'No data is available for the selected place and date range.';
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching data:', error, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
       this.noDataMessage = 'Error fetching data. Please try again.';
       this.graphData = { actual: [], normal: [], departure: [], date: [] };
     } finally {
@@ -365,7 +449,6 @@ export class MainChartsComponent implements OnInit, OnChanges {
             departure: departureValue !== null ? this.constants.trimToZeroDecimals(departureValue) : null
           });
         });
-        // Add a null data point as a gap between years
         if (year !== this.selectedYears[this.selectedYears.length - 1]) {
           this.seasonDailyData.push({
             date: `gap-${year}`,
@@ -381,7 +464,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
         this.noDataMessage = `No data available for ${this.selectedSeason} in the selected years.`;
       }
     } catch (error) {
-      console.error('Error fetching season data:', error);
+      console.error('Error fetching season data:', error, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
       this.noDataMessage = 'Error fetching season data. Please try again.';
       this.seasonDailyData = [];
     } finally {
@@ -477,9 +560,15 @@ export class MainChartsComponent implements OnInit, OnChanges {
       return;
     }
 
+    const conversionFactor = this.unit === 'cm' ? 0.1 : 1;
     if (!this.selectedRainfallFilter) {
       this.noDataMessage = null;
-      this.filteredGraphData = { ...this.graphData };
+      this.filteredGraphData = {
+        actual: this.graphData.actual.map(val => this.constants.trimToOneDecimals(val * conversionFactor)),
+        normal: this.graphData.normal.map(val => this.constants.trimToOneDecimals(val * conversionFactor)),
+        departure: [...this.graphData.departure],
+        date: [...this.graphData.date]
+      };
       this.updateCharts(this.filteredGraphData);
       return;
     }
@@ -491,17 +580,17 @@ export class MainChartsComponent implements OnInit, OnChanges {
     const filteredDates: string[] = [];
 
     for (let i = 0; i < this.graphData.actual.length; i++) {
-      const actualVal = this.graphData.actual[i];
+      const actualVal = this.graphData.actual[i]; // Data in mm
       if (actualVal >= min && actualVal <= max) {
-        filteredActual.push(actualVal);
-        filteredNormal.push(this.graphData.normal[i]);
+        filteredActual.push(this.constants.trimToOneDecimals(actualVal * conversionFactor));
+        filteredNormal.push(this.constants.trimToOneDecimals(this.graphData.normal[i] * conversionFactor));
         filteredDeparture.push(this.graphData.departure[i]);
         filteredDates.push(this.graphData.date[i]);
       }
     }
 
     if (filteredActual.length === 0) {
-      this.noDataMessage = `No data available for actual rainfall in the range ${min}mm to ${max === Infinity ? 'above' : max + 'mm'}.`;
+      this.noDataMessage = `No data available for actual rainfall in the range ${min}${this.unit} to ${max === Infinity ? 'above' : max + this.unit}.`;
       this.filteredGraphData = { actual: [], normal: [], departure: [], date: [] };
       this.chart = null;
       return;
@@ -594,15 +683,17 @@ export class MainChartsComponent implements OnInit, OnChanges {
       }
     }
 
+    const currentUnit = this.unit; // Capture unit for use in formatter
+
     this.chart = new Chart({
       chart: {
         type: 'line',
         height: 600,
-        marginTop: 60 // Increased top margin to avoid overlap
+        marginTop: 60
       },
       title: {
         style: titleStyle,
-        text: `Actual, Normal, and Departure for the period ${this.fromDate} to ${this.toDate} for ${this.selectedPlace.name} ${this.selectedRainfallFilter ? `(Filtered: ${this.selectedRainfallFilter.label})` : ''}`
+        text: `Actual, Normal, and Departure for the period ${this.fromDate} to ${this.toDate} for ${this.selectedPlace.name} ${this.selectedRainfallFilter ? `(Filtered: ${this.selectedRainfallFilter.label}${this.selectedRainfallFilter.label === 'Custom' ? ' (' + this.customMin + '-' + (this.customMax === Infinity ? '∞' : this.customMax) + this.unit + ')' : ''})` : ''}`
       },
       credits: { enabled: false },
       xAxis: {
@@ -619,16 +710,31 @@ export class MainChartsComponent implements OnInit, OnChanges {
         min: 0,
         max: roundedLeft,
         tickInterval: tickLeft,
-        title: { text: 'Rainfall (mm)' }
+        title: { text: `Rainfall (${this.unit})` }
       }, {
         title: { text: 'Departure (%)' },
         opposite: true
       }],
       tooltip: {
-        shared: true
+        shared: true,
+        formatter: function(this: Highcharts.TooltipFormatterContextObject): string {
+          if (!this.points || this.points.length === 0) {
+            return `<b>${this.x}</b><br/>No data available`;
+          }
+          let tooltip = `<b>${this.x}</b><br/>`;
+          const unit = Array.isArray(this.points[0].series.chart.options.yAxis)
+            ? this.points[0].series.chart.options.yAxis[0]?.title?.text?.split(' ')[1]?.replace(/[()]/g, '') || currentUnit
+            : this.points[0].series.chart.options.yAxis?.title?.text?.split(' ')[1]?.replace(/[()]/g, '') || currentUnit;
+          this.points.forEach(point => {
+            const seriesName = point.series.name;
+            const value = seriesName === 'Departure' ? `${point.y}%` : `${point.y} ${unit}`;
+            tooltip += `${seriesName}: ${value}<br/>`;
+          });
+          return tooltip;
+        }
       },
       legend: {
-        y: 10 // Slight adjustment if needed
+        y: 10
       },
       series: [
         {
@@ -668,6 +774,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       return;
     }
 
+    const conversionFactor = this.unit === 'cm' ? 0.1 : 1;
     const titleStyle = {
       color: '#333',
       fontSize: '15px',
@@ -675,8 +782,8 @@ export class MainChartsComponent implements OnInit, OnChanges {
       fontFamily: 'Arial, sans-serif'
     };
 
-    const maxActual = Math.max(...this.seasonDailyData.map(d => d.actual ?? 0), 0);
-    const maxNormal = Math.max(...this.seasonDailyData.map(d => d.normal ?? 0), 0);
+    const maxActual = Math.max(...this.seasonDailyData.map(d => (d.actual ?? 0) * conversionFactor), 0);
+    const maxNormal = Math.max(...this.seasonDailyData.map(d => (d.normal ?? 0) * conversionFactor), 0);
     const maxLeft = Math.max(maxActual, maxNormal);
     const roundedLeft = Math.ceil(maxLeft) || 1;
     const tickLeft = roundedLeft / 5;
@@ -694,7 +801,6 @@ export class MainChartsComponent implements OnInit, OnChanges {
     let currentIndex = 0;
     this.selectedYears.forEach((year, yearIndex) => {
       const yearData = this.seasonDailyData.filter(d => d.year === year && !d.date.startsWith('gap-'));
-      // Add year label at the start of the year's data
       yearLabels.push({
         color: 'transparent',
         width: 0,
@@ -705,12 +811,11 @@ export class MainChartsComponent implements OnInit, OnChanges {
           align: 'left',
           style: { fontSize: '12px', color: '#000000', fontWeight: 'bold' },
           rotation: 0,
-          y: -20 // Position above the chart
+          y: -20
         }
       });
       currentIndex += yearData.length;
       if (yearIndex < this.selectedYears.length - 1) {
-        // Place the plot line in the middle of the gap
         plotLines.push({
           color: '#000000',
           dashStyle: 'Dash' as Highcharts.DashStyleValue,
@@ -718,14 +823,16 @@ export class MainChartsComponent implements OnInit, OnChanges {
           value: currentIndex,
           zIndex: 5
         });
-        currentIndex += 1; // Account for the gap
+        currentIndex += 1;
       }
     });
+
+    const currentUnit = this.unit; // Capture unit for use in formatter
 
     this.chart = new Chart({
       chart: {
         height: 600,
-        marginTop: 60 // Increased top margin to avoid overlap
+        marginTop: 60
       },
       title: {
         style: titleStyle,
@@ -746,20 +853,38 @@ export class MainChartsComponent implements OnInit, OnChanges {
         min: 0,
         max: roundedLeft,
         tickInterval: tickLeft,
-        title: { text: 'Rainfall (mm)' }
+        title: { text: `Rainfall (${this.unit})` }
       }],
       tooltip: {
-        shared: true
+        shared: true,
+        formatter: function(this: Highcharts.TooltipFormatterContextObject): string {
+          if (!this.points || this.points.length === 0) {
+            return `<b>${this.x}</b><br/>No data available`;
+          }
+          let tooltip = `<b>${this.x}</b><br/>`;
+          const unit = Array.isArray(this.points[0].series.chart.options.yAxis)
+            ? this.points[0].series.chart.options.yAxis[0]?.title?.text?.split(' ')[1]?.replace(/[()]/g, '') || currentUnit
+            : this.points[0].series.chart.options.yAxis?.title?.text?.split(' ')[1]?.replace(/[()]/g, '') || currentUnit;
+          this.points.forEach(point => {
+            const seriesName = point.series.name;
+            const value = seriesName === 'Actual' || seriesName === 'Normal' ? `${point.y} ${unit}` : `${point.y}%`;
+            tooltip += `${seriesName}: ${value}<br/>`;
+            if (seriesName === 'Actual' && point.point.custom?.departure !== undefined) {
+              tooltip += `Departure: ${point.point.custom.departure}%<br/>`;
+            }
+          });
+          return tooltip;
+        }
       },
       legend: {
-        y: 10 // Slight adjustment if needed
+        y: 10
       },
       series: [
         {
           name: 'Actual',
           type: 'column',
           data: this.seasonDailyData.map(d => ({
-            y: d.actual,
+            y: d.actual !== null ? this.constants.trimToOneDecimals(d.actual * conversionFactor) : null,
             custom: { departure: d.departure }
           })),
           color: 'green',
@@ -777,7 +902,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
         {
           name: 'Normal',
           type: 'line',
-          data: this.seasonDailyData.map(d => d.normal),
+          data: this.seasonDailyData.map(d => d.normal !== null ? this.constants.trimToOneDecimals(d.normal * conversionFactor) : null),
           color: 'darkblue'
         }
       ],
