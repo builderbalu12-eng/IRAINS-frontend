@@ -822,7 +822,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
         return;
     }
 
-    this.top5Title = `Top 5 ${layerLabel} - Current Day`;
+    this.top5Title = `Top 5 ${layerLabel} - ${this.formatDateToDDMMYYYY(this.startDate)}`
 
     service.fetchData(params).subscribe({
       next: res => {

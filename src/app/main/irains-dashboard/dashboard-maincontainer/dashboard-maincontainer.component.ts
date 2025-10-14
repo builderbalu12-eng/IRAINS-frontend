@@ -12,7 +12,7 @@ export class DashboardMaincontainerComponent {
   @ViewChild('mapNavBar') mapNavBarComponent!: MapNavBarComponent;
 
   selectedLayer = 'subdivision';
-  showComparison = false;
+  showComparison = true;
   lastActiveLayer = 'subdivision';
   startDate = '';
   endDate = '';

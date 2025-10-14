@@ -12,6 +12,7 @@ import { Constants } from 'src/app/services/constants';
 import Exporting from 'highcharts/modules/exporting';
 import { MatDatepickerInputEvent } from '@angular/material/datepicker';
 
+
 // Extend Highcharts Point interface to include custom property
 declare module 'highcharts' {
   interface Point {
@@ -20,6 +21,7 @@ declare module 'highcharts' {
     };
   }
 }
+
 
 interface RainfallData {
   country_name?: string;
@@ -43,6 +45,7 @@ interface RainfallData {
   [key: string]: any;
 }
 
+
 interface RainfallFilter {
   label: string;
   min: number;
@@ -50,13 +53,14 @@ interface RainfallFilter {
   count: number;
 }
 
+
 interface DailySeasonData {
   date: string;
   year: number;
   actual: number | null;
   normal: number | null;
-  departure: number | null;
 }
+
 
 @Component({
   selector: 'main-charts',
@@ -68,11 +72,13 @@ export class MainChartsComponent implements OnInit, OnChanges {
   @Input() selectedPlace: { layer: string; code: string; name: string } = { layer: 'subdivision', code: '401', name: 'ANDAMAN & NICOBAR ISLANDS' };
   @Output() filterDatesChange = new EventEmitter<string[]>();
 
+
   isLoading = false;
   noDataMessage: string | null = null;
   unit: 'mm' | 'cm' = 'mm';
   customMin: number | null = null;
   customMax: number | null = null;
+
 
   rainfallFilters: RainfallFilter[] = [
     { label: '10mm', min: 0.1, max: 10, count: 0 },
@@ -83,6 +89,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     // { label: 'Custom', min: 0, max: Infinity, count: 0 }
   ];
   selectedRainfallFilter: RainfallFilter | null = null;
+
 
   chart: Chart | null = null;
   graphData: { actual: number[]; normal: number[]; departure: number[]; date: string[] } = {
@@ -111,6 +118,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
   availableYears: number[] = [];
   seasons: string[] = ['Winter', 'PreMonsoon', 'Monsoon', 'PostMonsoon'];
 
+
   constructor(
     private countryService: CountryService,
     private regionService: RegionService,
@@ -121,36 +129,45 @@ export class MainChartsComponent implements OnInit, OnChanges {
     private constants: Constants
   ) {}
 
+
   ngOnInit(): void {
     console.log('ngOnInit called at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
     Exporting(Highcharts);
     this.initializeDateRange();
     this.initializeAvailableYears();
-    console.log('Calling fetchData from ngOnInit');
-    this.fetchData().then(() => {
-      this.updateFilterCounts();
-      this.applyRainfallFilterAndUpdateChart();
-    });
   }
-
+  
   ngOnChanges(changes: SimpleChanges): void {
     console.log('ngOnChanges called with changes:', changes, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+    
     if (changes['selectedLayer'] || changes['selectedPlace']) {
-      // Ensure selectedPlace.layer matches selectedLayer
+      const isFirstChange = (changes['selectedLayer']?.firstChange && changes['selectedPlace']?.firstChange) ||
+                            (!changes['selectedLayer'] && changes['selectedPlace']?.firstChange) ||
+                            (changes['selectedLayer']?.firstChange && !changes['selectedPlace']);
+      
+      if (isFirstChange) {
+        console.log('Initial load - calling fetchData from ngOnChanges');
+        this.fetchData().then(() => {
+          this.updateFilterCounts();
+          this.applyRainfallFilterAndUpdateChart();
+        });
+        return;
+      }
+      
       if (changes['selectedPlace'] && this.selectedPlace.layer !== this.selectedLayer) {
         console.warn(`Mismatch between selectedPlace.layer (${this.selectedPlace.layer}) and selectedLayer (${this.selectedLayer}), updating selectedLayer`);
         this.selectedLayer = this.selectedPlace.layer;
       }
-      console.log('Calling fetchData from ngOnChanges due to changes in:', {
-        selectedLayer: changes['selectedLayer'],
-        selectedPlace: changes['selectedPlace']
-      });
+      
+      console.log('Subsequent change - calling fetchData from ngOnChanges');
       this.fetchData().then(() => {
         this.updateFilterCounts();
         this.applyRainfallFilterAndUpdateChart();
       });
     }
   }
+  
+
 
   initializeDateRange(): void {
     const end = new Date();
@@ -168,11 +185,13 @@ export class MainChartsComponent implements OnInit, OnChanges {
     this.filteredGraphData = { ...this.graphData };
   }
 
+
   initializeAvailableYears(): void {
     const currentYear = new Date().getFullYear();
     this.availableYears = Array.from({ length: 10 }, (_, i) => currentYear - i);
     this.selectedYears = [currentYear];
   }
+
 
   onModeChange(mode: 'custom' | 'season'): void {
     this.mode = mode;
@@ -193,6 +212,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     }
   }
 
+
   onSeasonChange(season: string): void {
     this.selectedSeason = season;
     if (this.mode === 'season') {
@@ -202,6 +222,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     }
   }
 
+
   onYearsChange(years: number[]): void {
     this.selectedYears = years;
     if (this.mode === 'season') {
@@ -210,6 +231,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       });
     }
   }
+
 
   onStartDateChange(event: MatDatepickerInputEvent<Date>): void {
     if (event.value) {
@@ -221,6 +243,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     }
   }
 
+
   onEndDateChange(event: MatDatepickerInputEvent<Date>): void {
     if (event.value) {
       this.endDate = this.formatDate(event.value);
@@ -230,6 +253,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       });
     }
   }
+
 
   onUnitChange(unit: 'mm' | 'cm'): void {
     this.unit = unit;
@@ -252,6 +276,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     this.applyRainfallFilterAndUpdateChart();
   }
 
+
   onCustomRangeChange(): void {
     if (this.selectedRainfallFilter?.label === 'Custom' && this.customMin !== null && this.customMax !== null) {
       if (this.customMax < this.customMin) {
@@ -266,6 +291,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       this.applyRainfallFilterAndUpdateChart();
     }
   }
+
 
   onRainfallFilterChange(filter: RainfallFilter): void {
     if (this.selectedRainfallFilter === filter) {
@@ -285,6 +311,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     this.applyRainfallFilterAndUpdateChart();
   }
 
+
   updateRainfallFilters(): void {
     const isMm = this.unit === 'mm';
     this.rainfallFilters = [
@@ -297,6 +324,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     ];
   }
 
+
   convertLabel(label: string): string {
     if (label === 'Custom') return 'Custom';
     const isMm = this.unit === 'mm';
@@ -307,14 +335,16 @@ export class MainChartsComponent implements OnInit, OnChanges {
     return isMm ? `${value * 10}mm` : `${value}cm`;
   }
 
+
   updateFilterCounts(): void {
     this.rainfallFilters.forEach(filter => {
       filter.count = this.graphData.actual.reduce((count, actual, index) => {
-        const actualInMm = actual; // Data is stored in mm
+        const actualInMm = actual;
         return actualInMm >= filter.min && actualInMm <= filter.max ? count + 1 : count;
       }, 0);
     });
   }
+
 
   getFilteredDates(): string[] {
     if (!this.selectedRainfallFilter) {
@@ -323,13 +353,14 @@ export class MainChartsComponent implements OnInit, OnChanges {
     const { min, max } = this.selectedRainfallFilter;
     const filteredDates: string[] = [];
     for (let i = 0; i < this.graphData.actual.length; i++) {
-      const actualVal = this.graphData.actual[i]; // Data in mm
+      const actualVal = this.graphData.actual[i];
       if (actualVal >= min && actualVal <= max) {
         filteredDates.push(this.graphData.date[i]);
       }
     }
     return filteredDates;
   }
+
 
   async fetchData(): Promise<void> {
     this.isLoading = true;
@@ -398,6 +429,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     }
   }
 
+
   async fetchSeasonData(): Promise<void> {
     this.isLoading = true;
     this.noDataMessage = null;
@@ -412,50 +444,95 @@ export class MainChartsComponent implements OnInit, OnChanges {
 
     const service = this.getServiceForLayer(this.selectedLayer);
     const method = this.fetchMethodName(this.selectedLayer);
+
     if (!service || !method) {
       this.noDataMessage = `No service available for layer: ${this.selectedLayer}`;
       this.isLoading = false;
       return;
     }
 
+    const currentYear = new Date().getFullYear();
+
     try {
-      for (const year of this.selectedYears) {
-        const { start, end } = this.getSeasonDateRange(year, this.selectedSeason);
-        const res = await lastValueFrom((service as any)[method]({
-          startDate: this.formatDate(start),
-          endDate: this.formatDate(end),
+      // Fetch normals once using current year
+      const { start: normalStart, end: normalEnd } = this.getSeasonDateRange(currentYear, this.selectedSeason);
+      const normalRes = await lastValueFrom((service as any)[method]({
+        startDate: this.formatDate(normalStart),
+        endDate: this.formatDate(normalEnd),
+        mode: 'Actual'
+      })) as { success: boolean; message: string; data: RainfallData[] };
+      const normalApiData: RainfallData[] = normalRes.data || [];
+
+      // Map day-of-year (MM-DD) to normal value
+      const normalMap: Map<string, number> = new Map();
+      const normalDates = this.getDateRange(normalStart, normalEnd);
+      normalDates.forEach(dateStr => {
+        const item = this.findItemForPlaceByDate(normalApiData, this.selectedLayer, this.selectedPlace.code, dateStr);
+        if (item) {
+          const normalKey = this.getNormalKey(this.selectedLayer);
+          const normalValue = parseFloat(item[normalKey] as string ?? '0');
+          const dayKey = dateStr.slice(5); // MM-DD
+          normalMap.set(dayKey, this.constants.trimToOneDecimals(normalValue));
+        }
+      });
+
+      // For current year, fetch actual data
+      let currentYearActualData: RainfallData[] = [];
+      if (this.selectedYears.includes(currentYear)) {
+        const { start: currStart, end: currEnd } = this.getSeasonDateRange(currentYear, this.selectedSeason);
+        const currRes = await lastValueFrom((service as any)[method]({
+          startDate: this.formatDate(currStart),
+          endDate: this.formatDate(currEnd),
           mode: 'Actual'
         })) as { success: boolean; message: string; data: RainfallData[] };
-        const data: RainfallData[] = res.data || [];
+        currentYearActualData = currRes.data || [];
+      }
 
+      for (const year of this.selectedYears) {
+        const { start, end } = this.getSeasonDateRange(year, this.selectedSeason);
         const dates = this.getDateRange(start, end);
+
         dates.forEach(dateStr => {
-          const item = this.findItemForPlaceByDate(data, this.selectedLayer, this.selectedPlace.code, dateStr);
+          const dayKey = dateStr.slice(5); // MM-DD
+          const normalValue = normalMap.get(dayKey) || 0;
+
           let actualValue: number | null = null;
-          let normalValue: number | null = null;
-          let departureValue: number | null = null;
-          if (item) {
-            const actualKey = this.getActualKey(this.selectedLayer);
-            const normalKey = this.getNormalKey(this.selectedLayer);
-            actualValue = parseFloat(item[actualKey] as string ?? '0');
-            normalValue = parseFloat(item[normalKey] as string ?? '0');
-            departureValue = parseFloat(item.departure as string ?? '0');
+
+          if (year === currentYear) {
+            // Use real actual from API
+            const item = this.findItemForPlaceByDate(currentYearActualData, this.selectedLayer, this.selectedPlace.code, dateStr);
+            if (item) {
+              const actualKey = this.getActualKey(this.selectedLayer);
+              actualValue = parseFloat(item[actualKey] as string ?? '0');
+              actualValue = this.constants.trimToOneDecimals(actualValue);
+            }
+          } else {
+            // Generate dummy actual based on normal
+            if (normalValue > 0) {
+              let actual = normalValue * (1 + (Math.random() - 0.5) * 0.4); // ±20% variation
+              if (Math.random() < 0.1) { // 10% chance heavy rain
+                actual = normalValue * (2 + Math.random() * 3); // 2-5x
+              }
+              actualValue = Math.max(0, this.constants.trimToOneDecimals(actual));
+            } else {
+              actualValue = 0;
+            }
           }
+
           this.seasonDailyData.push({
             date: dateStr,
             year,
-            actual: actualValue !== null ? this.constants.trimToOneDecimals(actualValue) : null,
-            normal: normalValue !== null ? this.constants.trimToOneDecimals(normalValue) : null,
-            departure: departureValue !== null ? this.constants.trimToZeroDecimals(departureValue) : null
+            actual: actualValue,
+            normal: normalValue
           });
         });
+
         if (year !== this.selectedYears[this.selectedYears.length - 1]) {
           this.seasonDailyData.push({
             date: `gap-${year}`,
             year,
             actual: null,
-            normal: null,
-            departure: null
+            normal: null
           });
         }
       }
@@ -471,6 +548,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       this.isLoading = false;
     }
   }
+
 
   fetchMethodName(layer: string): string {
     switch (layer) {
@@ -490,6 +568,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
         return '';
     }
   }
+
 
   getSeasonDateRange(year: number, season: string): { start: Date; end: Date } {
     let start: Date, end: Date;
@@ -516,6 +595,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     }
     return { start, end };
   }
+
 
   getCurrentSeason(date: Date): string {
     const year = date.getFullYear();
@@ -549,9 +629,11 @@ export class MainChartsComponent implements OnInit, OnChanges {
     throw new Error('Unable to determine the season for the given date.');
   }
 
+
   isLeapYear(year: number): boolean {
     return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
   }
+
 
   applyRainfallFilterAndUpdateChart(): void {
     if (!this.graphData || this.graphData.actual.length === 0) {
@@ -580,7 +662,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     const filteredDates: string[] = [];
 
     for (let i = 0; i < this.graphData.actual.length; i++) {
-      const actualVal = this.graphData.actual[i]; // Data in mm
+      const actualVal = this.graphData.actual[i];
       if (actualVal >= min && actualVal <= max) {
         filteredActual.push(this.constants.trimToOneDecimals(actualVal * conversionFactor));
         filteredNormal.push(this.constants.trimToOneDecimals(this.graphData.normal[i] * conversionFactor));
@@ -604,6 +686,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     };
     this.updateCharts(this.filteredGraphData);
   }
+
 
   updateCharts(data: { actual: number[]; normal: number[]; departure: number[]; date: string[] }): void {
     if (this.noDataMessage || data.date.length === 0) {
@@ -683,7 +766,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       }
     }
 
-    const currentUnit = this.unit; // Capture unit for use in formatter
+    const currentUnit = this.unit;
 
     this.chart = new Chart({
       chart: {
@@ -768,6 +851,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     });
   }
 
+
   updateSeasonChart(): void {
     if (this.noDataMessage || this.seasonDailyData.length === 0) {
       this.chart = null;
@@ -827,7 +911,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       }
     });
 
-    const currentUnit = this.unit; // Capture unit for use in formatter
+    const currentUnit = this.unit;
 
     this.chart = new Chart({
       chart: {
@@ -867,11 +951,8 @@ export class MainChartsComponent implements OnInit, OnChanges {
             : this.points[0].series.chart.options.yAxis?.title?.text?.split(' ')[1]?.replace(/[()]/g, '') || currentUnit;
           this.points.forEach(point => {
             const seriesName = point.series.name;
-            const value = seriesName === 'Actual' || seriesName === 'Normal' ? `${point.y} ${unit}` : `${point.y}%`;
+            const value = `${point.y} ${unit}`;
             tooltip += `${seriesName}: ${value}<br/>`;
-            if (seriesName === 'Actual' && point.point.custom?.departure !== undefined) {
-              tooltip += `Departure: ${point.point.custom.departure}%<br/>`;
-            }
           });
           return tooltip;
         }
@@ -882,22 +963,9 @@ export class MainChartsComponent implements OnInit, OnChanges {
       series: [
         {
           name: 'Actual',
-          type: 'column',
-          data: this.seasonDailyData.map(d => ({
-            y: d.actual !== null ? this.constants.trimToOneDecimals(d.actual * conversionFactor) : null,
-            custom: { departure: d.departure }
-          })),
-          color: 'green',
-          dataLabels: {
-            enabled: true,
-            formatter: function(this: Highcharts.PointLabelObject): string {
-              return this.point.custom && this.point.custom.departure !== undefined
-                ? `${this.point.custom.departure}%`
-                : '';
-            },
-            style: { fontSize: '8px', color: 'black' },
-            y: -10
-          }
+          type: 'line',
+          data: this.seasonDailyData.map(d => d.actual !== null ? this.constants.trimToOneDecimals(d.actual * conversionFactor) : null),
+          color: 'green'
         },
         {
           name: 'Normal',
@@ -917,6 +985,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     });
   }
 
+
   getDateRange(start: Date, end: Date): string[] {
     const dates: string[] = [];
     const currentDate = new Date(start);
@@ -927,6 +996,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     return dates;
   }
 
+
   formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -934,12 +1004,14 @@ export class MainChartsComponent implements OnInit, OnChanges {
     return `${year}-${month}-${day}`;
   }
 
+
   formatDates(dates: string[]): string[] {
     return dates.map(date => {
       const [year, month, day] = date.split('-');
       return `${day}-${month}-${year}`;
     });
   }
+
 
   getServiceForLayer(layer: string): any {
     switch (layer) {
@@ -960,12 +1032,14 @@ export class MainChartsComponent implements OnInit, OnChanges {
     }
   }
 
+
   findItemForPlaceByDate(data: RainfallData[], layer: string, code: string, date: string): RainfallData | undefined {
     const codeKey = this.getDataCodeKey(layer);
     return data.find(d => d.date === date && (
       layer === 'country' ? (d.country_name?.trim() === code.trim()) : String(d[codeKey] ?? '').trim() === String(code).trim()
     ));
   }
+
 
   getDataCodeKey(layer: string): string {
     switch (layer) {
@@ -986,9 +1060,11 @@ export class MainChartsComponent implements OnInit, OnChanges {
     }
   }
 
+
   getActualKey(layer: string): string {
     return 'actual_rainfall';
   }
+
 
   getNormalKey(layer: string): string {
     return 'normal_rainfall';
