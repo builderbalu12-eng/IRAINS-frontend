@@ -54,11 +54,11 @@ interface Place {
   styleUrls: ['./map-charts.component.css']
 })
 export class MapChartsComponent implements OnInit, OnChanges {
-  @Input() selectedLayer: string = 'country';
+  @Input() selectedLayer: string = 'subdivision';
   @Input() startDate: string = '';
   @Input() endDate: string = '';
   @Input() isActual: boolean = false;
-  @Input() selectedPlace: { layer: string; code: string; name: string } = { layer: 'country', code: 'INDIA', name: 'India' };
+  @Input() selectedPlace: { layer: string; code: string; name: string } = { layer: 'subdivision', code: '401', name: 'ANDAMAN & NICOBAR ISLANDS' };
   @Output() selectedPlaceChange = new EventEmitter<{ layer: string; code: string; name: string }>();
 
   regions: any[] = [];
