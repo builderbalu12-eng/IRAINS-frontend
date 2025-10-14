@@ -1,8 +1,7 @@
 import { Component, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter } from '@angular/core';
 import { Chart } from 'angular-highcharts';
 import * as Highcharts from 'highcharts';
-import { lastValueFrom, Subject } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { lastValueFrom } from 'rxjs';
 import { CountryService } from 'src/app/services/country/country.service';
 import { RegionService } from 'src/app/services/region/region.service';
 import { StateService } from 'src/app/services/state/state.service';
@@ -75,12 +74,6 @@ export class MainChartsComponent implements OnInit, OnChanges {
   customMin: number | null = null;
   customMax: number | null = null;
 
-  // Added: Flag to prevent overlapping fetches
-  private isFetching = false;
-
-  // Added: RxJS Subject for debouncing refresh triggers
-  private refreshSubject = new Subject<void>();
-
   rainfallFilters: RainfallFilter[] = [
     { label: '10mm', min: 0.1, max: 10, count: 0 },
     { label: '50mm', min: 11, max: 50, count: 0 },
@@ -126,67 +119,37 @@ export class MainChartsComponent implements OnInit, OnChanges {
     private districtService: DistrictService,
     private blockService: BlockService,
     private constants: Constants
-  ) {
-    // Added: Subscribe to refreshSubject with debounce
-    this.refreshSubject.pipe(
-      debounceTime(300) // Wait 300ms after the last refresh trigger
-    ).subscribe(() => {
-      this.refreshData();
-    });
-  }
+  ) {}
 
   ngOnInit(): void {
     console.log('ngOnInit called at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
     Exporting(Highcharts);
     this.initializeDateRange();
     this.initializeAvailableYears();
-    console.log('Triggering refresh from ngOnInit');
-    this.triggerRefresh();
+    console.log('Calling fetchData from ngOnInit');
+    this.fetchData().then(() => {
+      this.updateFilterCounts();
+      this.applyRainfallFilterAndUpdateChart();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     console.log('ngOnChanges called with changes:', changes, 'at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
-    // Modified: Only trigger refresh if inputs have changed meaningfully
-    const layerChanged = changes['selectedLayer'] && changes['selectedLayer'].currentValue !== changes['selectedLayer'].previousValue;
-    const placeChanged = changes['selectedPlace'] && (
-      changes['selectedPlace'].currentValue?.code !== changes['selectedPlace'].previousValue?.code ||
-      changes['selectedPlace'].currentValue?.layer !== changes['selectedPlace'].previousValue?.layer
-    );
-
-    if (layerChanged || placeChanged) {
+    if (changes['selectedLayer'] || changes['selectedPlace']) {
+      // Ensure selectedPlace.layer matches selectedLayer
       if (changes['selectedPlace'] && this.selectedPlace.layer !== this.selectedLayer) {
         console.warn(`Mismatch between selectedPlace.layer (${this.selectedPlace.layer}) and selectedLayer (${this.selectedLayer}), updating selectedLayer`);
         this.selectedLayer = this.selectedPlace.layer;
       }
-      console.log('Triggering refresh from ngOnChanges due to changes in:', { layerChanged, placeChanged });
-      this.triggerRefresh();
-    }
-  }
-
-  // Added: Centralized refresh method
-  private async refreshData(): Promise<void> {
-    if (this.isFetching) {
-      console.log('Refresh skipped due to ongoing fetch');
-      return;
-    }
-    this.isFetching = true;
-    try {
-      if (this.mode === 'season') {
-        await this.fetchSeasonData();
-        this.updateSeasonChart();
-      } else {
-        await this.fetchData();
+      console.log('Calling fetchData from ngOnChanges due to changes in:', {
+        selectedLayer: changes['selectedLayer'],
+        selectedPlace: changes['selectedPlace']
+      });
+      this.fetchData().then(() => {
         this.updateFilterCounts();
         this.applyRainfallFilterAndUpdateChart();
-      }
-    } finally {
-      this.isFetching = false;
+      });
     }
-  }
-
-  // Added: Method to trigger refresh via Subject
-  private triggerRefresh(): void {
-    this.refreshSubject.next();
   }
 
   initializeDateRange(): void {
@@ -218,39 +181,53 @@ export class MainChartsComponent implements OnInit, OnChanges {
     this.selectedRainfallFilter = null;
     this.customMin = null;
     this.customMax = null;
-    console.log('Triggering refresh from onModeChange:', mode);
-    this.triggerRefresh();
+    if (mode === 'season') {
+      this.fetchSeasonData().then(() => {
+        this.updateSeasonChart();
+      });
+    } else {
+      this.fetchData().then(() => {
+        this.updateFilterCounts();
+        this.applyRainfallFilterAndUpdateChart();
+      });
+    }
   }
 
   onSeasonChange(season: string): void {
     this.selectedSeason = season;
     if (this.mode === 'season') {
-      console.log('Triggering refresh from onSeasonChange:', season);
-      this.triggerRefresh();
+      this.fetchSeasonData().then(() => {
+        this.updateSeasonChart();
+      });
     }
   }
 
   onYearsChange(years: number[]): void {
     this.selectedYears = years;
     if (this.mode === 'season') {
-      console.log('Triggering refresh from onYearsChange:', years);
-      this.triggerRefresh();
+      this.fetchSeasonData().then(() => {
+        this.updateSeasonChart();
+      });
     }
   }
 
   onStartDateChange(event: MatDatepickerInputEvent<Date>): void {
     if (event.value) {
       this.startDate = this.formatDate(event.value);
-      console.log('Triggering refresh from onStartDateChange:', this.startDate);
-      this.triggerRefresh();
+      this.fetchData().then(() => {
+        this.updateFilterCounts();
+        this.applyRainfallFilterAndUpdateChart();
+      });
     }
   }
 
   onEndDateChange(event: MatDatepickerInputEvent<Date>): void {
     if (event.value) {
       this.endDate = this.formatDate(event.value);
-      console.log('Triggering refresh from onEndDateChange:', this.endDate);
-      this.triggerRefresh();
+      this.fetchData().then(() => {
+        this.updateFilterCounts();
+        this.applyRainfallFilterAndUpdateChart();
+      });
     }
   }
 
@@ -272,8 +249,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     }
 
     this.updateFilterCounts();
-    console.log('Triggering refresh from onUnitChange:', unit);
-    this.triggerRefresh();
+    this.applyRainfallFilterAndUpdateChart();
   }
 
   onCustomRangeChange(): void {
@@ -287,8 +263,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       this.selectedRainfallFilter.max = this.unit === 'mm' ? (this.customMax === Infinity ? Infinity : this.customMax * 10) : this.customMax;
       const filteredDates = this.getFilteredDates();
       this.filterDatesChange.emit(filteredDates);
-      console.log('Triggering refresh from onCustomRangeChange');
-      this.triggerRefresh();
+      this.applyRainfallFilterAndUpdateChart();
     }
   }
 
@@ -307,8 +282,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       const filteredDates = this.getFilteredDates();
       this.filterDatesChange.emit(filteredDates);
     }
-    console.log('Triggering refresh from onRainfallFilterChange:', filter.label);
-    this.triggerRefresh();
+    this.applyRainfallFilterAndUpdateChart();
   }
 
   updateRainfallFilters(): void {
@@ -358,7 +332,6 @@ export class MainChartsComponent implements OnInit, OnChanges {
   }
 
   async fetchData(): Promise<void> {
-    console.log(`fetchData called for layer: ${this.selectedLayer}, place: ${JSON.stringify(this.selectedPlace)} at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
     this.isLoading = true;
     this.noDataMessage = null;
     this.chart = null;
@@ -426,7 +399,6 @@ export class MainChartsComponent implements OnInit, OnChanges {
   }
 
   async fetchSeasonData(): Promise<void> {
-    console.log(`fetchSeasonData called for layer: ${this.selectedLayer}, place: ${JSON.stringify(this.selectedPlace)}, season: ${this.selectedSeason}, years: ${this.selectedYears} at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
     this.isLoading = true;
     this.noDataMessage = null;
     this.chart = null;
@@ -711,7 +683,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       }
     }
 
-    const currentUnit = this.unit;
+    const currentUnit = this.unit; // Capture unit for use in formatter
 
     this.chart = new Chart({
       chart: {
@@ -855,7 +827,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
       }
     });
 
-    const currentUnit = this.unit;
+    const currentUnit = this.unit; // Capture unit for use in formatter
 
     this.chart = new Chart({
       chart: {
