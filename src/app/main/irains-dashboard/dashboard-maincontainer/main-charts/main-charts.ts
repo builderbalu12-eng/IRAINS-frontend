@@ -80,7 +80,7 @@ export class MainChartsComponent implements OnInit, OnChanges {
     { label: '100mm', min: 51, max: 100, count: 0 },
     { label: '200mm', min: 101, max: 200, count: 0 },
     { label: '>300mm', min: 301, max: Infinity, count: 0 },
-    { label: 'Custom', min: 0, max: Infinity, count: 0 }
+    // { label: 'Custom', min: 0, max: Infinity, count: 0 }
   ];
   selectedRainfallFilter: RainfallFilter | null = null;
 

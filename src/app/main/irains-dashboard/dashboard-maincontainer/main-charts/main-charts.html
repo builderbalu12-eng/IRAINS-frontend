@@ -15,14 +15,13 @@
       </mat-select>
     </mat-form-field>
 
-    <!-- Unit Toggle -->
-    <mat-form-field appearance="fill" class="unit-selector">
+    <!-- <mat-form-field appearance="fill" class="unit-selector">
       <mat-label>Unit</mat-label>
       <mat-select [(ngModel)]="unit" (selectionChange)="onUnitChange($event.value)">
         <mat-option value="mm">mm</mat-option>
         <mat-option value="cm">cm</mat-option>
       </mat-select>
-    </mat-form-field>
+    </mat-form-field> -->
 
     <!-- Custom Date Pickers -->
     <div *ngIf="mode === 'custom'" class="d-flex align-items-center gap-2">
