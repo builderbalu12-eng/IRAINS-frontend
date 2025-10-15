@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, OnInit } from '@angular/core';
 import { ComparisonComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/comparision/comparison.component';
 import { MapNavBarComponent } from 'src/app/main/irains-dashboard/dashboard-maincontainer/map-nav-bar/map-nav-bar.component';
 
@@ -7,12 +7,12 @@ import { MapNavBarComponent } from 'src/app/main/irains-dashboard/dashboard-main
   templateUrl: './dashboard-maincontainer.component.html',
   styleUrls: ['./dashboard-maincontainer.component.css']
 })
-export class DashboardMaincontainerComponent {
+export class DashboardMaincontainerComponent implements OnInit {
   @ViewChild('comparisonComp') comparisonComponent!: ComparisonComponent;
   @ViewChild('mapNavBar') mapNavBarComponent!: MapNavBarComponent;
 
   selectedLayer = 'subdivision';
-  showComparison = true;
+  showComparison = false;
   lastActiveLayer = 'subdivision';
   startDate = '';
   endDate = '';
@@ -21,6 +21,18 @@ export class DashboardMaincontainerComponent {
   selectedLevels: string[] = ['state', 'district', 'block'];
   mode: string = 'state';        
   selectedPlace: { layer: string; code: string; name: string } = { layer: 'subdivision', code: '401', name: 'ANDAMAN & NICOBAR ISLANDS' };
+  
+  // Add initial load flag
+  isInitialLoad = true;
+  private initialLoadTimeout: any;
+
+  ngOnInit() {
+    // Set a timeout to mark initial load as complete after components are ready
+    this.initialLoadTimeout = setTimeout(() => {
+      this.isInitialLoad = false;
+      console.log('Initial load completed, now passing selectedLayer and selectedPlace');
+    }, 100); // Small delay to ensure child components are initialized
+  }
 
   ngAfterViewInit() {
     if (this.mapNavBarComponent) {
@@ -29,6 +41,19 @@ export class DashboardMaincontainerComponent {
       this.startDate = this.mapNavBarComponent.startDate || this.maxDate;
       this.endDate = this.mapNavBarComponent.endDate || this.maxDate;
       this.isActual = this.mapNavBarComponent.isActual;
+    }
+    
+    // Mark initial load as complete after ViewChild is available
+    if (this.initialLoadTimeout) {
+      clearTimeout(this.initialLoadTimeout);
+    }
+    this.isInitialLoad = false;
+    console.log('Initial load completed after ViewChild initialization');
+  }
+
+  ngOnDestroy() {
+    if (this.initialLoadTimeout) {
+      clearTimeout(this.initialLoadTimeout);
     }
   }
 

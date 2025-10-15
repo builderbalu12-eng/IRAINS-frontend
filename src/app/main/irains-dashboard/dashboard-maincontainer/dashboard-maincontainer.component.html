@@ -32,7 +32,7 @@
       <div class="content-row">
         <div class="map-column">
           <app-map-dashboardcontainer 
-            [selectedLayer]="selectedLayer"
+            [selectedLayer]=selectedLayer
             [startDate]="startDate || maxDate"
             [endDate]="endDate || maxDate"
             [isActual]="isActual"
@@ -44,11 +44,11 @@
         </div>
         <div class="charts-column">
           <app-map-charts
-            [selectedLayer]="selectedLayer"
+            [selectedLayer]=selectedLayer
             [startDate]="startDate || maxDate"
             [endDate]="endDate || maxDate"
             [isActual]="isActual"
-            [selectedPlace]="selectedPlace"
+            [selectedPlace]=selectedPlace
             (selectedPlaceChange)="onSelectedPlaceChange($event)">
           </app-map-charts>
         </div>
@@ -59,8 +59,8 @@
   <!-- Conditionally display main-charts when showComparison is false -->
   <main-charts
     *ngIf="!showComparison"
-    [selectedLayer]="selectedLayer"
-    [selectedPlace]="selectedPlace"
+    [selectedLayer]="isInitialLoad ? '' : selectedLayer"
+    [selectedPlace]="isInitialLoad ? {} : selectedPlace"
     (filterDatesChange)="onFilterDatesChange($event)">
   </main-charts>
 </div>

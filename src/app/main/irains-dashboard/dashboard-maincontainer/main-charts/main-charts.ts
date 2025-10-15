@@ -69,7 +69,7 @@ interface DailySeasonData {
 })
 export class MainChartsComponent implements OnInit, OnChanges {
   @Input() selectedLayer: string = 'subdivision';
-  @Input() selectedPlace: { layer: string; code: string; name: string } = { layer: 'subdivision', code: '401', name: 'ANDAMAN & NICOBAR ISLANDS' };
+  @Input() selectedPlace: any= { layer: 'subdivision', code: '401', name: 'ANDAMAN & NICOBAR ISLANDS' };
   @Output() filterDatesChange = new EventEmitter<string[]>();
 
 

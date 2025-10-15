@@ -54,11 +54,11 @@ interface Place {
   styleUrls: ['./map-charts.component.css']
 })
 export class MapChartsComponent implements OnInit, OnChanges {
-  @Input() selectedLayer: string = 'subdivision';
+  @Input() selectedLayer: string = '';
   @Input() startDate: string = '';
   @Input() endDate: string = '';
   @Input() isActual: boolean = false;
-  @Input() selectedPlace: { layer: string; code: string; name: string } = { layer: 'subdivision', code: '401', name: 'ANDAMAN & NICOBAR ISLANDS' };
+  @Input() selectedPlace: any = {};
   @Output() selectedPlaceChange = new EventEmitter<{ layer: string; code: string; name: string }>();
 
   regions: any[] = [];
@@ -212,7 +212,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
   ) {}
 
   ngOnInit(): void {
-    console.log('ngOnInit called at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+    console.log('ngOnInit called at', );
     Exporting(Highcharts);
     const today = new Date();
     this.endDate = this.endDate || this.formatDate(today);
@@ -770,8 +770,8 @@ export class MapChartsComponent implements OnInit, OnChanges {
       departure: parseFloat(r.departure as string ?? '0').toFixed(1) + '%'
     }));
   
-    this.regions = [countryItem, ...regionsItems];
-    console.log('Updated regions:', this.regions); // Debug log
+    this.regions = [...regionsItems];
+    console.log('Updated regions:', this.regions); 
   }
 
   private fetchTop5Data() {
