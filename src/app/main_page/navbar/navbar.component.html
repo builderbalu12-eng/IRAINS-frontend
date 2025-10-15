@@ -3,11 +3,32 @@
     <mat-icon>menu</mat-icon>
   </button>
   <span class="toolbar-title">iRAINS PRODUCTS</span>
-  
+
   <div class="toolbar-center">
-    <button mat-button (click)="NavigateToDashboad()" class="mode-button" [ngClass]="{'active': selectedMapType === 'Dashboard'}">Dashboard</button>
-    <button mat-button (click)="selectBlockOrRainfallMaps('RainfallMaps')" class="mode-button" [ngClass]="{'active': selectedMapType === 'RainfallMaps'}">DRMS</button>
-    <button mat-button (click)="selectBlockOrRainfallMaps('Block')" class="mode-button" [ngClass]="{'active': selectedMapType === 'Block'}">BRMS</button>
+    <button
+      mat-button
+      (click)="NavigateToDashboad()"
+      class="mode-button"
+      [ngClass]="{ active: selectedMapType === 'Dashboard' }"
+    >
+      Dashboard
+    </button>
+    <button
+      mat-button
+      (click)="selectBlockOrRainfallMaps('RainfallMaps')"
+      class="mode-button"
+      [ngClass]="{ active: selectedMapType === 'RainfallMaps' }"
+    >
+      DRMS
+    </button>
+    <button
+      mat-button
+      (click)="selectBlockOrRainfallMaps('Block')"
+      class="mode-button"
+      [ngClass]="{ active: selectedMapType === 'Block' }"
+    >
+      BRMS
+    </button>
   </div>
 </mat-toolbar>
 <div id="loader" class="loader" *ngIf="isLoading">
@@ -791,154 +812,6 @@
       <a class="main_nav" (click)="uploadPopUp()">INFO UPLOAD</a>
     </li>
 
-    <!-- <li class="main_nav">
-            <a class="main_nav">QPF VERIFICATION REPORT</a>
-
-            <ul>
-                <li>
-                    <a (click)="onQpfClick(2)">QPF VERIFICATION REPORT 2020 </a>
-                </li>
-                <li>
-                    <a (click)="onQpfClick(3)">QPF VERIFICATION REPORT 2021</a>
-                </li>
-                <li>
-                    <a (click)="onQpfClick(4)">QPF VERIFICATION REPORT 2022</a>
-                </li>
-            </ul>
-    </li>
-
-    <li>
-        <a class="main_nav">DESIGN STORM ANALYSIS</a>
-        <ul>
-            <li>
-                <a>ATLASES</a>
-                <ul>
-                    <li>
-                        <a>KRISHNA BASIN PMP ATLAS</a>
-                        <ul>
-                            <li>
-                                <a (click)="onQpfClick(5)">PART-1</a>
-                            </li>
-                            <li>
-                                <a (click)="onQpfClick(26)">PART-2</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li>
-                        <a>INDUS BASIN PMP ATLAS</a>
-                        <ul>
-                            <li>
-                                <a (click)="onQpfClick(8)">PART-1</a>
-                            </li>
-                            <li>
-                                <a (click)="onQpfClick(9)">PART-2</a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-            </li>
-            <li>
-                <a>REPORTS</a>
-                <ul>
-                    <li>
-                        <a (click)="onQpfClick(10)">DESIGN STORMS STUDIES DURING 2018</a>
-                    </li>
-                    <li>
-                        <a (click)="onQpfClick(11)">DESIGN STORMS STUDIES DURING 2019</a>
-                    </li>
-                    <li>
-                        <a (click)="onQpfClick(12)">DESIGN STORMS STUDIES DURING 2020</a>
-                    </li>
-                    <li>
-                        <a (click)="onQpfClick(13)">DESIGN STORMS STUDIES DURING 2021</a>
-                    </li>
-                    <li>
-                        <a (click)="onQpfClick(14)">DESIGN STORMS STUDIES DURING 2022</a>
-                    </li>
-                    <li *ngFor="let file of designStormReports;"><a (click)="downloadFile(file.file_data)">{{file.file_name}}</a></li>
-                </ul>
-            </li>
-        </ul>
-    </li>
-    <li >
-        <a class="main_nav">RAINFALL REPORTS</a>
-        <ul>
-            <li>
-                <a (click)="onQpfClick(15)">RAINFALL STATISTICS OF INDIA - 2022</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(16)">RAINFALL STATISTICS OF INDIA - 2021</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(17)">RAINFALL STATISTICS OF INDIA - 2020</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(18)">RAINFALL STATISTICS OF INDIA - 2019</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(19)">RAINFALL STATISTICS OF INDIA - 2018</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(20)">RAINFALL STATISTICS OF INDIA - 2017</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(21)">RAINFALL STATISTICS OF INDIA - 2016</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(22)">RAINFALL STATISTICS OF INDIA - 2015</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(23)">RAINFALL STATISTICS OF INDIA - 2014</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(24)">RAINFALL STATISTICS OF INDIA - 2013</a>
-            </li>
-            <li>
-                <a (click)="onQpfClick(25)">RAINFALL STATISTICS OF INDIA - 2012</a>
-            </li>
-            <li *ngFor="let file of rainFallReports;"><a (click)="downloadFile(file.file_data)">{{file.file_name}}</a></li>
-        </ul>
-    </li> -->
-
-    <!-- <li class="main_nav" *ngIf="hasDocuments('QPF VERIFICATION REPORT')">
-            <a class="main_nav">QPF VERIFICATION REPORT</a>
-            <ul>
-                <li *ngFor="let document of getDocumentsByType('QPF VERIFICATION REPORT')">
-                    <a (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
-                </li>
-            </ul>
-        </li>
-
-        <li *ngIf="hasDocuments('DESIGN STORM ANALYSIS')">
-            <a class="main_nav">DESIGN STORM ANALYSIS</a>
-            <ul>
-                <li *ngFor="let document of getDocumentsByType('DESIGN STORM ANALYSIS')">
-                    <a (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
-                </li>
-            </ul>
-        </li>
-
-        <li *ngIf="hasDocuments('RAINFALL REPORTS')">
-            <a class="main_nav">RAINFALL REPORTS</a>
-            <ul>
-                <li *ngFor="let document of getDocumentsByType('RAINFALL REPORTS')">
-                    <a (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
-                </li>
-            </ul>
-        </li>
-
-        <li *ngFor="let docType of documentTypes" 
-            [hidden]="docType.document_type === 'QPF VERIFICATION REPORT' || 
-                    docType.document_type === 'DESIGN STORM ANALYSIS' || 
-                    docType.document_type === 'RAINFALL REPORTS'">
-            <a class="main_nav">{{ docType.document_type }}</a>
-            <ul>
-                <li *ngFor="let document of docType.documents">
-                    <a (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
-                </li>
-            </ul>
-        </li> -->
-
     <li class="main_nav" *ngIf="hasDocuments('QPF VERIFICATION REPORT')">
       <a class="main_nav">QPF VERIFICATION REPORT</a>
       <ul>
@@ -1061,17 +934,6 @@
         SIGNIFICANT RAINFALL
       </a>
     </li>
-
-    <!-- <li *ngIf="hasAccess('verification-page')" >
-            <a 
-            class="main_nav" 
-            [routerLink]="isDataEntryAccessible() ? '../verification-page' : null" 
-            [class.disabled]="!isDataEntryAccessible()" 
-            (click)="onLinkClick($event)">
-            VERIFICATION
-            </a>
-        </li> -->
-
     <li *ngIf="hasAccess('verification-page-mc')">
       <a
         class="main_nav"
