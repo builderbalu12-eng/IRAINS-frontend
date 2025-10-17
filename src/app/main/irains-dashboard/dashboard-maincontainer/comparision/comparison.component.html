@@ -48,7 +48,7 @@
             <table class="table table-sm table-bordered text-center">
               <thead class="table-light">
                 <tr>
-                  <th></th>
+                  <th>{{ getMapTitle(selectedLevels[0], 0).split(' ')[0] }} Weather Alert</th>
                   <th>Actual (mm)</th>
                   <th *ngIf="!isActual">Departure (%)</th>
                   <th *ngIf="!isActual">Normal</th>
@@ -96,7 +96,7 @@
             <table class="table table-sm table-bordered text-center">
               <thead class="table-light">
                 <tr>
-                  <th></th>
+                  <th>{{ getMapTitle(selectedLevels[1], 0).split(' ')[0] }} Weather Alert</th>
                   <th>Actual (mm)</th>
                   <th *ngIf="!isActual">Departure (%)</th>
                   <th *ngIf="!isActual">Normal</th>
@@ -144,7 +144,7 @@
             <table class="table table-sm table-bordered text-center">
               <thead class="table-light">
                 <tr>
-                  <th></th>
+                  <th>{{ getMapTitle(selectedLevels[2], 0).split(' ')[0] }} Weather Alert</th>
                   <th>Actual (mm)</th>
                   <th *ngIf="!isActual">Departure (%)</th>
                   <th *ngIf="!isActual">Normal</th>
