@@ -138,6 +138,11 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
       
         legendItems = [
           {
+            color: "#F5F5F5",
+            text: `Zero Rainfall <br>[0]`,
+            fontSize: "9.3px",
+          },
+          {
             color: "#abf200",
             text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
             fontSize: "9.3px",
@@ -467,13 +472,16 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
           const data = {
             date: this.fromDate,
           };
+
+          const dateforfetchdata = {startDate:  this.fromDate, endDate:  this.fromDate}
+          
     
             
           if (this.selectedMode.selectedMode === 'Unified') {
             // Fetch both AWS and normal block data
             forkJoin({
               awsData: this.block.fetchDatablockaws(data),
-              normalData: this.block.fetchData(data)
+              normalData: this.block.fetchData(dateforfetchdata)
             }).subscribe(({ awsData, normalData }) => {
               // Append second response to the first
               const aws = awsData?.data || [];
@@ -491,7 +499,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
             });
           
             // Fetch country-level data (as before)
-            this.countryService.fetchData(data).subscribe((res) => {
+            this.countryService.fetchData(dateforfetchdata).subscribe((res) => {
               this.countrydatacum = res.data;
               this.countryActual = this.constants.trimToOneDecimals(
                 this.countrydatacum[0].actual_rainfall
@@ -513,7 +521,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
             // Fetch both AWS and normal block data (even in non-unified mode)
             forkJoin({
               awsData: this.block.fetchDatablockaws(data),
-              normalData: this.block.fetchData(data)
+              normalData: this.block.fetchData(dateforfetchdata)
             }).subscribe(({ awsData, normalData }) => {
               console.log('hi2')
 
@@ -533,7 +541,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
             });
           
             // Fetch country-level data
-            this.countryService.fetchData(data).subscribe((res) => {
+            this.countryService.fetchData(dateforfetchdata).subscribe((res) => {
               this.countrydatacum = res.data;
               this.countryActual = this.constants.trimToOneDecimals(
                 this.countrydatacum[0].actual_rainfall

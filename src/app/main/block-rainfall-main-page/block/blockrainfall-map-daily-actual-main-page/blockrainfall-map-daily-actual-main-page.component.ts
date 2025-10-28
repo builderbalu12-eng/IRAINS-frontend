@@ -144,6 +144,11 @@ export class BlockrainfallMapDailyActualMainPageComponent
 
   legendItems = [
     {
+      color: "#F5F5F5",
+      text: `Zero Rainfall <br>[0]`,
+      fontSize: "9.3px",
+    },
+    {
       color: "#277620",
       text: `Very light to light <br>[0 to 15.5]mm`,
       fontSize: "11.6px",

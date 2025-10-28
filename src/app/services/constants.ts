@@ -468,8 +468,9 @@ export class Constants {
     if (data == null || data == undefined || data == "NA" || data<0) {
       return "#c0c0c0";
     }
-
-    if (data >= 0 && data <= 2.4) {
+    if(data==0){
+      color = "#FFFFFF";
+    } else if (data >0 && data <= 2.4) {
       color = "#abf200";
     } else if (data > 2.4 && data <= 15.5) {
       color = "#03ff00";

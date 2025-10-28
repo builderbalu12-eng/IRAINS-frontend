@@ -73,6 +73,11 @@ export class StateActualMapComponent {
 
   legendItems = [
     {
+      color: "#F5F5F5",
+      text: `Zero Rainfall <br>[0]`,
+      fontSize: "9.3px",
+    },
+    {
       color: "#abf200",
       text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
       fontSize: "9.3px",
