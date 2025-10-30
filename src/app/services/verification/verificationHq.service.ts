@@ -73,4 +73,19 @@ export class VerificationHq {
     return this.http.post<any>(url, body);
   }
 
+  fetchCentreStationSummary(startDate : any, endDate:any): Observable<any> {
+    const body = {
+      startDate : startDate,
+      endDate : endDate
+    }
+
+    let url = `${this.baseUrl}/api/v1/fetchCentreStationSummary`;
+
+    console.log(url, body)
+    return this.http.post<any>(url, body);
+  }
+
+
+  
+
 }

@@ -36,4 +36,9 @@ export class SubdivisionService {
     const url = `${this.baseUrl}/api/v1/fetchSubdivisionRangeStatistics`;
     return this.http.post<any>(url, data);
   }
+
+  fetchmetWiseSubDivisions(){
+    const url = `${this.baseUrl}/api/v1/metWiseSubDivisions`;
+    return this.http.get<any>(url);
+  }
 }

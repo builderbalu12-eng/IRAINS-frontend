@@ -683,82 +683,77 @@ export class DataEntryComponent implements OnInit {
   async uploadRainFallFile() {
     if (this.selectedFile) {
       console.log(this.selectedFile);
+  
+      this.isUploading = true; // start loader
       try {
-        this.isUploading = true;
-
-        // Read the Excel file
         const fileReader = new FileReader();
+  
         fileReader.onload = async (e: any) => {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
-
-          // Assuming the first sheet is the one you want
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-
-          // Convert the sheet data to JSON
-          const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {
-            defval: null,
-          });
-
-          // Define the columns to skip
-          const skipColumns = ["station_name", "centre_type", "station_id"];
-
-          // Process the data: Replace empty values with -999.9, except for the specified columns
-          const processedData = jsonData.map((row: any) => {
-            for (const key in row) {
-              if (
-                (row[key] === null || row[key] === "") &&
-                !skipColumns.includes(key)
-              ) {
-                row[key] = -999.9;
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+  
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+  
+            const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {
+              defval: null,
+            });
+  
+            const skipColumns = ["station_name", "centre_type", "station_id"];
+  
+            const processedData = jsonData.map((row: any) => {
+              for (const key in row) {
+                if (
+                  (row[key] === null || row[key] === "") &&
+                  !skipColumns.includes(key)
+                ) {
+                  row[key] = -999.9;
+                }
               }
-            }
-            return row;
-          });
-
-          // Convert processed data back to CSV
-          const newWorksheet = XLSX.utils.json_to_sheet(processedData);
-          const newWorkbook = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(
-            newWorkbook,
-            newWorksheet,
-            "ProcessedData"
-          );
-
-          const csv = XLSX.write(newWorkbook, {
-            bookType: "csv",
-            type: "array",
-          });
-
-          // Create a new file from the CSV data
-          const processedFile = new File([csv], "processed_rainfall_data.csv", {
-            type: "text/csv",
-          });
-
-          // Now send the new file to your service
-          const response = await this.stationService
-            .uploadRainfallDataFile(processedFile)
-            .toPromise();
-
-          await this.fetchStationData(this.enteredDate);
-          alert("File uploaded successfully");
-          this.clearFileInput();
-          this.filterStationData();
-          this.isUploading = false;
+              return row;
+            });
+  
+            const newWorksheet = XLSX.utils.json_to_sheet(processedData);
+            const newWorkbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "ProcessedData");
+  
+            const csv = XLSX.write(newWorkbook, {
+              bookType: "csv",
+              type: "array",
+            });
+  
+            const processedFile = new File([csv], "processed_rainfall_data.csv", {
+              type: "text/csv",
+            });
+  
+            const response = await this.stationService
+              .uploadRainfallDataFile(processedFile)
+              .toPromise();
+  
+            await this.fetchStationData(this.enteredDate);
+            alert("File uploaded successfully");
+            this.clearFileInput();
+            this.filterStationData();
+          } catch (error) {
+            console.error("Error inside onload:", error);
+            alert("Error uploading file: Please check the excel format and ensure no non-numeric characters in dates field");
+          } finally {
+            this.isUploading = false; // always stop loader
+          }
         };
-
-        // Read the file as binary
+  
         fileReader.readAsArrayBuffer(this.selectedFile);
       } catch (error) {
-        alert("Error uploading file: " + error);
+        console.error("Outer error:", error);
+        alert("Unexpected error: " + (error));
         this.isUploading = false;
       }
     } else {
       alert("Please choose a file:");
     }
   }
-
+  
 
   sortDirection: { [key: string]: 'asc' | 'desc' } = {};
 

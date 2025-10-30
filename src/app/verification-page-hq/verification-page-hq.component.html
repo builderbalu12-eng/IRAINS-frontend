@@ -1,25 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verification Page HQ</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    /* Date Header Colors */
+    .date-header-light { background: #d0e8ff !important; color: #000 !important; }
+    .date-header-orange { background: #ffe0b3 !important; color: #000 !important; }
+    .sub-header { background: #f5f5f5 !important; font-weight: bold; font-size: 13px; }
+
+    /* Filter Tabs Styling */
+    .filter-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 15px 0;
+    }
+    .filter-btn {
+      padding: 10px 18px;
+      border: 1px solid #007bff;
+      background: white;
+      color: #007bff;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 110px;
+    }
+    .filter-btn:hover:not(.active) {
+      background: #e7f3ff;
+      transform: translateY(-1px);
+    }
+    .filter-btn.active {
+      background: #007bff;
+      color: white;
+      box-shadow: 0 2px 5px rgba(0,123,255,0.3);
+    }
+
+    /* Table Enhancements */
+    table {
+      font-family: Arial, sans-serif;
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+    }
+    .sticky-col {
+      position:10px;
+      left: 0;
+      z-index: 1;
+      background: inherit;
+    }
+  </style>
 </head>
 <body>
 
-
-
-
-  <!-- <div *ngIf="isLoading" class="spinner-overlay">
-    <div class="spinner"></div>
-  </div> -->
-
-
-
-  <!-- <div id="loader" class="loader" *ngIf="isLoading">
-    <div class="loading-message">
-      <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading...
-    </div>
-  </div> -->
-
 <div class="background-effect">
 
+  <!-- ====================== HEADER ====================== -->
   <table style="width: 100%; background: linear-gradient(to top, #09203f 0%, #537895 100%);">
     <tbody>
       <tr>
@@ -52,328 +94,46 @@
       </tr>
     </tbody>
   </table>
-  <div class="navbar">
+
+  <!-- ====================== TABS (ABOVE EVERYTHING) ====================== -->
+  <div class="tab-container" style="text-align: center; margin: 25px 20px 15px 20px;">
+    <button class="tab-button"
+            [class.active]="activeTab === 'daily'"
+            (click)="activeTab = 'daily'; loadDailyData()">Daily</button>
+    <button class="tab-button"
+            [class.active]="activeTab === 'cumulative'"
+            (click)="activeTab = 'cumulative'">Range</button>
+  </div>
+
+  <!-- ====================== NAVBAR - ONLY FOR DAILY ====================== -->
+  <div class="navbar" *ngIf="activeTab === 'daily'">
     <div class="col-1">
-      <input type="date" class="form-control" [ngModel]="selectedDate | date: 'yyyy-MM-dd'" (ngModelChange)="selectedDate = $event">
+      <input type="date" class="form-control"
+             [ngModel]="selectedDate | date: 'yyyy-MM-dd'"
+             (ngModelChange)="selectedDate = $event">
     </div>
     <div class="col-1 mt-2">
       <button class="btn btn-success" type="button" (click)="backend()">Submit</button>
     </div>
     <div class="col-1 mt-1">
       <button class="btn btn-success" (click)="exportToExcel()">Download Excel</button>
-
     </div>
   </div>
-  
-  <div style="text-align: center; padding-top: 40px">
-    <div class="dataentry">
-      <div class="row">
-        <div class="col-12">
-          <h3>STATIONS DATA</h3>
-        </div>
-      </div>
-      <br />
-      <form>
-        <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
-          <thead>
-            <tr>
-              <th style="border: 1px solid black" rowspan="2">S.NO</th>
-              <th style="border: 1px solid black" rowspan="2">MC or RMC</th>
-              <th style="border: 1px solid black" rowspan="2">TOTAL STATIONS</th>
-              <th style="border: 1px solid black" colspan="2">UPDATES</th>
-              <th style="border: 1px solid black" colspan="2">VERIFICATIONS</th>
-            </tr>
-            <tr>
-              <th style="border: 1px solid black">UPDATED STATIONS</th>
-              <th style="border: 1px solid black">NOT UPDATED STATIONS</th>
-              <th style="border: 1px solid black">VERIFIED STATIONS</th>
-              <th style="border: 1px solid black">NOT VERIFIED STATIONS</th>
-            </tr>
-          </thead>
-          <tbody *ngIf="filteredMCorRMCSArray && filteredMCorRMCSArray.length > 0">
-            <tr *ngFor="let MCorRMC of filteredMCorRMCSArray; let i = index">
-              <td style="border: 1px solid black">{{ i + 1 }}</td>
-              <td style="border: 1px solid black">
-                {{ MCorRMC.name }}
-              </td>
-              <td style="border: 1px solid black">
-                {{ MCorRMC.data['Total_Stations'] }}</td>
-              <td style="border: 1px solid black">
-                <button type="submit" class="enter" (click)="submit('isUpdated', MCorRMC.name)">{{ MCorRMC.data['isUpdated'] }}</button>
-              </td>
-              <td style="border: 1px solid black">
-                <button type="submit" class="enter" (click)="submit('isNotUpdated', MCorRMC.name)">{{ MCorRMC.data['isNotUpdated'] }}</button>
-              </td>
-              <td style="border: 1px solid black">
-                <button type="submit" class="enter" (click)="submit('isVerified', MCorRMC.name)">{{ MCorRMC.data['isVerified'] }}</button>
-              </td>
-              <td style="border: 1px solid black">
-                <button type="submit" class="enter" (click)="submit('isNotVerified', MCorRMC.name)">{{ MCorRMC.data['isNotVerified'] }}</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </form>
-    </div>
 
-
-    <span *ngIf="isLoading" class="chartloader"></span>
-
-    
-    
-    <div *ngIf="showIsUpdatesTable" style="padding-bottom: 200px; text-align: center; padding-top: 40px;">
-      <div class="dataentry">
-        <div class="row">
-          <div class="col-12">
-            <h3>{{currentSubmitMCorRMCName}} UPDATED STATIONS DATA</h3>
-          </div>
-        </div>
-        <br />
-        <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
-          <thead>
-            <tr>
-              <th 
-                style="border: 1px solid black">S.NO <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'SNo')"> <i class="fa fa-sort"></i></button>
-              </th>
-              <th style="border: 1px solid black">District <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'district')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">STATION NAME <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'stationname')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">STATION ID <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'stationid')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">RAINFALL<button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'rainfall')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">status <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'status')"> <i class="fa fa-sort"></i></button></th>
-            </tr>
-
-          </thead>
-          <tbody *ngIf="dataToDisplay && dataToDisplay.length > 0">
-            <tr *ngFor="let station of dataToDisplay; let i = index">
-              <td style="border: 1px solid black">
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.SNo }}</p>
-              </td>
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.district }}</p>
-              </td>
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationname }}</p>
-              </td>
-              <td style="border: 1px solid black">              
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationid }}</p>
-              </td>
-
-
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.rainfall }}</p>
-              </td>
-
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.status }}</p>
-              </td>
-
-              <!-- <td style="border: 1px solid black">
-                <input type="number" id="rainfall" #rainFallElementRef name="rainfall" [(ngModel)]="station.rainfall" required style="border: none;" step="0.1" (input)="showMessage(rainFallElementRef)">
-              </td> -->
-              <!-- <td style="border: 1px solid black">
-                <button [ngClass]="{'selectedOptionolor': station.isverified != 'null'}">Verified</button>
-                <button [ngClass]="{'selectedOptionolor': station.isverified == 'null'}">Not Verified</button>
-              </td> -->
-              <!-- <td style="border: 1px solid black">{{station.isverified != 'null' ? (station.isverified | date: 'dd-MM-YYY hh:mm:ss') : ' '}}</td> -->
-              <!-- <td style="border: 1px solid black">
-                <button (click)="sendEmail()">Email</button>
-              </td> -->
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div *ngIf="showIsNotUpdatesTable" style="padding-bottom: 200px; text-align: center; padding-top: 40px;">
-      <div class="dataentry">
-        <div class="row">
-          <div class="col-12">
-            <h3>{{currentSubmitMCorRMCName}} NOT UPDATED STATIONS DATA</h3>
-            <!-- <button type="submit" class="enter" (click)="updateTheRainFallData()"> Update Data </button> -->
-          </div>
-        </div>
-        <br />
-        <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
-          <thead>
-            <tr>
-              <th 
-                style="border: 1px solid black">S.NO <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'SNo')"> <i class="fa fa-sort"></i></button>
-              </th>
-              <th style="border: 1px solid black">STATE NAME <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'statename')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">DISTRICT <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'district')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">STATION NAME <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'stationname')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">STATION ID <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'stationid')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">RAINFALL<button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'rainfall')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">status <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'status')"> <i class="fa fa-sort"></i></button></th>
-            </tr>
-
-          </thead>
-          <tbody *ngIf="dataToDisplay && dataToDisplay.length > 0">
-            <tr *ngFor="let station of dataToDisplay; let i = index">
-              <td style="border: 1px solid black">
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.SNo }}</p>
-              </td>
-              <td style="border: 1px solid black">
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.statename }}</p>
-              </td>
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.district }}</p>
-              </td>
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationname }}</p>
-              </td>
-              <td style="border: 1px solid black">              
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationid }}</p>
-              </td>
-
-              <td style="border: 1px solid black">
-                <input type="text" id="rainfall" #rainFallElementRef name="rainfall" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..?)\../g, '$1').replace(/(\.\d{1}).+/g, '$1');"  [(ngModel)]="station.rainfall"
-                  required style="border: none;" step="0.1" (blur)="updateRainfallValueData(station.stationid, station.rainfall, station.SNo)" (keyup.enter)="rainFallElementRef.blur()" (input)="showMessage(rainFallElementRef)">
-              </td>
-              
-              <!-- <td style="border: 1px solid black">
-                <input type="number" id="rainfall" #rainFallElementRef name="rainfall" [(ngModel)]="station.rainfall" required style="border: none;" step="0.1" (input)="showMessage(rainFallElementRef)">
-              </td> -->
-              <!-- <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.rainfall }}</p>
-              </td> -->
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.status }}</p>
-              </td>
-
-              <!-- <td style="border: 1px solid black">
-                <input type="number" id="rainfall" #rainFallElementRef name="rainfall" [(ngModel)]="station.rainfall" required style="border: none;" step="0.1" (input)="showMessage(rainFallElementRef)">
-              </td> -->
-              <!-- <td style="border: 1px solid black">
-                <button [ngClass]="{'selectedOptionolor': station.isverified != 'null'}">Verified</button>
-                <button [ngClass]="{'selectedOptionolor': station.isverified == 'null'}">Not Verified</button>
-              </td> -->
-              <!-- <td style="border: 1px solid black">{{station.isverified != 'null' ? (station.isverified | date: 'dd-MM-YYY hh:mm:ss') : ' '}}</td> -->
-              <!-- <td style="border: 1px solid black">
-                <button (click)="sendEmail()">Email</button>
-              </td> -->
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-
-    <div *ngIf="showIsVerifiedTable" style="padding-bottom: 200px; text-align: center; padding-top: 40px;">
-      <div class="dataentry">
-        <div class="row">
-          <div class="col-12">
-            <h3>{{currentSubmitMCorRMCName}} VERIFIED STATIONS DATA</h3>
-          </div>
-        </div>
-        <br />
-        <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
-          <thead>
-            <tr>
-              <th 
-                style="border: 1px solid black">S.NO <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'SNo')"> <i class="fa fa-sort"></i></button>
-              </th>
-              <th style="border: 1px solid black">District <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'district')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">STATION NAME <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'stationname')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">STATION ID <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'stationid')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">RAINFALL<button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'rainfall')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">VERIFIED DATETIME<button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'verifiedTime')"> <i class="fa fa-sort"></i></button></th>
-              <th style="border: 1px solid black">status <button style="font-size:15px; float: right; " (click)="sort(dataToDisplay, 'status')"> <i class="fa fa-sort"></i></button></th>
-            </tr>
-
-          </thead>
-          <tbody *ngIf="dataToDisplay && dataToDisplay.length > 0">
-            <tr *ngFor="let station of dataToDisplay; let i = index">
-              <td style="border: 1px solid black">
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.SNo }}</p>
-              </td>
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.district }}</p>
-              </td>
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationname }}</p>
-              </td>
-              <td style="border: 1px solid black">              
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationid }}</p>
-              </td>
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.rainfall }}</p>
-              </td>
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.verifiedTime }}</p>
-              </td>
-              <td style="border: 1px solid black">                
-                <p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.status }}</p>
-              </td>
-
-              <!-- <td style="border: 1px solid black">
-                <input type="number" id="rainfall" #rainFallElementRef name="rainfall" [(ngModel)]="station.rainfall" required style="border: none;" step="0.1" (input)="showMessage(rainFallElementRef)">
-              </td> -->
-              <!-- <td style="border: 1px solid black">
-                <button [ngClass]="{'selectedOptionolor': station.isverified != 'null'}">Verified</button>
-                <button [ngClass]="{'selectedOptionolor': station.isverified == 'null'}">Not Verified</button>
-              </td> -->
-              <!-- <td style="border: 1px solid black">{{station.isverified != 'null' ? (station.isverified | date: 'dd-MM-YYY hh:mm:ss') : ' '}}</td> -->
-              <!-- <td style="border: 1px solid black">
-                <button (click)="sendEmail()">Email</button>
-              </td> -->
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div *ngIf="showIsNotVerifiedTable" style="padding-bottom: 200px; text-align: center; padding-top: 40px;">
-      <div class="dataentry">
-        <div class="row" style="display: flex; justify-content: space-between; align-items: center;">
-          <div class="col-12">
-            <h3>{{currentSubmitMCorRMCName}} NOT VERIFIED STATIONS DATA</h3>
-            <button type="button" class="verifyALL" (click)="VerifySelected()">VERIFY SELECTED</button>
-            <button type="button" class="verifyALL" (click)="Verifyall()">VERIFY ALL</button>
-          </div>
-        </div>
-        <br />
-        <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
-          <thead>
-            <tr>
-              <th style="border: 1px solid black">Select</th>
-              <th style="border: 1px solid black">S.NO</th>
-              <th style="border: 1px solid black">District</th>
-              <th style="border: 1px solid black">STATION NAME</th>
-              <th style="border: 1px solid black">STATION ID</th>
-              <th style="border: 1px solid black">RAINFALL</th>
-              <th style="border: 1px solid black">STATUS</th>
-              <!-- <th style="border: 1px solid black">DEVIATION STATUS</th> -->
-            </tr>
-          </thead>
-          <tbody *ngIf="dataToDisplay && dataToDisplay.length > 0">
-            <tr *ngFor="let station of dataToDisplay; let i = index">
-              <td style="border: 1px solid black; text-align: center;">
-                <input type="checkbox" [(ngModel)]="station.selected" (change)="toggleSelection(station)">
-              </td>
-              <td style="border: 1px solid black; text-align: center;">{{ station.SNo }}</td>
-              <td style="border: 1px solid black; text-align: center;">{{ station.district }}</td>
-              <td style="border: 1px solid black; text-align: center;">{{ station.stationname }}</td>
-              <td style="border: 1px solid black; text-align: center;">{{ station.stationid }}</td>
-              <td style="border: 1px solid black; text-align: center;">
-                <input type="text" [(ngModel)]="station.rainfall" style="border: none;" required>
-              </td>
-              <td [ngStyle]="{'border': '1px solid black', 'color': station.status=='Not Verified' ? 'red' : 'blue'}">                
-                <p style="font-weight: bold; text-align: center;">{{ station.status }}</p>
-              </td>
-              <!-- <td style="border: 1px solid black; text-align: center;">{{ station.devation_status }}</td> -->
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    
-
+  <!-- ====================== CUMULATIVE DATE RANGE - ONLY FOR CUMULATIVE ====================== -->
+  <div class="date-range" *ngIf="activeTab === 'cumulative'"
+       style="display: flex; justify-content: center; align-items: center; gap: 15px; margin: 10px 20px 20px 20px; flex-wrap: wrap;">
+    <label style="color: black; font-size: 16px; font-weight: 600;">From:</label>
+    <input type="date" [(ngModel)]="cumulativeStartDate" style="padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 8px; width: 160px;">
+    <label style="color: black; font-size: 16px; font-weight: 600;">To:</label>
+    <input type="date" [(ngModel)]="cumulativeEndDate" style="padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 8px; width: 160px;">
+    <button class="btn btn-success" (click)="loadCumulativeData()">Load</button>
   </div>
-</div>
 
-</body>
-    <!-- <div style="padding-bottom: 200px;" *ngIf="bottom_section" id="bottom" style="text-align: center; padding-top: 40px;">
+  <!-- ====================== DAILY CONTENT (UNCHANGED) ====================== -->
+  <div *ngIf="activeTab === 'daily'">
+
+    <div style="text-align: center; padding-top: 40px">
       <div class="dataentry">
         <div class="row">
           <div class="col-12">
@@ -381,91 +141,286 @@
           </div>
         </div>
         <br />
-        <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
-          <thead>
-            <tr>
-              <th style="border: 1px solid black">S.NO</th>
-              <th style="border: 1px solid black">District</th>
-              <th style="border: 1px solid black">STATION NAME</th>
-              <th style="border: 1px solid black">STATION ID</th>
-              <th style="border: 1px solid black">RAINFALL</th>
-              <th style="border: 1px solid black">Status</th>
-              <th style="border: 1px solid black">Verified Date Time</th>
-              <th style="border: 1px solid black">Email</th>
-
-            </tr>
-          </thead>
-          <tbody *ngIf="filteredStations && filteredStations.length > 0">
-            <tr *ngFor="let station of filteredStations; let i = index">
-              <td style="border: 1px solid black">{{ i + 1 }}</td>
-              <td style="border: 1px solid black">{{ station.stationname }}</td>
-              <td style="border: 1px solid black">{{ station.stationid }}</td>
-              <td style="border: 1px solid black">
-                <input type="number" id="rainfall" #rainFallElementRef name="rainfall" [(ngModel)]="station.RainFall" required style="border: none;" step="0.1" (input)="showMessage(rainFallElementRef)">
-              </td>
-              <td style="border: 1px solid black">
-                <button [ngClass]="{'selectedOptionolor': station.isverified != 'null'}">Verified</button>
-                <button [ngClass]="{'selectedOptionolor': station.isverified == 'null'}">Not Verified</button>
-              </td>
-              <td style="border: 1px solid black">{{station.isverified != 'null' ? (station.isverified | date: 'dd-MM-YYY hh:mm:ss') : ' '}}</td>
-              <td style="border: 1px solid black">
-                <button (click)="sendEmail()">Email</button>
-              </td>
-              <td style="border: 1px solid black">
-                <button value="AWS" [ngClass]="{'selectedOptionolor': station.stationtype === 'aws'}">AWS</button>
-                <button value="ORG" [ngClass]="{'selectedOptionolor': station.stationtype === 'org'}">ORG</button>
-                <button value="ARG" [ngClass]="{'selectedOptionolor': station.stationtype === 'arg'}">ARG</button>
-              </td>
-              <td style="border: 1px solid black">
-                <button [ngClass]="{'selectedOptionolor': station.neworold === 'old'}">OLD</button>
-                <button [ngClass]="{'selectedOptionolor': station.neworold === 'new'}">NEW</button>
-              </td>
-              <td style="border: 1px solid black">{{station.lat}}</td>
-              <td style="border: 1px solid black">{{station.lng}}</td>
-              <td style="border: 1px solid black">{{station.activationdate | date: 'dd-MM-yyyy'}}</td>
-            </tr>
-          </tbody>
-        </table>
+        <form>
+          <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
+            <thead>
+              <tr>
+                <th style="border: 1px solid black" rowspan="2">S.NO</th>
+                <th style="border: 1px solid black" rowspan="2">MC or RMC</th>
+                <th style="border: 1px solid black" rowspan="2">TOTAL STATIONS</th>
+                <th style="border: 1px solid black" colspan="2">UPDATES</th>
+                <th style="border: 1px solid black" colspan="2">VERIFICATIONS</th>
+              </tr>
+              <tr>
+                <th style="border: 1px solid black">UPDATED STATIONS</th>
+                <th style="border: 1px solid black">NOT UPDATED STATIONS</th>
+                <th style="border: 1px solid black">VERIFIED STATIONS</th>
+                <th style="border: 1px solid black">NOT VERIFIED STATIONS</th>
+              </tr>
+            </thead>
+            <tbody *ngIf="filteredMCorRMCSArray && filteredMCorRMCSArray.length > 0">
+              <tr *ngFor="let MCorRMC of filteredMCorRMCSArray; let i = index">
+                <td style="border: 1px solid black">{{ i + 1 }}</td>
+                <td style="border: 1px solid black">{{ MCorRMC.name }}</td>
+                <td style="border: 1px solid black">{{ MCorRMC.data['Total_Stations'] }}</td>
+                <td style="border: 1px solid black">
+                  <button type="button" class="enter" (click)="submit('isUpdated', MCorRMC.name)">{{ MCorRMC.data['isUpdated'] }}</button>
+                </td>
+                <td style="border: 1px solid black">
+                  <button type="button" class="enter" (click)="submit('isNotUpdated', MCorRMC.name)">{{ MCorRMC.data['isNotUpdated'] }}</button>
+                </td>
+                <td style="border: 1px solid black">
+                  <button type="button" class="enter" (click)="submit('isVerified', MCorRMC.name)">{{ MCorRMC.data['isVerified'] }}</button>
+                </td>
+                <td style="border: 1px solid black">
+                  <button type="button" class="enter" (click)="submit('isNotVerified', MCorRMC.name)">{{ MCorRMC.data['isNotVerified'] }}</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </form>
       </div>
-    </div> -->
-       
-    
 
+      <!-- Loader -->
+      <span *ngIf="isLoading" class="chartloader"></span>
 
+      <!-- ==================== UPDATED STATIONS ==================== -->
+      <div *ngIf="showIsUpdatesTable" style="padding-bottom: 200px; text-align: center; padding-top: 40px;">
+        <div class="dataentry">
+          <div class="row"><div class="col-12"><h3>{{currentSubmitMCorRMCName}} UPDATED STATIONS DATA</h3></div></div>
+          <br />
+          <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
+            <thead>
+              <tr>
+                <th style="border: 1px solid black">S.NO <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'SNo')"><i class="fa fa-sort"></i></button></th>
+                OPENSSL
+                <th style="border: 1px solid black">District <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'district')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">STATION NAME <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'stationname')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">STATION ID <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'stationid')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">RAINFALL <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'rainfall')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">status <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'status')"><i class="fa fa-sort"></i></button></th>
+              </tr>
+            </thead>
+            <tbody *ngIf="dataToDisplay && dataToDisplay.length > 0">
+              <tr *ngFor="let station of dataToDisplay; let i = index">
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.SNo }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.district }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationname }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationid }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.rainfall }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.status }}</p></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-<!-- <div style="padding-bottom: 200px;"></div> Add this div to provide extra space at the bottom -->
+      <!-- ==================== NOT UPDATED STATIONS ==================== -->
+      <div *ngIf="showIsNotUpdatesTable" style="padding-bottom: 200px; text-align: center; padding-top: 40px;">
+        <div class="dataentry">
+          <div class="row"><div class="col-12"><h3>{{currentSubmitMCorRMCName}} NOT UPDATED STATIONS DATA</h3></div></div>
+          <br />
+          <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
+            <thead>
+              <tr>
+                <th style="border: 1px solid black">S.NO <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'SNo')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">STATE NAME <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'statename')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">DISTRICT <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'district')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">STATION NAME <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'stationname')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">STATION ID <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'stationid')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">RAINFALL <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'rainfall')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">status <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'status')"><i class="fa fa-sort"></i></button></th>
+              </tr>
+            </thead>
+            <tbody *ngIf="dataToDisplay && dataToDisplay.length > 0">
+              <tr *ngFor="let station of dataToDisplay; let i = index">
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.SNo }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.statename }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.district }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationname }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationid }}</p></td>
+                <td style="border: 1px solid black">
+                  <input type="text" #rainFallElementRef
+                         [(ngModel)]="station.rainfall"
+                         oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..?)\../g, '$1').replace(/(\.\d{1}).+/g, '$1');"
+                         style="border: none; width: 80px; text-align: center;"
+                         (blur)="updateRainfallValueData(station.stationid, station.rainfall, station.SNo)"
+                         (keyup.enter)="rainFallElementRef.blur()"
+                         (input)="showMessage(rainFallElementRef)">
+                </td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.status }}</p></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
+      <!-- ==================== VERIFIED STATIONS ==================== -->
+      <div *ngIf="showIsVerifiedTable" style="padding-bottom: 200px; text-align: center; padding-top: 40px;">
+        <div class="dataentry">
+          <div class="row"><div class="col-12"><h3>{{currentSubmitMCorRMCName}} VERIFIED STATIONS DATA</h3></div></div>
+          <br />
+          <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
+            <thead>
+              <tr>
+                <th style="border: 1px solid black">S.NO <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'SNo')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">District <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'district')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">STATION NAME <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'stationname')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">STATION ID <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'stationid')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">RAINFALL <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'rainfall')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">VERIFIED DATETIME <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'verifiedTime')"><i class="fa fa-sort"></i></button></th>
+                <th style="border: 1px solid black">status <button style="font-size:15px; float: right;" (click)="sort(dataToDisplay, 'status')"><i class="fa fa-sort"></i></button></th>
+              </tr>
+            </thead>
+            <tbody *ngIf="dataToDisplay && dataToDisplay.length > 0">
+              <tr *ngFor="let station of dataToDisplay; let i = index">
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.SNo }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.district }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationname }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.stationid }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.rainfall }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.verifiedTime }}</p></td>
+                <td style="border: 1px solid black"><p style="font-weight: bold; text-align: center; margin-top: 10px;">{{ station.status }}</p></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
+      <!-- ==================== NOT VERIFIED STATIONS ==================== -->
+      <div *ngIf="showIsNotVerifiedTable" style="padding-bottom: 200px; text-align: center; padding-top: 40px;">
+        <div class="dataentry">
+          <div class="row" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="col-12">
+              <h3>{{currentSubmitMCorRMCName}} NOT VERIFIED STATIONS DATA</h3>
+              <button type="button" class="verifyALL" (click)="VerifySelected()">VERIFY SELECTED</button>
+              <button type="button" class="verifyALL" (click)="Verifyall()">VERIFY ALL</button>
+            </div>
+          </div>
+          <br />
+          <table style="margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
+            <thead>
+              <tr>
+                <th style="border: 1px solid black">Select</th>
+                <th style="border: 1px solid black">S.NO</th>
+                <th style="border: 1px solid black">District</th>
+                <th style="border: 1px solid black">STATION NAME</th>
+                <th style="border: 1px solid black">STATION ID</th>
+                <th style="border: 1px solid black">RAINFALL</th>
+                <th style="border: 1px solid black">STATUS</th>
+              </tr>
+            </thead>
+            <tbody *ngIf="dataToDisplay && dataToDisplay.length > 0">
+              <tr *ngFor="let station of dataToDisplay; let i = index">
+                <td style="border: 1px solid black; text-align: center;">
+                  <input type="checkbox" [(ngModel)]="station.selected" (change)="toggleSelection(station)">
+                </td>
+                <td style="border: 1px solid black; text-align: center;">{{ station.SNo }}</td>
+                <td style="border: 1px solid black; text-align: center;">{{ station.district }}</td>
+                <td style="border: 1px solid black; text-align: center;">{{ station.stationname }}</td>
+                <td style="border: 1px solid black; text-align: center;">{{ station.stationid }}</td>
+                <td style="border: 1px solid black; text-align: center;">
+                  <input type="text" [(ngModel)]="station.rainfall" style="border: none; width: 80px; text-align: center;">
+                </td>
+                <td style="border: 1px solid black; text-align: center;" 
+                    [ngStyle]="{ 'color': station.status === 'Not Verified' ? 'red' : 'blue' }">
+                  <p style="font-weight: bold;">{{ station.status }}</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
+    </div>
+  </div>
 
+  <!-- ====================== CUMULATIVE CONTENT WITH DYNAMIC COLUMN FILTERING ====================== -->
+  <div *ngIf="activeTab === 'cumulative' && transposedCumulativeData.length > 0" style="text-align: center; padding-top: 40px;">
+    <div class="dataentry">
+      <h3>CUMULATIVE STATION SUMMARY ({{cumulativeStartDate}} to {{cumulativeEndDate}})</h3>
+      <button class="btn btn-success" (click)="exportTransposedToExcel()">Download Excel</button>
+      <br /><br />
 
+<!-- FILTER TABS -->
+<div class="filter-tabs">
+  <button class="filter-btn"
+          [class.active]="visibleColumns.length === 4"
+          (click)="setCumulativeFilter('all')">All</button>
+  <button class="filter-btn"
+          [class.active]="visibleColumns.length === 1 && visibleColumns[0] === 'updated'"
+          (click)="setCumulativeFilter('updated')">Updated</button>
+  <button class="filter-btn"
+          [class.active]="visibleColumns.length === 1 && visibleColumns[0] === 'notUpdated'"
+          (click)="setCumulativeFilter('notUpdated')">Not Updated</button>
+  <button class="filter-btn"
+          [class.active]="visibleColumns.length === 1 && visibleColumns[0] === 'verified'"
+          (click)="setCumulativeFilter('verified')">Verified</button>
+  <button class="filter-btn"
+          [class.active]="visibleColumns.length === 1 && visibleColumns[0] === 'notVerified'"
+          (click)="setCumulativeFilter('notVerified')">Not Verified</button>
+</div>
 
+<!-- DYNAMIC COLUMN TABLE WITH STICKY MC/RMC -->
+<div style="overflow-x: auto; margin: 0 20px; max-width: 100%;">
+  <table style="margin: auto; border-collapse: collapse; min-width: 1200px; border: 1px solid #ccc; table-layout: fixed;">
+    <thead>
+      <!-- ROW 1: MC/RMC + TOTAL + DATES -->
+      <tr>
+        <th rowspan="2" class="sticky-col" style="border: 1px solid #ccc; background: #e6f2ff; font-weight: bold; min-width: 160px; width: 160px; left: 0; z-index: 3;">
+          MC / RMC
+        </th>
+        <th rowspan="2" class="sticky-col" style="border: 1px solid #ccc; background: #e6f2ff; font-weight: bold; min-width: 100px; width: 100px; left: 160px; z-index: 3;">
+          Total
+        </th>
+        <ng-container *ngFor="let date of dateHeaders; let i = index">
+          <th [attr.colspan]="visibleColumns.length"
+              [class.date-header-light]="i % 2 === 0"
+              [class.date-header-orange]="i % 2 === 1"
+              style="border: 1px solid #ccc; color: #000; text-align: center; font-weight: bold; min-width: 100px; width: 100px;">
+            {{ date | date: 'dd-MM-yyyy' }}
+          </th>
+        </ng-container>
+      </tr>
 
+      <!-- ROW 2: SUB-HEADERS -->
+      <tr>
+        <ng-container *ngFor="let date of dateHeaders">
+          <th class="sub-header" style="border: 1px solid #ccc; min-width: 100px; width: 100px;" *ngFor="let col of visibleColumns">
+            {{ getColumnLabel(col) }}
+          </th>
+        </ng-container>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of transposedCumulativeData; trackBy: trackByMc">
+        <td class="sticky-col" style="border: 1px solid #ccc; font-weight: bold; background: #f9f9f9; min-width: 160px; width: 160px; left: 0; z-index: 1;">
+          {{ row.mc }}
+        </td>
+        <td class="sticky-col" style="border: 1px solid #ccc; text-align: center; font-weight: bold; background: #f9f9f9; min-width: 100px; width: 100px; left: 160px; z-index: 1;">
+          {{ row.total || '-' }}
+        </td>
+        <ng-container *ngFor="let date of dateHeaders">
+          <td style="border: 1px solid #ccc; text-align: center; min-width: 100px; width: 100px;" *ngFor="let col of visibleColumns">
+            {{ row[date]?.[col] || '-' }}
+          </td>
+        </ng-container>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
+      <!-- No data message -->
+      <div *ngIf="transposedCumulativeData.length === 0" style="margin-top: 20px; color: #666; font-style: italic;">
+        No data available.
+      </div>
+    </div>
+  </div>
 
+  <!-- Loader -->
+  <span *ngIf="isLoading" class="chartloader"></span>
 
+</div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+</body>
+</html>

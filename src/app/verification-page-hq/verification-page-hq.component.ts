@@ -1,15 +1,9 @@
-
-//------------------------------------
-
 import { Component } from '@angular/core';
 import { DataService } from '../data.service';
 import { VerificationHq } from '../services/verification/verificationHq.service';
-import { response } from 'express';
 import { DataEntryService } from '../services/dataEntry/dataEntry.service';
-import { coerceStringArray } from '@angular/cdk/coercion';
 import * as XLSX from 'xlsx';
 import * as FileSaver from 'file-saver';
-
 
 @Component({
   selector: 'app-verification-page-hq',
@@ -17,12 +11,13 @@ import * as FileSaver from 'file-saver';
   styleUrls: ['./verification-page-hq.component.css']
 })
 export class VerificationPageHQComponent {
+  // === CORE STATE ===
   isLoading: boolean = false;
   filteredMCorRMCSArray: any[] = [];
   filteredMCorRMCS: any = {};
   dataToDisplay: any[] = [];
   filteredStations: any[] = [];
-  selectedDate: any = this.formatDate(new Date());
+  selectedDate: string = this.formatDate(new Date());
   showIsUpdatesTable: boolean = false;
   showIsNotUpdatesTable: boolean = false;
   showIsVerifiedTable: boolean = false;
@@ -38,100 +33,376 @@ export class VerificationPageHQComponent {
   loggedInUser: any;
   currentUserType: any;
   devationStatus: any;
-  isVerificationLoading: any = false;
-  isVerifiactionButtonClicked: any = false;
+  isVerificationLoading: boolean = false;
+  isVerifiactionButtonClicked: boolean = false;
   EXCEL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
 
+  // === TABS & CUMULATIVE ===
+  activeTab: 'daily' | 'cumulative' = 'daily';
+  cumulativeData: any[] = [];
+  cumulativeStartDate: string = this.formatDate(new Date());
+  cumulativeEndDate: string = this.formatDate(new Date());
+
+  // === TRANSPOSED DATA ===
+  transposedCumulativeData: any[] = [];
+  dateHeaders: string[] = [];
+
+  // === COLUMN VISIBILITY (NEW) ===
+  visibleColumns: ('updated' | 'notUpdated' | 'verified' | 'notVerified')[] = [
+    'updated', 'notUpdated', 'verified', 'notVerified'
+  ];
 
   constructor(
     private dataService: DataService,
-    private verificationhq : VerificationHq,
-    private dataEntryService : DataEntryService
+    private verificationhq: VerificationHq,
+    private dataEntryService: DataEntryService
   ) {
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, '0');
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const yyyy = today.getFullYear();
-    this.todayDate = yyyy + '-' + mm + '-' + dd;
+    this.todayDate = `${yyyy}-${mm}-${dd}`;
 
     this.loggedInUser = localStorage.getItem("isAuthorised");
-    const obj  = JSON.parse(this.loggedInUser);
+    const obj = JSON.parse(this.loggedInUser);
     this.currentUserType = obj.data[0].userid;
-    
   }
 
   ngOnInit(): void {
-    // this.fetchDataFromBackend();
-    this.backend();
+    this.loadDailyData();
   }
 
+  // === UTILITIES ===
   private formatDate(date: Date): string {
-    console.log(date)
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
-  async updateRainfallValueData(stationid:any, rainfall:any, serialNo:any){
-    this.isLoading = true; // Show the spinner
-    console.log(stationid, rainfall, typeof +stationid, typeof +rainfall)
-    const data = 
-      {
-        "station_code": +stationid,
-        "date": this.selectedDate,
-        "value":+rainfall
-      }
-    try {
-      const res = await this.dataEntryService.updateRainfallValue(data).toPromise()
-      console.log('before backend')
-      await this.backend();
-      this.submit(this.currentSubmitType, this.currentSubmitMCorRMCName)
+  // === trackBy for *ngFor performance ===
+  trackByMc(index: number, row: any): string {
+    return row.mc;
+  }
 
-      // alert("Updated");
+  // === TAB: DAILY ===
+  loadDailyData() {
+    this.activeTab = 'daily';
+    this.selectedDate = this.formatDate(new Date());
+    this.backend();
+  }
+
+  // === TAB: CUMULATIVE ===
+  async loadCumulativeData() {
+    if (!this.cumulativeStartDate || !this.cumulativeEndDate) {
+      alert("Please select both start and end date");
+      return;
+    }
+    if (this.cumulativeStartDate > this.cumulativeEndDate) {
+      alert("Start date cannot be after end date");
+      return;
+    }
+
+    this.activeTab = 'cumulative';
+    this.isLoading = true;
+    try {
+      const response = await this.verificationhq
+        .fetchCentreStationSummary(this.cumulativeStartDate, this.cumulativeEndDate)
+        .toPromise();
+
+      this.cumulativeData = response.data || [];
+      this.transformCumulativeData();
+    } catch (err) {
+      console.error("Cumulative API Error:", err);
+      alert("Failed to load cumulative data");
+      this.cumulativeData = [];
+      this.transposedCumulativeData = [];
+      this.dateHeaders = [];
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  // === TRANSPOSE CUMULATIVE DATA (NO ROW FILTERING) ===
+  transformCumulativeData() {
+    const map = new Map<string, any>();
+
+    this.cumulativeData.forEach(item => {
+      const mc = item['MC or RMC'];
+      const date = item['DATE'];
+
+      if (!map.has(mc)) {
+        map.set(mc, { mc, total: item['TOTAL STATIONS'] });
+      }
+
+      const obj = map.get(mc);
+      obj[date] = {
+        updated: item['UPDATED STATIONS'],
+        notUpdated: item['NOT UPDATED STATIONS'],
+        verified: item['VERIFIED STATIONS'],
+        notVerified: item['NOT VERIFIED STATIONS']
+      };
+    });
+
+    this.transposedCumulativeData = Array.from(map.values());
+    this.dateHeaders = [...new Set(this.cumulativeData.map(d => d['DATE']))].sort();
+
+    // Reset to show all columns initially
+    this.visibleColumns = ['updated', 'notUpdated', 'verified', 'notVerified'];
+  }
+
+  // === COLUMN FILTER (NEW) ===
+  setCumulativeFilter(filter: 'all' | 'updated' | 'notUpdated' | 'verified' | 'notVerified') {
+    if (filter === 'all') {
+      this.visibleColumns = ['updated', 'notUpdated', 'verified', 'notVerified'];
+    } else {
+      this.visibleColumns = [filter];
+    }
+  }
+
+  // Helper to get column label
+  getColumnLabel(col: string): string {
+    const labels: { [key: string]: string } = {
+      updated: 'Updated',
+      notUpdated: 'Not Updated',
+      verified: 'Verified',
+      notVerified: 'Not Verified'
+    };
+    return labels[col];
+  }
+
+  // === DAILY DATA LOGIC ===
+  async backend(): Promise<void> {
+    this.filteredMCorRMCS = {};
+    this.filteredStations = [];
+    this.filteredMCorRMCSArray = [];
+
+    try {
+      this.isLoading = true;
+      this.verificationhq.fetchStationDataForDataEntry(this.selectedDate).subscribe(
+        (response) => {
+          this.fetcheddata = response.data || [];
+          this.buildMCSummary();
+          this.filteredMCorRMCSArray = Object.keys(this.filteredMCorRMCS).map(key => ({
+            name: key,
+            data: this.filteredMCorRMCS[key]
+          }));
+          this.isLoading = false;
+        },
+        (err) => {
+          console.error(err);
+          this.isLoading = false;
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      this.isLoading = false;
+    }
+  }
+
+  private buildMCSummary() {
+    for (let i = 0; i < this.fetcheddata.length; i++) {
+      const mc = this.fetcheddata[i]['centre_type'] + ' ' + this.fetcheddata[i]['centre_name'];
+      if (!this.filteredMCorRMCS[mc]) {
+        this.filteredMCorRMCS[mc] = {
+          Total_Stations: 0,
+          isUpdated: 0,
+          isNotUpdated: 0,
+          isVerified: 0,
+          isNotVerified: 0
+        };
+      }
+      this.filteredMCorRMCS[mc]['Total_Stations'] += 1;
+
+      const isUpdated = this.fetcheddata[i].data !== -999.9;
+      const isVerified = isUpdated && this.fetcheddata[i].is_verified === 1;
+
+      if (isUpdated) {
+        this.filteredMCorRMCS[mc]['isUpdated'] += 1;
+        if (isVerified) {
+          this.filteredMCorRMCS[mc]['isVerified'] += 1;
+        } else {
+          this.filteredMCorRMCS[mc]['isNotVerified'] += 1;
+        }
+      } else {
+        this.filteredMCorRMCS[mc]['isNotUpdated'] += 1;
+      }
+    }
+  }
+
+  // === TABLE DISPLAY LOGIC ===
+  submit(type: string, MCorRMCName: string) {
+    this.isVerifiactionButtonClicked = true;
+    this.currentSubmitType = type;
+    this.currentSubmitMCorRMCName = MCorRMCName;
+
+    this.showIsUpdatesTable = type === 'isUpdated';
+    this.showIsNotUpdatesTable = type === 'isNotUpdated';
+    this.showIsVerifiedTable = type === 'isVerified';
+    this.showIsNotVerifiedTable = type === 'isNotVerified';
+
+    this.dataToDisplay = [];
+
+    if (type === 'isUpdated') this.onIsUpdatedSubmit(MCorRMCName);
+    if (type === 'isNotUpdated') this.onIsNotUpdatedSubmit(MCorRMCName);
+    if (type === 'isVerified') this.onIsVerifiedSubmit(MCorRMCName);
+    if (type === 'isNotVerified') this.onIsNotVerifiedSubmit(MCorRMCName);
+
+    this.bottom_section = true;
+    window.scrollTo({ top: 1000, behavior: 'smooth' });
+  }
+
+  onIsUpdatedSubmit(MCorRMCName: string) {
+    let index = 1;
+    for (let i = 0; i < this.fetcheddata.length; i++) {
+      const mc = this.fetcheddata[i]['centre_type'] + ' ' + this.fetcheddata[i]['centre_name'];
+      if (mc === MCorRMCName && this.fetcheddata[i].data !== -999.9) {
+        this.dataToDisplay.push({
+          SNo: index++,
+          district: this.fetcheddata[i].district_name,
+          stationname: this.fetcheddata[i].station_name,
+          stationid: this.fetcheddata[i].station_code,
+          rainfall: this.fetcheddata[i].data,
+          status: 'Updated'
+        });
+      }
+    }
+  }
+
+  onIsNotUpdatedSubmit(MCorRMCName: string) {
+    let index = 1;
+    for (let i = 0; i < this.fetcheddata.length; i++) {
+      const mc = this.fetcheddata[i]['centre_type'] + ' ' + this.fetcheddata[i]['centre_name'];
+      if (mc === MCorRMCName && this.fetcheddata[i].data === -999.9) {
+        this.dataToDisplay.push({
+          SNo: index++,
+          statename: this.fetcheddata[i].state_name,
+          district: this.fetcheddata[i].district_name,
+          stationname: this.fetcheddata[i].station_name,
+          stationid: this.fetcheddata[i].station_code,
+          rainfall: this.fetcheddata[i].data,
+          status: 'Not Updated'
+        });
+      }
+    }
+  }
+
+  onIsVerifiedSubmit(MCorRMCName: string) {
+    let index = 1;
+    for (let i = 0; i < this.fetcheddata.length; i++) {
+      const mc = this.fetcheddata[i]['centre_type'] + ' ' + this.fetcheddata[i]['centre_name'];
+      if (
+        mc === MCorRMCName &&
+        this.fetcheddata[i].is_verified === 1 &&
+        this.fetcheddata[i].data !== -999.9
+      ) {
+        this.dataToDisplay.push({
+          SNo: index++,
+          district: this.fetcheddata[i].district_name,
+          stationname: this.fetcheddata[i].station_name,
+          stationid: this.fetcheddata[i].station_code,
+          rainfall: this.fetcheddata[i].data,
+          verifiedTime: this.formatDate(new Date(this.fetcheddata[i].verified_at)),
+          status: 'Verified'
+        });
+      }
+    }
+  }
+
+  onIsNotVerifiedSubmit(MCorRMCName: string) {
+    let index = 1;
+    for (let i = 0; i < this.fetcheddata.length; i++) {
+      const mc = this.fetcheddata[i]['centre_type'] + ' ' + this.fetcheddata[i]['centre_name'];
+      if (
+        mc === MCorRMCName &&
+        this.fetcheddata[i].is_verified === 0 &&
+        this.fetcheddata[i].data !== -999.9
+      ) {
+        this.dataToDisplay.push({
+          SNo: index++,
+          district: this.fetcheddata[i].district_name,
+          stationname: this.fetcheddata[i].station_name,
+          stationid: this.fetcheddata[i].station_code,
+          rainfall: this.fetcheddata[i].data,
+          status: 'Not Verified'
+        });
+      }
+    }
+  }
+
+  // === SORTING ===
+  sort(list: any[], key: string) {
+    this.SortOrder = !this.SortOrder;
+    return list.sort((a, b) => {
+      const A = a[key], B = b[key];
+      if (typeof A === "number" && typeof B === "number") {
+        return this.SortOrder ? B - A : A - B;
+      } else {
+        return this.SortOrder ? B.localeCompare(A) : A.localeCompare(B);
+      }
+    });
+  }
+
+  // === RAINFALL UPDATE ===
+  async updateRainfallValueData(stationid: any, rainfall: any, serialNo: any) {
+    this.isLoading = true;
+    const data = { station_code: +stationid, date: this.selectedDate, value: +rainfall };
+    try {
+      await this.dataEntryService.updateRainfallValue(data).toPromise();
+      await this.backend();
+      this.submit(this.currentSubmitType, this.currentSubmitMCorRMCName);
     } catch (err) {
       console.error(err);
     } finally {
-      this.isLoading = false; // Hide the spinner
+      this.isLoading = false;
     }
   }
 
+  showMessage(elementRef: any) {
+    const value = elementRef.value.trim();
+    const regex = /^\d+(\.\d)?$/;
+    if (!regex.test(value)) {
+      elementRef.style.background = 'red';
+    } else if (Number(value) > 400) {
+      elementRef.style.background = 'red';
+      alert("Rainfall is greater than 400mm");
+    } else {
+      elementRef.style.background = '';
+    }
+  }
+
+  // === VERIFICATION ===
   selectedStations: number[] = [];
 
   toggleSelection(station: any) {
+    const id = Number(station.stationid);
     if (station.selected) {
-      this.selectedStations.push(Number(station.stationid));
+      this.selectedStations.push(id);
     } else {
-      this.selectedStations = this.selectedStations.filter(id => id !== Number(station.stationid));
+      this.selectedStations = this.selectedStations.filter(sid => sid !== id);
     }
   }
-  
+
   async VerifySelected() {
     if (this.selectedStations.length === 0) {
       alert("Please select at least one station to verify.");
       return;
     }
-  
     if (confirm("Do you want to verify the selected stations?")) {
       this.isLoading = true;
-  
       const data = {
-        "date": this.selectedDate,
-        "station_ids": this.selectedStations,
-        "userid": +this.currentUserType
+        date: this.selectedDate,
+        station_ids: this.selectedStations,
+        userid: +this.currentUserType
       };
-  
       try {
-        await this.verificationhq.verifyAll(data).subscribe(async () => {
-          alert("Selected stations verified successfully");
-          await this.backend();
-          this.dataToDisplay.forEach(station => {
-            if (this.selectedStations.includes(Number(station.stationid))) {
-              station.status = 'Verified';
-            }
-          });
-          this.selectedStations = []; // Clear the selection after verification
+        await this.verificationhq.verifyAll(data).toPromise();
+        alert("Selected stations verified successfully");
+        await this.backend();
+        this.dataToDisplay.forEach(s => {
+          if (this.selectedStations.includes(Number(s.stationid))) s.status = 'Verified';
         });
+        this.selectedStations = [];
       } catch (err) {
         console.error(err);
       } finally {
@@ -139,30 +410,21 @@ export class VerificationPageHQComponent {
       }
     }
   }
-  
+
   async Verifyall() {
     if (this.dataToDisplay.length === 0) {
       alert("No stations available to verify.");
       return;
     }
-  
     if (confirm("Do you want to verify all stations?")) {
       this.isLoading = true;
-  
-      const allStationIds = this.dataToDisplay.map(station => Number(station.stationid));
-  
-      const data = {
-        "date": this.selectedDate,
-        "station_ids": allStationIds,
-        "userid": +this.currentUserType
-      };
-  
+      const allIds = this.dataToDisplay.map(s => Number(s.stationid));
+      const data = { date: this.selectedDate, station_ids: allIds, userid: +this.currentUserType };
       try {
-        await this.verificationhq.verifyAll(data).subscribe(async () => {
-          alert("All stations verified successfully");
-          await this.backend();
-          this.dataToDisplay.forEach(station => station.status = 'Verified');
-        });
+        await this.verificationhq.verifyAll(data).toPromise();
+        alert("All stations verified successfully");
+        await this.backend();
+        this.dataToDisplay.forEach(s => s.status = 'Verified');
       } catch (err) {
         console.error(err);
       } finally {
@@ -170,345 +432,105 @@ export class VerificationPageHQComponent {
       }
     }
   }
-  
+
+  // === EXCEL EXPORTS (UPDATED TO RESPECT VISIBLE COLUMNS) ===
+  exportToExcel(): void {
+    if (!this.filteredMCorRMCSArray || this.filteredMCorRMCSArray.length === 0) {
+      alert('No data to export!');
+      return;
+    }
+    const exportData = this.filteredMCorRMCSArray.map((item, index) => ({
+      'S. No': index + 1,
+      'Date': this.selectedDate,
+      'MC or RMC': item.name,
+      'Total Stations': item.data.Total_Stations,
+      'Updated Stations': item.data.isUpdated,
+      'Not Updated Stations': item.data.isNotUpdated,
+      'Verified Stations': item.data.isVerified,
+      'Not Verified Stations': item.data.isNotVerified
+    }));
+    this.saveExcel(exportData, 'Daily_Stations_Data');
+  }
+
+  exportTransposedToExcel(): void {
+    if (!this.transposedCumulativeData || this.transposedCumulativeData.length === 0) {
+      alert('No data to export!');
+      return;
+    }
+
+    const wsData: any[][] = [];
+
+    // Header Row 1
+    const header1 = ['MC / RMC', 'Total'];
+    this.dateHeaders.forEach(() => {
+      this.visibleColumns.forEach(() => header1.push(''));
+    });
+    wsData.push(header1);
+
+    // Header Row 2 (Dates)
+    const header2 = ['', ''];
+    this.dateHeaders.forEach(date => {
+      header2.push(this.formatDateForExcel(date), ...this.visibleColumns.map(() => ''));
+    });
+    wsData.push(header2);
+
+    // Header Row 3 (Sub-headers)
+    const subHeader = ['', ''];
+    this.dateHeaders.forEach(() => {
+      this.visibleColumns.forEach(col => subHeader.push(this.getColumnLabel(col)));
+    });
+    wsData.push(subHeader);
+
+    // Data Rows
+    this.transposedCumulativeData.forEach(row => {
+      const dataRow = [row.mc, row.total || ''];
+      this.dateHeaders.forEach(date => {
+        const d = row[date] || {};
+        this.visibleColumns.forEach(col => {
+          dataRow.push(d[col] || '');
+        });
+      });
+      wsData.push(dataRow);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Cumulative');
+    XLSX.writeFile(wb, `Cumulative_Transposed_${this.cumulativeStartDate}_to_${this.cumulativeEndDate}.xlsx`);
+  }
+
+  private formatDateForExcel(dateStr: string): string {
+    const [y, m, d] = dateStr.split('-');
+    return `${d}-${m}-${y}`;
+  }
+
+  exportCumulativeToExcel(): void {
+    if (!this.cumulativeData || this.cumulativeData.length === 0) {
+      alert('No data to export!');
+      return;
+    }
+    const exportData = this.cumulativeData.map((item, index) => ({
+      'S. No': index + 1,
+      'MC or RMC': item['MC or RMC'],
+      'Date': item['DATE'],
+      'Total Stations': item['TOTAL STATIONS'],
+      'Updated Stations': item['UPDATED STATIONS'],
+      'Not Updated Stations': item['NOT UPDATED STATIONS'],
+      'Verified Stations': item['VERIFIED STATIONS'],
+      'Not Verified Stations': item['NOT VERIFIED STATIONS']
+    }));
+    this.saveExcel(exportData, `Cumulative_${this.cumulativeStartDate}_to_${this.cumulativeEndDate}`);
+  }
+
+  private saveExcel(data: any[], filename: string) {
+    const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet(data);
+    const wb: XLSX.WorkBook = { Sheets: { 'Data': ws }, SheetNames: ['Data'] };
+    const excelBuffer: any = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: this.EXCEL_TYPE });
+    FileSaver.saveAs(blob, `${filename}.xlsx`);
+  }
 
   goBack() {
     window.history.back();
   }
-
-  async backend(): Promise<void>{
-    const todayDate = new Date()
-    // const date = this.formatDate(todayDate);
-    const date = this.selectedDate
-    console.log(date)
-    console.log(date)
-
-    this.filteredMCorRMCS = {};
-    this.filteredStations = [];
-    this.filteredMCorRMCSArray = []
-    try {
-
-      console.log('balu')
-      this.isLoading = true
-      this.verificationhq.fetchStationDataForDataEntry(date).subscribe(async (response)=>
-        {
-          console.log('fetchinf adata')
-          this.fetcheddata = response.data
-          console.log(response.data, response)
-
-          for (let i = 0; i < this.fetcheddata.length; i++) {
-            let currentMcOrRmc = this.fetcheddata[i]['centre_type']+' '+this.fetcheddata[i]['centre_name']
-            if (currentMcOrRmc in this.filteredMCorRMCS) {
-              this.filteredMCorRMCS[currentMcOrRmc]['Total_Stations'] = this.filteredMCorRMCS[currentMcOrRmc]['Total_Stations'] + 1;
-            } else {
-              this.filteredMCorRMCS[currentMcOrRmc] = {
-                'Total_Stations': 1,
-              };
-            }
-            
-          }
-          this.filterByDate()
-
-          this.filteredMCorRMCSArray = Object.keys(this.filteredMCorRMCS).map(key => ({
-            name: key,
-            data: this.filteredMCorRMCS[key]
-          }));
-    
-          console.log('flterdmcs', this.filteredMCorRMCS, this.filteredMCorRMCSArray)
-          console.log('123')
-          // await this.fetchDeviationStatus();
-          console.log('456')
-          this.isLoading = false
-
-        }
-      );
-
-      
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-
-
-  sort(list: any[],key: string) {
-    this.SortOrder=!this.SortOrder;
-
-    return list.sort((a, b) => {
-      const valueA = a[key];
-      const valueB = b[key];
-  
-      if (typeof valueA === "number" && typeof valueB === "number") {
-        return this.SortOrder === false ? valueA - valueB : valueB - valueA;
-      } else if (typeof valueA === "string" && typeof valueB === "string") {
-        return this.SortOrder === false ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-      } else {
-        throw new Error("Cannot sort by key: values are not of the same type or unsupported type.");
-      }
-    }); 
-   }
-
-
-  async filterByDate() {
-    const date = this.selectedDate
-    for (let i = 0; i < this.fetcheddata.length; i++) {
-      console.log('in filterby date')
-      
-      const currentMcOrRmc = this.fetcheddata[i]['centre_type']+' '+this.fetcheddata[i]['centre_name']
-      // console.log('currentMcOrRmc', currentMcOrRmc)
-      this.filteredMCorRMCS[currentMcOrRmc]['isVerified'] = 0;
-      this.filteredMCorRMCS[currentMcOrRmc]['isNotVerified'] = 0;
-      this.filteredMCorRMCS[currentMcOrRmc]['isUpdated'] = 0;
-      this.filteredMCorRMCS[currentMcOrRmc]['isNotUpdated'] = 0;
-    }
-
-    for (let i = 0; i < this.fetcheddata.length; i++) {
-
-      const currentMcOrRmc = this.fetcheddata[i]['centre_type']+' '+this.fetcheddata[i]['centre_name']
-      if (new Date(date) > new Date()) {
-        this.filteredMCorRMCS[currentMcOrRmc]['isVerified'] = 'OutDated';
-        this.filteredMCorRMCS[currentMcOrRmc]['isNotVerified'] = 'OutDated';
-      } else {
-        // const Verification = (this.existingstationdata[i][curr_date] == 'null' || this.existingstationdata[i][curr_date] == null) ? 0 : 1;
-        const Verification = this.fetcheddata[i].is_verified
-        if(this.fetcheddata[i].data!=-999.9){
-          if (Verification == 1) {
-            this.filteredMCorRMCS[currentMcOrRmc]['isVerified'] = this.filteredMCorRMCS[currentMcOrRmc]['isVerified'] + 1;
-          } else {
-            this.filteredMCorRMCS[currentMcOrRmc]['isNotVerified'] = this.filteredMCorRMCS[currentMcOrRmc]['isNotVerified'] + 1;
-          }
-        }
-      }
-      if (new Date(date) > new Date()) {
-        this.filteredMCorRMCS[currentMcOrRmc]['isUpdated'] = 'OutDated';
-        this.filteredMCorRMCS[currentMcOrRmc]['isNotUpdated'] = 'OutDated';
-      } else {
-        const Updation = (this.fetcheddata[i].data == -999.9) ? 0 : 1;
-        if (Updation == 1) {
-          this.filteredMCorRMCS[currentMcOrRmc]['isUpdated'] = this.filteredMCorRMCS[currentMcOrRmc]['isUpdated'] + 1;
-        } else {
-          this.filteredMCorRMCS[currentMcOrRmc]['isNotUpdated'] = this.filteredMCorRMCS[currentMcOrRmc]['isNotUpdated'] + 1;
-        }
-      }
-    }
-
-  }
-
-
-  sendEmail(){
-
-  }
-
-  showMessage(elementRef: any) {
-    const value = elementRef.value.trim();
-    const regex = /^\d+(\.\d)?$|^\d+(\.\d)?$/;
-    if (regex.test(value)) {
-      elementRef.style.background = '';
-    } else {
-      elementRef.style.background = 'red';
-      // alert("Please enter a valid number with only one decimal place");
-    }
-    if(Number(elementRef.value) > 400){
-          elementRef.style.background = 'red'
-          alert("Rainfall is greater than 400mm")
-        }else{
-          elementRef.style.background = ''
-        }
-  }
-
-  submit(type:string, MCorRMCName:string){
-
-    this.isVerifiactionButtonClicked = true;
-
-    this.currentSubmitType = type;
-    this.currentSubmitMCorRMCName = MCorRMCName
-
-    this.showIsUpdatesTable = false;
-    this.showIsNotUpdatesTable = false;
-    this.showIsVerifiedTable = false;
-    this.showIsNotVerifiedTable = false
-
-    this.dataToDisplay = [];
-
-    if(type=='isUpdated'){
-      this.onIsUpdatedSubmit(MCorRMCName);
-    }
-    if(type=='isVerified'){
-      this.onIsVerifiedSubmit(MCorRMCName);
-    }
-    if(type=='isNotVerified'){
-      this.onIsNotVerifiedSubmit(MCorRMCName);
-    }
-    if(type=='isNotUpdated'){
-      this.onIsNotUpdatedSubmit(MCorRMCName);
-    }
-
-    this.showIsUpdatesTable = type === 'isUpdated';
-    this.showIsNotUpdatesTable = type === 'isNotUpdated';
-    this.showIsVerifiedTable = type === 'isVerified';
-    this.showIsNotVerifiedTable = type === 'isNotVerified'
-
-    this.bottom_section = true;
-    window.scrollTo({
-      top: 1000,
-      behavior: 'smooth'
-    });
-
-  }
-
-  onIsUpdatedSubmit(MCorRMCName:String){
-    let index = 1
-    for(let i=0; i<this.fetcheddata.length; i++){
-      const currentMcOrRmc = this.fetcheddata[i]['centre_type']+' '+this.fetcheddata[i]['centre_name']
-      if(currentMcOrRmc==MCorRMCName){
-        console.log('whtehr equal or not', currentMcOrRmc, MCorRMCName)
-
-        if(this.fetcheddata[i].data != -999.9){
-          const temprecord = {
-            'SNo': index++,
-            'district' : this.fetcheddata[i].district_name, 
-            'stationname' : this.fetcheddata[i].station_name, 
-            'stationid' : this.fetcheddata[i].station_code, 
-            'rainfall' : this.fetcheddata[i].data,
-            'status' : 'Updated' 
-        }
-        this.dataToDisplay.push(temprecord);
-        }
-      }
-    }
-
-
-  }
-
-  onIsNotUpdatedSubmit(MCorRMCName: string){
-    let index=1
-    for(let i=0; i<this.fetcheddata.length; i++){
-      const currentMcOrRmc = this.fetcheddata[i]['centre_type']+' '+this.fetcheddata[i]['centre_name']
-      if(currentMcOrRmc==MCorRMCName){
-        if(this.fetcheddata[i].data===-999.9){
-          const temprecord = {
-            'SNo': index++,
-            'statename' : this.fetcheddata[i].state_name,
-            'district' : this.fetcheddata[i].district_name, 
-            'stationname' : this.fetcheddata[i].station_name, 
-            'stationid' : this.fetcheddata[i].station_code, 
-            'rainfall' : this.fetcheddata[i].data,
-            'status' : 'Not Updated' 
-        }
-        this.dataToDisplay.push(temprecord);
-        }
-      }
-    }
-
-
-  }
-
-  onIsVerifiedSubmit(MCorRMCName: string){
-    let index=1
-    for(let i=0; i<this.fetcheddata.length; i++){
-      const currentMcOrRmc = this.fetcheddata[i]['centre_type']+' '+this.fetcheddata[i]['centre_name']
-      if(currentMcOrRmc==MCorRMCName){
-        if(this.fetcheddata[i].is_verified==1  && this.fetcheddata[i].data!=-999.9){
-          console.log('balu')
-
-          const temprecord = {
-            'SNo': index++,
-            'district' : this.fetcheddata[i].district_name, 
-            'stationname' : this.fetcheddata[i].station_name, 
-            'stationid' : this.fetcheddata[i].station_code, 
-            'rainfall' : this.fetcheddata[i].data,
-            'verifiedTime' : this.formatDate(new Date(this.fetcheddata[i].verified_at)),
-            'status' : 'Verified' 
-        }
-        this.dataToDisplay.push(temprecord);
-        }
-      }
-    }
-  }    
-  
-  
-  onIsNotVerifiedSubmit(MCorRMCName: string){
-    let index=1
-    for(let i=0; i<this.fetcheddata.length; i++){
-      console.log('this.fetcheddata[i].station_code', typeof this.fetcheddata[i].station_code, this.fetcheddata[i].station_code)
-      console.log('devationStatus', this.devationStatus)
-      const currentMcOrRmc = this.fetcheddata[i]['centre_type']+' '+this.fetcheddata[i]['centre_name']
-      if(currentMcOrRmc==MCorRMCName){
-        if(this.fetcheddata[i].is_verified==0 && this.fetcheddata[i].data!=-999.9){
-          const temprecord = {
-            'SNo': index++,
-            'district' : this.fetcheddata[i].district_name, 
-            'stationname' : this.fetcheddata[i].station_name, 
-            'stationid' : this.fetcheddata[i].station_code, 
-            'rainfall' : this.fetcheddata[i].data,
-            'verifiedTime' : this.fetcheddata[i].verified_at,
-            // 'devation_status' : this.devationStatus[this.fetcheddata[i].station_code].deviation_status,
-            'status' : 'Not Verified'
-        }
-        this.dataToDisplay.push(temprecord);
-        }
-      }
-    }
-
-
-  }
-
-  fetchDeviationStatus(): Promise<void> {
-    return new Promise((resolve) => {
-      this.isVerificationLoading = true;
-      console.log("fetchDeviationStatus called")
-        const date = this.selectedDate;
-        this.verificationhq.fetchStationDataIncludingVerification(date).subscribe((response) => {
-            console.log('fetchStationDataIncludingVerification', response.data);
-
-            this.devationStatus = response.data.reduce((acc: any, item: any) => {
-                acc[item.source_station] = { deviation_status: item.deviation_status };
-                return acc;
-            }, {} as Record<string, any>);
-
-            console.log('Deviation Map:', this.devationStatus);
-            resolve();
-
-            this.isVerificationLoading = false;
-            this.isVerifiactionButtonClicked = false;
-        });
-    });
 }
-
-exportToExcel(): void {
-  if (!this.filteredMCorRMCSArray || this.filteredMCorRMCSArray.length === 0) {
-    alert('No data to export!');
-    return;
-  }
-
-  const exportData = this.filteredMCorRMCSArray.map((item, index) => ({
-    'S. No': index + 1,
-    'Date' : this.selectedDate,
-    'MC or RMC': item.name || '',
-    'Total Stations': item.data.Total_Stations ?? '',
-    'Updated Stations': item.data.isUpdated ?? '',
-    'Not Updated Stations': item.data.isNotUpdated ?? '',
-    'Verified Stations': item.data.isVerified ?? '',
-    'Not Verified Stations': item.data.isNotVerified ?? ''
-  }));
-
-  console.log('Exporting Data:', exportData);
-
-  const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet(exportData);
-  const workbook: XLSX.WorkBook = {
-    Sheets: { 'Stations Data': worksheet },
-    SheetNames: ['Stations Data']
-  };
-
-  const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-
-  const data: Blob = new Blob([excelBuffer], {
-    type: 'application/octet-stream' // simpler type
-  });
-
-  FileSaver.saveAs(data, 'StationsData.xlsx');
-}
-
-}
-
-

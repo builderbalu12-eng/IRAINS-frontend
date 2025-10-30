@@ -158,13 +158,20 @@
           <h5 class="text-center p-2 font-weight-text">
             Significant Rainfall Data
           </h5>
-          <div class="col-md-1 col-sm-6 mb-3">
+          <div class="col-md-2 col-sm-6 mb-3">
             <button
-              class="btn btn-primary"
+              class="btn btn-primary me-2"
               [disabled]="filteredItems.length === 0"
               (click)="exportAsXLSX()"
             >
               Download
+            </button>
+            <button
+              class="btn btn-success"
+              [disabled]="filteredItems.length === 0"
+              (click)="downloadDoc()"
+            >
+              Download Doc
             </button>
           </div>
         </div>

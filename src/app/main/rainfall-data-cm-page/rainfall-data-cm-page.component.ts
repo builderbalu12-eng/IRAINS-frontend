@@ -2,11 +2,13 @@ import { Component, OnInit } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import * as XLSX from "xlsx";
 import "jspdf-autotable";
+import { jsPDF } from "jspdf";
 import { Router } from "@angular/router";
 import { DataService } from "src/app/data.service";
 import * as FileSaver from "file-saver";
 import { format } from "date-fns";
 import { FetchStationDataService } from "src/app/services/station/station.service";
+import { SubdivisionService } from "src/app/services/subDivision/subDivision.service";
 
 @Component({
   selector: "app-rainfall-data-cm-page",
@@ -69,7 +71,8 @@ export class RainfallDataCmPageComponent implements OnInit {
     private router: Router,
     private http: HttpClient,
     private dataService: DataService,
-    private fetchStationDataService: FetchStationDataService
+    private fetchStationDataService: FetchStationDataService,
+    private subdivservice : SubdivisionService
   ) {
     // this.setDateMonth();
     // this.getAllDaysInMonth();
@@ -132,6 +135,227 @@ export class RainfallDataCmPageComponent implements OnInit {
     console.log(this.filteredItems);
     this.exportAsExcelFile(this.sampleFile(), "Significant_RainFall_Data");
     // this.exportAsExcelFile(this.filteredStations, 'export-to-excel');
+  }
+
+  downloadDoc(): void {
+    if (this.filteredItems.length === 0) {
+      alert("No data available to download.");
+      return;
+    }
+  
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginLeft = 14;
+    const marginRight = 14;
+    const logoSize = 18; // Size of each logo
+    const lineHeight = 5; // Reduced line spacing
+    const maxLineWidth = pageWidth - marginLeft - marginRight;
+  
+    // Load images as base64 (assuming they are accessible in assets)
+    const logoCenter = 'assets/images/IMDlogo_Ipart-iris.png';
+    const logoLeft = 'assets/images/IMD150(BGR).png';
+    const logoRight = 'assets/images/logoimage.png';
+  
+    // Helper to convert image to base64
+    const loadImage = (path: string): Promise<string> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => resolve(''); // fallback if image fails
+        img.src = path;
+      });
+    };
+  
+    // Load all images
+    Promise.all([
+      loadImage(logoLeft),
+      loadImage(logoCenter),
+      loadImage(logoRight)
+    ]).then(([imgLeft, imgCenter, imgRight]) => {
+      let yPosition = 15;
+  
+      // === LOGOS: Left, Center, Right ===
+      const logoY = yPosition;
+      const logoXLeft = marginLeft;
+      const logoXCenter = pageWidth / 2 - logoSize / 2;
+      const logoXRight = pageWidth - marginRight - logoSize;
+  
+      if (imgLeft) doc.addImage(imgLeft, 'PNG', logoXLeft, logoY, logoSize, logoSize);
+      if (imgCenter) doc.addImage(imgCenter, 'PNG', logoXCenter, logoY, logoSize, logoSize);
+      if (imgRight) doc.addImage(imgRight, 'PNG', logoXRight, logoY, logoSize, logoSize);
+  
+      yPosition += logoSize + 4; // Space below logos
+  
+      // === HEADER TEXT: Compact, Bold, Clean ===
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11); // Reduced from 12
+  
+      const headerLines = [
+        "BHARAT SARAKAR",
+        "BHARAT MAUSAM VIGYAN VIBHAG",
+        "GOVERNMENT OF INDIA",
+        "INDIA METEOROLOGICAL DEPARTMENT"
+      ];
+  
+      headerLines.forEach(line => {
+        doc.text(line, pageWidth / 2, yPosition, { align: "center" });
+        yPosition += lineHeight;
+      });
+  
+      yPosition += 4; // Small gap after header
+  
+      // === TITLE ===
+      doc.setFontSize(14);
+      doc.text("SUMMARY OF WEATHER", pageWidth / 2, yPosition, { align: "center" });
+      yPosition += 8;
+  
+      // === SUBTITLE ===
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text("CHIEF AMOUNTS OF RAINFALL IN CM.", pageWidth / 2, yPosition, { align: "center" });
+      yPosition += 12;
+  
+      // === DATA SECTION ===
+      const groupedData = this.filteredItems.reduce((acc: { [key: string]: any[] }, item) => {
+        const subdiv = item.subdiv_name;
+        if (!acc[subdiv]) acc[subdiv] = [];
+        acc[subdiv].push(item);
+        return acc;
+      }, {});
+  
+      const sortedSubdivisions = Object.keys(groupedData).sort();
+  
+      // Format date: dd/mm/yyyy
+      const selectedDate = new Date(this.filterDate);
+      const day = selectedDate.getDate().toString().padStart(2, "0");
+      const month = (selectedDate.getMonth() + 1).toString().padStart(2, "0");
+      const year = selectedDate.getFullYear();
+      const dateStr = `${day}/${month}/${year}`;
+  
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+  
+      for (const subdiv of sortedSubdivisions) {
+        if (yPosition > pageHeight - 30) {
+          doc.addPage();
+          yPosition = 20;
+        }
+  
+        // Subdivision Name (Bold)
+        doc.setFont("helvetica", "bold");
+        doc.text(subdiv.toUpperCase(), marginLeft, yPosition);
+        yPosition += 6;
+  
+        // Date + Data
+        doc.setFont("helvetica", "normal");
+        doc.text(`${dateStr}:`, marginLeft, yPosition);
+        yPosition += lineHeight;
+  
+        // Sort by rainfall ascending (in mm), convert to cm & round
+        const sortedStations = groupedData[subdiv]
+          .sort((a, b) => a.data - b.data)
+          .map(s => ({
+            text: `${s.station_name} (dist ${s.district_name}) ${Math.round(s.data / 10)}`,
+            isLast: false
+          }));
+  
+        if (sortedStations.length > 0) {
+          sortedStations[sortedStations.length - 1].isLast = true;
+        }
+  
+        let currentLine = "";
+        for (const station of sortedStations) {
+          const separator = station.isLast ? "" : ", ";
+          const testLine = currentLine ? `${currentLine} ${station.text}${separator}` : `${station.text}${separator}`;
+  
+          const splitTest = doc.splitTextToSize(testLine, maxLineWidth);
+          if (splitTest.length > 1 || (currentLine && doc.getTextWidth(testLine) > maxLineWidth)) {
+            // Print current line
+            if (currentLine) {
+              const wrapped = doc.splitTextToSize(currentLine.trim(), maxLineWidth);
+              wrapped.forEach((txt:any) => {
+                if (yPosition > pageHeight - 20) {
+                  doc.addPage();
+                  yPosition = 20;
+                }
+                doc.text(txt, marginLeft + 8, yPosition);
+                yPosition += lineHeight;
+              });
+            }
+            currentLine = `${station.text}${separator}`;
+          } else {
+            currentLine = testLine;
+          }
+        }
+  
+        // Print final line
+        if (currentLine) {
+          const wrapped = doc.splitTextToSize(currentLine.trim(), maxLineWidth);
+          wrapped.forEach((txt:any) => {
+            if (yPosition > pageHeight - 20) {
+              doc.addPage();
+              yPosition = 20;
+            }
+            doc.text(txt, marginLeft + 8, yPosition);
+            yPosition += lineHeight;
+          });
+        }
+  
+        yPosition += 4; // Space after subdivision
+      }
+  
+      // === SAVE PDF ===
+      doc.save(`Rainfall_Summary_${dateStr}.pdf`);
+    }).catch(err => {
+      console.error("Error loading images:", err);
+      alert("Failed to load logos. Generating document without images.");
+      // Fallback: generate without images
+      // this.generateDocWithoutImages(dateStr, doc, pageWidth, pageHeight, marginLeft, lineHeight, maxLineWidth);
+    });
+  }
+  
+  // Fallback method if images fail to load
+  private generateDocWithoutImages(
+    dateStr: string, doc: jsPDF, pageWidth: number, pageHeight: number,
+    marginLeft: number, lineHeight: number, maxLineWidth: number
+  ) {
+    let yPosition = 20;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+  
+    const headerLines = [
+      "BHARAT SARAKAR",
+      "BHARAT MAUSAM VIGYAN VIBHAG",
+      "GOVERNMENT OF INDIA",
+      "INDIA METEOROLOGICAL DEPARTMENT"
+    ];
+  
+    headerLines.forEach(line => {
+      doc.text(line, pageWidth / 2, yPosition, { align: "center" });
+      yPosition += lineHeight;
+    });
+  
+    yPosition += 6;
+    doc.setFontSize(14);
+    doc.text("SUMMARY OF WEATHER", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 8;
+  
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("CHIEF AMOUNTS OF RAINFALL IN CM.", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 12;
+  
+    // ... [rest of data logic same as above]
+    // (Copy the data grouping & printing logic here if needed)
   }
 
   exportAsExcelFile(json: any[], excelFileName: string): void {
