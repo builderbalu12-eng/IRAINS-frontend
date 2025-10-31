@@ -28,4 +28,9 @@ export class StateService {
     const url = `${this.baseUrl}/api/v1/fetchStateRangeStatistics`;
     return this.http.post<any>(url, data);
   }
+
+  fetchMetWiseStates(): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchMetWiseStates`;
+    return this.http.get<any>(url);
+  }
 }

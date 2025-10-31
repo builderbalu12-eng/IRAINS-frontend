@@ -148,16 +148,14 @@ export class RainfallDataCmPageComponent implements OnInit {
     const pageHeight = doc.internal.pageSize.getHeight();
     const marginLeft = 14;
     const marginRight = 14;
-    const logoSize = 18; // Size of each logo
-    const lineHeight = 5; // Reduced line spacing
+    const logoSize = 18;
+    const lineHeight = 5;
     const maxLineWidth = pageWidth - marginLeft - marginRight;
   
-    // Load images as base64 (assuming they are accessible in assets)
     const logoCenter = 'assets/images/IMDlogo_Ipart-iris.png';
     const logoLeft = 'assets/images/IMD150(BGR).png';
     const logoRight = 'assets/images/logoimage.png';
   
-    // Helper to convert image to base64
     const loadImage = (path: string): Promise<string> => {
       return new Promise((resolve) => {
         const img = new Image();
@@ -170,159 +168,189 @@ export class RainfallDataCmPageComponent implements OnInit {
           ctx?.drawImage(img, 0, 0);
           resolve(canvas.toDataURL('image/png'));
         };
-        img.onerror = () => resolve(''); // fallback if image fails
+        img.onerror = () => resolve('');
         img.src = path;
       });
     };
   
-    // Load all images
-    Promise.all([
-      loadImage(logoLeft),
-      loadImage(logoCenter),
-      loadImage(logoRight)
-    ]).then(([imgLeft, imgCenter, imgRight]) => {
-      let yPosition = 15;
+    /* -------------------------------------------------------------
+     *  Decide which data set we will print
+     * ------------------------------------------------------------- */
+    const buildPdf = (dataForPdf: any[]) => {
+      Promise.all([
+        loadImage(logoLeft),
+        loadImage(logoCenter),
+        loadImage(logoRight)
+      ]).then(([imgLeft, imgCenter, imgRight]) => {
+        let yPosition = 15;
   
-      // === LOGOS: Left, Center, Right ===
-      const logoY = yPosition;
-      const logoXLeft = marginLeft;
-      const logoXCenter = pageWidth / 2 - logoSize / 2;
-      const logoXRight = pageWidth - marginRight - logoSize;
+        // === LOGOS ===
+        const logoY = yPosition;
+        const logoXLeft = marginLeft;
+        const logoXCenter = pageWidth / 2 - logoSize / 2;
+        const logoXRight = pageWidth - marginRight - logoSize;
   
-      if (imgLeft) doc.addImage(imgLeft, 'PNG', logoXLeft, logoY, logoSize, logoSize);
-      if (imgCenter) doc.addImage(imgCenter, 'PNG', logoXCenter, logoY, logoSize, logoSize);
-      if (imgRight) doc.addImage(imgRight, 'PNG', logoXRight, logoY, logoSize, logoSize);
+        if (imgLeft) doc.addImage(imgLeft, 'PNG', logoXLeft, logoY, logoSize, logoSize);
+        if (imgCenter) doc.addImage(imgCenter, 'PNG', logoXCenter, logoY, logoSize, logoSize);
+        if (imgRight) doc.addImage(imgRight, 'PNG', logoXRight, logoY, logoSize, logoSize);
   
-      yPosition += logoSize + 4; // Space below logos
+        yPosition += logoSize + 4;
   
-      // === HEADER TEXT: Compact, Bold, Clean ===
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11); // Reduced from 12
-  
-      const headerLines = [
-        "BHARAT SARAKAR",
-        "BHARAT MAUSAM VIGYAN VIBHAG",
-        "GOVERNMENT OF INDIA",
-        "INDIA METEOROLOGICAL DEPARTMENT"
-      ];
-  
-      headerLines.forEach(line => {
-        doc.text(line, pageWidth / 2, yPosition, { align: "center" });
-        yPosition += lineHeight;
-      });
-  
-      yPosition += 4; // Small gap after header
-  
-      // === TITLE ===
-      doc.setFontSize(14);
-      doc.text("SUMMARY OF WEATHER", pageWidth / 2, yPosition, { align: "center" });
-      yPosition += 8;
-  
-      // === SUBTITLE ===
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.text("CHIEF AMOUNTS OF RAINFALL IN CM.", pageWidth / 2, yPosition, { align: "center" });
-      yPosition += 12;
-  
-      // === DATA SECTION ===
-      const groupedData = this.filteredItems.reduce((acc: { [key: string]: any[] }, item) => {
-        const subdiv = item.subdiv_name;
-        if (!acc[subdiv]) acc[subdiv] = [];
-        acc[subdiv].push(item);
-        return acc;
-      }, {});
-  
-      const sortedSubdivisions = Object.keys(groupedData).sort();
-  
-      // Format date: dd/mm/yyyy
-      const selectedDate = new Date(this.filterDate);
-      const day = selectedDate.getDate().toString().padStart(2, "0");
-      const month = (selectedDate.getMonth() + 1).toString().padStart(2, "0");
-      const year = selectedDate.getFullYear();
-      const dateStr = `${day}/${month}/${year}`;
-  
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-  
-      for (const subdiv of sortedSubdivisions) {
-        if (yPosition > pageHeight - 30) {
-          doc.addPage();
-          yPosition = 20;
-        }
-  
-        // Subdivision Name (Bold)
+        // === HEADER TEXT ===
         doc.setFont("helvetica", "bold");
-        doc.text(subdiv.toUpperCase(), marginLeft, yPosition);
-        yPosition += 6;
+        doc.setFontSize(11);
+        const headerLines = [
+          "BHARAT SARAKAR",
+          "BHARAT MAUSAM VIGYAN VIBHAG",
+          "GOVERNMENT OF INDIA",
+          "INDIA METEOROLOGICAL DEPARTMENT"
+        ];
+        headerLines.forEach(line => {
+          doc.text(line, pageWidth / 2, yPosition, { align: "center" });
+          yPosition += lineHeight;
+        });
+        yPosition += 4;
   
-        // Date + Data
+        // === TITLE ===
+        doc.setFontSize(14);
+        doc.text("SUMMARY OF WEATHER", pageWidth / 2, yPosition, { align: "center" });
+        yPosition += 8;
+  
+        // === SUBTITLE ===
+        doc.setFontSize(12);
         doc.setFont("helvetica", "normal");
-        doc.text(`${dateStr}:`, marginLeft, yPosition);
-        yPosition += lineHeight;
+        doc.text("CHIEF AMOUNTS OF RAINFALL IN CM.", pageWidth / 2, yPosition, { align: "center" });
+        yPosition += 12;
   
-        // Sort by rainfall ascending (in mm), convert to cm & round
-        const sortedStations = groupedData[subdiv]
-          .sort((a, b) => a.data - b.data)
-          .map(s => ({
-            text: `${s.station_name} (dist ${s.district_name}) ${Math.round(s.data / 10)}`,
-            isLast: false
-          }));
+        // === GROUP DATA BY SUBDIVISION ===
+        const groupedData = dataForPdf.reduce((acc: { [key: string]: any[] }, item) => {
+          const subdiv = item.subdiv_name;
+          if (!acc[subdiv]) acc[subdiv] = [];
+          acc[subdiv].push(item);
+          return acc;
+        }, {});
   
-        if (sortedStations.length > 0) {
-          sortedStations[sortedStations.length - 1].isLast = true;
-        }
+        const sortedSubdivisions = Object.keys(groupedData).sort();
   
-        let currentLine = "";
-        for (const station of sortedStations) {
-          const separator = station.isLast ? "" : ", ";
-          const testLine = currentLine ? `${currentLine} ${station.text}${separator}` : `${station.text}${separator}`;
+        const selectedDate = new Date(this.filterDate);
+        const day = selectedDate.getDate().toString().padStart(2, "0");
+        const month = (selectedDate.getMonth() + 1).toString().padStart(2, "0");
+        const year = selectedDate.getFullYear();
+        const dateStr = `${day}/${month}/${year}`;
   
-          const splitTest = doc.splitTextToSize(testLine, maxLineWidth);
-          if (splitTest.length > 1 || (currentLine && doc.getTextWidth(testLine) > maxLineWidth)) {
-            // Print current line
-            if (currentLine) {
-              const wrapped = doc.splitTextToSize(currentLine.trim(), maxLineWidth);
-              wrapped.forEach((txt:any) => {
-                if (yPosition > pageHeight - 20) {
-                  doc.addPage();
-                  yPosition = 20;
-                }
-                doc.text(txt, marginLeft + 8, yPosition);
-                yPosition += lineHeight;
-              });
-            }
-            currentLine = `${station.text}${separator}`;
-          } else {
-            currentLine = testLine;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+  
+        for (const subdiv of sortedSubdivisions) {
+          if (yPosition > pageHeight - 30) {
+            doc.addPage();
+            yPosition = 20;
           }
-        }
   
-        // Print final line
-        if (currentLine) {
-          const wrapped = doc.splitTextToSize(currentLine.trim(), maxLineWidth);
-          wrapped.forEach((txt:any) => {
-            if (yPosition > pageHeight - 20) {
-              doc.addPage();
-              yPosition = 20;
+          // Subdivision name
+          doc.setFont("helvetica", "bold");
+          doc.text(subdiv.toUpperCase(), marginLeft, yPosition);
+          yPosition += 6;
+  
+          // Date line
+          doc.setFont("helvetica", "normal");
+          doc.text(`${dateStr}:`, marginLeft, yPosition);
+          yPosition += lineHeight;
+  
+          // Stations (sorted by rainfall, shown in cm)
+          const sortedStations = groupedData[subdiv]
+            .sort((a, b) => a.data - b.data)
+            .map(s => ({
+              text: `${s.station_name} (dist ${s.district_name}) ${Math.round(s.data / 10)}`,
+              isLast: false
+            }));
+  
+          if (sortedStations.length > 0) {
+            sortedStations[sortedStations.length - 1].isLast = true;
+          }
+  
+          let currentLine = "";
+          for (const station of sortedStations) {
+            const separator = station.isLast ? "" : ", ";
+            const testLine = currentLine
+              ? `${currentLine} ${station.text}${separator}`
+              : `${station.text}${separator}`;
+  
+            const splitTest = doc.splitTextToSize(testLine, maxLineWidth);
+            if (splitTest.length > 1 || (currentLine && doc.getTextWidth(testLine) > maxLineWidth)) {
+              if (currentLine) {
+                const wrapped = doc.splitTextToSize(currentLine.trim(), maxLineWidth);
+                wrapped.forEach((txt: any) => {
+                  if (yPosition > pageHeight - 20) { doc.addPage(); yPosition = 20; }
+                  doc.text(txt, marginLeft + 8, yPosition);
+                  yPosition += lineHeight;
+                });
+              }
+              currentLine = `${station.text}${separator}`;
+            } else {
+              currentLine = testLine;
             }
-            doc.text(txt, marginLeft + 8, yPosition);
-            yPosition += lineHeight;
-          });
+          }
+  
+          if (currentLine) {
+            const wrapped = doc.splitTextToSize(currentLine.trim(), maxLineWidth);
+            wrapped.forEach((txt: any) => {
+              if (yPosition > pageHeight - 20) { doc.addPage(); yPosition = 20; }
+              doc.text(txt, marginLeft + 8, yPosition);
+              yPosition += lineHeight;
+            });
+          }
+  
+          yPosition += 4; // space after subdivision
         }
   
-        yPosition += 4; // Space after subdivision
-      }
+        // === SAVE ===
+        doc.save(`Rainfall_Summary_${dateStr}.pdf`);
+      }).catch(err => {
+        console.error("Error loading images:", err);
+        alert("Failed to load logos. Generating document without images.");
+      });
+    };
   
-      // === SAVE PDF ===
-      doc.save(`Rainfall_Summary_${dateStr}.pdf`);
-    }).catch(err => {
-      console.error("Error loading images:", err);
-      alert("Failed to load logos. Generating document without images.");
-      // Fallback: generate without images
-      // this.generateDocWithoutImages(dateStr, doc, pageWidth, pageHeight, marginLeft, lineHeight, maxLineWidth);
+    /* -------------------------------------------------------------
+     *  Centre-type logic
+     * ------------------------------------------------------------- */
+    const centreIsMC = this.centreType?.toUpperCase() === 'MC';
+  
+    if (!centreIsMC) {
+      // NOT an MC → show **everything** that passed the UI filters
+      buildPdf(this.filteredItems);
+      return;
+    }
+  
+    // ----> It IS an MC → filter by met_centre
+    const centreFullName = `${this.centreType} ${this.centreName}`.trim().toUpperCase();
+  
+    this.subdivservice.fetchmetWiseSubDivisions().subscribe({
+      next: (meta: any) => {
+        const allowedSubdivCodes = new Set(
+          meta.data
+            .filter((m: any) => m.met_centre?.trim().toUpperCase() === centreFullName)
+            .map((m: any) => m.subdiv_code)
+        );
+  
+        const dataForPdf = this.filteredItems.filter(item =>
+          allowedSubdivCodes.has(item.subdiv_code)
+        );
+  
+        if (dataForPdf.length === 0) {
+          alert("No stations found for your MC.");
+          return;
+        }
+  
+        buildPdf(dataForPdf);
+      },
+      error: (err) => {
+        console.error("Failed to fetch subdivision metadata:", err);
+        alert("Could not determine allowed subdivisions. PDF not generated.");
+      }
     });
   }
-  
   // Fallback method if images fail to load
   private generateDocWithoutImages(
     dateStr: string, doc: jsPDF, pageWidth: number, pageHeight: number,
