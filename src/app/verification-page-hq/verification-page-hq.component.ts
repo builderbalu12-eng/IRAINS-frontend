@@ -457,30 +457,29 @@ export class VerificationPageHQComponent {
       alert('No data to export!');
       return;
     }
-
+  
     const wsData: any[][] = [];
-
-    // Header Row 1
+  
+    // Header Row 1 - Date headers (merged across visible columns)
     const header1 = ['MC / RMC', 'Total'];
-    this.dateHeaders.forEach(() => {
-      this.visibleColumns.forEach(() => header1.push(''));
+    this.dateHeaders.forEach(date => {
+      header1.push(this.formatDateForExcel(date));
+      // Add (visibleColumns.length - 1) empty cells for merging
+      for (let i = 1; i < this.visibleColumns.length; i++) {
+        header1.push('');
+      }
     });
     wsData.push(header1);
-
-    // Header Row 2 (Dates)
+  
+    // Header Row 2 - Column type labels
     const header2 = ['', ''];
-    this.dateHeaders.forEach(date => {
-      header2.push(this.formatDateForExcel(date), ...this.visibleColumns.map(() => ''));
+    this.dateHeaders.forEach(() => {
+      this.visibleColumns.forEach(col => {
+        header2.push(this.getColumnLabel(col));
+      });
     });
     wsData.push(header2);
-
-    // Header Row 3 (Sub-headers)
-    const subHeader = ['', ''];
-    this.dateHeaders.forEach(() => {
-      this.visibleColumns.forEach(col => subHeader.push(this.getColumnLabel(col)));
-    });
-    wsData.push(subHeader);
-
+  
     // Data Rows
     this.transposedCumulativeData.forEach(row => {
       const dataRow = [row.mc, row.total || ''];
@@ -492,12 +491,29 @@ export class VerificationPageHQComponent {
       });
       wsData.push(dataRow);
     });
-
+  
+    // Create worksheet with merged cells for date headers
     const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Initialize !merges array if it doesn't exist (fixes TypeScript error)
+    ws['!merges'] = ws['!merges'] || [];
+    
+    // Add merge ranges for date headers in first row
+    this.dateHeaders.forEach((date, index) => {
+      const startCol = 2 + (index * this.visibleColumns.length); // Start after MC/RMC and Total columns
+      const endCol = startCol + this.visibleColumns.length - 1;
+      ws['!merges']!.push({  // Use non-null assertion operator
+        s: { r: 0, c: startCol },  // start row, start column
+        e: { r: 0, c: endCol }      // end row, end column
+      });
+    });
+  
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Cumulative');
     XLSX.writeFile(wb, `Cumulative_Transposed_${this.cumulativeStartDate}_to_${this.cumulativeEndDate}.xlsx`);
   }
+  
+  
 
   private formatDateForExcel(dateStr: string): string {
     const [y, m, d] = dateStr.split('-');
