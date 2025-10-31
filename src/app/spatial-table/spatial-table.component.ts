@@ -3,9 +3,10 @@ import { MatPaginator } from "@angular/material/paginator";
 import { MatSort } from "@angular/material/sort";
 import { MatTableDataSource } from "@angular/material/table";
 import { SpatialDistributionService } from "../services/spatialDistribution/spatial-distribution.service";
+import { SubdivisionService } from "src/app/services/subDivision/subDivision.service";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
+import { StateService } from "../services/state/state.service";
 @Component({
   selector: "app-spatial-table",
   templateUrl: "./spatial-table.component.html",
@@ -21,26 +22,20 @@ export class SpatialTableComponent implements OnInit {
   ];
   dataSource = new MatTableDataSource<any>([]);
   loading = true;
-
   // Modes
   mode: "date" | "period" | "daywise" = "period";
-
   // 👇 NEW: Subdivision / State toggle
   viewMode: "subdivision" | "state" = "subdivision";
-
   // Date values
   selectedDate: string = "";
   startDate: string = "";
   endDate: string = "";
-
   originalData: any[] = [];
   private categorySorted = false;
-
   // 🔹 Daywise support
   daywiseGrouped: Record<string, any[]> = {};
   daywiseDates: string[] = [];
   currentDayIndex: number = 0;
-
   // Category sorting order
   private categoryOrder: Record<string, number> = {
     Isolated: 1,
@@ -48,25 +43,34 @@ export class SpatialTableComponent implements OnInit {
     "Fairly Widespread": 3,
     Widespread: 4,
   };
-
+  loggedInUser: any;
+  centreType: string = "";
+  centreName: string = "";
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild("tableContent", { static: false }) tableContent!: ElementRef;
-
-  constructor(private spatialService: SpatialDistributionService) {}
-
+  constructor(
+    private spatialService: SpatialDistributionService,
+    private subdivservice: SubdivisionService,
+    private stateservice: StateService
+  ) {}
   ngOnInit() {
+    let loggedInUser: any = localStorage.getItem("isAuthorised");
+    this.loggedInUser = JSON.parse(loggedInUser);
+    const regex = /^(RMC|MC)\s(\w+)/;
+    const match = this.loggedInUser.data[0].name.match(regex);
+    if (match) {
+      this.centreType = match[1];
+      this.centreName = match[2];
+    }
     const today = new Date();
     const lastWeek = new Date();
     lastWeek.setDate(today.getDate() - 7);
-
     this.startDate = lastWeek.toISOString().split("T")[0];
     this.endDate = today.toISOString().split("T")[0];
-
     // fetch initial period data
     this.fetchPeriodData(this.startDate, this.endDate, "period");
   }
-
   // 🔹 Switch mode (date / period / daywise)
   setMode(selected: "date" | "period" | "daywise") {
     this.mode = selected;
@@ -74,14 +78,12 @@ export class SpatialTableComponent implements OnInit {
     this.originalData = [];
     this.categorySorted = false;
   }
-
   // 🔹 NEW: Switch viewMode (subdivision / state)
   setViewMode(mode: "subdivision" | "state") {
     this.viewMode = mode;
     this.dataSource.data = [];
     this.originalData = [];
     this.categorySorted = false;
-
     // refetch with new mode
     if (this.mode === "period") {
       this.fetchPeriodData(this.startDate, this.endDate, "period");
@@ -89,17 +91,14 @@ export class SpatialTableComponent implements OnInit {
       this.fetchDaywiseData(this.startDate, this.endDate);
     }
   }
-
   // 🔹 Single date
   fetchData(date?: string, mode: string = "date") {
     if (!date) return;
     this.loading = true;
-
     const apiCall =
       this.viewMode === "subdivision"
         ? this.spatialService.getSpatialDistribution(date, mode)
         : this.spatialService.getSpatialDistributionState(date, mode); // 👈 state API
-
     apiCall.subscribe({
       next: (res) => {
         this.originalData = [...res.data];
@@ -115,12 +114,10 @@ export class SpatialTableComponent implements OnInit {
       },
     });
   }
-
   // 🔹 Period
   fetchPeriodData(start: string, end: string, mode: string = "period") {
     if (!start || !end) return;
     this.loading = true;
-
     const apiCall =
       this.viewMode === "subdivision"
         ? this.spatialService.getSpatialDistributionPeriod(start, end, mode)
@@ -129,7 +126,6 @@ export class SpatialTableComponent implements OnInit {
             end,
             mode
           ); // 👈 state API
-
     apiCall.subscribe({
       next: (res) => {
         this.originalData = [...res.data];
@@ -145,12 +141,10 @@ export class SpatialTableComponent implements OnInit {
       },
     });
   }
-
   // 🔹 Daywise
   fetchDaywiseData(start: string, end: string) {
     if (!start || !end) return;
     this.loading = true;
-
     const apiCall =
       this.viewMode === "subdivision"
         ? this.spatialService.getSpatialDistributionPeriod(
@@ -163,7 +157,6 @@ export class SpatialTableComponent implements OnInit {
             end,
             "daywise"
           ); // 👈 state API
-
     apiCall.subscribe({
       next: (res) => {
         this.daywiseGrouped = res.data;
@@ -178,19 +171,16 @@ export class SpatialTableComponent implements OnInit {
       },
     });
   }
-
   updateDaywiseTable() {
     if (this.daywiseDates.length === 0) return;
     const currentDate = this.daywiseDates[this.currentDayIndex];
     const rows = this.daywiseGrouped[currentDate] || [];
-
     this.originalData = [...rows];
     this.dataSource.data = rows;
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
     this.categorySorted = false;
   }
-
   // 🔹 Navigation
   previousDay() {
     if (this.currentDayIndex > 0) {
@@ -198,19 +188,16 @@ export class SpatialTableComponent implements OnInit {
       this.updateDaywiseTable();
     }
   }
-
   nextDay() {
     if (this.currentDayIndex < this.daywiseDates.length - 1) {
       this.currentDayIndex++;
       this.updateDaywiseTable();
     }
   }
-
   // 🔹 Current day label
   get currentDay(): string {
     return this.daywiseDates[this.currentDayIndex] || "";
   }
-
   // 🔹 Search filter
   applyFilter(event: Event) {
     const filterValue = (event.target as HTMLInputElement).value
@@ -218,7 +205,6 @@ export class SpatialTableComponent implements OnInit {
       .toLowerCase();
     this.dataSource.filter = filterValue;
   }
-
   // 🔹 Category sorting
   sortByCategory() {
     if (this.categorySorted) {
@@ -236,7 +222,6 @@ export class SpatialTableComponent implements OnInit {
     }
     this.categorySorted = !this.categorySorted;
   }
-
   getImageDimensions(src: string): Promise<{ w: number; h: number }> {
     return new Promise((resolve) => {
       const img = new Image();
@@ -253,317 +238,221 @@ export class SpatialTableComponent implements OnInit {
     return `${day}-${month}-${year}`;
   }
 
-  async downloadPDF() {
-    const doc = new jsPDF();
+  private abbreviatePeriod(start: Date, end: Date): string {
+    const sMonth = (start.getMonth() + 1).toString();
+    const sDay = start.getDate().toString();
+    const eDay = end.getDate().toString();
+    const year = end.getFullYear().toString();
+    let abbrev = `${sMonth}/${sDay}-${eDay}/${year}`;
+    if (start.getMonth() !== end.getMonth()) {
+      const eMonth = (end.getMonth() + 1).toString();
+      abbrev = `${sMonth}/${sDay}-${eMonth}/${eDay}/${year}`;
+    }
+    return abbrev;
+  }
 
-    const primaryColor: [number, number, number] = [41, 128, 185];
-    const secondaryColor: [number, number, number] = [100, 100, 100];
-
-    const width = doc.internal.pageSize.getWidth();
-    const marginTop = 5;
-
-    // 🔹 Logo paths
-    const leftLogo = "/assets/images/IMDlogo_Ipart-iris.png";
-    const rightLogo = "/assets/images/IMD150(BGR).png";
-
-    // 🔹 Get natural dimensions
-    const leftDim = await this.getImageDimensions(leftLogo);
-    const rightDim = await this.getImageDimensions(rightLogo);
-
-    // 🔹 Different heights
-    const leftLogoHeight = 24; // ⬅️ bigger
-    const rightLogoHeight = 20; // ⬅️ smaller
-
-    // 🔹 Maintain aspect ratio
-    const leftLogoWidth = (leftDim.w / leftDim.h) * leftLogoHeight;
-    const rightLogoWidth = (rightDim.w / rightDim.h) * rightLogoHeight;
-
-    // ✅ Add Left Logo (bigger)
-    doc.addImage(leftLogo, "PNG", 10, marginTop, leftLogoWidth, leftLogoHeight);
-
-    // ✅ Add Right Logo (smaller)
-    doc.addImage(
-      rightLogo,
-      "PNG",
-      width - rightLogoWidth - 10,
-      marginTop,
-      rightLogoWidth,
-      rightLogoHeight
-    );
-
-    // ✅ Title in the center
-    doc.setFontSize(18);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "bold");
-    doc.text("Spatial Distribution Overview", width / 2, 33, {
-      align: "center",
-    });
-
-    // Subheading (date/period/daywise)
+  downloadPDF() {
+    const doc = new jsPDF('l', 'mm', 'a4'); // Landscape A4
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
+  
+    doc.setFont("helvetica");
     doc.setFontSize(11);
-    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-    doc.setFont("helvetica", "normal");
-
-    // if (this.mode === "period") {
-    //   doc.text(`Period: ${this.startDate} to ${this.endDate}`, 14, 42);
-    // } else if (this.mode === "daywise") {
-    //   doc.text(`Date: ${this.currentDay}`, 14, 42);
-    // } else {
-    //   doc.text(`Date: ${this.selectedDate || "All Dates"}`, 14, 42);
-    // }
-
-    if (this.mode === "period") {
-      doc.text(
-        `Period: ${this.formatDate(this.startDate)} to ${this.formatDate(
-          this.endDate
-        )}`,
-        14,
-        42
-      );
+  
+    // === Determine Dates ===
+    let startD: Date, endD: Date;
+    if (this.mode === "date") {
+      startD = endD = new Date(this.selectedDate);
     } else if (this.mode === "daywise") {
-      doc.text(`Date: ${this.formatDate(this.currentDay)}`, 14, 42);
+      startD = endD = new Date(this.currentDay);
     } else {
-      doc.text(
-        `Date: ${
-          this.selectedDate ? this.formatDate(this.selectedDate) : "All Dates"
-        }`,
-        14,
-        42
-      );
+      startD = new Date(this.startDate);
+      endD = new Date(this.endDate);
     }
-
-    // Divider line
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
-    doc.line(14, 36, width - 14, 36);
-
-    // 🔹 Prepare table data
-    // let tableData: any[] = [];
-    // if (this.mode === "daywise") {
-    //   const currentDate = this.daywiseDates[this.currentDayIndex];
-    //   const rows = this.daywiseGrouped[currentDate] || [];
-    //   tableData = rows.map((row: any, i: number) => [
-    //     i + 1,
-    //     row.subdivision_name,
-    //     row.total_stations,
-    //     row.station_reported_rainfall,
-    //     row.percentage + "%",
-    //     row.category,
-    //   ]);
-    // } else {
-    //   tableData = this.dataSource.data.map((row: any, i: number) => [
-    //     i + 1,
-    //     row.subdivision_name,
-    //     row.total_stations,
-    //     row.station_reported_rainfall,
-    //     row.percentage + "%",
-    //     row.category,
-    //   ]);
-    // }
-    let tableData: any[] = [];
-    if (this.mode === "daywise") {
-      const currentDate = this.daywiseDates[this.currentDayIndex];
-      const rows = this.daywiseGrouped[currentDate] || [];
-      tableData = rows.map((row: any, i: number) => [
-        i + 1,
-        this.viewMode === "state" ? row.state_name : row.subdivision_name,
-        row.total_stations,
-        row.station_reported_rainfall,
-        row.percentage + "%",
-        row.category,
-      ]);
-    } else {
-      tableData = this.dataSource.data.map((row: any, i: number) => [
-        i + 1,
-        this.viewMode === "state" ? row.state_name : row.subdivision_name,
-        row.total_stations,
-        row.station_reported_rainfall,
-        row.percentage + "%",
-        row.category,
-      ]);
-    }
-    console.log(tableData);
-    // 🔹 Table
-    autoTable(doc, {
-      startY: 45,
-      head: [
-        [
-          "S. No.",
-          this.viewMode === "state" ? "State" : "Subdivision",
-          "Total Stations",
-          "Stations Reported Rainfall",
-          "Percentage",
-          "Category",
-        ],
-      ],
-      body: tableData,
-      theme: "grid",
-      styles: { fontSize: 11, cellPadding: 3 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 12 },
-      didParseCell: (data) => {
-        if (data.section === "body" && data.column.index === 5) {
-          const category = String(data.cell.raw || "");
-          const categoryColors: Record<string, [number, number, number]> = {
-            Isolated: [3, 255, 63],
-            Scattered: [0, 104, 58],
-            "Fairly Widespread": [0, 252, 241],
-            Widespread: [52, 0, 246],
-          };
-          if (category && categoryColors[category]) {
-            data.cell.styles.fillColor = categoryColors[category];
-            data.cell.styles.textColor = [255, 255, 255];
-            data.cell.styles.halign = "center";
-            data.cell.styles.fontStyle = "bold";
-          }
-        }
-      },
-    });
-
-    // ✅ Category summary
-    const categoryCounts: Record<string, number> = {
-      Isolated: 0,
-      Scattered: 0,
-      "Fairly Widespread": 0,
-      Widespread: 0,
+  
+    const formatDate = (d: Date) => {
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      return `${day}/${month}/${d.getFullYear()}`;
     };
-    tableData.forEach((row: any) => {
-      if (row[5] && categoryCounts[row[5]] !== undefined) {
-        categoryCounts[row[5]]++;
-      }
-    });
-
-    let y = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Category Summary", 12, y);
-    doc.setFont("helvetica", "normal");
-    y += 6;
-
-    const categoryColors: Record<string, number[]> = {
-      Isolated: [3, 255, 63],
-      Scattered: [0, 104, 58],
-      "Fairly Widespread": [0, 252, 241],
-      Widespread: [52, 0, 246],
-    };
-
-    let x = 16;
-    Object.keys(categoryCounts).forEach((cat) => {
-      const color = categoryColors[cat];
-      doc.setFillColor(color[0], color[1], color[2]);
-      doc.circle(x, y - 1.5, 3, "F");
-      x += 5;
-      doc.setTextColor(0, 0, 0);
-      doc.text(`${categoryCounts[cat]} ${cat}`, x, y);
-      x += 43;
-    });
-
-    // ✅ File save
-    const fileName =
-      this.mode === "period"
-        ? `Spatial_Distribution_${this.startDate}_to_${this.endDate}.pdf`
-        : this.mode === "daywise"
-        ? `Spatial_Distribution_${this.currentDay}.pdf`
-        : `Spatial_Distribution_${this.selectedDate}.pdf`;
-
-    // ✅ New Page for Notes + Classification
-    doc.addPage();
-
-    const wi = doc.internal.pageSize.getWidth();
-    const he = doc.internal.pageSize.getHeight();
-
-    // 🔹 Page Header
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, wi, 30, "F");
-
-    doc.setFontSize(18);
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.text("Sources & Notes", 14, 20);
-
-    // 🔹 Divider Line
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
-    doc.line(14, 32, wi - 14, 32);
-
-    // 🔹 Notes Section
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(50, 50, 50);
-
-    const margin = 14;
-    let currentY = 40;
-
-    const notes = [
-      "All measurements are validated and updated daily based on the station reports.",
-      "Percentages indicate the proportion of stations reporting rainfall above the threshold.",
-      "Category distribution (Isolated, Scattered, Fairly Widespread, Widespread) is computed based on total stations reporting rainfall.",
-    ];
-
-    const bulletColors: [number, number, number][] = [
-      [41, 128, 185],
-      [41, 128, 185],
-      [41, 128, 185],
-    ];
-
-    // ✅ Render notes
-    notes.forEach((note, index) => {
-      doc.setFillColor(...bulletColors[index]);
-      doc.circle(margin + 2, currentY - 2, 2.5, "F");
-
+  
+    const datedStr = formatDate(endD);
+    const periodFrom = formatDate(startD);
+    const periodTo = formatDate(endD);
+    const tableDate = startD.getTime() === endD.getTime() ? formatDate(startD) : `${formatDate(startD)} - ${formatDate(endD)}`;
+    const isPeriodMode = startD.getTime() !== endD.getTime();
+    const abbrevPeriod = this.abbreviatePeriod(startD, endD);
+  
+    // const centreFullName = `${this.centreType} ${this.centreName}`.toUpperCase();
+  
+    /* -------------------------------------------------------------
+     *  Build PDF
+     * ------------------------------------------------------------- */
+    const buildPdf = (dataForPdf: any[]) => {
+      let y = margin;
+  
+      // === HEADER LINE 1 ===
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("T/P MESSAGE", margin, y);
+      doc.text(`DATED ${datedStr}`, pageWidth / 2, y, { align: 'center' });
+      doc.text("PRIORITY YOU", pageWidth - margin, y, { align: 'right' });
+      y += 8;
+  
+      // === FROM / TO ===
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(30, 30, 30);
-      doc.text(note, margin + 10, currentY, {
-        maxWidth: width - margin * 2 - 10,
+      doc.setFontSize(11);
+      doc.text("FROM :", margin, y);
+      doc.text(centreFullName, margin + 18, y);
+      y += 7;
+  
+      doc.text("TO :", margin, y);
+      doc.text("DGM HYDROMET, NEW DELHI", margin + 18, y);
+      y += 10;
+  
+      // === MF-08(B) LINE ===
+      doc.setFont("helvetica", "bold");
+      doc.text("MF-08(B)", margin, y);
+      doc.text(`DATED ${datedStr}`, pageWidth / 2, y, { align: 'center' });
+      y += 8;
+  
+      // === AAA LINE ===
+      doc.text(`${this.viewMode.toUpperCase()}WISE DISTRIBUTION OF`, margin, y);
+      y += 7;
+      doc.text("RAINFALL AND THE MONSOON ACTIVITY FOR THE PERIOD FROM", margin, y);
+      y += 7;
+  
+      // === PERIOD DATES ===
+      doc.text(periodFrom, margin, y);
+      doc.text("TO", pageWidth / 2 - 10, y, { align: 'center' });
+      doc.text(periodTo, pageWidth / 2 + 10, y);
+      doc.text("FOLLOWS:", pageWidth - margin, y, { align: 'right' });
+      y += 12;
+  
+      // === TABLE USING autoTable ===
+      const tableData = dataForPdf.map(item => {
+        const name = (this.viewMode === "state" ? item.state_name : item.subdivision_name).toUpperCase();
+        const dateCell = isPeriodMode 
+          ? `${name}/${abbrevPeriod}` 
+          : `${name}/${tableDate}`;
+        return [
+          dateCell,
+          item.category.toUpperCase(),
+          "WEAK"
+        ];
       });
-
-      currentY += 10;
+  
+      autoTable(doc, {
+        head: [[`${this.viewMode.toUpperCase()}`, 'RAINFALL DISTRIBUTION', 'MONSOON ACTIVITY']],
+        body: tableData,
+        startY: y,
+        theme: 'plain',
+        styles: { fontSize: 11, cellPadding: 2, font: "helvetica" },
+        headStyles: {
+          fontStyle: 'bold',
+          halign: 'center',
+          textColor: [0, 0, 0],
+          lineWidth: 0.3,
+          lineColor: [0, 0, 0]
+        },
+        columnStyles: {
+          0: { halign: 'left', fontStyle: 'normal' },
+          1: { halign: 'center', fontStyle: 'normal' },
+          2: { halign: 'center', fontStyle: 'normal' }
+        },
+        margin: { left: margin, right: margin },
+        tableWidth: pageWidth - 2 * margin
+      });
+  
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+  
+      // === AUTHORIZED SECTION ===
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("AUTHORISED FOR IMMEDIATE CLEARANCE", margin, finalY);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        "Post Copy in confirmation to Director General of Meteorology (Hydromet), New Delhi - 110003.",
+        margin,
+        finalY + 8
+      );
+  
+      // === SIGNATURE ===
+      doc.setFontSize(11);
+      doc.text("SIG. (", margin, finalY + 18);
+      doc.text(")", margin + 40, finalY + 18);
+      doc.text("for DIRECTOR/DDGM", pageWidth - margin, finalY + 18, { align: 'right' });
+  
+      // === CENTRE NAME & MF-08(B) ===
+      doc.setFont("helvetica", "bold");
+      doc.text(centreFullName, margin, finalY + 26);
+      doc.text("MF-08(B)", margin, finalY + 32);
+  
+      // === FOOTER ===
+      const footerDate = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "italic");
+        doc.text(footerDate, margin, pageHeight - 8);
+        doc.text(`${i} of ${pageCount}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
+      }
+  
+      // Save
+      const fileName = `Spatial_Distribution_${datedStr.replace(/\//g, "-")}.pdf`;
+      doc.save(fileName);
+    };
+  
+    /* -------------------------------------------------------------
+     *  Centre-type logic (filter by MC)
+     * ------------------------------------------------------------- */
+    const centreIsMC = this.centreType?.toUpperCase() === "MC";
+    const centreFullName = `${this.centreType} ${this.centreName}`.trim().toUpperCase();
+  
+    if (!centreIsMC) {
+      buildPdf(this.dataSource.data);
+      return;
+    }
+  
+    const fetchMeta = this.viewMode === "subdivision"
+      ? this.subdivservice.fetchmetWiseSubDivisions()
+      : this.stateservice.fetchMetWiseStates();
+  
+    fetchMeta.subscribe({
+      next: (meta: any) => {
+        const allowedNames = new Set(
+          meta.data
+            .filter((m: any) => m.met_centre?.trim().toUpperCase() === centreFullName)
+            .map((m: any) =>
+              (this.viewMode === "subdivision" ? m.subdiv_name : m.state_name).toUpperCase()
+            )
+        );
+  
+        const dataForPdf = this.dataSource.data.filter((item) =>
+          allowedNames.has(
+            (this.viewMode === "subdivision" ? item.subdivision_name : item.state_name).toUpperCase()
+          )
+        );
+  
+        if (dataForPdf.length === 0) {
+          alert("No data found for your MC.");
+          return;
+        }
+  
+        buildPdf(dataForPdf);
+      },
+      error: (err: any) => {
+        console.error("Failed to fetch metadata:", err);
+        alert("Could not determine allowed subdivisions/states. PDF not generated.");
+      },
     });
-
-    currentY += 10; // spacing after notes
-
-    // 🔹 Classification Table
-    const rows2 = [
-      ["Isolated", "<= 25%", { content: "", styles: { fillColor: "#03ff3f" } }],
-      [
-        "Scattered",
-        ">=26% and <=50%",
-        { content: "", styles: { fillColor: "#00683a" } },
-      ],
-      [
-        "Fairly Widespread",
-        ">=51% and <=75%",
-        { content: "", styles: { fillColor: "#00fcf1" } },
-      ],
-      [
-        "Widespread",
-        ">=76% and <=100%",
-        { content: "", styles: { fillColor: "#3400f6" } },
-      ],
-    ];
-
-    autoTable(doc, {
-      head: [["Category", "Criteria", "Color"]],
-      body: rows2,
-      theme: "grid",
-      styles: {
-        fontSize: 10,
-        cellPadding: 3,
-        halign: "center",
-        valign: "middle",
-      },
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: "bold",
-      },
-      columnStyles: {
-        0: { halign: "left" },
-        1: { halign: "center" },
-        2: { halign: "center" },
-      },
-      startY: currentY,
-    });
-
-    doc.save(fileName);
   }
 }
