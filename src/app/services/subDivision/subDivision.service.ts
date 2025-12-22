@@ -41,4 +41,10 @@ export class SubdivisionService {
     const url = `${this.baseUrl}/api/v1/metWiseSubDivisions`;
     return this.http.get<any>(url);
   }
+
+
+  fetchMonsoonActivitySubDivisions(data:any){
+    const url = `${this.baseUrl}/api/v1/monsoon-activity`;
+    return this.http.post<any>(url, data);
+  }
 }

@@ -19,7 +19,7 @@
       class="mode-button"
       [ngClass]="{ active: selectedMapType === 'RainfallMaps' }"
     >
-      DRMS
+      District Rainfall Monitoring Scheme
     </button>
     <button
       mat-button
@@ -27,7 +27,7 @@
       class="mode-button"
       [ngClass]="{ active: selectedMapType === 'Block' }"
     >
-      BRMS
+      Block Rainfall Monitoring Scheme
     </button>
   </div>
   <span class="toolbar-visitors">VISITORS - 243  </span>
@@ -1006,6 +1006,17 @@
         routerLink="../spatial-table"
       >
         SPATIAL DISTRIBUTION
+      </a>
+    </li>
+
+
+    <li *ngIf="hasAccess('monsoon-activity')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('monsoon-activity')"
+        routerLink="../monsoon-activity"
+      >
+        MONSOON ACTIVITY
       </a>
     </li>
 

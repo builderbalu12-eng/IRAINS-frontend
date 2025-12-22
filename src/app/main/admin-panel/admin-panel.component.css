@@ -1,0 +1,65 @@
+/* src/app/main/admin-panel/admin-panel.component.css */
+
+.admin-layout {
+  height: 100vh;
+  overflow: hidden;
+  background-color: #a2c5b6;
+}
+
+.sidebar {
+  width: 280px;
+  background: linear-gradient(135deg, #002467 0%, #001a47 100%);
+  transition: width 0.3s ease;
+  border-right: 3px solid #003380;
+  z-index: 999;
+}
+
+.sidebar.collapsed {
+  width: 70px !important;
+}
+
+.sidebar-header {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.nav-link {
+  border-radius: 12px;
+  margin: 4px 8px;
+  transition: all 0.3s;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateX(5px);
+}
+
+.nav-link.active {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  font-weight: 600;
+}
+
+.content-area {
+  background-color: #a2c5b6;
+}
+
+.content-scroll {
+  height: calc(100vh - 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Hide scrollbar but keep functionality */
+.content-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.content-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.content-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.transition { transition: transform 0.3s; }
+.rotate-180 { transform: rotate(180deg); }
+.cursor-pointer { cursor: pointer; }

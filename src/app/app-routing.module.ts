@@ -106,6 +106,10 @@ import { BlockRainfallMainPageComponent } from './main/block-rainfall-main-page/
 import { BlockrainfallMapDailyActualMainPageComponent } from './main/block-rainfall-main-page/block/blockrainfall-map-daily-actual-main-page/blockrainfall-map-daily-actual-main-page.component';
 import { DashboardComponent } from './main/irains-dashboard/dashboard/dashboard.component';
 import { SpatialTableComponent } from './spatial-table/spatial-table.component';
+import { AdminPanelComponent } from './main/admin-panel/admin-panel.component';
+import { StationManagementComponent } from './main/admin-panel/station-management/station-management/station-management.component';
+import { MonsoonActivityComponent } from './main/monsoon-activity/monsoon-activity.component';
+
 
 export const routes: Routes = [
  { path: 'irains-dashboard', component: DashboardComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
@@ -130,7 +134,20 @@ export const routes: Routes = [
  { path: 'block-rainfall', component: BlockRainfallMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall-actual', component: BlockrainfallMapDailyActualMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'spatial-table', component: SpatialTableComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
-
+ { path: 'monsoon-activity', component: MonsoonActivityComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ {
+  path: 'admin-panel',
+  component: AdminPanelComponent,
+  canActivate: [AuthGuard],
+  data: { allowedUsers: ['hq'] },
+  children: [
+    {
+      path: 'station-management',                     // ← matches the route above
+      component: StationManagementComponent // ← your full page
+    },
+    { path: '', redirectTo: 'stations', pathMatch: 'full' }
+  ]
+},
 //  BlockActualRainfallMapIncAwsComponent
 
  {path: 'state-map-mc-rmc', component: RainfallmapMcRmcComponent, canActivate: [AuthGuard], data: {allowedUsers: ['mc']}},

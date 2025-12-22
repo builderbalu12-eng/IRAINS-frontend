@@ -180,6 +180,9 @@ import { BlockRainfallMapActualOrgawsMainPageComponent } from './main/block-rain
 import { MainChartsComponent } from "./main/irains-dashboard/dashboard-maincontainer/main-charts/main-charts";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatRadioModule } from "@angular/material/radio";
+import { AdminPanelComponent } from './main/admin-panel/admin-panel.component';
+import { StationManagementComponent } from './main/admin-panel/station-management/station-management/station-management.component';
+import { MonsoonActivityComponent } from './main/monsoon-activity/monsoon-activity.component';
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -333,6 +336,9 @@ import { MatRadioModule } from "@angular/material/radio";
     SpatialTableMapsComponent,
     BlockRainfallMapActualOrgawsMainPageComponent,
     MainChartsComponent,
+    AdminPanelComponent,
+    StationManagementComponent,
+    MonsoonActivityComponent,
   ],
   imports: [
     MatCardModule,

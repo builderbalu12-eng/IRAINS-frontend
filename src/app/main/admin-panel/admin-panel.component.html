@@ -1,0 +1,66 @@
+<!-- src/app/main/admin-panel/admin-panel.component.html -->
+<div class="admin-layout">
+
+  <!-- YOUR ORIGINAL HEADER -->
+  <app-header></app-header>
+
+  <!-- MAIN LAYOUT -->
+  <div class="d-flex" style="height: calc(100vh - 80px);">
+
+    <!-- LEFT SIDEBAR - FIXED -->
+    <nav class="sidebar bg-primary text-white d-flex flex-column"
+         [class.collapsed]="isCollapsed">
+
+      <div class="sidebar-header p-4 text-center border-bottom">
+        <h5 class="mb-0" [hidden]="isCollapsed">IRAINS Admin Panel</h5>
+        <!-- <small [hidden]="isCollapsed">Management Portal</small> -->
+      </div>
+
+      <div class="flex-grow-1 overflow-auto px-3 pt-3">
+        <ul class="nav flex-column">
+          <li class="nav-item" *ngFor="let item of menuItems">
+            <a *ngIf="!item.children"
+               class="nav-link text-white d-flex align-items-center px-3 py-3 rounded mb-2"
+               [routerLink]="item.route"
+               routerLinkActive="active">
+              <i [class]="item.icon + ' me-3'" [class.fs-4]="isCollapsed"></i>
+              <span [hidden]="isCollapsed">{{ item.label }}</span>
+            </a>
+
+            <div *ngIf="item.children">
+              <a class="nav-link text-white d-flex align-items-center justify-content-between px-3 py-3 rounded mb-2 cursor-pointer"
+                 (click)="toggleSubmenu(item)">
+                <div class="d-flex align-items-center">
+                  <i [class]="item.icon + ' me-3'" [class.fs-4]="isCollapsed"></i>
+                  <span [hidden]="isCollapsed">{{ item.label }}</span>
+                </div>
+                <i class="bi bi-chevron-down transition" [class.rotate-180]="item.expanded"></i>
+              </a>
+              <ul class="nav flex-column ms-5" [hidden]="isCollapsed || !item.expanded">
+                <li *ngFor="let child of item.children">
+                  <a class="nav-link text-white-50 py-2 small" [routerLink]="child.route">
+                    <i [class]="child.icon + ' me-2'"></i>{{ child.label }}
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="p-3 border-top">
+        <button class="btn btn-outline-light w-100" (click)="toggleSidebar()">
+          <i class="bi bi-list"></i>
+          <span [hidden]="isCollapsed">Collapse</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- RIGHT CONTENT — ONLY THIS SCROLLS -->
+    <div class="content-area flex-grow-1 d-flex flex-column">
+      <div class="content-scroll overflow-auto flex-grow-1 p-4">
+        <router-outlet></router-outlet>
+      </div>
+    </div>
+  </div>
+</div>

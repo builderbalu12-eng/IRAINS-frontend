@@ -1,0 +1,108 @@
+/* station-management.component.css - Modern 2025 Design */
+
+.content-modern {
+  height: calc(100vh - 140px);
+  overflow-y: auto;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e0efff 100%);
+  background-attachment: fixed;
+}
+
+.stats-card {
+  background: linear-gradient(135deg, var(--bg1), var(--bg2));
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.stats-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+}
+
+.stats-card.blue { --bg1: #3b82f6; --bg2: #1d4ed8; }
+.stats-card.green { --bg1: #10b981; --bg2: #059669; }
+.stats-card.orange { --bg1: #f59e0b; --bg2: #d97706; }
+.stats-card.cyan { --bg1: #06b6d4; --bg2: #0891b2; }
+
+.modern-card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.modern-card:hover {
+  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  transform: translateY(-5px);
+}
+
+.card-header-modern {
+  background: linear-gradient(135deg, #1e40af, #1e3a8a);
+  color: white;
+  padding: 20px 30px;
+  border: none;
+}
+
+.card-header-modern h4, .card-header-modern h5 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.modern-input {
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  padding: 12px 16px;
+  transition: all 0.3s;
+}
+
+.modern-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  outline: none;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 30px;
+  font-weight: 600;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-2px);
+}
+
+.animate-fade {
+  animation: fadeIn 0.6s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.activity-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.activity-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* Custom Scrollbar */
+.content-modern::-webkit-scrollbar,
+.activity-list::-webkit-scrollbar {
+  width: 8px;
+}
+.content-modern::-webkit-scrollbar-thumb,
+.activity-list::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+}

@@ -1,0 +1,413 @@
+<nav class="navbar navbar-expand-lg navbar-dark shadow-lg sticky-top" 
+     style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold fs-3 d-flex align-items-center gap-3" href="#">
+      <i class="bi bi-geo-alt-fill text-warning"></i>
+      Station Manager
+    </a>
+
+    <button class="navbar-toggler border-0" (click)="navCollapsed = !navCollapsed">
+      <i class="bi bi-list fs-3"></i>
+    </button>
+
+    <div class="collapse navbar-collapse" [ngClass]="{ 'show': !navCollapsed }">
+      <ul class="navbar-nav me-auto gap-2">
+        <li class="nav-item">
+          <a class="nav-link px-4 py-2 rounded-pill" [class.active]="activeTab==='dashboard'" (click)="setTab('dashboard')">
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-4 py-2 rounded-pill" [class.active]="activeTab==='add'" (click)="setTab('add')">
+            <i class="bi bi-plus-circle me-2"></i>Add Station
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-4 py-2 rounded-pill" [class.active]="activeTab==='manage'" (click)="setTab('manage')">
+            <i class="bi bi-table me-2"></i>Manage
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-4 py-2 rounded-pill" [class.active]="activeTab==='map'" (click)="setTab('map')">
+            <i class="bi bi-map me-2"></i>Map View
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-4 py-2 rounded-pill" [class.active]="activeTab==='logs'" (click)="setTab('logs')">
+            <i class="bi bi-journal-text me-2"></i>Logs
+          </a>
+        </li>
+        
+        <li class="nav-item" *ngIf="editMode">
+          <a class="nav-link px-4 py-2 rounded-pill active bg-warning text-dark border-0" (click)="setTab('edit')">
+            <i class="bi bi-pencil-square me-2"></i>Editing...
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-4 py-2 rounded-pill" [class.active]="activeTab==='move'" (click)="setTab('move')">
+            <i class="bi bi-arrow-repeat me-2"></i>Move / Inactive
+          </a>
+        </li>
+      </ul>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-white-50 small">v2.1</span>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="content-modern">
+  <div class="container-fluid p-4">
+
+    <div *ngIf="activeTab === 'dashboard'" class="animate-fade">
+      <div class="row g-4 mb-5">
+        <div class="col-xl-3 col-md-6" *ngFor="let card of dashboardCards">
+          <div class="stats-card" [ngClass]="card.color">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="text-white-50 mb-1">{{ card.title }}</h6>
+                <h2 class="text-white mb-0 fw-bold">{{ card.value }}</h2>
+              </div>
+              <i [class]="card.icon + ' fs-1 text-white opacity-75'"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="modern-card">
+            <div class="card-header-modern">
+              <h5><i class="bi bi-bar-chart-line me-2"></i>Stations by Region</h5>
+            </div>
+            <div class="card-body">
+              <canvas #regionChart height="120"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="modern-card h-100">
+            <div class="card-header-modern">
+              <h5><i class="bi bi-activity me-2"></i>Recent Activity</h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="activity-list">
+                <div class="activity-item" *ngFor="let act of recentActivity">
+                  <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+                    <div>
+                      <strong>{{ act.stationname }}</strong>
+                      <div class="small text-muted">{{ act.action }}</div>
+                    </div>
+                    <small class="text-muted">{{ act.updatedat | date:'short' }}</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'add' || activeTab === 'edit'" class="animate-fade">
+      <div class="modern-card" [ngClass]="{'border-primary': editMode}">
+        <div class="card-header-modern" [ngClass]="editMode ? 'bg-primary' : ''">
+          <h4 [class.text-white]="editMode">
+            <i class="bi" [ngClass]="editMode ? 'bi-pencil-square' : 'bi-plus-circle'"></i>
+            {{ editMode ? 'Edit Station Details' : 'Add New Station' }}
+          </h4>
+        </div>
+        <div class="card-body p-5">
+          
+          <div *ngIf="editMode" class="alert alert-info mb-4">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Edit Mode:</strong> Location Hierarchy is locked. To change location, use the "Move / Inactive" tab.
+          </div>
+
+          <form [formGroup]="stationForm" (ngSubmit)="onSubmitStation()">
+            
+            <h6 class="text-muted text-uppercase mb-3 small fw-bold">Centre Details</h6>
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Centre Name <span class="text-danger">*</span></label>
+                <input class="form-control" formControlName="centrename" placeholder="Enter Centre Name" />
+                <div *ngIf="stationForm.get('centrename')?.invalid && stationForm.get('centrename')?.touched" class="text-danger small">
+                  Centre Name is required.
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Centre Type <span class="text-danger">*</span></label>
+                <select class="form-select" formControlName="centretype">
+                  <option value="">Select Centre Type</option>
+                  <option *ngFor="let c of centreTypes" [value]="c">{{ c }}</option>
+                </select>
+              </div>
+            </div>
+
+            <hr class="text-muted opacity-25">
+
+            <h6 class="text-muted text-uppercase mb-3 small fw-bold">Station Details</h6>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Station Name <span class="text-danger">*</span></label>
+                <input class="form-control" formControlName="stationname" placeholder="Enter station name" />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Station Type <span class="text-danger">*</span></label>
+                <select class="form-select" formControlName="stationtype">
+                  <option value="">Select Station Type</option>
+                  <option *ngFor="let t of stationTypes" [value]="t">{{ t }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="p-3 bg-light rounded mb-4 mt-3">
+              <h6 class="text-muted text-uppercase mb-3 small fw-bold">Location Hierarchy {{ editMode ? '(Locked)' : '' }}</h6>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Region</label>
+                  <select class="form-select" formControlName="regionnam" (change)="onRegionChange()">
+                    <option value="">Select Region</option>
+                    <option *ngFor="let region of regions" [value]="region">{{ region }}</option>
+                  </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Subdivision</label>
+                  <select class="form-select" formControlName="subdivisio">
+                    <option value="">Select Subdivision</option>
+                    <option *ngFor="let s of subdivisions" [value]="s">{{ s }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">State</label>
+                  <input class="form-control" formControlName="statenam" placeholder="State" />
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">District</label>
+                  <input class="form-control" formControlName="districtnam" placeholder="District" />
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Block Code</label>
+                  <input class="form-control" formControlName="blockcode" placeholder="Block Code" />
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Station Code (Auto)</label>
+                  <input class="form-control bg-white" formControlName="stationcode" readonly />
+                </div>
+              </div>
+            </div>
+
+            <h6 class="text-muted text-uppercase mb-3 small fw-bold">Geographic Details</h6>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Latitude</label>
+                <input type="number" step="0.0001" class="form-control" formControlName="latitude" />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Longitude</label>
+                <input type="number" step="0.0001" class="form-control" formControlName="longitude" />
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label">Remarks</label>
+              <textarea class="form-control" formControlName="remarks" rows="2"></textarea>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-end">
+              <button type="button" class="btn btn-secondary px-4" (click)="resetForm()" *ngIf="editMode">
+                Cancel Edit
+              </button>
+              <button class="btn px-4" [ngClass]="editMode ? 'btn-primary' : 'btn-success'" type="submit" [disabled]="stationForm.invalid">
+                <i class="bi" [ngClass]="editMode ? 'bi-save' : 'bi-plus-lg'"></i>
+                {{ editMode ? 'Update Station' : 'Add Station' }}
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'manage'" class="animate-fade">
+      <div class="modern-card">
+        <div class="card-header-modern d-flex justify-content-between align-items-center">
+            <h5><i class="bi bi-table me-2"></i>Manage Stations ({{filteredStations.length}})</h5>
+            <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()">Clear Filters</button>
+        </div>
+        <div class="card-body">
+            
+            <div class="row g-2 mb-4 p-3 bg-light rounded">
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold">Region</label>
+                    <select class="form-select form-select-sm" [(ngModel)]="filterRegion" (change)="applyFilters()">
+                        <option value="">All Regions</option>
+                        <option *ngFor="let r of regions" [value]="r">{{r}}</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold">Subdivision</label>
+                    <select class="form-select form-select-sm" [(ngModel)]="filterSubdivision" (change)="applyFilters()">
+                        <option value="">All Subdivisions</option>
+                        <option *ngFor="let s of subdivisions" [value]="s">{{s}}</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold">State</label>
+                    <select class="form-select form-select-sm" [(ngModel)]="filterState" (change)="applyFilters()">
+                        <option value="">All States</option>
+                        <option *ngFor="let s of states" [value]="s">{{s}}</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold">District</label>
+                    <select class="form-select form-select-sm" [(ngModel)]="filterDistrict" (change)="applyFilters()">
+                        <option value="">All Districts</option>
+                        <option *ngFor="let d of districts" [value]="d">{{d}}</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                <table class="table table-hover align-middle table-striped">
+                    <thead class="table-dark sticky-top">
+                        <tr>
+                            <th>Code</th>
+                            <th>Station Name</th>
+                            <th>Hierarchy (Reg / State)</th>
+                            <th>District</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let st of filteredStations">
+                            <td><span class="badge bg-secondary">{{st.stationcode}}</span></td>
+                            <td class="fw-bold">{{st.stationname}}</td>
+                            <td><small>{{st.regionnam}} / {{st.statenam}}</small></td>
+                            <td>{{st.districtnam}}</td>
+                            <td>
+                                <span class="badge" [ngClass]="st.flag ? 'bg-success' : 'bg-danger'">
+                                    {{st.flag ? 'Active' : 'Inactive'}}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" (click)="loadStationForEdit(st)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'map'" class="animate-fade">
+      <div class="modern-card h-100">
+        <div class="card-header-modern bg-dark text-white">
+            <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Station Distribution (India)</h5>
+        </div>
+        <div class="card-body p-0">
+            <div id="map" style="height: 70vh; width: 100%; z-index: 1;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'logs'" class="animate-fade">
+      <div class="modern-card">
+        <div class="card-header-modern bg-info text-white">
+            <h4><i class="bi bi-journal-text me-2"></i>System Audit Logs</h4>
+        </div>
+        <div class="card-body">
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>Action Type</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let log of logs">
+                        <td class="text-muted">{{ log.date | date:'medium' }}</td>
+                        <td class="fw-bold">{{ log.user }}</td>
+                        <td>
+                            <span class="badge" 
+                                [ngClass]="{
+                                    'bg-primary': log.action === 'LOGIN',
+                                    'bg-warning text-dark': log.action === 'UPDATE',
+                                    'bg-danger': log.action === 'ERROR',
+                                    'bg-success': log.action === 'MOVE'
+                                }">
+                                {{ log.action }}
+                            </span>
+                        </td>
+                        <td>{{ log.details }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'move'" class="animate-fade">
+      <div class="modern-card border-danger">
+        <div class="card-header-modern bg-danger">
+          <h4 class="text-white"><i class="bi bi-arrow-repeat me-2"></i>Move / Make Inactive</h4>
+        </div>
+        <div class="card-body p-4">
+          
+          <div class="input-group mb-4 w-50">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" placeholder="Search station..." [(ngModel)]="searchTerm">
+          </div>
+
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Code</th>
+                <th>Centre Name</th>
+                <th>Station Name</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let st of allStations | slice:0:20"> <td><code class="text-dark fw-bold">{{ st.stationcode }}</code></td>
+                <td>{{ st.centrename }}</td>
+                <td>
+                    <div>{{ st.stationname }}</div>
+                    <small class="text-muted">{{ st.regionnam }}</small>
+                </td>
+                <td>
+                  <span class="badge rounded-pill" [ngClass]="{'bg-success': st.flag, 'bg-danger': !st.flag}">
+                    {{ st.flag ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-primary" (click)="moveStation(st)" [disabled]="!st.flag">
+                      <i class="bi bi-arrows-move"></i> Move
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" (click)="softDeleteStation(st)" [disabled]="!st.flag">
+                      <i class="bi bi-power"></i> Inactive
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" (click)="loadStationForEdit(st)" title="Edit Details">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
