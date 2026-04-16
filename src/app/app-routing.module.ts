@@ -109,6 +109,9 @@ import { SpatialTableComponent } from './spatial-table/spatial-table.component';
 import { AdminPanelComponent } from './main/admin-panel/admin-panel.component';
 import { StationManagementComponent } from './main/admin-panel/station-management/station-management/station-management.component';
 import { MonsoonActivityComponent } from './main/monsoon-activity/monsoon-activity.component';
+import { UserManualv2Component } from './user-manualv2/user-manualv2.component';
+import { BlockActualRainfallMapDailyMainPagePubicComponent } from './main/block-rainfall-main-page/block/Guest/block-actual-rainfall-map-daily-main-page-pubic/block-actual-rainfall-map-daily-main-page-pubic.component';
+import { CalculationExclusionComponent } from './main/admin-panel/calculationExclusion/calculation-exclusion/calculation-exclusion.component';
 
 
 export const routes: Routes = [
@@ -135,6 +138,8 @@ export const routes: Routes = [
  { path: 'block-rainfall-actual', component: BlockrainfallMapDailyActualMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'spatial-table', component: SpatialTableComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'monsoon-activity', component: MonsoonActivityComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ { path: 'river-basin', component: GangaRiverBasinComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ { path: 'calulate-exclusion', component: CalculationExclusionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  {
   path: 'admin-panel',
   component: AdminPanelComponent,
@@ -243,6 +248,8 @@ export const routes: Routes = [
   { path: 'last-five-year-data', component: LastYearsDistrictDataComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
   { path: 'station-statistics', component: StationStatisticsPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
   { path: 'realtime-station-data', component: RealtimeStationDataComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
+  { path: 'user-manual', component: UserManualv2Component, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
+  { path: 'block-actual-rainfall-map-daily-main-page-pubic', component: BlockActualRainfallMapDailyMainPagePubicComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
 
 
    { path: 'new-email-dissemination', component: EmailDisseminationPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] }, children:

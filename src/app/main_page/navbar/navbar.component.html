@@ -30,7 +30,9 @@
       Block Rainfall Monitoring Scheme
     </button>
   </div>
-  <span class="toolbar-visitors">VISITORS - 243  </span>
+  <span class="toolbar-visitors">
+    VISITORS - {{ visitorCount || '289' }}
+  </span>
 </mat-toolbar>
 <div id="loader" class="loader" *ngIf="isLoading">
   <div class="loading-message">
@@ -1031,8 +1033,8 @@
     </li>
 
     <li>
-      <a class="main_nav">RIVER BASINS</a>
-      <ul>
+      <a class="main_nav"  *ngIf="hasAccess('river-basin')" routerLink="../river-basin">RIVER BASINS</a>
+      <!-- <ul>
         <li>
           <a
             style="background-color: blue"
@@ -1103,7 +1105,13 @@
             >NARMADA RIVER BASIN</a
           >
         </li>
-      </ul>
+      </ul> -->
+    </li>
+
+    <li>
+      <a class="main_nav" *ngIf="hasAccess('user-manual')" routerLink="../user-manual"
+        >USER MANUAL</a
+      >
     </li>
 
     <li>

@@ -5,6 +5,8 @@ import { IndexedDBService } from 'src/app/indexed-db.service';
 import { PdfUploadService } from 'src/app/services/pdfUploadService.ts/pdf-upload.service';
 import { Constants } from 'src/app/services/constants';
 import { routes } from 'src/app/app-routing.module';
+import { HttpClient } from '@angular/common/http';
+import { environment } from 'src/environment/environment';
 
 @Component({
   selector: 'app-navbar',
@@ -29,7 +31,20 @@ export class NavbarComponent implements OnInit {
   google: any;
 
   documentTypes: any[] = [];
+  visitorCount: number = 0;
+  // ✅ REPLACE WITH THIS
+  private visitorApiUrl = `${environment.baseUrl}/api/v1/visitor`;  // your own backend
 
+  trackAndLoadVisitorCount() {
+    // 1. Track this visit
+    this.http.post(`${this.visitorApiUrl}/track`, {}).subscribe();
+
+    // 2. Get today's count and show in toolbar
+    this.http.get<any>(`${this.visitorApiUrl}/count`).subscribe({
+      next: (res) => { this.visitorCount = res.count; },
+      error: () => { this.visitorCount = 0; }
+    });
+  }
 
   hasAccess(route: any) {
     return this.routeDictionary[route]?.allowedUsers?.includes(this.loggedInUserType) || false;
@@ -64,7 +79,7 @@ export class NavbarComponent implements OnInit {
     private indexedDBService: IndexedDBService,
     private pdfService : PdfUploadService,
     private constants : Constants,
-
+    private http: HttpClient
   ) {
 
 
@@ -114,6 +129,8 @@ export class NavbarComponent implements OnInit {
     this.loggedInUserType = this.loggedInUser.data[0].mcorhq
     console.log('loggedInUserType nav, loggedInUser', this.loggedInUser, this.loggedInUserType)
     this.loadDocumentTypes();
+    this.trackAndLoadVisitorCount();  // ✅ ADD THIS LINE
+
 
   }
   private isTranslateInitialized = false;

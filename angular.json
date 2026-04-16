@@ -29,6 +29,7 @@
               "node_modules/primeng/resources/themes/lara-light-blue/theme.css",
               "node_modules/primeng/resources/primeng.min.css",
               "node_modules/leaflet/dist/leaflet.css",
+              "node_modules/leaflet.fullscreen/Control.FullScreen.css",
               "node_modules/bootstrap/dist/css/bootstrap.min.css",
               "src/styles.css",
               "node_modules/leaflet-draw/dist/leaflet.draw.css"
@@ -36,9 +37,10 @@
             "scripts": [
               "node_modules/leaflet/dist/leaflet.js",
               "node_modules/leaflet-draw/dist/leaflet.draw.js",
+              "node_modules/leaflet.fullscreen/Control.FullScreen.js",
               "node_modules/leaflet.heat/dist/leaflet-heat.js"
-
             ]
+            
           },
           "configurations": {
             "production": {

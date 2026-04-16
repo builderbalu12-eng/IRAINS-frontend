@@ -1,0 +1,21 @@
+<div class="main-body">
+    <app-header></app-header>
+
+        <div class="pdf-container">
+        <!-- <h2 class="manual-title">User Manual</h2>     -->
+        <iframe
+        *ngIf="docUrl"
+        [src]="docUrl"
+        type="application/pdf"
+        width="100%"
+        height="800px"
+        frameborder="0"
+        title="User Manual PDF"
+        ></iframe>
+    
+        <!-- Optional fallback message -->
+        <div *ngIf="!docUrl" class="fallback">
+        <p>Loading PDF...</p>
+        </div>
+    </div>
+</div>

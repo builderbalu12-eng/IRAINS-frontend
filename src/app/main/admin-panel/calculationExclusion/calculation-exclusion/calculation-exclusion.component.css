@@ -1,0 +1,347 @@
+/* ── Background ─────────────────────────────────────────────── */
+.wholebody {
+  background-color: #a2c5b6;
+  min-height: 100vh;
+}
+
+.background-effect {
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+
+/* ── Date Selector Card ──────────────────────────────────────── */
+.values {
+  margin: 20px auto;
+  background-color: #f8f9fa;
+  padding: 20px 30px;
+  border-radius: 15px;
+  max-width: 900px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.values .form-label {
+  font-weight: 600;
+  color: #002467;
+  font-size: 1rem;
+}
+
+.values .form-control {
+  border-radius: 10px;
+  padding: 10px 15px;
+  border: 1px solid #ced4da;
+}
+
+.values .form-control:focus {
+  border-color: #002467;
+  box-shadow: 0 0 0 0.2rem rgba(0, 36, 103, 0.15);
+}
+
+.values .btn-primary {
+  background-color: #002467;
+  border-color: #002467;
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 12px;
+  transition: all 0.3s ease;
+}
+
+.values .btn-primary:hover {
+  background-color: #003580;
+  border-color: #003580;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 15px rgba(0, 36, 103, 0.3);
+}
+
+/* ── Main Card ───────────────────────────────────────────────── */
+.main-card {
+  position: relative;
+  min-height: 600px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+}
+
+.page-title {
+  color: #002467;
+  font-size: 1.4rem;
+}
+
+.date-badge {
+  background-color: #e8f0ff;
+  border: 1px solid #c0d0f0;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #002467;
+}
+
+/* ── Loader Overlay ──────────────────────────────────────────── */
+.loader-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.88);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  border-radius: 16px;
+}
+
+.loading-message {
+  background: white;
+  padding: 25px 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  font-size: 18px;
+  font-weight: 600;
+  color: #002467;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.loading-message i {
+  font-size: 32px;
+  color: #002467;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────── */
+.tab-bar {
+  border-bottom: none;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background-color: #f0f4ff;
+  color: #002467;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 10px 10px 0 0 !important;
+  border: 1px solid #dee2e6 !important;
+  padding: 10px 18px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.tab-btn:hover {
+  background-color: #dce8ff;
+  color: #002467;
+}
+
+.tab-btn.active {
+  background-color: #002467 !important;
+  color: white !important;
+  border-color: #002467 !important;
+}
+
+/* Tab badge (in/total counter) */
+.tab-badge {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+.badge-has-excluded {
+  background-color: #dc3545;
+  color: white;
+}
+
+.badge-all-ok {
+  background-color: #198754;
+  color: white;
+}
+
+/* ── Tab Content Area ────────────────────────────────────────── */
+.tab-content-area {
+  border-color: #dee2e6 !important;
+  min-height: 480px;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────── */
+.search-box {
+  position: relative;
+  width: 280px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #aaa;
+  pointer-events: none;
+}
+
+.search-input {
+  padding-left: 34px;
+  border-radius: 20px;
+  border: 1px solid #ced4da;
+  font-size: 13px;
+}
+
+.search-input:focus {
+  border-color: #002467;
+  box-shadow: 0 0 0 0.2rem rgba(0, 36, 103, 0.12);
+}
+
+.btn-include {
+  background-color: #198754;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 16px;
+  transition: all 0.2s ease;
+}
+
+.btn-include:hover {
+  background-color: #146c43;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.btn-exclude {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 16px;
+  transition: all 0.2s ease;
+}
+
+.btn-exclude:hover {
+  background-color: #b02a37;
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* ── Summary Bar ─────────────────────────────────────────────── */
+.summary-bar {
+  font-size: 13px;
+  padding: 8px 14px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.divider-dot {
+  margin: 0 10px;
+  color: #ccc;
+}
+
+/* ── Table ───────────────────────────────────────────────────── */
+.table-scroll {
+  max-height: 480px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.table-head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table-head th {
+  background-color: #002467 !important;
+  color: white !important;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 12px 14px;
+  border-color: #1a3a7a !important;
+}
+
+.table {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+
+.table td {
+  vertical-align: middle;
+  padding: 10px 14px;
+}
+
+/* ── Row States ──────────────────────────────────────────────── */
+.row-excluded {
+  background-color: #fff5f5 !important;
+  opacity: 0.72;
+}
+
+.row-excluded:hover {
+  background-color: #ffe8e8 !important;
+  opacity: 1;
+}
+
+.excluded-text {
+  text-decoration: line-through;
+  color: #aaa !important;
+}
+
+/* ── Checkbox ────────────────────────────────────────────────── */
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #002467;
+}
+
+/* ── Status Badge ────────────────────────────────────────────── */
+.status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.badge-active {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.badge-excluded {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 992px) {
+  .search-box {
+    width: 100%;
+  }
+
+  .tab-btn {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .values {
+    margin: 15px;
+    padding: 15px;
+  }
+
+  .table {
+    font-size: 12px;
+  }
+
+  .page-title {
+    font-size: 1.1rem;
+  }
+
+  .date-badge {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+}

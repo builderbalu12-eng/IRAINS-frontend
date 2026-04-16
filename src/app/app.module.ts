@@ -183,6 +183,11 @@ import { MatRadioModule } from "@angular/material/radio";
 import { AdminPanelComponent } from './main/admin-panel/admin-panel.component';
 import { StationManagementComponent } from './main/admin-panel/station-management/station-management/station-management.component';
 import { MonsoonActivityComponent } from './main/monsoon-activity/monsoon-activity.component';
+import { UserManualv2Component } from './user-manualv2/user-manualv2.component';
+import { BlockRainfallMapDailyMainPagePubicComponent } from './main/block-rainfall-main-page/block/Guest/block-rainfall-map-daily-main-page-pubic/block-rainfall-map-daily-main-page-pubic.component';
+import { BlockActualRainfallMapDailyMainPagePubicComponent } from './main/block-rainfall-main-page/block/Guest/block-actual-rainfall-map-daily-main-page-pubic/block-actual-rainfall-map-daily-main-page-pubic.component';
+import { BlockActualOrgawsRainfallMapDailyMainPagePubicComponent } from './main/block-rainfall-main-page/block/Guest/block-actual-orgaws-rainfall-map-daily-main-page-pubic/block-actual-orgaws-rainfall-map-daily-main-page-pubic.component';
+import { CalculationExclusionComponent } from './main/admin-panel/calculationExclusion/calculation-exclusion/calculation-exclusion.component';
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -339,6 +344,11 @@ import { MonsoonActivityComponent } from './main/monsoon-activity/monsoon-activi
     AdminPanelComponent,
     StationManagementComponent,
     MonsoonActivityComponent,
+    UserManualv2Component,
+    BlockRainfallMapDailyMainPagePubicComponent,
+    BlockActualRainfallMapDailyMainPagePubicComponent,
+    BlockActualOrgawsRainfallMapDailyMainPagePubicComponent,
+    CalculationExclusionComponent,
   ],
   imports: [
     MatCardModule,

@@ -1,0 +1,38 @@
+.pdf-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .pdf-container h2 {
+    margin-bottom: 16px;
+    color: #333;
+  }
+  
+  iframe {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background-color: #f9f9f9;
+  }
+  
+  /* Make it responsive on smaller screens */
+  @media (max-width: 768px) {
+    iframe {
+      height: 600px;
+    }
+  }
+  
+  .fallback {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+  }
+  .manual-title {
+    font-size: 1.6rem;
+  }
+
+
+  .main-body{
+    background-color: #a2c5b6;
+}

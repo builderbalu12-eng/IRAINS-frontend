@@ -1,3 +1,7 @@
+
+
+
+
 import {
   Component,
   Input,
@@ -25,13 +29,11 @@ import { BlockService } from "src/app/services/block/BlockService.service";
 import { forkJoin } from "rxjs";
 
 @Component({
-  selector: 'app-block-rainfall-map-actual-orgaws-main-page',
-  templateUrl: './block-rainfall-map-actual-orgaws-main-page.component.html',
-  styleUrls: ['./block-rainfall-map-actual-orgaws-main-page.component.css']
+  selector: 'app-block-actual-orgaws-rainfall-map-daily-main-page-pubic',
+  templateUrl: './block-actual-orgaws-rainfall-map-daily-main-page-pubic.component.html',
+  styleUrls: ['./block-actual-orgaws-rainfall-map-daily-main-page-pubic.component.css']
 })
-export class BlockRainfallMapActualOrgawsMainPageComponent {
-
-  
+export class BlockActualOrgawsRainfallMapDailyMainPagePubicComponent {
     
         blockdatacum: any[] = [];
         StartDate: any;

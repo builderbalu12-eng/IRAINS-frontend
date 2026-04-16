@@ -144,7 +144,7 @@
       <td>
         <div *ngIf="!isGuest" class="button">
           <button class="Logout" (click)="logOut()" id="usrLout">Logout</button>
-          <button class="Back" (click)="selectMode()">Back</button>
+          <button class="Back" (click)="selectMode()">Home</button>
         </div>
         <div *ngIf="isGuest" class="button">
           <button class="Logout" routerLink="/login">LogIn</button>

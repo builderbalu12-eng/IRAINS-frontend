@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import * as FileSaver from 'file-saver';
 import { RegionService } from '../region/region.service';
 import { StateService } from './state.service';
+import { CountryService } from '../country/country.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,16 +21,23 @@ export class StateDownloadStatistics {
 
   statedepCurrdate: any[] = [];
   regiondepCurrdate: any[] = [];
+  countrydepCurrdate: any[] = [];
 
   statedepSeasondate: any[] = [];
   regiondepSeasondate: any[] = [];
+  countrydepSeasondate: any[] = [];
 
   rows :any[][] = [];
   data: any;
   seasonPeriodDate: any;
 
-  constructor(private http: HttpClient, private constants: Constants, private regionService:RegionService, private stateservice:StateService) {
-  }
+  constructor(
+    private http: HttpClient,
+    private constants: Constants,
+    private regionService: RegionService,
+    private stateservice: StateService,
+    private countryService: CountryService
+  ) {}
 
   convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
 
@@ -131,20 +139,27 @@ export class StateDownloadStatistics {
           concatMap(region => {
             this.regiondepCurrdate = region.data;
             console.log('indownloading---->',this.regiondepCurrdate)
-            return this.stateservice.fetchDataFtp(seasonPeriodDate); // or any observable to complete the chain
+            return this.stateservice.fetchDataFtp(seasonPeriodDate);
           }),
           concatMap(seasonstateData => {
             this.statedepSeasondate = seasonstateData.data;
             console.log('indownloading---->',this.statedepSeasondate)
             return this.regionService.fetchDataFtp(seasonPeriodDate);
-          }),    
+          }),
           concatMap(seasonregionData => {
             this.regiondepSeasondate = seasonregionData.data;
             console.log('indownloading---->', this.regiondepSeasondate)
-            this.downloadPdf()
-            return EMPTY
+            return this.countryService.fetchDataFtp(data);
           }),
-    
+          concatMap(countryData => {
+            this.countrydepCurrdate = countryData.data;
+            return this.countryService.fetchDataFtp(seasonPeriodDate);
+          }),
+          concatMap(seasonCountryData => {
+            this.countrydepSeasondate = seasonCountryData.data;
+            this.downloadPdf();
+            return EMPTY;
+          }),
         )
       );
     }
@@ -201,22 +216,27 @@ export class StateDownloadStatistics {
           concatMap(region => {
             this.regiondepCurrdate = region.data;
             console.log('indownloading---->',this.regiondepCurrdate)
-            return this.stateservice.fetchData(seasonPeriodDate); // or any observable to complete the chain
+            return this.stateservice.fetchData(seasonPeriodDate);
           }),
-    
           concatMap(seasonstateData => {
             this.statedepSeasondate = seasonstateData.data;
             console.log('indownloading---->',this.statedepSeasondate)
-    
             return this.regionService.fetchData(seasonPeriodDate);
-          }),    
+          }),
           concatMap(seasonregionData => {
             this.regiondepSeasondate = seasonregionData.data;
             console.log('indownloading---->', this.regiondepSeasondate)
-            this.downloadPdf()
-            return EMPTY
+            return this.countryService.fetchData(data);
           }),
-    
+          concatMap(countryData => {
+            this.countrydepCurrdate = countryData.data;
+            return this.countryService.fetchData(seasonPeriodDate);
+          }),
+          concatMap(seasonCountryData => {
+            this.countrydepSeasondate = seasonCountryData.data;
+            this.downloadPdf();
+            return EMPTY;
+          }),
         )
       );
     }
@@ -332,7 +352,7 @@ export class StateDownloadStatistics {
       content : `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`, colSpan:4
     }]
 
-    const columns = ['S.No', 'REGION/STATE', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
+    const columns = ['S.No', 'METEOROLOGICAL STATES', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
 
         
     this.loadTheRows();
@@ -381,7 +401,7 @@ export class StateDownloadStatistics {
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0); // Set font color to black
     const headingText = 'India Meteorological Department\nHydromet Division, New Delhi';
-    const headingText1 = 'STATE-WISE RAINFALL DISTRIBUTION';
+    const headingText1 = 'STATE-WISE RAINFALL (MM) DISTRIBUTION';
     doc.text(headingText, marginLeft + 25, marginTop + 8); // Adjust position as needed
     doc.text(headingText1, marginLeft + 100, marginTop + 28);
     autoTable(doc, {
@@ -401,7 +421,8 @@ export class StateDownloadStatistics {
       }
     });
 
-    
+    this.addCategoryTable(doc);
+
     const columns2 = ['', 'LEGEND', ''];
     const columns3 = ['CATEGORY', '% DEPARTURES OF RAINFALL', 'COLOUR CODE']; // Update with your second table column names
     const rows2 = [
@@ -428,6 +449,34 @@ export class StateDownloadStatistics {
     // DISTRIBUTION_COUNTRY_INDIA_cd.pdf
     const filename = `DISTRIBUTION_STATE_INDIA_cd.pdf`;
 
+    // Build category rows for Excel
+    const catStats = this.buildCategoryStats();
+    const dayS    = catStats.day    as Record<string, { count: number; area: number }>;
+    const periodS = catStats.period as Record<string, { count: number; area: number }>;
+    const catLabelsExcel: Record<string, string> = {
+      LE: 'LARGE EXCESS', E: 'EXCESS', N: 'NORMAL',
+      D: 'DEFICIENT', LD: 'LARGE DEFICIENT', NR: 'NO RAIN',
+    };
+    const dayLabelExcel = this.data.startDate === this.data.endDate
+      ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`
+      : `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} TO ${this.getAdjustedEndDate(this.data.startDate, this.data.endDate)}`;
+    const periodLabelExcel = `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} TO ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`;
+
+    const categoryExcelRows: any[][] = [
+      [],
+      ['CATEGORYWISE NO. OF STATES & % AREA (STATE) OF THE COUNTRY'],
+      [],
+      ['CATEGORY', dayLabelExcel, '', periodLabelExcel, ''],
+      ['', 'NO. OF STATES', 'STATE % AREA OF COUNTRY', 'NO. OF STATES', 'STATE % AREA OF COUNTRY'],
+      ...['LE', 'E', 'N', 'D', 'LD', 'NR'].map(cat => [
+        catLabelsExcel[cat],
+        dayS[cat].count,
+        `${dayS[cat].area}%`,
+        periodS[cat].count,
+        `${periodS[cat].area}%`,
+      ]),
+    ];
+
     if(this.isView){
       const pdfBlob = doc.output('blob');
       const pdfUrl = URL.createObjectURL(pdfBlob);
@@ -435,7 +484,12 @@ export class StateDownloadStatistics {
     }else{
       setTimeout(()=>{
         doc.save(filename);
-        this.exportAsExcelFile(newArr, `DISTRICT_RAINFALL_DISTRIBUTION_STATE_INDIA_cd`, columns, newcolumns1);
+        this.exportAsExcelFile(
+          [...newArr, ...categoryExcelRows],
+          `DISTRICT_RAINFALL_DISTRIBUTION_STATE_INDIA_cd`,
+          columns,
+          newcolumns1
+        );
       },3000)
     }
 
@@ -476,6 +530,144 @@ export class StateDownloadStatistics {
   }
   
 
+
+  // Standard IMD state area as % of India's total land area (keyed by state_name uppercase)
+  private readonly stateAreaPct: Record<string, number> = {
+    'RAJASTHAN':                                    10.4,
+    'MADHYA PRADESH':                                9.4,
+    'MAHARASHTRA':                                   9.4,
+    'UTTAR PRADESH':                                 7.4,
+    'GUJARAT':                                       6.0,
+    'KARNATAKA':                                     5.8,
+    'ANDHRA PRADESH':                                4.9,
+    'ODISHA':                                        4.6,
+    'CHHATTISGARH':                                  4.1,
+    'TAMIL NADU':                                    4.0,
+    'TELANGANA':                                     3.6,
+    'J & K':                                         3.3,
+    'LADAKH':                                        3.3,
+    'BIHAR':                                         2.9,
+    'WEST BENGAL':                                   2.7,
+    'ARUNACHAL PRADESH':                             2.5,
+    'ASSAM':                                         2.3,
+    'JHARKHAND':                                     2.3,
+    'HIMACHAL PRADESH':                              1.7,
+    'UTTARAKHAND':                                   1.6,
+    'PUNJAB':                                        1.5,
+    'HARYANA':                                       1.3,
+    'KERALA':                                        1.1,
+    'MEGHALAYA':                                     0.7,
+    'MANIPUR':                                       0.7,
+    'MIZORAM':                                       0.6,
+    'NAGALAND':                                      0.5,
+    'TRIPURA':                                       0.3,
+    'SIKKIM':                                        0.2,
+    'DELHI':                                         0.2,
+    'A & N ISLANDS':                                 0.2,
+    'DADRA & NAGAR HAVELI AND DAMAN & DIU':          0.1,
+    'GOA':                                           0.1,
+    'CHANDIGARH':                                    0.0,
+    'LAKSHADWEEP':                                   0.0,
+    'PUDUCHERRY':                                    0.0,
+  };
+
+  private buildCategoryStats() {
+    const cats = ['LE', 'E', 'N', 'D', 'LD', 'NR'] as const;
+    type CatKey = typeof cats[number];
+
+    const makeEmpty = (): Record<CatKey, { count: number; area: number }> =>
+      Object.fromEntries(cats.map(c => [c, { count: 0, area: 0 }])) as any;
+
+    const day    = makeEmpty();
+    const period = makeEmpty();
+
+    const totalArea = Object.values(this.stateAreaPct).reduce((s, a) => s + a, 0);
+
+    for (const item of this.statedepCurrdate) {
+      const cat = this.constants.getColorAndCat(item.departure).Cat as CatKey;
+      if (cats.includes(cat)) {
+        day[cat].count++;
+        const name = (item.state_name ?? '').trim().toUpperCase();
+        day[cat].area += this.stateAreaPct[name] ?? 0;
+      }
+    }
+
+    for (const item of this.statedepSeasondate) {
+      const cat = this.constants.getColorAndCat(item.departure).Cat as CatKey;
+      if (cats.includes(cat)) {
+        period[cat].count++;
+        const name = (item.state_name ?? '').trim().toUpperCase();
+        period[cat].area += this.stateAreaPct[name] ?? 0;
+      }
+    }
+
+    for (const k of cats) {
+      day[k].area    = Math.round((day[k].area    / totalArea) * 100);
+      period[k].area = Math.round((period[k].area / totalArea) * 100);
+    }
+
+    return { day, period };
+  }
+
+  private addCategoryTable(doc: jsPDF) {
+    const stats = this.buildCategoryStats();
+
+    const dayLabel = this.data.startDate === this.data.endDate
+      ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`
+      : `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} TO ${this.getAdjustedEndDate(this.data.startDate, this.data.endDate)}`;
+
+    const periodLabel = `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} TO ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`;
+
+    const titleRow = [{
+      content: 'CATEGORYWISE NO. OF STATES & % AREA (STATE) OF THE COUNTRY',
+      colSpan: 5,
+      styles: { halign: 'center' as const, fontStyle: 'bold' as const },
+    }];
+
+    const header1 = [
+      { content: 'CATEGORY',    rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+      { content: dayLabel,      colSpan: 2, styles: { halign: 'center' as const } },
+      { content: periodLabel,   colSpan: 2, styles: { halign: 'center' as const } },
+    ];
+
+    const header2 = [
+      { content: 'NO. OF\nSTATES',                  styles: { halign: 'center' as const } },
+      { content: 'STATE\n% AREA OF COUNTRY',         styles: { halign: 'center' as const } },
+      { content: 'NO. OF\nSTATES',                  styles: { halign: 'center' as const } },
+      { content: 'STATE\n% AREA OF COUNTRY',         styles: { halign: 'center' as const } },
+    ];
+
+    const catLabels: Record<string, string> = {
+      LE: 'LARGE EXCESS', E: 'EXCESS', N: 'NORMAL',
+      D: 'DEFICIENT', LD: 'LARGE DEFICIENT', NR: 'NO RAIN',
+    };
+
+    const dayS    = stats.day    as Record<string, { count: number; area: number }>;
+    const periodS = stats.period as Record<string, { count: number; area: number }>;
+
+    const rows = ['LE', 'E', 'N', 'D', 'LD', 'NR'].map(cat => [
+      catLabels[cat],
+      dayS[cat].count,
+      `${dayS[cat].area}%`,
+      periodS[cat].count,
+      `${periodS[cat].area}%`,
+    ]);
+
+    const startY = (doc as any).lastAutoTable.finalY + 10;
+
+    autoTable(doc, {
+      head: [titleRow, header1, header2],
+      body: rows,
+      startY,
+      margin: { left: 10 },
+      styles: { fontSize: 7, halign: 'center' },
+      headStyles: { halign: 'center', fillColor: [200, 220, 255] },
+      didDrawCell: function (data: { cell: { x: number; y: number; width: any; height: any } }) {
+        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
+        doc.setDrawColor(0);
+      },
+    });
+  }
 
   private loadTheRows() {
     // Group by Subdivision and then State
@@ -571,6 +763,28 @@ export class StateDownloadStatistics {
             ]);
         }
     }
+    // COUNTRY AS A WHOLE — last row
+    if (this.countrydepCurrdate?.length && this.countrydepSeasondate?.length) {
+      const countryColorCode = [180, 180, 180];
+      const countryDate   = this.countrydepCurrdate[0];
+      const countrySeason = this.countrydepSeasondate[0];
+      const cDateCat   = this.constants.getColorAndCat(countryDate.departure);
+      const cSeasonCat = this.constants.getColorAndCat(countrySeason.departure);
+
+      this.rows.push([
+        { content: '', styles: { fillColor: countryColorCode } },
+        { content: 'COUNTRY AS A WHOLE', styles: { fillColor: countryColorCode, fontStyle: 'bold' } },
+        { content: countryDate.actual_rainfall != null ? this.constants.trimToOneDecimals(countryDate.actual_rainfall) : ' ', styles: { fillColor: countryColorCode } },
+        { content: this.constants.trimToOneDecimals(parseFloat(countryDate.rainfall_normal_value)), styles: { fillColor: countryColorCode } },
+        { content: countryDate.departure != null ? this.constants.trimToZeroDecimals(countryDate.departure) : ' ', styles: { fillColor: countryColorCode } },
+        { content: cDateCat.Cat,   styles: { fillColor: cDateCat.color } },
+        { content: countrySeason.actual_rainfall != null ? this.constants.trimToOneDecimals(countrySeason.actual_rainfall) : ' ', styles: { fillColor: countryColorCode } },
+        { content: this.constants.trimToOneDecimals(parseFloat(countrySeason.rainfall_normal_value)), styles: { fillColor: countryColorCode } },
+        { content: countrySeason.departure != null ? this.constants.trimToZeroDecimals(countrySeason.departure) : ' ', styles: { fillColor: countryColorCode } },
+        { content: cSeasonCat.Cat, styles: { fillColor: cSeasonCat.color } },
+      ]);
+    }
+
     console.log(this.rows)
 }
 
