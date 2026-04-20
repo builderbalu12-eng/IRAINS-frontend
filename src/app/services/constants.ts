@@ -19,6 +19,38 @@ export class Constants {
     return this.GuestMode;
   }
 
+  getDateSuffix(startDate: string, endDate: string): string {
+    if (startDate === endDate) return 'cd';
+    const start = new Date(startDate);
+    const end   = new Date(endDate);
+    const days  = Math.round((end.getTime() - start.getTime()) / 86400000);
+    if (days === 6 && start.getDay() === 4) return 'w';
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) return 'm';
+    return 'c';
+  }
+
+  getExcelDateLabel(startDate: string, endDate: string): string {
+    if (startDate === endDate) {
+      const [y, m, d] = startDate.split('-');
+      return `${d}${m}${y}`;
+    }
+    const start  = new Date(startDate);
+    const end    = new Date(endDate);
+    const MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const MON    = ['Jan','Feb','Mar','Apr','May','Jun',
+                    'Jul','Aug','Sep','Oct','Nov','Dec'];
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+      return `(${start.getDate()}-${end.getDate()}) ${MONTHS[start.getMonth()]} ${String(start.getFullYear()).slice(-2)}`;
+    }
+    const d1 = String(start.getDate()).padStart(2, '0');
+    const d2 = String(end.getDate()).padStart(2, '0');
+    const y1 = start.getFullYear();
+    const y2 = end.getFullYear();
+    if (y1 === y2) return `(${d1}${MON[start.getMonth()]}-${d2}${MON[end.getMonth()]}) ${y1}`;
+    return `(${d1}${MON[start.getMonth()]}${y1}-${d2}${MON[end.getMonth()]}${y2})`;
+  }
+
   truncateToOneDecimal(num: number | null): string | null {
     if (num === null || num === undefined) {
       return null; // Return null if the input is null or undefined

@@ -33,4 +33,9 @@ export class StateService {
     const url = `${this.baseUrl}/api/v1/fetchMetWiseStates`;
     return this.http.get<any>(url);
   }
+
+  fetchAreaPercentages(): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/getStateAreaPercentages`;
+    return this.http.get<any>(url);
+  }
 }

@@ -346,11 +346,12 @@ export class DownloadPdf {
     this.loadTheRows();
 
     var newArr = this.rows.map((subArr) => {
-      return subArr.map((item:any) => {
-        if (typeof item === 'object' && item.hasOwnProperty('content')) {
-          return item.content;
+      return subArr.map((item: any, colIdx: number) => {
+        let val = typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+        if ((colIdx === 4 || colIdx === 8) && val !== '' && val !== ' ' && val != null) {
+          val = `${val}%`;
         }
-        return item;
+        return val;
       });
     });
 
@@ -433,8 +434,10 @@ export class DownloadPdf {
         doc.setDrawColor(0);
       },
     });
-    // DISTRIBUTION_COUNTRY_INDIA_cd.pdf
-    const filename = `DISTRIBUTION_DISTRICT_INDIA_cd.pdf`;
+    const suffix    = this.constants.getDateSuffix(this.data.startDate, this.data.endDate);
+    const dateLabel = this.constants.getExcelDateLabel(this.data.startDate, this.data.endDate);
+    const filename  = `DISTRICT_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_${suffix}.pdf`;
+    const excelName = `DISTRICT_${dateLabel}`;
 
     if(this.isView){
       const pdfBlob = doc.output('blob');
@@ -443,7 +446,7 @@ export class DownloadPdf {
     }else{
       setTimeout(()=>{
         doc.save(filename);
-        this.exportAsExcelFile(newArr, `DISTRICT_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_cd`, columns, newcolumns1);
+        this.exportAsExcelFile(newArr, excelName, columns, newcolumns1);
       },3000)
     }
 

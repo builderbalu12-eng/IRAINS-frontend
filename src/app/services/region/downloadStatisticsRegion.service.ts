@@ -347,11 +347,12 @@ export class RegionDownloadStatistics {
     this.loadTheRows();
 
     var newArr = this.rows.map((subArr) => {
-      return subArr.map((item: any) => {
-        if (typeof item === "object" && item.hasOwnProperty("content")) {
-          return item.content;
+      return subArr.map((item: any, colIdx: number) => {
+        let val = typeof item === "object" && item.hasOwnProperty("content") ? item.content : item;
+        if ((colIdx === 4 || colIdx === 8) && val !== '' && val !== ' ' && val != null) {
+          val = `${val}%`;
         }
-        return item;
+        return val;
       });
     });
 
@@ -474,8 +475,10 @@ export class RegionDownloadStatistics {
         doc.setDrawColor(0);
       },
     });
-    // DISTRIBUTION_COUNTRY_INDIA_cd.pdf
-    const filename = `DISTRIBUTION_REGION_INDIA_cd.pdf`;
+    const suffix    = this.constants.getDateSuffix(this.data.startDate, this.data.endDate);
+    const dateLabel = this.constants.getExcelDateLabel(this.data.startDate, this.data.endDate);
+    const filename  = `REGION_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_${suffix}.pdf`;
+    const excelName = `REGION_${dateLabel}`;
 
     if (this.isView) {
       const pdfBlob = doc.output("blob");
@@ -486,7 +489,7 @@ export class RegionDownloadStatistics {
         doc.save(filename);
         this.exportAsExcelFile(
           newArr,
-          `REGION_RAINFALL_DISTRIBUTION_INDIA_cd`,
+          excelName,
           columns,
           newcolumns1
         );

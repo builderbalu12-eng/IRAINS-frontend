@@ -5,7 +5,7 @@ import { environment } from "src/environment/environment";
 import { Constants } from "../constants";
 import autoTable, { Column } from "jspdf-autotable";
 import { jsPDF } from "jspdf";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import * as FileSaver from "file-saver";
 import { RegionService } from "../region/region.service";
 import { SubdivisionService } from "./subDivision.service";
@@ -219,6 +219,13 @@ export class SubdivDownloadStatistics {
 
           concatMap((seasonCountryData) => {
             this.countrydepSeasondate = seasonCountryData.data;
+            return this.subdivservice.fetchAreaPercentages();
+          }),
+
+          concatMap((areaData) => {
+            this.subdivAreaMap = new Map(
+              areaData.data.map((r: any) => [Number(r.subdiv_code), Number(r.area_percentage)])
+            );
             this.downloadPdf();
             return EMPTY;
           })
@@ -295,6 +302,13 @@ export class SubdivDownloadStatistics {
 
           concatMap((seasonCountryData) => {
             this.countrydepSeasondate = seasonCountryData.data;
+            return this.subdivservice.fetchAreaPercentages();
+          }),
+
+          concatMap((areaData) => {
+            this.subdivAreaMap = new Map(
+              areaData.data.map((r: any) => [Number(r.subdiv_code), Number(r.area_percentage)])
+            );
             this.downloadPdf();
             return EMPTY;
           })
@@ -337,50 +351,97 @@ export class SubdivDownloadStatistics {
   }
 
   exportAsExcelFile(
-    json: any[],
+    dataRows: any[][],
+    categoryRows: any[][],
     excelFileName: string,
-    columns: any,
-    columns1: any
+    columns: any[],     // row 4: blank, blank, ACTUAL, NORMAL, ...
+    columns1: any[],    // row 3: S.No, METEOROLOGICAL, DAY label, PERIOD label
+    title: string       // e.g. "SUBDIVISION-WISE RAINFALL (MM) DISTRIBUTION"
   ): void {
     const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
 
-    const startCell = "C1";
-    const endCell = "F1";
-    const startCell1 = "G1";
-    const endCell1 = "J1";
+    const redBorder = {
+      top:    { style: 'medium', color: { rgb: 'C0000B' } },
+      bottom: { style: 'medium', color: { rgb: 'C0000B' } },
+      left:   { style: 'medium', color: { rgb: 'C0000B' } },
+      right:  { style: 'medium', color: { rgb: 'C0000B' } },
+    };
+    const blankCell = { v: '', t: 's', s: {} };
 
-    // Merge the cells
-    worksheet["!merges"] = [
-      {
-        s: XLSX.utils.decode_cell(startCell),
-        e: XLSX.utils.decode_cell(endCell),
-      },
-      {
-        s: XLSX.utils.decode_cell(startCell1),
-        e: XLSX.utils.decode_cell(endCell1),
-      },
+    // Row 1: Title — red bold, merged A1:J1
+    const titleRow = [
+      { v: title, t: 's', s: {
+        font: { bold: true, sz: 12, color: { rgb: 'C0000B' } },
+        alignment: { horizontal: 'center' as const, vertical: 'middle' as const },
+      }},
+      ...Array(9).fill(blankCell),
     ];
 
-    XLSX.utils.sheet_add_aoa(worksheet, [columns1], { origin: "A1" });
+    // Row 2: blank
+    const blankRow = Array(10).fill(blankCell);
 
-    XLSX.utils.sheet_add_aoa(worksheet, [columns], { origin: "A2" });
-
-    XLSX.utils.sheet_add_json(worksheet, json, {
-      origin: "A3",
-      skipHeader: true,
-    });
-
-    const workbook: XLSX.WorkBook = {
-      Sheets: { data: worksheet },
-      SheetNames: ["data"],
+    // Row 3: S.No + METEOROLOGICAL + DAY/PERIOD labels
+    const hdrStyle3 = {
+      font: { bold: true, sz: 9, color: { rgb: '000000' } },
+      fill: { fgColor: { rgb: 'FFFFFF' } },
+      border: redBorder,
+      alignment: { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true },
     };
+    const styledColumns1 = columns1.map((v: any) => ({ v: String(v ?? ''), t: 's', s: hdrStyle3 }));
 
-    const excelBuffer: any = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
+    // Row 4: blank A-B + ACTUAL/NORMAL/etc
+    const styledColumns = columns.map((v: any) => ({ v: String(v ?? ''), t: 's', s: hdrStyle3 }));
 
+    // Merges
+    worksheet['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },   // Title A1:J1
+      { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } },   // S.No A3:A4
+      { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } },   // METEOROLOGICAL B3:B4
+      { s: { r: 2, c: 2 }, e: { r: 2, c: 5 } },   // DAY C3:F3
+      { s: { r: 2, c: 6 }, e: { r: 2, c: 9 } },   // PERIOD G3:J3
+    ];
+
+    XLSX.utils.sheet_add_aoa(worksheet, [titleRow],       { origin: 'A1' });
+    XLSX.utils.sheet_add_aoa(worksheet, [blankRow],       { origin: 'A2' });
+    XLSX.utils.sheet_add_aoa(worksheet, [styledColumns1], { origin: 'A3' });
+    XLSX.utils.sheet_add_aoa(worksheet, [styledColumns],  { origin: 'A4' });
+    XLSX.utils.sheet_add_aoa(worksheet, dataRows,         { origin: 'A5' });
+
+    // Category section: starts after title(1)+blank(1)+headers(2)+data rows
+    const catStartRow = 4 + dataRows.length; // 0-indexed
+    XLSX.utils.sheet_add_aoa(worksheet, categoryRows, { origin: { r: catStartRow, c: 0 } });
+
+    const cm = catStartRow;
+    const catMerges = [
+      { s: { r: cm + 1, c: 0 }, e: { r: cm + 1, c: 9 } },  // title
+      { s: { r: cm + 3, c: 1 }, e: { r: cm + 3, c: 4 } },  // DAY label
+      { s: { r: cm + 3, c: 6 }, e: { r: cm + 3, c: 9 } },  // PERIOD label
+      { s: { r: cm + 4, c: 1 }, e: { r: cm + 4, c: 2 } },  // NO.OF SUBDIV day
+      { s: { r: cm + 4, c: 3 }, e: { r: cm + 4, c: 4 } },  // %AREA day
+      { s: { r: cm + 4, c: 6 }, e: { r: cm + 4, c: 7 } },  // NO.OF SUBDIV period
+      { s: { r: cm + 4, c: 8 }, e: { r: cm + 4, c: 9 } },  // %AREA period
+      ...Array.from({ length: 6 }, (_, i) => [
+        { s: { r: cm + 5 + i, c: 1 }, e: { r: cm + 5 + i, c: 2 } },
+        { s: { r: cm + 5 + i, c: 3 }, e: { r: cm + 5 + i, c: 4 } },
+        { s: { r: cm + 5 + i, c: 6 }, e: { r: cm + 5 + i, c: 7 } },
+        { s: { r: cm + 5 + i, c: 8 }, e: { r: cm + 5 + i, c: 9 } },
+      ]).flat(),
+    ];
+    worksheet['!merges'] = [...worksheet['!merges'], ...catMerges];
+
+    worksheet['!cols'] = [
+      { wch: 20 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+      { wch: 8  }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 8  },
+    ];
+    worksheet['!rows'] = [{ hpt: 25 }, { hpt: 5 }, { hpt: 35 }, { hpt: 25 }];
+
+    const workbook: XLSX.WorkBook = { Sheets: { data: worksheet }, SheetNames: ['data'] };
+    const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     this.saveAsExcelFile(excelBuffer, excelFileName);
+  }
+
+  private rgbToHex(rgb: number[]): string {
+    return rgb.map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
   }
 
   saveAsExcelFile(buffer: any, fileName: string): void {
@@ -420,26 +481,20 @@ export class SubdivDownloadStatistics {
       },
     ];
     const columns1forexcel = [
-      "",
-      "",
+      'S.\nNO.',
+      'METEOROLOGICAL\nSUBDIVISIONS',
       {
-        content:
-          this.data.startDate == this.data.endDate
-            ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`
-            : `DAY: ${this.convertToIndianDateFormat(
-                this.data.startDate
-              )} to ${this.convertToIndianDateFormat(this.data.endDate)}`,
+        content: this.data.startDate === this.data.endDate
+          ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`
+          : `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} TO ${this.getAdjustedEndDate(this.data.startDate, this.data.endDate)}`,
         colSpan: 4,
       },
-      "",
-      "",
-      "",
+      '', '', '',
       {
-        content: `PERIOD: ${this.convertToIndianDateFormat(
-          this.seasonPeriodDate.startDate
-        )} to ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`,
+        content: `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} TO ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`,
         colSpan: 4,
       },
+      '', '', '',
     ];
 
     const columns = [
@@ -455,14 +510,63 @@ export class SubdivDownloadStatistics {
       "CAT.",
     ];
 
+    const columnsForExcel = ['', '', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
+
     this.loadTheRows();
 
-    var newArr = this.rows.map((subArr) => {
-      return subArr.map((item: any) => {
-        if (typeof item === "object" && item.hasOwnProperty("content")) {
-          return item.content;
+    const redBorder = {
+      top:    { style: 'medium', color: { rgb: 'C0000B' } },
+      bottom: { style: 'medium', color: { rgb: 'C0000B' } },
+      left:   { style: 'medium', color: { rgb: 'C0000B' } },
+      right:  { style: 'medium', color: { rgb: 'C0000B' } },
+    };
+    const thinBlack = {
+      top:    { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left:   { style: 'thin', color: { rgb: '000000' } },
+      right:  { style: 'thin', color: { rgb: '000000' } },
+    };
+
+    var newArr: any[][] = this.rows.map((subArr) => {
+      // Detect row type from first cell's fillColor
+      const firstFill = subArr[0]?.styles?.fillColor;
+      const isRegion  = Array.isArray(firstFill) && firstFill[0] === 72;   // [72,209,204] teal
+      const isCountry = Array.isArray(firstFill) && firstFill[0] === 180;  // [180,180,180] gray
+
+      return subArr.map((item: any, colIdx: number) => {
+        let content = typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+        if ((colIdx === 4 || colIdx === 8) && content !== '' && content !== ' ' && content != null) {
+          content = `${content}%`;
         }
-        return item;
+        const cellFill = item?.styles?.fillColor;
+
+        if (isRegion || isCountry) {
+          // Region / Country rows: white fill, blue bold text, red border
+          return {
+            v: String(content ?? ''),
+            t: 's',
+            s: {
+              fill: { fgColor: { rgb: 'FFFFFF' } },
+              border: redBorder,
+              font: { bold: true, sz: 9, color: { rgb: '0070C0' } },
+              alignment: { horizontal: 'center', vertical: 'middle' },
+            },
+          };
+        }
+
+        // Subdivision rows: keep CAT cell color, white for others
+        const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
+        const fillHex   = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
+        return {
+          v: String(content ?? ''),
+          t: 's',
+          s: {
+            fill: { fgColor: { rgb: fillHex } },
+            border: thinBlack,
+            font: { bold: true, sz: 9, color: { rgb: '000000' } },
+            alignment: { horizontal: 'center', vertical: 'middle' },
+          },
+        };
       });
     });
 
@@ -588,7 +692,10 @@ export class SubdivDownloadStatistics {
       },
     });
     // DISTRIBUTION_COUNTRY_INDIA_cd.pdf
-    const filename = `DISTRIBUTION_SUBDIVISION_INDIA_cd.pdf`;
+    const suffix  = this.constants.getDateSuffix(this.data.startDate, this.data.endDate);
+    const dateLabel = this.constants.getExcelDateLabel(this.data.startDate, this.data.endDate);
+    const filename  = `SUBDIVISION_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_${suffix}.pdf`;
+    const excelName = `SUBDIV_${dateLabel}`;
 
     // Build category rows for Excel
     const catStats = this.buildCategoryStats();
@@ -603,18 +710,63 @@ export class SubdivDownloadStatistics {
       : `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} TO ${this.getAdjustedEndDate(this.data.startDate, this.data.endDate)}`;
     const periodLabelExcel = `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} TO ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`;
 
+    const catThinBorder = {
+      top:    { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left:   { style: 'thin', color: { rgb: '000000' } },
+      right:  { style: 'thin', color: { rgb: '000000' } },
+    };
+    const catHdrStyle = (extra: any = {}) => ({
+      font: { bold: true, sz: 9, color: { rgb: '000000' }, ...extra.font },
+      fill: { fgColor: { rgb: 'C8DCFF' } },
+      border: catThinBorder,
+      alignment: { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true },
+    });
+    const catDataCell = (v: any) => ({
+      v: String(v), t: 's',
+      s: { border: catThinBorder, alignment: { horizontal: 'center' as const, vertical: 'middle' as const }, font: { bold: true, sz: 9 } },
+    });
+    const blankCell = { v: '', t: 's', s: {} };
+    const blankRow = Array(10).fill(blankCell);
+
     const categoryExcelRows: any[][] = [
-      [],
-      ['CATEGORYWISE NO. OF SUBDIVISIONS & % AREA (SUBDIVISIONAL) OF THE COUNTRY'],
-      [],
-      ['CATEGORY', dayLabelExcel, '', periodLabelExcel, ''],
-      ['', 'NO. OF SUBDIVISIONS', 'SUBDIVISIONAL % AREA OF COUNTRY', 'NO. OF SUBDIVISIONS', 'SUBDIVISIONAL % AREA OF COUNTRY'],
+      blankRow,
+      [
+        { v: 'CATEGORYWISE NO. OF SUBDIVISIONS & % AREA (SUBDIVISIONAL) OF THE COUNTRY', t: 's',
+          s: { font: { bold: true, sz: 10, color: { rgb: 'C0000B' } }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+        ...Array(9).fill(blankCell),
+      ],
+      blankRow,
+      // DAY label spans B-E (cols 1-4), PERIOD label spans G-J (cols 6-9)
+      [blankCell,
+       { v: dayLabelExcel, t: 's', s: catHdrStyle() },
+       blankCell, blankCell, blankCell,
+       blankCell,
+       { v: periodLabelExcel, t: 's', s: catHdrStyle() },
+       blankCell, blankCell, blankCell],
+      // column headers: A=CATEGORY, B-C=NO.OF SUBDIV, D-E=%AREA, F=blank, G-H=NO.OF SUBDIV, I-J=%AREA
+      [{ v: 'CATEGORY', t: 's', s: catHdrStyle() },
+       { v: 'NO. OF\nSUBDIVISIONS', t: 's', s: catHdrStyle() },
+       blankCell,
+       { v: 'SUBDIVISIONAL\n% AREA OF COUNTRY', t: 's', s: catHdrStyle() },
+       blankCell,
+       blankCell,
+       { v: 'NO. OF\nSUBDIVISIONS', t: 's', s: catHdrStyle() },
+       blankCell,
+       { v: 'SUBDIVISIONAL\n% AREA OF COUNTRY', t: 's', s: catHdrStyle() },
+       blankCell],
+      // 6 data rows
       ...['LE', 'E', 'N', 'D', 'LD', 'NR'].map(cat => [
-        catLabelsExcel[cat],
-        dayS[cat].count,
-        `${dayS[cat].area}%`,
-        periodS[cat].count,
-        `${periodS[cat].area}%`,
+        { v: catLabelsExcel[cat], t: 's', s: { border: catThinBorder, font: { bold: true, sz: 9 }, alignment: { horizontal: 'left' as const, vertical: 'middle' as const } } },
+        catDataCell(dayS[cat].count),
+        blankCell,
+        catDataCell(`${dayS[cat].area}%`),
+        blankCell,
+        blankCell,
+        catDataCell(periodS[cat].count),
+        blankCell,
+        catDataCell(`${periodS[cat].area}%`),
+        blankCell,
       ]),
     ];
 
@@ -626,10 +778,12 @@ export class SubdivDownloadStatistics {
       setTimeout(() => {
         doc.save(filename);
         this.exportAsExcelFile(
-          [...newArr, ...categoryExcelRows],
-          `DISTRICT_RAINFALL_DISTRIBUTION_SUBDIVSION_INDIA_cd`,
-          columns,
-          newcolumns1
+          newArr,
+          categoryExcelRows,
+          excelName,
+          columnsForExcel,
+          newcolumns1,
+          'SUBDIVISION-WISE RAINFALL (MM) DISTRIBUTION'
         );
       }, 3000);
     }
@@ -669,45 +823,8 @@ export class SubdivDownloadStatistics {
     return `${year}-${month}-${day}`;
   }
 
-  // Standard IMD subdivision area as % of India's total land area (keyed by subdivision name uppercase)
-  private readonly subdivAreaPct: Record<string, number> = {
-    'ARUNACHAL PRADESH':         2.5,
-    'ASSAM & MEGHALAYA':         3.1,
-    'N M M T':                   2.1,
-    'SHWB & SIKKIM':             0.5,
-    'GANGETIC WEST BENGAL':      2.0,
-    'BIHAR':                     2.9,
-    'JHARKHAND':                 2.3,
-    'EAST U.P.':                 2.4,
-    'WEST U.P.':                 2.6,
-    'UTTARAKHAND':               1.6,
-    'HAR. CHD & DELHI':          1.3,
-    'PUNJAB':                    1.5,
-    'HIMACHAL PRADESH':          1.7,
-    'J & K AND LADAKH':          8.1,
-    'EAST RAJASTHAN':            4.5,
-    'WEST RAJASTHAN':            6.2,
-    'WEST MADHYA PRADESH':       4.3,
-    'EAST MADHYA PRADESH':       4.6,
-    'GUJARAT REGION':            4.7,
-    'SAURASHTRA & KUTCH':        3.1,
-    'KONKAN & GOA':              1.1,
-    'MADHYA MAHARASHTRA':        4.1,
-    'MARATHWADA':                2.7,
-    'VIDARBHA':                  3.0,
-    'CHHATTISGARH':              4.1,
-    'ODISHA':                    4.3,
-    'COASTAL A. P.& YANAM':      1.3,
-    'TELANGANA':                 3.3,
-    'RAYALASEEMA':               1.9,
-    'TAMIL., PUDU. & KARAIKAL':  3.2,
-    'COASTAL KARNATAKA':         0.6,
-    'N. I. KARNATAKA':           4.4,
-    'S. I. KARNATAKA':           2.6,
-    'KERALA & MAHE':             1.2,
-    'A & N ISLAND':              0.2,
-    'LAKSHADWEEP':               0.0,
-  };
+  // Populated at runtime from GET /api/v1/getSubdivisionAreaPercentages
+  private subdivAreaMap: Map<number, number> = new Map();
 
   private buildCategoryStats() {
     const cats = ['LE', 'E', 'N', 'D', 'LD', 'NR'] as const;
@@ -716,17 +833,14 @@ export class SubdivDownloadStatistics {
     const makeEmpty = (): Record<CatKey, { count: number; area: number }> =>
       Object.fromEntries(cats.map(c => [c, { count: 0, area: 0 }])) as any;
 
-    const day = makeEmpty();
+    const day    = makeEmpty();
     const period = makeEmpty();
-
-    const totalArea = Object.values(this.subdivAreaPct).reduce((s, a) => s + a, 0);
 
     for (const item of this.subdivdepCurrdate) {
       const cat = this.constants.getColorAndCat(item.departure).Cat as CatKey;
       if (cats.includes(cat)) {
         day[cat].count++;
-        const name = (item.subdiv_name ?? '').trim().toUpperCase();
-        day[cat].area += this.subdivAreaPct[name] ?? 0;
+        day[cat].area += this.subdivAreaMap.get(Number(item.s_code)) ?? 0;
       }
     }
 
@@ -734,14 +848,14 @@ export class SubdivDownloadStatistics {
       const cat = this.constants.getColorAndCat(item.departure).Cat as CatKey;
       if (cats.includes(cat)) {
         period[cat].count++;
-        const name = (item.subdiv_name ?? '').trim().toUpperCase();
-        period[cat].area += this.subdivAreaPct[name] ?? 0;
+        period[cat].area += this.subdivAreaMap.get(Number(item.s_code)) ?? 0;
       }
     }
 
+    // area values from API are already in %, just round
     for (const k of cats) {
-      day[k].area    = Math.round((day[k].area    / totalArea) * 100);
-      period[k].area = Math.round((period[k].area / totalArea) * 100);
+      day[k].area    = Math.round(day[k].area);
+      period[k].area = Math.round(period[k].area);
     }
 
     return { day, period };
@@ -798,11 +912,12 @@ export class SubdivDownloadStatistics {
       body: rows,
       startY,
       margin: { left: 10 },
-      styles: { fontSize: 7, halign: 'center' },
-      headStyles: { halign: 'center', fillColor: [200, 220, 255] },
+      styles: { fontSize: 7, halign: 'center', textColor: [0, 0, 0] },
+      headStyles: { halign: 'center', fillColor: [200, 220, 255], textColor: [0, 0, 0], fontStyle: 'bold' },
       didDrawCell: function (data: { cell: { x: number; y: number; width: any; height: any } }) {
-        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
         doc.setDrawColor(0);
+        doc.setLineWidth(0.3);
+        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
       },
     });
   }

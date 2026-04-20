@@ -47,4 +47,9 @@ export class SubdivisionService {
     const url = `${this.baseUrl}/api/v1/monsoon-activity`;
     return this.http.post<any>(url, data);
   }
+
+  fetchAreaPercentages() {
+    const url = `${this.baseUrl}/api/v1/getSubdivisionAreaPercentages`;
+    return this.http.get<any>(url);
+  }
 }
