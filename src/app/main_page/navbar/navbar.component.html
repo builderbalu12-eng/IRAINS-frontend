@@ -575,6 +575,14 @@
     <!-- ------------------------------------- -->
 
     <li>
+      <a *ngIf="hasAccess('irains-dashboard')" routerLink="../irains-dashboard"
+        >IRAINS DASHBOARD</a
+      >
+    </li>
+
+
+
+    <li>
       <a *ngIf="hasAccess('rainfall-graphs')" routerLink="../rainfall-graphs"
         >RAINFALL GRAPHS</a
       >

@@ -23,6 +23,11 @@ export class CalculationExclusionComponent implements OnInit {
   toDate: string = '';
   dateError: string = '';
 
+  isTriggeringRefresh: boolean = false;
+  refreshMessage: string = '';
+  refreshError: string = '';
+
+
   activeTab: string = 'region';
 
   tabs = [
@@ -54,12 +59,16 @@ export class CalculationExclusionComponent implements OnInit {
 
   excludedSet = new Set<string>();
 
+
+
   constructor(private exclusionService: CalculationExclusionService) {
     const now = new Date();
     this.today = this.formatDate(now);
     this.fromDate = this.today;
     this.toDate = this.today;
   }
+
+  
 
   ngOnInit(): void {
     this.loadAllEntities();
@@ -137,13 +146,13 @@ export class CalculationExclusionComponent implements OnInit {
           isLoading: false
         }));
 
-        this.data['district'] = (districts?.data || []).map((d: any) => ({
-          code: d.district_code,
-          name: d.district_name,
-          extra: d.state_name,
-          isExcluded: this.excludedSet.has(`district_${d.district_code}`),
-          isLoading: false
-        }));
+this.data['district'] = (districts?.data || []).map((d: any) => ({
+  code: d.district_code,
+  name: d.district_name,
+  extra: d.state_name,   // ✅ was d.district_name before (wrong)
+  isExcluded: this.excludedSet.has(`district_${d.district_code}`),
+  isLoading: false
+}));
 
         this.data['block'] = (blocks?.data || []).map((b: any) => ({
           code: b.block_code,
@@ -290,4 +299,36 @@ export class CalculationExclusionComponent implements OnInit {
   totalCount(tab: string): number {
     return this.data[tab].length;
   }
+
+
+  getParentLabel(tab: string): string {
+  const labels: { [key: string]: string } = {
+    subdivision: 'Region',
+    state: 'Region',
+    district: 'State',
+    block: 'District',
+    station: 'Block'
+  };
+  return labels[tab] || 'Parent';
+}
+
+
+triggerMapRefresh(): void {
+  this.isTriggeringRefresh = true;
+  this.refreshMessage = '';
+  this.refreshError = '';
+
+  this.exclusionService.triggerDailyStationData().subscribe({
+    next: (res: any) => {
+      this.isTriggeringRefresh = false;
+      this.refreshMessage = res?.message || 'Map data refreshed successfully';
+    },
+    error: (err: any) => {
+      this.isTriggeringRefresh = false;
+      this.refreshError = err?.error?.message || 'Failed to refresh map data';
+    }
+  });
+}
+
+
 }

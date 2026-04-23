@@ -99,4 +99,10 @@ export class CalculationExclusionService {
     const url = `${this.baseUrl}/api/v1/calculation-exclusion/bulk-toggle`;
     return this.http.post<any>(url, data);
   }
+
+  triggerDailyStationData(): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/AddDailyStationData`, {});
+  }
+
+
 }

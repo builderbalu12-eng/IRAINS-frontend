@@ -5,15 +5,9 @@
   <div class="pt-3 pb-1">
     <div class="values container shadow-lg">
       <div class="row g-3 align-items-end">
-
         <div class="col-md-4">
           <label class="form-label fw-bold">From Date</label>
-          <input
-            type="date"
-            class="form-control"
-            [(ngModel)]="fromDate"
-            [max]="today"
-          />
+          <input type="date" class="form-control" [(ngModel)]="fromDate" />
         </div>
 
         <div class="col-md-4">
@@ -23,9 +17,7 @@
             class="form-control"
             [(ngModel)]="toDate"
             [min]="fromDate"
-            [max]="today"
           />
-          <small class="text-muted">Leave same as From Date for single day</small>
         </div>
 
         <div class="col-md-4">
@@ -38,37 +30,61 @@
             <i class="fa fa-refresh me-2"></i> Load Exclusions
           </button>
         </div>
-
       </div>
 
       <!-- ✅ Date validation error -->
       <div *ngIf="dateError" class="alert alert-danger mt-2 py-2 mb-0">
         <i class="fa fa-exclamation-circle me-1"></i>{{ dateError }}
       </div>
-
     </div>
   </div>
 
   <!-- ── Main Card ── -->
   <div class="container-fluid px-4 mt-3 pb-4">
     <div class="main-card shadow-lg rounded-4 bg-white p-4">
-
       <!-- Page Header -->
-      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <div>
-          <h5 class="fw-bold mb-1 page-title">Calculation Exclusion Manager</h5>
-          <small class="text-muted">
-            <i class="fa fa-info-circle me-1"></i>
-            <strong>Checked</strong> = included in calculation &nbsp;|&nbsp;
-            <strong>Unchecked</strong> = excluded from calculation
-          </small>
-        </div>
-        <div class="date-badge">
-          <i class="fa fa-calendar me-1"></i>
-          {{ fromDate }}
-          <span *ngIf="toDate && toDate !== fromDate"> → {{ toDate }}</span>
-        </div>
-      </div>
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h5 class="fw-bold mb-1 page-title">Calculation Exclusion Manager</h5>
+    <small class="text-muted">
+      <i class="fa fa-info-circle me-1"></i>
+      <strong>Checked</strong> = included in calculation &nbsp;|&nbsp;
+      <strong>Unchecked</strong> = excluded from calculation
+    </small>
+  </div>
+
+  <!-- ✅ RIGHT SIDE — Refresh button + date badge -->
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+
+    <!-- 🔄 Refresh Map Data Button -->
+    <button
+      class="btn btn-warning btn-sm fw-semibold"
+      (click)="triggerMapRefresh()"
+      [disabled]="isTriggeringRefresh"
+    >
+      <span *ngIf="isTriggeringRefresh" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!isTriggeringRefresh" class="fa fa-refresh me-1"></i>
+      {{ isTriggeringRefresh ? 'Refreshing...' : 'Push Map Data' }}
+    </button>
+
+    <!-- Success / Error Message -->
+    <span *ngIf="refreshMessage" class="text-success small fw-semibold">
+      <i class="fa fa-check-circle me-1"></i>{{ refreshMessage }}
+    </span>
+    <span *ngIf="refreshError" class="text-danger small fw-semibold">
+      <i class="fa fa-times-circle me-1"></i>{{ refreshError }}
+    </span>
+
+    <!-- Existing date badge -->
+    <div class="date-badge">
+      <i class="fa fa-calendar me-1"></i>
+      {{ fromDate }}
+      <span *ngIf="toDate && toDate !== fromDate"> → {{ toDate }}</span>
+    </div>
+
+  </div>
+</div>
 
       <!-- Global Loader -->
       <div *ngIf="isLoading" class="loader-overlay rounded-4">
@@ -92,7 +108,9 @@
               [class.badge-has-excluded]="excludedCount(tab.key) > 0"
               [class.badge-all-ok]="excludedCount(tab.key) === 0"
             >
-              {{ totalCount(tab.key) - excludedCount(tab.key) }}/{{ totalCount(tab.key) }}
+              {{ totalCount(tab.key) - excludedCount(tab.key) }}/{{
+                totalCount(tab.key)
+              }}
             </span>
           </button>
         </li>
@@ -100,13 +118,12 @@
 
       <!-- ── Tab Content ── -->
       <div class="tab-content-area border border-top-0 p-3 rounded-bottom-4">
-
         <ng-container *ngFor="let tab of tabs">
           <div *ngIf="activeTab === tab.key">
-
             <!-- Toolbar row -->
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-
+            <div
+              class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2"
+            >
               <!-- Search -->
               <div class="search-box">
                 <i class="fa fa-search search-icon"></i>
@@ -120,7 +137,7 @@
 
               <!-- Bulk actions -->
               <div class="d-flex gap-2 align-items-center">
-                <span class="text-muted" style="font-size: 12px;">Bulk:</span>
+                <span class="text-muted" style="font-size: 12px">Bulk:</span>
                 <button
                   class="btn btn-sm btn-include"
                   (click)="onBulkAction(tab.key, 'include')"
@@ -136,14 +153,14 @@
                   <i class="fa fa-ban me-1"></i> Exclude All
                 </button>
               </div>
-
             </div>
 
             <!-- Summary bar -->
             <div class="summary-bar mb-3">
               <span class="text-success fw-bold">
                 <i class="fa fa-check-circle me-1"></i>
-                {{ totalCount(tab.key) - excludedCount(tab.key) }} in calculation
+                {{ totalCount(tab.key) - excludedCount(tab.key) }} in
+                calculation
               </span>
               <span class="divider-dot">•</span>
               <span class="text-danger fw-bold">
@@ -152,7 +169,11 @@
               </span>
               <span class="divider-dot">•</span>
               <span class="text-muted">Total: {{ totalCount(tab.key) }}</span>
-              <span *ngIf="searchText[tab.key]" class="ms-3 text-primary" style="font-size: 12px;">
+              <span
+                *ngIf="searchText[tab.key]"
+                class="ms-3 text-primary"
+                style="font-size: 12px"
+              >
                 Showing {{ filteredData(tab.key).length }} results
               </span>
             </div>
@@ -160,24 +181,21 @@
             <!-- Table -->
             <div class="table-scroll">
               <table class="table table-hover table-bordered align-middle mb-0">
-
                 <thead class="table-head">
                   <tr>
-                    <th style="width: 60px;" class="text-center">Include</th>
+                    <th style="width: 60px" class="text-center">Include</th>
                     <th>{{ tab.label }} Name</th>
-                    <th *ngIf="tab.key !== 'region'">Parent</th>
-                    <th style="width: 110px;">Code</th>
-                    <th style="width: 110px;" class="text-center">Status</th>
+                    <th *ngIf="tab.key !== 'region'">{{ getParentLabel(tab.key) }}</th>
+                    <th style="width: 110px">Code</th>
+                    <th style="width: 110px" class="text-center">Status</th>
                   </tr>
                 </thead>
 
                 <tbody>
-
                   <tr
                     *ngFor="let row of filteredData(tab.key)"
                     [class.row-excluded]="row.isExcluded"
                   >
-
                     <!-- Checkbox -->
                     <td class="text-center">
                       <i
@@ -201,12 +219,19 @@
                     </td>
 
                     <!-- Parent info (hidden for region tab) -->
-                    <td *ngIf="tab.key !== 'region'" class="text-muted" style="font-size: 12px;">
-                      {{ row.extra || '-' }}
+                    <td
+                      *ngIf="tab.key !== 'region'"
+                      class="text-muted"
+                      style="font-size: 12px"
+                    >
+                      {{ row.extra || "-" }}
                     </td>
 
                     <!-- Code -->
-                    <td class="text-muted" style="font-size: 11px; font-family: monospace;">
+                    <td
+                      class="text-muted"
+                      style="font-size: 11px; font-family: monospace"
+                    >
                       {{ row.code }}
                     </td>
 
@@ -222,10 +247,9 @@
                           [class.fa-check-circle]="!row.isExcluded"
                           [class.fa-times-circle]="row.isExcluded"
                         ></i>
-                        {{ row.isExcluded ? 'Excluded' : 'Active' }}
+                        {{ row.isExcluded ? "Excluded" : "Active" }}
                       </span>
                     </td>
-
                   </tr>
 
                   <!-- Empty state -->
@@ -237,23 +261,19 @@
                       <i class="fa fa-search me-2"></i>
                       No {{ tab.label }} found
                       <span *ngIf="searchText[tab.key]">
-                        matching "<strong>{{ searchText[tab.key] }}</strong>"
-                      </span>.
+                        matching "<strong>{{ searchText[tab.key] }}</strong
+                        >" </span
+                      >.
                     </td>
                   </tr>
-
                 </tbody>
               </table>
             </div>
             <!-- /table-scroll -->
-
           </div>
         </ng-container>
-
       </div>
       <!-- /tab-content-area -->
-
     </div>
   </div>
-
 </div>
