@@ -284,3 +284,116 @@ button:hover {
 .no-border {
   border: none !important;
 }
+
+/* ── Filter bar ────────────────────────────────────────────────────────────── */
+.filter-date {
+  width: 160px;
+  font-size: 13px;
+}
+
+.filter-separator {
+  width: 1px;
+  height: 32px;
+  background: #ced4da;
+  margin: 0 4px;
+}
+
+/* ── AWS Stats Panel ───────────────────────────────────────────────────────── */
+#mapdiv1-ftp {
+  flex-shrink: 0;
+}
+
+.aws-stats-panel {
+  background: white;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  height: 58.8rem;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.chart-half {
+  flex: 1;
+  min-width: 0;
+}
+
+.chart-half > div {
+  width: 100%;
+}
+
+.stats-title {
+  font-weight: 700;
+  color: #002467;
+  font-size: 18px;
+  border-bottom: 2px solid #002467;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.8rem;
+  flex-shrink: 0;
+}
+
+.stats-summary {
+  flex-shrink: 0;
+}
+
+.stats-summary .badge {
+  font-size: 13px;
+  padding: 5px 9px;
+}
+
+.aws-table {
+  font-size: 15px;
+  width: 100%;
+}
+
+.aws-table td {
+  padding: 8px 10px !important;
+  vertical-align: middle;
+}
+
+.aws-table .source-label {
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.aws-table thead th {
+  font-size: 14px;
+  white-space: nowrap;
+  vertical-align: middle;
+  background-color: #002467 !important;
+  color: white !important;
+  padding: 10px 10px !important;
+}
+
+.aws-table tfoot td {
+  font-size: 15px;
+  background-color: #e9ecef;
+  padding: 8px 10px !important;
+}
+
+.aws-table .badge {
+  font-size: 13px;
+  padding: 5px 8px;
+}
+
+.comparison-box {
+  background: #f1f3f5;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  font-size: 14px;
+  margin-top: auto;
+}
+
+.time-filter-btn {
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+}
+
+.mode-button.active {
+  background-color: #002467 !important;
+  color: white !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(2px) !important;
+}

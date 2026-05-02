@@ -15,6 +15,7 @@ import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
 import { MonsoonActivityService } from "src/app/services/subDivision/monsoonActivityDownlaod.service";
+import { Chart } from "angular-highcharts";
 
 @Component({
   selector: 'app-monsoon-activity',
@@ -29,15 +30,36 @@ export class MonsoonActivityComponent {
   selectedMode: any;
   formatteddate: string;
 
+  // Level toggle
+  viewLevel: 'subdivision' | 'district' = 'subdivision';
+
+  // Chart state
+  chartPeriod: 'today' | '7days' | '30days' = 'today';
+  activityChart: Chart | null = null;
+  isChartLoading: boolean = false;
+
   private initialZoom = 4.8;
   private defaultFontSizeonMap = 8;
   private map: L.Map = {} as L.Map;
+  private geoJsonLayer: L.GeoJSON | null = null;
 
-  // Monsoon Activity Data
+  // Subdivision data
   monsoonMapData: { [key: string]: any } = {};
   monsoonTableData: any[] = [];
 
-  // Monsoon Activity Legend
+  // District data
+  monsoonDistrictMapData: { [key: string]: any } = {};
+  monsoonDistrictTableData: any[] = [];
+
+  // Activity colors shared across map and chart
+  private readonly activityColors: { [key: string]: string } = {
+    Vigorous: '#ff0000',
+    Active:   '#ff9900',
+    Normal:   '#00ff00',
+    Weak:     '#ffff00',
+    Subdued:  '#999999',
+  };
+
   legendItems = [
     { color: "#ff0000", text: "Vigorous", fontSize: "9.3px" },
     { color: "#ff9900", text: "Active", fontSize: "9.3px" },
@@ -56,28 +78,13 @@ export class MonsoonActivityComponent {
     private downlaodStatistics: SubdivDownloadStatistics,
     private countryService: CountryService,
     private constants: Constants,
-    private monsoonActivityService : MonsoonActivityService
+    private monsoonActivityService: MonsoonActivityService
   ) {
-    // Set today's date (December 22, 2025 as per context)
     const currentDate = new Date();
     this.today = this.formatDate(currentDate);
     this.fromDate = this.today;
-
-    // Default formatted date for display
     this.formatteddate = this.convertToIndianDateFormat(this.today);
-    this.setFromAndToDate()
-
-
-
-    // Subscribe to external date changes (if any)
-    // this.dataService.fromAndToDate$.subscribe((value) => {
-    //   if (value) {
-    //     const dates = JSON.parse(value);
-    //     this.fromDate = dates.fromDate || this.today;
-    //     this.fetchMonsoonActivity();
-    //   }
-    // });
-
+    this.setFromAndToDate();
   }
 
   formatDate(date: Date): string {
@@ -91,75 +98,95 @@ export class MonsoonActivityComponent {
     return dateString.split("-").reverse().join("-");
   }
 
-  // Fetch Monsoon Activity using POST with { date: "YYYY-MM-DD" }
+  // ─── Data Fetching ──────────────────────────────────────────────────────────
+
+  async setFromAndToDate() {
+    this.formatteddate = this.convertToIndianDateFormat(this.fromDate || this.today);
+    await this.fetchCurrentLevelData();
+    this.buildChart();
+  }
+
+  private async fetchCurrentLevelData() {
+    if (this.viewLevel === 'subdivision') {
+      await this.fetchMonsoonActivity();
+    } else {
+      await this.fetchMonsoonActivityDistrict();
+    }
+  }
+
   async fetchMonsoonActivity() {
     this.isLoading = true;
     try {
-      // Use selected date or fallback to today
-      const selectedDate = this.fromDate || this.today;
-
-      const payload = {
-        date: selectedDate
-      };
+      const payload = { date: this.fromDate || this.today };
       const response: any = await this.subdivisionService
         .fetchMonsoonActivitySubDivisions(payload)
         .toPromise();
 
-      if (response && response.success && response.data) {
+      if (response?.success && response.data) {
         this.monsoonMapData = response.data;
-
-        // Prepare sorted table data
         this.monsoonTableData = Object.keys(response.data)
-          .map(key => ({
-            code: key,
-            ...response.data[key]
-          }))
+          .map(key => ({ code: key, ...response.data[key] }))
           .sort((a, b) => a.name.localeCompare(b.name));
-
-        // Update displayed date
-        this.formatteddate = this.convertToIndianDateFormat(selectedDate);
       } else {
-        console.warn("Invalid or empty response:", response);
-        this.monsoonTableData = [];
         this.monsoonMapData = {};
+        this.monsoonTableData = [];
       }
     } catch (error) {
-      console.error("Error fetching monsoon activity:", error);
-      this.monsoonTableData = [];
+      console.error("Error fetching subdivision monsoon activity:", error);
       this.monsoonMapData = {};
+      this.monsoonTableData = [];
     } finally {
       this.isLoading = false;
       this.loadGeoJSON(false);
     }
   }
 
-  // Triggered when user selects a new date
-  setFromAndToDate() {
-    this.fetchMonsoonActivity();
+  async fetchMonsoonActivityDistrict() {
+    this.isLoading = true;
+    try {
+      const payload = { date: this.fromDate || this.today };
+      const response: any = await this.subdivisionService
+        .fetchMonsoonActivityDistrict(payload)
+        .toPromise();
+
+      if (response?.success && response.data) {
+        this.monsoonDistrictMapData = response.data;
+        this.monsoonDistrictTableData = Object.keys(response.data)
+          .map(key => ({ code: key, ...response.data[key] }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } else {
+        this.monsoonDistrictMapData = {};
+        this.monsoonDistrictTableData = [];
+      }
+    } catch (error) {
+      console.error("Error fetching district monsoon activity:", error);
+      this.monsoonDistrictMapData = {};
+      this.monsoonDistrictTableData = [];
+    } finally {
+      this.isLoading = false;
+      this.loadGeoJSON(false);
+    }
   }
 
-  filter = (node: HTMLElement) => {
-    const exclusionClasses = [
-      "download", "downloadpdf", "leaflet-control-zoom", "leaflet-control-fullscreen",
-      "leaflet-control-zoomin", "ResetMap", "DownloadMaps", "download-buttons",
-    ];
-    return !exclusionClasses.some((classname) => node.classList?.contains(classname));
-  };
+  // ─── View Level Toggle ───────────────────────────────────────────────────────
+
+  async onViewLevelChange() {
+    await this.fetchCurrentLevelData();
+    this.buildChart();
+  }
+
+  // ─── Map Helpers ─────────────────────────────────────────────────────────────
 
   findMatchingData(id: number): any | null {
     const codeStr = id.toString();
-    return this.monsoonMapData[codeStr] || null;
+    if (this.viewLevel === 'subdivision') {
+      return this.monsoonMapData[codeStr] || null;
+    }
+    return this.monsoonDistrictMapData[codeStr] || null;
   }
 
   private getActivityColor(activity: string | undefined): string {
-    switch (activity) {
-      case "Vigorous": return "#ff0000";
-      case "Active":   return "#ff9900";
-      case "Normal":   return "#00ff00";
-      case "Weak":     return "#ffff00";
-      case "Subdued":  return "#999999";
-      default:         return "#c0c0c0";
-    }
+    return this.activityColors[activity || ''] || '#c0c0c0';
   }
 
   private calculateInitialZoom(): void {
@@ -212,8 +239,8 @@ export class MonsoonActivityComponent {
       const dataUrl = await htmlToImage.toJpeg(mapElement, {
         quality: 0.95,
         filter: this.filter,
-        width: width,
-        height: height,
+        width,
+        height,
         style: {
           transform: `scale(${scale})`,
           transformOrigin: "top left",
@@ -232,12 +259,10 @@ export class MonsoonActivityComponent {
         const cropHeight = originalHeight + 1155 * scale;
         const cropX = (width - cropWidth) / 2 + 2000;
         const cropY = 0;
-
         const tempCanvas = document.createElement("canvas");
         tempCanvas.width = cropWidth;
         tempCanvas.height = cropHeight;
         const tempContext = tempCanvas.getContext("2d");
-
         const image = new Image();
         image.src = dataUrl;
         image.onload = () => {
@@ -256,6 +281,14 @@ export class MonsoonActivityComponent {
     }
   }
 
+  filter = (node: HTMLElement) => {
+    const exclusionClasses = [
+      "download", "downloadpdf", "leaflet-control-zoom", "leaflet-control-fullscreen",
+      "leaflet-control-zoomin", "ResetMap", "DownloadMaps", "download-buttons",
+    ];
+    return !exclusionClasses.some((classname) => node.classList?.contains(classname));
+  };
+
   generatePDF(imageDataUrl: string) {
     const pdf = new jsPDF("landscape");
     const image = new Image();
@@ -265,20 +298,41 @@ export class MonsoonActivityComponent {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const aspectRatio = imgProps.width / imgProps.height;
-
       let newImgWidth = pdfWidth;
       let newImgHeight = pdfWidth / aspectRatio;
       if (newImgHeight > pdfHeight) {
         newImgHeight = pdfHeight;
         newImgWidth = pdfHeight * aspectRatio;
       }
-
       const xOffset = (pdfWidth - newImgWidth) / 2;
       const yOffset = (pdfHeight - newImgHeight) / 2;
-
       pdf.addImage(imageDataUrl, "JPEG", xOffset, yOffset, newImgWidth, newImgHeight);
       pdf.save("MONSOON_ACTIVITY_MAP_INDIA.pdf");
     };
+  }
+
+  async downloadTable() {
+    this.isLoading = true;
+    try {
+      const date = this.fromDate || this.today;
+      if (this.viewLevel === 'subdivision') {
+        if (this.monsoonTableData.length === 0) { alert("No data available."); return; }
+        await this.monsoonActivityService.downloadMonsoonActivityPdf(this.monsoonTableData, date);
+      } else {
+        if (this.monsoonDistrictTableData.length === 0) { alert("No data available."); return; }
+        await this.monsoonActivityService.downloadMonsoonActivityDistrictPdf(this.monsoonDistrictTableData, date);
+      }
+    } catch (error) {
+      console.error("Error downloading table:", error);
+      alert("Failed to download. Please try again.");
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  // kept for backward compatibility (used in HTML for legacy download button)
+  async downloadMonsoonActivityTable() {
+    await this.downloadTable();
   }
 
   async downloadMapData() {
@@ -296,16 +350,14 @@ export class MonsoonActivityComponent {
     }
   }
 
+  // ─── Lifecycle ───────────────────────────────────────────────────────────────
+
   ngOnInit() {
     this.initMap();
     this.calculateInitialZoom();
-    // this.setFromAndToDate()
-    // this.fetchMonsoonActivity(); // Load today's data on start
   }
 
-  ngAfterViewInit(): void {
-    // Map already initialized
-  }
+  ngAfterViewInit(): void {}
 
   private initMap(): void {
     this.map = L.map("map-subdivisionNavbar", {
@@ -393,15 +445,27 @@ export class MonsoonActivityComponent {
   }
 
   private loadGeoJSON(isFullScreen: boolean): void {
+    // Remove existing layer before adding a new one
+    if (this.geoJsonLayer) {
+      this.map.removeLayer(this.geoJsonLayer);
+      this.geoJsonLayer = null;
+    }
+
+    if (this.viewLevel === 'subdivision') {
+      this.loadSubdivisionGeoJSON(isFullScreen);
+    } else {
+      this.loadDistrictGeoJSON();
+    }
+  }
+
+  private loadSubdivisionGeoJSON(isFullScreen: boolean): void {
     this.http.get("assets/geojson/INDIA_SUB_DIVISION.json").subscribe((res: any) => {
-      L.geoJSON(res, {
+      this.geoJsonLayer = L.geoJSON(res, {
         style: (feature: any) => {
           const id2 = feature.properties["SubDiv_Cod"];
-          const matchedData = this.findMatchingData(id2);
-          const color = this.getActivityColor(matchedData?.activity);
-
+          const matchedData = this.monsoonMapData[id2?.toString()] || null;
           return {
-            fillColor: color,
+            fillColor: this.getActivityColor(matchedData?.activity),
             weight: 1,
             opacity: 0.3,
             color: "black",
@@ -409,17 +473,13 @@ export class MonsoonActivityComponent {
           };
         },
         onEachFeature: (feature: any, layer: any) => {
-          let id1 = feature.properties["subdivisio"];
+          const id1 = feature.properties["subdivisio"];
           const id2 = feature.properties["SubDiv_Cod"];
-          const matchedData = this.findMatchingData(id2);
+          const matchedData = this.monsoonMapData[id2?.toString()] || null;
           const activityText = matchedData ? matchedData.activity : "NA";
 
-          let center = {
-            lat: feature.properties["lat"],
-            lng: feature.properties["lng"],
-          };
+          let center = { lat: feature.properties["lat"], lng: feature.properties["lng"] };
 
-          // Your original subdivision-specific label adjustments
           if (id1 === "ARUNACHAL PRADESH") { center.lat = 28; center.lng = 96.5; }
           if (id1 === "ASSAM & MEGHALAYA") { center.lat = 26.5; center.lng = 93.9; }
           if (id1 === "NMMT") { center.lat = 23.5; center.lng = 94; }
@@ -480,28 +540,160 @@ export class MonsoonActivityComponent {
     });
   }
 
+  private loadDistrictGeoJSON(): void {
+    this.http.get("assets/geojson/INDIA_DISTRICT.json").subscribe((res: any) => {
+      this.geoJsonLayer = L.geoJSON(res, {
+        style: (feature: any) => {
+          const code = feature.properties["district_c"];
+          const matchedData = this.monsoonDistrictMapData[code?.toString()] || null;
+          return {
+            fillColor: this.getActivityColor(matchedData?.activity),
+            weight: 0.5,
+            opacity: 0.5,
+            color: "#333",
+            fillOpacity: 0.85,
+          };
+        },
+        onEachFeature: (feature: any, layer: any) => {
+          const code = feature.properties["district_c"];
+          const name = feature.properties["district"] || "Unknown";
+          const matchedData = this.monsoonDistrictMapData[code?.toString()] || null;
 
-  async downloadMonsoonActivityTable() {
-    this.isLoading = true;
+          if (matchedData) {
+            const color = this.getActivityColor(matchedData.activity);
+            const tooltipHtml = `
+              <b style="color:${color}">&#9632;</b> <b>${name}</b><br/>
+              Activity: <b>${matchedData.activity || 'No Data'}</b><br/>
+              Avg Actual: ${matchedData.avg_actual ?? '-'} mm &nbsp;|&nbsp; Normal: ${matchedData.normal ?? '-'} mm<br/>
+              Ratio (R): ${matchedData.R ?? '-'} &nbsp;|&nbsp; Spatial: ${matchedData.spatial || '-'}
+            `;
+            layer.bindTooltip(tooltipHtml, { sticky: true, direction: 'top' });
+          } else {
+            layer.bindTooltip(`<b>${name}</b><br/>No Data`, { sticky: true, direction: 'top' });
+          }
+        },
+      }).addTo(this.map);
+    });
+  }
+
+  // ─── Chart ──────────────────────────────────────────────────────────────────
+
+  onChartPeriodChange(period: 'today' | '7days' | '30days') {
+    this.chartPeriod = period;
+    this.buildChart();
+  }
+
+  buildChart() {
+    this.activityChart = null;
+    if (this.chartPeriod === 'today') {
+      this.buildPieChart();
+    } else {
+      this.fetchAndBuildHistoricalChart();
+    }
+  }
+
+  private buildPieChart() {
+    const sourceData = this.viewLevel === 'subdivision'
+      ? this.monsoonTableData
+      : this.monsoonDistrictTableData;
+
+    if (!sourceData || sourceData.length === 0) return;
+
+    const activityOrder = ['Vigorous', 'Active', 'Normal', 'Weak', 'Subdued'];
+    const counts: { [key: string]: number } = {};
+    for (const item of sourceData) {
+      const act = item.activity || 'No Data';
+      counts[act] = (counts[act] || 0) + 1;
+    }
+
+    const pieData = activityOrder
+      .filter(a => counts[a] > 0)
+      .map(a => ({ name: a, y: counts[a], color: this.activityColors[a] }));
+
+    const levelLabel = this.viewLevel === 'subdivision' ? 'Subdivisions' : 'Districts';
+    this.activityChart = new Chart({
+      chart: { type: 'pie', height: 280 },
+      title: { text: `Activity Distribution — ${levelLabel} (${this.formatteddate})`, style: { fontSize: '13px', color: '#002467' } },
+      tooltip: { pointFormat: '<b>{point.name}</b>: {point.y} ({point.percentage:.1f}%)' },
+      plotOptions: {
+        pie: {
+          allowPointSelect: true,
+          cursor: 'pointer',
+          dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.y}' }
+        }
+      },
+      credits: { enabled: false },
+      series: [{ type: 'pie', name: 'Count', data: pieData }]
+    } as any);
+  }
+
+  private async fetchAndBuildHistoricalChart() {
+    this.isChartLoading = true;
+    this.activityChart = null;
     try {
-      if (this.monsoonTableData.length === 0) {
-        alert("No monsoon activity data available to download for the selected date.");
-        return;
+      const payload = { date: this.fromDate || this.today };
+      let response: any;
+
+      if (this.viewLevel === 'subdivision') {
+        response = this.chartPeriod === '7days'
+          ? await this.subdivisionService.fetchMonsoonActivitySubdivLast7(payload).toPromise()
+          : await this.subdivisionService.fetchMonsoonActivitySubdivLast30(payload).toPromise();
+      } else {
+        response = this.chartPeriod === '7days'
+          ? await this.subdivisionService.fetchMonsoonActivityDistrictLast7(payload).toPromise()
+          : await this.subdivisionService.fetchMonsoonActivityDistrictLast30(payload).toPromise();
       }
 
-      // Use the dedicated service to download PDF + Excel
-      await this.monsoonActivityService.downloadMonsoonActivityPdf(
-        this.monsoonTableData,
-        this.fromDate || this.today
-      );
-
-      console.log("Monsoon activity statistics downloaded successfully (PDF + Excel)");
-
+      if (response?.success && response.data) {
+        this.buildStackedBarChart(response.data);
+      }
     } catch (error) {
-      console.error("Error downloading monsoon activity table:", error);
-      alert("Failed to download statistics. Please try again.");
+      console.error("Error fetching historical chart data:", error);
     } finally {
-      this.isLoading = false;
+      this.isChartLoading = false;
     }
+  }
+
+  private buildStackedBarChart(data: any) {
+    // Collect all dates across all entities
+    const dateSet = new Set<string>();
+    for (const entity of Object.values(data) as any[]) {
+      for (const day of entity.days || []) {
+        dateSet.add(day.date);
+      }
+    }
+    const sortedDates = Array.from(dateSet).sort();
+
+    const activityOrder = ['Vigorous', 'Active', 'Normal', 'Weak', 'Subdued'];
+
+    // For each activity, count how many entities have it on each date
+    const seriesData = activityOrder.map(activity => ({
+      name: activity,
+      color: this.activityColors[activity],
+      data: sortedDates.map(date => {
+        let count = 0;
+        for (const entity of Object.values(data) as any[]) {
+          const dayEntry = (entity.days || []).find((d: any) => d.date === date);
+          if (dayEntry?.activity === activity) count++;
+        }
+        return count;
+      })
+    }));
+
+    const periodLabel = this.chartPeriod === '7days' ? 'Last 7 Days' : 'Last 30 Days';
+    const levelLabel = this.viewLevel === 'subdivision' ? 'Subdivisions' : 'Districts';
+    const shortDates = sortedDates.map(d => d.slice(5)); // MM-DD for readability
+
+    this.activityChart = new Chart({
+      chart: { type: 'column', height: 280 },
+      title: { text: `Activity Trend — ${levelLabel} (${periodLabel})`, style: { fontSize: '13px', color: '#002467' } },
+      xAxis: { categories: shortDates, labels: { rotation: -45, style: { fontSize: '10px' } } },
+      yAxis: { min: 0, title: { text: 'Count' }, stackLabels: { enabled: false } },
+      legend: { enabled: true, itemStyle: { fontSize: '11px' } },
+      plotOptions: { column: { stacking: 'normal', dataLabels: { enabled: false } } },
+      tooltip: { headerFormat: '<b>{point.x}</b><br/>', pointFormat: '{series.name}: {point.y}<br/>Total: {point.stackTotal}' },
+      credits: { enabled: false },
+      series: seriesData as any
+    } as any);
   }
 }

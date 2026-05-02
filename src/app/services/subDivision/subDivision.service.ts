@@ -48,6 +48,26 @@ export class SubdivisionService {
     return this.http.post<any>(url, data);
   }
 
+  fetchMonsoonActivityDistrict(data: any) {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/monsoon-activity-district`, data);
+  }
+
+  fetchMonsoonActivitySubdivLast7(data: any) {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/monsoon-activity-subdiv-last7`, data);
+  }
+
+  fetchMonsoonActivitySubdivLast30(data: any) {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/monsoon-activity-subdiv-last30`, data);
+  }
+
+  fetchMonsoonActivityDistrictLast7(data: any) {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/monsoon-activity-district-last7`, data);
+  }
+
+  fetchMonsoonActivityDistrictLast30(data: any) {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/monsoon-activity-district-last30`, data);
+  }
+
   fetchAreaPercentages() {
     const url = `${this.baseUrl}/api/v1/getSubdivisionAreaPercentages`;
     return this.http.get<any>(url);

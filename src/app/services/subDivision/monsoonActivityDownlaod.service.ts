@@ -202,6 +202,65 @@ export class MonsoonActivityService {
     // this.exportMonsoonActivityAsExcel(tableData, selectedDate);
   }
 
+  async downloadMonsoonActivityDistrictPdf(tableData: any[], selectedDate: string) {
+    const formattedDate = this.convertToIndianDateFormat(selectedDate);
+
+    const columns = ["S.No", "District", "Activity", "Actual (mm)", "Normal (mm)", "Ratio (R)"];
+
+    const body = tableData.map((item, index) => [
+      index + 1,
+      item.name || "",
+      item.activity || "No Data",
+      item.avg_actual != null ? Number(item.avg_actual).toFixed(1) : "-",
+      item.normal != null ? Number(item.normal).toFixed(1) : "-",
+      item.R != null ? Number(item.R).toFixed(2) : "-",
+    ]);
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 10;
+    const imgWidth = 15;
+
+    doc.addImage("/assets/images/IMDlogo_Ipart-iris.png", "PNG", margin, margin, imgWidth, 20);
+    doc.addImage("/assets/images/IMD150(BGR).png", "PNG", pageWidth - imgWidth - margin, margin, imgWidth, 20);
+
+    doc.setFontSize(14);
+    doc.text("India Meteorological Department, New Delhi", pageWidth / 2, margin + 8, { align: "center" });
+    doc.setFontSize(12);
+    doc.text("MONSOON ACTIVITY MAP - DISTRICT WISE STATISTICS", pageWidth / 2, margin + 16, { align: "center" });
+    doc.setFontSize(11);
+    doc.text(`Date: ${formattedDate}`, pageWidth / 2, margin + 22, { align: "center" });
+
+    autoTable(doc, {
+      head: [columns],
+      body: body,
+      startY: margin + 30,
+      theme: "striped",
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [255, 165, 0], textColor: [0, 0, 0], fontStyle: "bold", halign: "center" },
+      alternateRowStyles: { fillColor: [240, 248, 255] },
+      columnStyles: {
+        0: { halign: "center" }, 1: { halign: "left" }, 2: { halign: "center", fontStyle: "bold" },
+        3: { halign: "center" }, 4: { halign: "center" }, 5: { halign: "center" }
+      },
+      didParseCell: (data: any) => {
+        if (data.column.index === 2 && data.cell.text.length > 0) {
+          const activity = data.cell.text[0];
+          const colorMap: { [k: string]: [number, number, number] } = {
+            Vigorous: [255, 0, 0], Active: [255, 153, 0], Normal: [0, 255, 0],
+            Weak: [255, 255, 0], Subdued: [153, 153, 153]
+          };
+          if (colorMap[activity]) {
+            data.cell.styles.fillColor = colorMap[activity];
+            data.cell.styles.textColor = activity === 'Active' || activity === 'Weak' ? [0, 0, 0] : [255, 255, 255];
+          }
+        }
+      }
+    });
+
+    doc.save(`Monsoon_Activity_Districts_${selectedDate}.pdf`);
+  }
+
   private exportMonsoonActivityAsExcel(tableData: any[], selectedDate: string) {
     const formattedDate = this.convertToIndianDateFormat(selectedDate);
 

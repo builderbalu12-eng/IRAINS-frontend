@@ -112,6 +112,7 @@ import { MonsoonActivityComponent } from './main/monsoon-activity/monsoon-activi
 import { UserManualv2Component } from './user-manualv2/user-manualv2.component';
 import { BlockActualRainfallMapDailyMainPagePubicComponent } from './main/block-rainfall-main-page/block/Guest/block-actual-rainfall-map-daily-main-page-pubic/block-actual-rainfall-map-daily-main-page-pubic.component';
 import { CalculationExclusionComponent } from './main/admin-panel/calculationExclusion/calculation-exclusion/calculation-exclusion.component';
+import { BlockRainfallMapDailyMainPageComponent } from './main/block-rainfall-main-page/block/block-rainfall-map-daily-main-page/block-rainfall-map-daily-main-page.component';
 
 
 export const routes: Routes = [
@@ -136,6 +137,7 @@ export const routes: Routes = [
  { path: 'block-rainfall-awsorg-map-daily', component: BlockActualRainfallMapIncAwsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall', component: BlockRainfallMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall-actual', component: BlockrainfallMapDailyActualMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ { path: 'block-rainfall-aws-actual', component: BlockRainfallMapDailyMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'spatial-table', component: SpatialTableComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'monsoon-activity', component: MonsoonActivityComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'river-basin', component: GangaRiverBasinComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},

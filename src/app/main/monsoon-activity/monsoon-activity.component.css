@@ -220,6 +220,36 @@
   }
 }
 
+/* Chart period toggle buttons */
+.chart-period-btn.active {
+  background-color: #002467 !important;
+  color: white !important;
+  border-color: #002467 !important;
+}
+
+.chart-period-btn:not(.active) {
+  color: #002467;
+  border-color: #002467;
+}
+
+.chart-period-btn:hover:not(.active) {
+  background-color: #e8edf5;
+}
+
+/* Chart container */
+.chart-container {
+  min-height: 280px;
+}
+
+/* District tooltip (Leaflet) */
+.leaflet-tooltip {
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
 @media (max-width: 576px) {
   .values {
     margin: 15px;

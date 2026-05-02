@@ -23,6 +23,16 @@ import { getDistrictService } from "src/app/services/district/getdistrict.servic
 import { getBlockService } from "src/app/services/block/getblock.service";
 import { BlockService } from "src/app/services/block/BlockService.service";
 import { Router } from "@angular/router";
+import { AllAWSDataService } from "src/app/services/aws/allAWSdata.service";
+import { forkJoin } from "rxjs";
+import { Chart } from "angular-highcharts";
+
+interface AwsSourceStat {
+  sourceLabel: string;
+  totalStations: number;
+  blocksWithAwsData: number;
+  blocksPlottedOnMap: number;
+}
 @Component({
   selector: "app-block-rainfall-map-daily-main-page",
   templateUrl: "./block-rainfall-map-daily-main-page.component.html",
@@ -72,6 +82,24 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
   private geoJsonData: any; // Store the full GeoJSON data
   filterBlocks: any[] | undefined;
   selectedBlockData: any;
+
+  // ── AWS panel ──────────────────────────────────────────────────────────────
+  selectedTimeFilter: '15min' | '1hour' | 'daily' | 'cumulative' = 'daily';
+  awsStats: AwsSourceStat[] = [];
+  awsLoading = false;
+  totalBlocksInGetBlock = 0;
+  awsPieChart: Chart | null = null;
+  awsBarChart: Chart | null = null;
+
+  private readonly awsSourceColors: string[] = [
+    '#003f88', '#0077b6', '#00b4d8', '#48cae4',
+    '#90e0ef', '#2dc653', '#f4a261', '#e76f51',
+    '#9b2226', '#6a4c93'
+  ];
+
+  get totalAwsStations()        { return this.awsStats.reduce((s, r) => s + r.totalStations, 0); }
+  get totalBlocksWithAwsData()  { return this.awsStats.reduce((s, r) => s + r.blocksWithAwsData, 0); }
+  get totalBlocksPlottedOnMap() { return this.awsStats.reduce((s, r) => s + r.blocksPlottedOnMap, 0); }
 
   formatDate(date: Date): string {
     const day = String(date.getDate()).padStart(2, "0");
@@ -185,7 +213,8 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     private getStateService: getStateService,
     private getDistrictService: getDistrictService,
     private getBlockService: getBlockService,
-    private router: Router
+    private router: Router,
+    private allAwsService: AllAWSDataService
   ) {
     // var currentDate = new Date();
     // var dd = String(currentDate.getDate());
@@ -843,11 +872,128 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
         console.log("All Blocks", response);
         this.blocks.push(response);
         console.log("Blocks", this.blocks);
+        this.totalBlocksInGetBlock = response.data?.length ?? 0;
       },
       (error: any) => {
         console.error("Error fetching center details:", error);
       }
     );
+  }
+
+  setTimeFilter(filter: '15min' | '1hour' | 'daily' | 'cumulative'): void {
+    this.selectedTimeFilter = filter;
+    this.fetchAllAWSData();
+  }
+
+  fetchAllAWSData(): void {
+    this.awsLoading = true;
+    const body = this.buildAwsBody();
+    const sourceLabels = [
+      'UP AWS', 'NHP AWS', 'Zomato AWS', 'Meghalaya AWS', 'Mizoram AWS',
+      'Tamilnadu AWS', 'Uttarakhand AWS', 'Telangana AWS', 'Karnataka AWS', 'IITM Mumbai'
+    ];
+
+    forkJoin(this.allAwsService.fetchAllByGranularity(this.selectedTimeFilter, body))
+      .subscribe({
+        next: (results: any[]) => {
+          this.awsStats = results.map((res, i) =>
+            this.computeBlockStat(sourceLabels[i], res?.data ?? [])
+          );
+          this.awsLoading = false;
+          this.buildAWSCharts();
+        },
+        error: () => { this.awsLoading = false; }
+      });
+  }
+
+  private buildAWSCharts(): void {
+    const active = this.awsStats.filter(s => s.blocksWithAwsData > 0);
+
+    // ── Pie chart: blocks per AWS source ─────────────────────────────────────
+    const pieData = active.map(s => ({
+      name: s.sourceLabel,
+      y: s.blocksWithAwsData,
+      color: this.awsSourceColors[this.awsStats.indexOf(s)]
+    }));
+
+    this.awsPieChart = pieData.length ? new Chart({
+      chart: { type: 'pie', height: 300 },
+      title: { text: 'Blocks w/ AWS by Source', style: { fontSize: '12px', color: '#002467' } },
+      tooltip: { pointFormat: '<b>{point.name}</b>: {point.y} ({point.percentage:.1f}%)' },
+      plotOptions: {
+        pie: {
+          allowPointSelect: true,
+          cursor: 'pointer',
+          dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.y}', style: { fontSize: '10px' } }
+        }
+      },
+      credits: { enabled: false },
+      series: [{ type: 'pie', name: 'Blocks', data: pieData }]
+    } as any) : null;
+
+    // ── Horizontal bar chart: Blocks w/ AWS vs In IMD Map per source ──────────
+    const categories = this.awsStats.map(s => s.sourceLabel);
+    this.awsBarChart = new Chart({
+      chart: { type: 'bar', height: 300 },
+      title: { text: 'AWS Blocks vs IMD Coverage', style: { fontSize: '12px', color: '#002467' } },
+      xAxis: { categories, labels: { style: { fontSize: '10px' } } },
+      yAxis: { min: 0, title: { text: 'Blocks', style: { fontSize: '10px' } } },
+      legend: { enabled: true, itemStyle: { fontSize: '10px' } },
+      tooltip: { shared: true },
+      plotOptions: { bar: { dataLabels: { enabled: true, style: { fontSize: '10px' } } } },
+      credits: { enabled: false },
+      series: [
+        { type: 'bar', name: 'Blocks w/ AWS', data: this.awsStats.map(s => s.blocksWithAwsData), color: '#2dc653' },
+        { type: 'bar', name: 'In IMD Map',    data: this.awsStats.map(s => s.blocksPlottedOnMap), color: '#00b4d8' }
+      ]
+    } as any);
+  }
+
+  private buildAwsBody(): any {
+    if (this.selectedTimeFilter === '15min') {
+      return { date: this.fromDate };
+    }
+    if (this.selectedTimeFilter === '1hour') {
+      return { date: this.fromDate };
+    }
+    return { startDate: this.fromDate, endDate: this.fromDate };
+  }
+
+  private computeBlockStat(sourceLabel: string, rows: any[]): AwsSourceStat {
+    const totalStations = new Set(rows.map((r: any) => r.id)).size;
+
+    const rowsWithData = rows.filter((r: any) =>
+      r.total_rainfall != null || r.rainfall != null || r.daily_rainfall != null
+    );
+
+    // Use block field if present (TN, Meghalaya, etc.), else district
+    const blocksWithData = new Set(
+      rowsWithData.map((r: any) => (r.block ?? r.district ?? '').toString().toLowerCase().trim())
+    );
+    blocksWithData.delete('');
+    const blocksWithAwsData = blocksWithData.size;
+
+    // Build known-district set from:
+    //   1. blockdatacum → field is district_name (from fetchBlockData API)
+    //   2. geoJsonData features → field is district (from INDIA_BLOCK.json)
+    const knownDistricts = new Set<string>();
+    (this.blockdatacum ?? []).forEach((b: any) => {
+      const v = (b.district_name ?? '').toString().toLowerCase().trim();
+      if (v) knownDistricts.add(v);
+    });
+    if (this.geoJsonData?.features) {
+      this.geoJsonData.features.forEach((f: any) => {
+        const v = (f.properties?.district ?? '').toString().toLowerCase().trim();
+        if (v) knownDistricts.add(v);
+      });
+    }
+
+    let blocksPlottedOnMap = 0;
+    blocksWithData.forEach(blockOrDistrict => {
+      if (knownDistricts.has(blockOrDistrict)) blocksPlottedOnMap++;
+    });
+
+    return { sourceLabel, totalStations, blocksWithAwsData, blocksPlottedOnMap };
   }
 
   ngOnInit() {
@@ -858,6 +1004,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     this.getAllStates();
     this.getAllDistricts();
     this.getAllBlocks();
+    this.fetchAllAWSData();
   }
 
   ngAfterViewInit(): void {
@@ -872,6 +1019,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     this.formatteddate = this.fromDate.split("-").reverse().join("-");
     this.calculateInitialZoom();
     this.fetchBackend();
+    this.fetchAllAWSData();
     // this.dataService.setfromAndToDate(JSON.stringify(data));
   }
 
@@ -1091,8 +1239,9 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
   // assets/geojson/regions/EAST_AND_NORTH_EAST_INDIA.json
   private loadGeoJSON(): void {
     this.http.get("assets/geojson/INDIA_BLOCK.json").subscribe((res: any) => {
-      this.geoJsonData = res; // Store the full GeoJSON data
-      // this.updateMap()
+      this.geoJsonData = res;
+      // Recompute AWS stats now that GeoJSON district names are available
+      if (this.awsStats.length > 0) this.fetchAllAWSData();
       console.log("india", res);
       this.geoJsonLayer = L.geoJSON(res, {
         style: (feature: any) => {

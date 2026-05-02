@@ -1,11 +1,11 @@
 <div class="wholebody background-effect">
   <app-header></app-header>
 
-  <!-- Date Selector -->
+  <!-- Date + Level Selector -->
   <div class="pt-3 pb-1">
     <div class="values container shadow-lg">
       <div class="row g-3 align-items-end">
-        <div class="col-md-8">
+        <div class="col-md-5">
           <label class="form-label fw-bold">Select Date</label>
           <input
             type="date"
@@ -13,6 +13,13 @@
             [(ngModel)]="fromDate"
             [max]="today"
           />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Level</label>
+          <select class="form-select" [(ngModel)]="viewLevel" (change)="onViewLevelChange()">
+            <option value="subdivision">Subdivision</option>
+            <option value="district">District</option>
+          </select>
         </div>
         <div class="col-md-4 d-flex justify-content-start">
           <button
@@ -27,10 +34,11 @@
     </div>
   </div>
 
-  <!-- Main Layout: Map (Left) + Table (Right) -->
+  <!-- Main Layout: Map (Left) + Table + Chart (Right) -->
   <div class="container-fluid px-4 mt-4">
     <div class="row g-4">
-      <!-- LEFT COLUMN: Map with Download Buttons (as before) -->
+
+      <!-- LEFT COLUMN: Map -->
       <div class="col-lg-5 col-12">
         <div class="map-container h-100">
           <div class="map-frame d-flex justify-content-center h-100">
@@ -39,7 +47,6 @@
               class="text-center shadow-sm bg-white rounded"
               style="width: 44rem; height: 58.8rem; padding: 1rem"
             >
-              <!-- Border and Loader -->
               <div
                 style="border: 2px solid black; width: 100%; height: 100%; padding: 2em;"
                 id="border-remove-subdivNavbar"
@@ -90,7 +97,10 @@
                         Date: {{ formatteddate }}
                       </label>
                       <label class="text-black fw-bold" style="font-family: Arial; font-size: 16px">
-                        MONSOON ACTIVITY MAP
+                        RAINFALL MAP ACTIVITY
+                      </label>
+                      <label class="text-black" style="font-family: Arial; font-size: 11px; opacity: 0.7;">
+                        {{ viewLevel === 'subdivision' ? 'Subdivision' : 'District' }} Level
                       </label>
                     </div>
                   </div>
@@ -133,29 +143,29 @@
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: Monsoon Activity Table with ONLY Statistics Download Button -->
+      <!-- RIGHT COLUMN: Table + Chart -->
       <div class="col-lg-7 col-12">
-        <div
-          class="table-wrapper bg-white rounded-4 shadow-lg p-4 h-100 d-flex flex-column"
-          style="max-height: 58.8rem;"
-        >
-          <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="bg-white rounded-4 shadow-lg p-4 d-flex flex-column">
+
+          <!-- Table header -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="fw-bold mb-0" style="color: #002467;">
-              Subdivision-wise Monsoon Activity ({{ formatteddate }})
+              {{ viewLevel === 'subdivision' ? 'Subdivision' : 'District' }}-wise Monsoon Activity
+              <span class="fs-6 fw-normal">({{ formatteddate }})</span>
             </h5>
-            <!-- Only Statistics Download Button on the right side (table section) -->
-            <button mat-button class="mode-button" (click)="downloadMonsoonActivityTable()" style="max-width: 10rem;">
+            <button mat-button class="mode-button" (click)="downloadTable()" style="max-width: 9rem;">
               Download
             </button>
           </div>
 
-          <div class="flex-grow-1 overflow-y-auto">
-            <table class="table table-hover table-bordered align-middle text-center">
-              <thead style="background-color: #002467; color: white;">
+          <!-- Scrollable Table -->
+          <div style="max-height: 28rem; overflow-y: auto;">
+            <!-- Subdivision Table -->
+            <table *ngIf="viewLevel === 'subdivision'" class="table table-hover table-bordered align-middle text-center">
+              <thead style="background-color: #002467; color: white; position: sticky; top: 0; z-index: 1;">
                 <tr>
                   <th>Subdivision</th>
                   <th>Activity</th>
-                  <!-- <th>Spatial</th> -->
                   <th>Avg Actual (mm)</th>
                   <th>Normal (mm)</th>
                   <th>Ratio (R)</th>
@@ -166,10 +176,10 @@
                 <tr
                   *ngFor="let item of monsoonTableData"
                   [ngClass]="{
-                    'table-danger': item.activity === 'Vigorous',
-                    'table-warning': item.activity === 'Active',
-                    'table-success': item.activity === 'Normal',
-                    'table-light': item.activity === 'Weak',
+                    'table-danger':    item.activity === 'Vigorous',
+                    'table-warning':   item.activity === 'Active',
+                    'table-success':   item.activity === 'Normal',
+                    'table-light':     item.activity === 'Weak',
                     'table-secondary': item.activity === 'Subdued'
                   }"
                 >
@@ -178,32 +188,124 @@
                     <span
                       class="badge fw-bold px-3 py-2"
                       [ngClass]="{
-                        'bg-danger text-white': item.activity === 'Vigorous',
-                        'bg-warning text-dark': item.activity === 'Active',
-                        'bg-success text-white': item.activity === 'Normal',
-                        'bg-warning text-white': item.activity === 'Weak',
-                        'bg-secondary text-white': item.activity === 'Subdued',
-                        'bg-light text-dark': !item.activity
+                        'bg-danger text-white':   item.activity === 'Vigorous',
+                        'bg-warning text-dark':   item.activity === 'Active',
+                        'bg-success text-white':  item.activity === 'Normal',
+                        'bg-warning text-white':  item.activity === 'Weak',
+                        'bg-secondary text-white':item.activity === 'Subdued',
+                        'bg-light text-dark':     !item.activity
                       }"
-                    >
-                      {{ item.activity || 'No Data' }}
-                    </span>
+                    >{{ item.activity || 'No Data' }}</span>
                   </td>
-                  <!-- <td>{{ item.spatial || '-' }}</td> -->
                   <td>{{ item.avg_actual | number:'1.1-1' }}</td>
                   <td>{{ item.normal | number:'1.1-1' }}</td>
                   <td>{{ item.R | number:'1.2-2' }}</td>
-                  <td>{{ item.reason || '-'}}</td>
+                  <td class="text-start small">{{ item.reason || '-' }}</td>
                 </tr>
               </tbody>
             </table>
 
-            <div *ngIf="monsoonTableData.length === 0 && !isLoading" class="text-center text-muted py-5">
-              No monsoon activity data available for selected date.
+            <!-- District Table -->
+            <table *ngIf="viewLevel === 'district'" class="table table-hover table-bordered align-middle text-center">
+              <thead style="background-color: #002467; color: white; position: sticky; top: 0; z-index: 1;">
+                <tr>
+                  <th>District</th>
+                  <th>Activity</th>
+                  <th>Avg Actual (mm)</th>
+                  <th>Normal (mm)</th>
+                  <th>Ratio (R)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  *ngFor="let item of monsoonDistrictTableData"
+                  [ngClass]="{
+                    'table-danger':    item.activity === 'Vigorous',
+                    'table-warning':   item.activity === 'Active',
+                    'table-success':   item.activity === 'Normal',
+                    'table-light':     item.activity === 'Weak',
+                    'table-secondary': item.activity === 'Subdued'
+                  }"
+                >
+                  <td class="text-start"><strong>{{ item.name }}</strong></td>
+                  <td>
+                    <span
+                      class="badge fw-bold px-3 py-2"
+                      [ngClass]="{
+                        'bg-danger text-white':   item.activity === 'Vigorous',
+                        'bg-warning text-dark':   item.activity === 'Active',
+                        'bg-success text-white':  item.activity === 'Normal',
+                        'bg-warning text-white':  item.activity === 'Weak',
+                        'bg-secondary text-white':item.activity === 'Subdued',
+                        'bg-light text-dark':     !item.activity
+                      }"
+                    >{{ item.activity || 'No Data' }}</span>
+                  </td>
+                  <td>{{ item.avg_actual | number:'1.1-1' }}</td>
+                  <td>{{ item.normal | number:'1.1-1' }}</td>
+                  <td>{{ item.R | number:'1.2-2' }}</td>
+                  <td class="text-start small">{{ item.reason || '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div
+              *ngIf="viewLevel === 'subdivision' && monsoonTableData.length === 0 && !isLoading"
+              class="text-center text-muted py-4"
+            >
+              No RAINFALL MAP ACTIVITYdata available for selected date.
+            </div>
+            <div
+              *ngIf="viewLevel === 'district' && monsoonDistrictTableData.length === 0 && !isLoading"
+              class="text-center text-muted py-4"
+            >
+              No district RAINFALL MAP ACTIVITYdata available for selected date.
             </div>
           </div>
+
+          <!-- Chart Section -->
+          <hr class="my-3"/>
+          <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <h6 class="fw-bold mb-0" style="color: #002467;">Activity Distribution</h6>
+            <div class="btn-group btn-group-sm" role="group">
+              <button
+                type="button"
+                class="btn btn-outline-primary chart-period-btn"
+                [class.active]="chartPeriod === 'today'"
+                (click)="onChartPeriodChange('today')"
+              >Today</button>
+              <button
+                type="button"
+                class="btn btn-outline-primary chart-period-btn"
+                [class.active]="chartPeriod === '7days'"
+                (click)="onChartPeriodChange('7days')"
+              >Last 7 Days</button>
+              <button
+                type="button"
+                class="btn btn-outline-primary chart-period-btn"
+                [class.active]="chartPeriod === '30days'"
+                (click)="onChartPeriodChange('30days')"
+              >Last 30 Days</button>
+            </div>
+          </div>
+
+          <div *ngIf="isChartLoading" class="text-center py-4">
+            <i class="fa fa-spinner fa-pulse fa-2x fa-fw text-primary"></i>
+            <p class="text-muted mt-2 small">Loading chart data...</p>
+          </div>
+
+          <div *ngIf="!isChartLoading && activityChart" class="chart-container">
+            <div [chart]="activityChart"></div>
+          </div>
+
+          <div *ngIf="!isChartLoading && !activityChart" class="text-center text-muted py-4 small">
+            No data available for chart.
+          </div>
+
         </div>
       </div>
+
     </div>
   </div>
 </div>

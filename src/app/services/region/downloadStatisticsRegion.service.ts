@@ -5,9 +5,11 @@ import { environment } from "src/environment/environment";
 import { Constants } from "../constants";
 import autoTable, { Column } from "jspdf-autotable";
 import { jsPDF } from "jspdf";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import * as FileSaver from "file-saver";
 import { RegionService } from "../region/region.service";
+import { StateService } from "../state/state.service";
+import { DistrictService } from "../district/district.service";
 
 @Injectable({
   providedIn: "root",
@@ -18,6 +20,8 @@ export class RegionDownloadStatistics {
 
   regiondepCurrdate: any[] = [];
   regiondepSeasondate: any[] = [];
+  districtDepCurrdate: any[] = [];
+  statedepCurrdate: any[] = [];
 
   rows: any[][] = [];
   data: any;
@@ -26,7 +30,9 @@ export class RegionDownloadStatistics {
   constructor(
     private http: HttpClient,
     private constants: Constants,
-    private regionService: RegionService
+    private regionService: RegionService,
+    private stateService: StateService,
+    private districtService: DistrictService
   ) {}
 
   convertToIndianDateFormat = (dateString: string) =>
@@ -144,10 +150,16 @@ export class RegionDownloadStatistics {
             console.log("indownloading---->", this.regiondepCurrdate);
             return this.regionService.fetchDataFtp(seasonPeriodDate);
           }),
-
           concatMap((seasonregionData) => {
             this.regiondepSeasondate = seasonregionData.data;
-            console.log("indownloading---->", this.regiondepSeasondate);
+            return this.stateService.fetchDataFtp(data);
+          }),
+          concatMap((stateData) => {
+            this.statedepCurrdate = stateData.data ?? [];
+            return this.districtService.fetchDataFtp(data);
+          }),
+          concatMap((districtData) => {
+            this.districtDepCurrdate = districtData.data ?? [];
             this.downloadPdf();
             return EMPTY;
           })
@@ -186,10 +198,16 @@ export class RegionDownloadStatistics {
             console.log("indownloading---->", this.regiondepCurrdate);
             return this.regionService.fetchData(seasonPeriodDate);
           }),
-
           concatMap((seasonregionData) => {
             this.regiondepSeasondate = seasonregionData.data;
-            console.log("indownloading---->", this.regiondepSeasondate);
+            return this.stateService.fetchData(data);
+          }),
+          concatMap((stateData) => {
+            this.statedepCurrdate = stateData.data ?? [];
+            return this.districtService.fetchData(data);
+          }),
+          concatMap((districtData) => {
+            this.districtDepCurrdate = districtData.data ?? [];
             this.downloadPdf();
             return EMPTY;
           })
@@ -487,12 +505,8 @@ export class RegionDownloadStatistics {
     } else {
       setTimeout(() => {
         doc.save(filename);
-        this.exportAsExcelFile(
-          newArr,
-          excelName,
-          columns,
-          newcolumns1
-        );
+        this.exportAsExcelFile(newArr, excelName, columns, newcolumns1);
+        this.exportDistrictDistributionExcel(`DISTRICT_DIST_REGION_${dateLabel}`);
       }, 3000);
     }
   }
@@ -619,6 +633,115 @@ export class RegionDownloadStatistics {
     }
 
     console.log(this.rows);
+  }
+
+  private countDepartureByState(): Array<{ state: string; state_code: number; counts: any }> {
+    const stateNameMap = new Map<number, string>();
+    for (const s of this.statedepCurrdate) {
+      const sc = Number(s.state_code ?? s.new_state_code);
+      stateNameMap.set(sc, s.state_name);
+    }
+    const grouped = new Map<number, number[]>();
+    for (const d of this.districtDepCurrdate) {
+      const sc = Number(d.state_code ?? d.new_state_code);
+      if (!sc) continue;
+      if (!grouped.has(sc)) grouped.set(sc, []);
+      grouped.get(sc)!.push(Number(d.departure));
+    }
+    return [...grouped.entries()].map(([sc, departures]) => {
+      const counts = { LE: 0, E: 0, N: 0, D: 0, LD: 0, NR: 0, ND: 0, Total: 0 };
+      for (const dep of departures) {
+        if (dep >= 60) counts.LE++;
+        else if (dep >= 20) counts.E++;
+        else if (dep >= -19) counts.N++;
+        else if (dep >= -59) counts.D++;
+        else if (dep >= -99) counts.LD++;
+        else if (dep === -100) counts.NR++;
+        else counts.ND++;
+      }
+      counts.Total = counts.LE + counts.E + counts.N + counts.D + counts.LD + counts.NR + counts.ND;
+      return { state: stateNameMap.get(sc) ?? `State ${sc}`, state_code: sc, counts };
+    }).sort((a, b) => a.state.localeCompare(b.state));
+  }
+
+  exportDistrictDistributionExcel(excelFileName: string): void {
+    const stateRows = this.countDepartureByState();
+    if (!stateRows.length) return;
+
+    const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
+    const blankCell = { v: "", t: "s", s: {} };
+    const thin = {
+      top:    { style: "thin", color: { rgb: "000000" } },
+      bottom: { style: "thin", color: { rgb: "000000" } },
+      left:   { style: "thin", color: { rgb: "000000" } },
+      right:  { style: "thin", color: { rgb: "000000" } },
+    };
+    const titleCell = (v: string, sz = 11) => ({
+      v, t: "s",
+      s: { font: { bold: true, sz, underline: true }, alignment: { horizontal: "center" as const, vertical: "middle" as const, wrapText: true } },
+    });
+    const hdrCell = (v: string) => ({
+      v, t: "s",
+      s: { font: { bold: true, sz: 9 }, fill: { fgColor: { rgb: "C8DCFF" } }, border: thin,
+           alignment: { horizontal: "center" as const, vertical: "middle" as const, wrapText: true } },
+    });
+    const cell  = (v: any) => ({ v: String(v ?? ""), t: "s", s: { font: { bold: true, sz: 9 }, border: thin, alignment: { horizontal: "center" as const, vertical: "middle" as const } } });
+    const lCell = (v: any) => ({ v: String(v ?? ""), t: "s", s: { font: { bold: true, sz: 9 }, border: thin, alignment: { horizontal: "left"   as const, vertical: "middle" as const } } });
+
+    const periodLabel = `PERIOD :   ${this.convertToIndianDateFormat(this.data.startDate)}   TO   ${this.convertToIndianDateFormat(this.data.endDate)}`;
+    const row1 = [titleCell("STATEWISE DISTRIBUTION OF NO. OF DISTRICTS", 12), ...Array(9).fill(blankCell)];
+    const row2 = [titleCell("WITH LARGE EXCESS, EXCESS, NORMAL, DEFICIENT, LARGE DEFICIENT, NO RAINFALL AND NO DATA CATEGORY", 10), ...Array(9).fill(blankCell)];
+    const row3 = Array(10).fill(blankCell);
+    const row4 = [
+      hdrCell("S."), hdrCell("STATES"),
+      { v: periodLabel, t: "s", s: { font: { bold: true, sz: 10 }, alignment: { horizontal: "center" as const, vertical: "middle" as const } } },
+      ...Array(7).fill(blankCell),
+    ];
+    const row5 = [hdrCell("NO."), blankCell, hdrCell("LE"), hdrCell("E"), hdrCell("N"), hdrCell("D"), hdrCell("LD"), hdrCell("NR"), hdrCell("ND"), hdrCell("TOTAL")];
+
+    XLSX.utils.sheet_add_aoa(ws, [row1], { origin: "A1" });
+    XLSX.utils.sheet_add_aoa(ws, [row2], { origin: "A2" });
+    XLSX.utils.sheet_add_aoa(ws, [row3], { origin: "A3" });
+    XLSX.utils.sheet_add_aoa(ws, [row4], { origin: "A4" });
+    XLSX.utils.sheet_add_aoa(ws, [row5], { origin: "A5" });
+
+    const totals = stateRows.reduce((acc, r) => {
+      acc.LE += r.counts.LE; acc.E += r.counts.E; acc.N += r.counts.N; acc.D += r.counts.D;
+      acc.LD += r.counts.LD; acc.NR += r.counts.NR; acc.ND += r.counts.ND; acc.Total += r.counts.Total;
+      return acc;
+    }, { LE: 0, E: 0, N: 0, D: 0, LD: 0, NR: 0, ND: 0, Total: 0 });
+
+    const dataStartRow = 5;
+    const dataRows: any[][] = stateRows.map((r, i) => [
+      cell(i + 1), lCell(r.state),
+      cell(r.counts.LE), cell(r.counts.E), cell(r.counts.N), cell(r.counts.D),
+      cell(r.counts.LD), cell(r.counts.NR), cell(r.counts.ND), cell(r.counts.Total),
+    ]);
+    dataRows.push([
+      blankCell,
+      { v: "TOTAL", t: "s", s: { font: { bold: true, sz: 9 }, border: thin, alignment: { horizontal: "center" as const, vertical: "middle" as const } } },
+      cell(totals.LE), cell(totals.E), cell(totals.N), cell(totals.D),
+      cell(totals.LD), cell(totals.NR), cell(totals.ND), cell(totals.Total),
+    ]);
+
+    XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: { r: dataStartRow, c: 0 } });
+
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+      { s: { r: 3, c: 0 }, e: { r: 4, c: 0 } },
+      { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } },
+      { s: { r: 3, c: 2 }, e: { r: 3, c: 9 } },
+    ];
+    ws["!cols"] = [
+      { wch: 6 }, { wch: 32 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
+      { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
+    ];
+    ws["!rows"] = [{ hpt: 20 }, { hpt: 30 }, { hpt: 5 }, { hpt: 25 }, { hpt: 20 }];
+
+    const wb: XLSX.WorkBook = { Sheets: { data: ws }, SheetNames: ["data"] };
+    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    this.saveAsExcelFile(buf, excelFileName);
   }
 
   // getColorAndCat(departure: any) {
