@@ -313,9 +313,11 @@ export class StateDownloadStatistics {
     dataRows: any[][],
     categoryRows: any[][],
     excelFileName: string,
-    columns: any[],     // row 4: blank, blank, ACTUAL, NORMAL, ...
-    columns1: any[],    // row 3: S.No, METEOROLOGICAL STATES, DAY, PERIOD
-    title: string       // e.g. "STATE-WISE RAINFALL (MM) DISTRIBUTION"
+    columns: any[],
+    columns1: any[],
+    title: string,
+    regionRowIndices: number[] = [],
+    countryRowIndex: number | null = null
   ): void {
     const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
 
@@ -340,7 +342,7 @@ export class StateDownloadStatistics {
 
     // Row 3: S.No + METEOROLOGICAL STATES + DAY/PERIOD labels
     const hdrStyle3 = {
-      font: { bold: true, sz: 9, color: { rgb: '000000' } },
+      font: { bold: true, sz: 10, color: { rgb: 'C0000B' } },
       fill: { fgColor: { rgb: 'FFFFFF' } },
       border: redBorder,
       alignment: { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true },
@@ -348,12 +350,22 @@ export class StateDownloadStatistics {
     const styledColumns1 = columns1.map((v: any) => ({ v: String(v ?? ''), t: 's', s: hdrStyle3 }));
     const styledColumns  = columns.map((v: any)  => ({ v: String(v ?? ''), t: 's', s: hdrStyle3 }));
 
+    // data starts at sheet row 4 (0-based)
+    const regionMerges = regionRowIndices.map(i => ({ s: { r: 4 + i, c: 0 }, e: { r: 4 + i, c: 9 } }));
+    const countryMerges = countryRowIndex !== null ? [
+      { s: { r: 4 + countryRowIndex, c: 0 }, e: { r: 4 + countryRowIndex, c: 1 } },  // A:B name
+      { s: { r: 4 + countryRowIndex, c: 4 }, e: { r: 4 + countryRowIndex, c: 5 } },  // E:F dep% day
+      { s: { r: 4 + countryRowIndex, c: 8 }, e: { r: 4 + countryRowIndex, c: 9 } },  // I:J dep% period
+    ] : [];
+
     worksheet['!merges'] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },   // Title A1:J1
       { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } },   // S.No A3:A4
       { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } },   // METEOROLOGICAL STATES B3:B4
       { s: { r: 2, c: 2 }, e: { r: 2, c: 5 } },   // DAY C3:F3
       { s: { r: 2, c: 6 }, e: { r: 2, c: 9 } },   // PERIOD G3:J3
+      ...regionMerges,
+      ...countryMerges,
     ];
 
     XLSX.utils.sheet_add_aoa(worksheet, [titleRow],       { origin: 'A1' });
@@ -367,18 +379,14 @@ export class StateDownloadStatistics {
 
     const cm = catStartRow;
     const catMerges = [
-      { s: { r: cm + 1, c: 0 }, e: { r: cm + 1, c: 9 } },
-      { s: { r: cm + 3, c: 1 }, e: { r: cm + 3, c: 4 } },
-      { s: { r: cm + 3, c: 6 }, e: { r: cm + 3, c: 9 } },
-      { s: { r: cm + 4, c: 1 }, e: { r: cm + 4, c: 2 } },
-      { s: { r: cm + 4, c: 3 }, e: { r: cm + 4, c: 4 } },
-      { s: { r: cm + 4, c: 6 }, e: { r: cm + 4, c: 7 } },
-      { s: { r: cm + 4, c: 8 }, e: { r: cm + 4, c: 9 } },
+      { s: { r: cm + 1, c: 0 }, e: { r: cm + 1, c: 9 } },   // title A:J
+      { s: { r: cm + 3, c: 0 }, e: { r: cm + 5, c: 1 } },   // CATEGORY A:B across rows cm+3–cm+5
+      { s: { r: cm + 4, c: 2 }, e: { r: cm + 5, c: 5 } },   // NO. OF STATES day C:F across rows cm+4–cm+5
+      { s: { r: cm + 4, c: 6 }, e: { r: cm + 5, c: 9 } },   // NO. OF STATES period G:J across rows cm+4–cm+5
       ...Array.from({ length: 6 }, (_, i) => [
-        { s: { r: cm + 5 + i, c: 1 }, e: { r: cm + 5 + i, c: 2 } },
-        { s: { r: cm + 5 + i, c: 3 }, e: { r: cm + 5 + i, c: 4 } },
-        { s: { r: cm + 5 + i, c: 6 }, e: { r: cm + 5 + i, c: 7 } },
-        { s: { r: cm + 5 + i, c: 8 }, e: { r: cm + 5 + i, c: 9 } },
+        { s: { r: cm + 6 + i, c: 0 }, e: { r: cm + 6 + i, c: 1 } },   // category name A:B
+        { s: { r: cm + 6 + i, c: 2 }, e: { r: cm + 6 + i, c: 5 } },   // count day C:F
+        { s: { r: cm + 6 + i, c: 6 }, e: { r: cm + 6 + i, c: 9 } },   // count period G:J
       ]).flat(),
     ];
     worksheet['!merges'] = [...worksheet['!merges'], ...catMerges];
@@ -387,7 +395,7 @@ export class StateDownloadStatistics {
       { wch: 20 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
       { wch: 8  }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 8  },
     ];
-    worksheet['!rows'] = [{ hpt: 25 }, { hpt: 5 }, { hpt: 35 }, { hpt: 25 }];
+    worksheet['!rows'] = [{ hpt: 25 }, { hpt: 20 }, { hpt: 35 }, { hpt: 25 }];
 
     const workbook: XLSX.WorkBook = { Sheets: { 'data': worksheet }, SheetNames: ['data'] };
     const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
@@ -417,9 +425,7 @@ export class StateDownloadStatistics {
       {
         // content : this.data.startDate==this.data.endDate ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`:`DAY: ${this.convertToIndianDateFormat(this.data.startDate)} to ${this.convertToIndianDateFormat(this.data.endDate)}`, colSpan:4
 
-        content: this.data.startDate === this.data.endDate 
-        ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`
-        : `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} to ${this.getAdjustedEndDate(this.data.startDate, this.data.endDate)}`, 
+        content: `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} to ${this.convertToIndianDateFormat(this.data.endDate)}`,
       colSpan: 4
       },
       {
@@ -430,9 +436,7 @@ export class StateDownloadStatistics {
       'S.\nNO.',
       'METEOROLOGICAL\nSTATES',
       {
-        content: this.data.startDate === this.data.endDate
-          ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`
-          : `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} TO ${this.getAdjustedEndDate(this.data.startDate, this.data.endDate)}`,
+        content: `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} TO ${this.convertToIndianDateFormat(this.data.endDate)}`,
         colSpan: 4,
       },
       '', '', '',
@@ -462,30 +466,76 @@ export class StateDownloadStatistics {
       right:  { style: 'thin', color: { rgb: '000000' } },
     };
 
-    var newArr: any[][] = this.rows.map((subArr) => {
+    var newArr: any[][] = [];
+    const regionRowIndices: number[] = [];
+    let countryRowIndex: number | null = null;
+
+    const getContent = (item: any) =>
+      typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+
+    for (const subArr of this.rows) {
       const firstFill = subArr[0]?.styles?.fillColor;
       const isRegion  = Array.isArray(firstFill) && firstFill[0] === 72;
       const isCountry = Array.isArray(firstFill) && firstFill[0] === 180;
 
-      return subArr.map((item: any, colIdx: number) => {
-        let content  = typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+      if (isRegion) {
+        // Region: name only (no prefix), left-aligned, white bg, text blue, border 873300
+        const rawName = getContent(subArr[1]);
+        const regionName = String(rawName ?? '').replace(/^REGION\s*:\s*/i, '');
+        const mkRStyle = () => ({
+          fill: { fgColor: { rgb: 'FFFFFF' } },
+          border: {
+            top:    { style: 'thin', color: { rgb: '873300' } },
+            bottom: { style: 'thin', color: { rgb: '873300' } },
+            left:   { style: 'thin', color: { rgb: '873300' } },
+            right:  { style: 'thin', color: { rgb: '873300' } },
+          },
+          font: { bold: true, sz: 10, color: { rgb: '0000FF' } },
+          alignment: { horizontal: 'left' as const, vertical: 'middle' as const },
+        });
+        regionRowIndices.push(newArr.length);
+        newArr.push([
+          { v: regionName, t: 's', s: mkRStyle() },
+          ...Array.from({ length: 9 }, () => ({ v: '', t: 's', s: mkRStyle() })),
+        ]);
+        continue;
+      }
+
+      if (isCountry) {
+        // blank spacer row before COUNTRY AS A WHOLE
+        newArr.push(Array.from({ length: 10 }, () => ({ v: '', t: 's', s: {} })));
+        // Custom country row: A:B = name, C = actual, D = normal, E:F = dep%, G = actual, H = normal, I:J = dep%
+        const cStyle = {
+          fill: { fgColor: { rgb: 'FFFFFF' } },
+          border: redBorder,
+          font: { bold: true, sz: 9, color: { rgb: 'FF00FF' } },
+          alignment: { horizontal: 'center' as const, vertical: 'middle' as const },
+        };
+        const depDay    = getContent(subArr[4]);
+        const depPeriod = getContent(subArr[8]);
+        countryRowIndex = newArr.length;
+        newArr.push([
+          { v: 'COUNTRY AS A WHOLE', t: 's', s: { ...cStyle, alignment: { horizontal: 'left' as const, vertical: 'middle' as const } } }, // A — merged A:B
+          { v: '', t: 's', s: cStyle },                              // B
+          { v: String(getContent(subArr[2]) ?? ''), t: 's', s: cStyle }, // C actual day
+          { v: String(getContent(subArr[3]) ?? ''), t: 's', s: cStyle }, // D normal day
+          { v: depDay != null && depDay !== ' ' ? `${depDay}%` : '', t: 's', s: cStyle }, // E dep% day — merged E:F
+          { v: '', t: 's', s: cStyle },                              // F
+          { v: String(getContent(subArr[6]) ?? ''), t: 's', s: cStyle }, // G actual period
+          { v: String(getContent(subArr[7]) ?? ''), t: 's', s: cStyle }, // H normal period
+          { v: depPeriod != null && depPeriod !== ' ' ? `${depPeriod}%` : '', t: 's', s: cStyle }, // I dep% period — merged I:J
+          { v: '', t: 's', s: cStyle },                              // J
+        ]);
+        continue;
+      }
+
+      // Normal state rows
+      newArr.push(subArr.map((item: any, colIdx: number) => {
+        let content = getContent(item);
         if ((colIdx === 4 || colIdx === 8) && content !== '' && content !== ' ' && content != null) {
           content = `${content}%`;
         }
-        const cellFill = item?.styles?.fillColor;
-
-        if (isRegion || isCountry) {
-          return {
-            v: String(content ?? ''), t: 's',
-            s: {
-              fill: { fgColor: { rgb: 'FFFFFF' } },
-              border: redBorder,
-              font: { bold: true, sz: 9, color: { rgb: '0070C0' } },
-              alignment: { horizontal: 'center', vertical: 'middle' },
-            },
-          };
-        }
-
+        const cellFill  = item?.styles?.fillColor;
         const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
         const fillHex   = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
         return {
@@ -497,8 +547,8 @@ export class StateDownloadStatistics {
             alignment: { horizontal: 'center', vertical: 'middle' },
           },
         };
-      });
-    });
+      }));
+    }
 
     
 
@@ -591,20 +641,20 @@ export class StateDownloadStatistics {
       LE: 'LARGE EXCESS', E: 'EXCESS', N: 'NORMAL',
       D: 'DEFICIENT', LD: 'LARGE DEFICIENT', NR: 'NO RAIN',
     };
-    const dayLabelExcel = this.data.startDate === this.data.endDate
-      ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`
-      : `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} TO ${this.getAdjustedEndDate(this.data.startDate, this.data.endDate)}`;
-    const periodLabelExcel = `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} TO ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`;
+    const catDayStart    = this.convertToIndianDateFormat(this.data.startDate);
+    const catDayEnd      = this.convertToIndianDateFormat(this.data.endDate);
+    const catPeriodStart = this.convertToIndianDateFormat(this.seasonPeriodDate.startDate);
+    const catPeriodEnd   = this.convertToIndianDateFormat(this.seasonPeriodDate.endDate);
 
     const catThinBorder = {
-      top:    { style: 'thin', color: { rgb: '000000' } },
-      bottom: { style: 'thin', color: { rgb: '000000' } },
-      left:   { style: 'thin', color: { rgb: '000000' } },
-      right:  { style: 'thin', color: { rgb: '000000' } },
+      top:    { style: 'thin', color: { rgb: '873300' } },
+      bottom: { style: 'thin', color: { rgb: '873300' } },
+      left:   { style: 'thin', color: { rgb: '873300' } },
+      right:  { style: 'thin', color: { rgb: '873300' } },
     };
     const catHdrStyle = () => ({
       font: { bold: true, sz: 9, color: { rgb: '000000' } },
-      fill: { fgColor: { rgb: 'C8DCFF' } },
+      fill: { fgColor: { rgb: 'FFFFFF' } },
       border: catThinBorder,
       alignment: { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true },
     });
@@ -615,41 +665,51 @@ export class StateDownloadStatistics {
     const blankCell = { v: '', t: 's', s: {} };
     const blankRow = Array(10).fill(blankCell);
 
+    // mkCatB: fresh border object with selective sides for date group cells
+    const mkCatB = (l = true, r = true, t = true, b = true): any => ({
+      top:    t ? { style: 'thin', color: { rgb: '873300' } } : undefined,
+      bottom: b ? { style: 'thin', color: { rgb: '873300' } } : undefined,
+      left:   l ? { style: 'thin', color: { rgb: '873300' } } : undefined,
+      right:  r ? { style: 'thin', color: { rgb: '873300' } } : undefined,
+    });
+    const catDateCell = (v: string, border: any = catThinBorder) => ({
+      v, t: 's',
+      s: { border, font: { bold: true, sz: 9, color: { rgb: '873300' } }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } },
+    });
     const categoryExcelRows: any[][] = [
       blankRow,
       [
         { v: 'CATEGORYWISE NO. OF STATES & % AREA (STATE) OF THE COUNTRY', t: 's',
-          s: { font: { bold: true, sz: 10, color: { rgb: 'C0000B' } }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+          s: { font: { bold: true, sz: 10, color: { rgb: '000000' }, underline: true }, alignment: { horizontal: 'left' as const, vertical: 'middle' as const } } },
         ...Array(9).fill(blankCell),
       ],
       blankRow,
-      [blankCell,
-       { v: dayLabelExcel, t: 's', s: catHdrStyle() },
+      // cm+3: CATEGORY (A:B, vertical merge cm+3–cm+5, centred) | date cells C–J (outer border only per group)
+      [{ v: 'CATEGORY', t: 's', s: { ...catHdrStyle(), alignment: { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true } } },
+       blankCell,
+       catDateCell('DAY :',       mkCatB(true,  false, true, true)),
+       catDateCell(catDayStart,   mkCatB(false, false, true, true)),
+       catDateCell('TO',          mkCatB(false, false, true, true)),
+       catDateCell(catDayEnd,     mkCatB(false, true,  true, true)),
+       catDateCell('PERIOD :',    mkCatB(true,  false, true, true)),
+       catDateCell(catPeriodStart,mkCatB(false, false, true, true)),
+       catDateCell('TO',          mkCatB(false, false, true, true)),
+       catDateCell(catPeriodEnd,  mkCatB(false, true,  true, true))],
+      // cm+4: NO. OF STATES C:F (merged cm+4–cm+5) | NO. OF STATES G:J (merged cm+4–cm+5)
+      [blankCell, blankCell,
+       { v: 'NO. OF STATES', t: 's', s: catHdrStyle() },
        blankCell, blankCell, blankCell,
-       blankCell,
-       { v: periodLabelExcel, t: 's', s: catHdrStyle() },
+       { v: 'NO. OF STATES', t: 's', s: catHdrStyle() },
        blankCell, blankCell, blankCell],
-      [{ v: 'CATEGORY', t: 's', s: catHdrStyle() },
-       { v: 'NO. OF\nSTATES', t: 's', s: catHdrStyle() },
-       blankCell,
-       { v: 'STATE\n% AREA OF COUNTRY', t: 's', s: catHdrStyle() },
-       blankCell,
-       blankCell,
-       { v: 'NO. OF\nSTATES', t: 's', s: catHdrStyle() },
-       blankCell,
-       { v: 'STATE\n% AREA OF COUNTRY', t: 's', s: catHdrStyle() },
-       blankCell],
+      // cm+5: blank row (covered by merges from cm+3 and cm+4)
+      Array(10).fill(blankCell),
       ...['LE', 'E', 'N', 'D', 'LD', 'NR'].map(cat => [
         { v: catLabelsExcel[cat], t: 's', s: { border: catThinBorder, font: { bold: true, sz: 9 }, alignment: { horizontal: 'left' as const, vertical: 'middle' as const } } },
-        catDataCell(dayS[cat].count),
         blankCell,
-        catDataCell(`${dayS[cat].area}%`),
-        blankCell,
-        blankCell,
-        catDataCell(periodS[cat].count),
-        blankCell,
-        catDataCell(`${periodS[cat].area}%`),
-        blankCell,
+        catDataCell(String(dayS[cat].count)),
+        blankCell, blankCell, blankCell,
+        catDataCell(String(periodS[cat].count)),
+        blankCell, blankCell, blankCell,
       ]),
     ];
 
@@ -666,7 +726,9 @@ export class StateDownloadStatistics {
           excelName,
           columnsForExcel,
           newcolumns1,
-          'STATE-WISE RAINFALL (MM) DISTRIBUTION'
+          'STATE-WISE RAINFALL (MM) DISTRIBUTION',
+          regionRowIndices,
+          countryRowIndex
         );
         this.exportDistrictDistributionExcel(`DISTRICT_DIST_STATE_${dateLabel}`);
       },3000)

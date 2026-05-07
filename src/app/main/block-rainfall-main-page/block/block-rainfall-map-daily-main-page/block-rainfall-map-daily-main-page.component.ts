@@ -39,7 +39,7 @@ interface AwsSourceStat {
   styleUrls: ["./block-rainfall-map-daily-main-page.component.css"],
 })
 export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
-  selecteddatamode: any = "Departure";
+  selecteddatamode: any = "Actual";
 
   blockdatacum: any[] = [];
   StartDate: any;
@@ -82,6 +82,13 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
   private geoJsonData: any; // Store the full GeoJSON data
   filterBlocks: any[] | undefined;
   selectedBlockData: any;
+
+  // ── AWS Actual-Departure (block-rainfall-aws-actual page) ─────────────────
+  isAwsActualPage = false;
+  dataSourceFilter: 'IMD' | 'AWS' | 'BOTH' = 'BOTH';
+  awsBlockCodeSet = new Set<string>();
+  awsDistrictCodeSet = new Set<string>();
+  private elevatedLayer: L.GeoJSON | null = null;
 
   // ── AWS panel ──────────────────────────────────────────────────────────────
   selectedTimeFilter: '15min' | '1hour' | 'daily' | 'cumulative' = 'daily';
@@ -130,6 +137,24 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
       selecteddatamode: mode,
     };
     this.dataService.setDataMode(JSON.stringify(data));
+    this.applyModeStyle();
+    if (this.isAwsActualPage) this.renderElevatedLayer();
+  }
+
+  private applyModeStyle(): void {
+    if (!this.geoJsonLayer) return;
+    this.geoJsonLayer.setStyle((feature: any) => {
+      const id2 = feature?.properties['block_code'];
+      const matchedData = this.findMatchingData(id2);
+      const departure = matchedData?.departure != null ? matchedData.departure : 'NA';
+      const dailyrainfall = matchedData?.actual_rainfall != null
+        ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
+        : 'NA';
+      const color = this.selecteddatamode === 'Actual'
+        ? this.constants.getActualColorForRainfall(dailyrainfall === 'NA' ? null : dailyrainfall)
+        : this.constants.getColorForRainfall(departure);
+      return { fillColor: color, weight: 1, opacity: 1.5, color: 'black', fillOpacity: 0.8 };
+    });
   }
 
   async downloadMapData() {
@@ -221,6 +246,8 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     // var mon = String(currentDate.getMonth());
     // var year = String(currentDate.getFullYear());
     // this.formatteddate = `${dd.padStart(2, '0')}-${mon.padStart(2, '0')}-${year}`;
+
+    this.isAwsActualPage = this.router.url.includes('block-rainfall-aws-actual');
 
     const currentDate = new Date();
     const dd = String(currentDate.getDate()).padStart(2, "0");
@@ -996,6 +1023,112 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     return { sourceLabel, totalStations, blocksWithAwsData, blocksPlottedOnMap };
   }
 
+  setDataSourceFilter(f: 'IMD' | 'AWS' | 'BOTH'): void {
+    this.dataSourceFilter = f;
+    if (this.geoJsonLayer) {
+      if (f === 'AWS') this.map.removeLayer(this.geoJsonLayer);
+      else             this.map.addLayer(this.geoJsonLayer);
+    }
+    if (this.elevatedLayer) {
+      if (f === 'IMD') this.map.removeLayer(this.elevatedLayer);
+      else             this.map.addLayer(this.elevatedLayer);
+    }
+  }
+
+  fetchAwsActualDeparture(): void {
+    const body = { startDate: this.fromDate, endDate: this.toDate ?? this.fromDate };
+    forkJoin(this.allAwsService.fetchAllActualDeparture(body)).subscribe({
+      next: (results: any[]) => {
+        this.awsBlockCodeSet.clear();
+        this.awsDistrictCodeSet.clear();
+        // Block-level states: Karnataka, UP, TN, Uttarakhand, Telangana, Meghalaya (indices 0–5)
+        results.slice(0, 6).forEach((res: any) => {
+          (res?.data ?? []).forEach((row: any) => {
+            if (row.block_code) this.awsBlockCodeSet.add(row.block_code.toString());
+          });
+        });
+        // District-level states: Mizoram, NHP, IITM, Zomato (indices 6–9)
+        results.slice(6).forEach((res: any) => {
+          (res?.data ?? []).forEach((row: any) => {
+            if (row.district_code) this.awsDistrictCodeSet.add(row.district_code.toString());
+          });
+        });
+        this.renderElevatedLayer();
+      }
+    });
+  }
+
+  private renderElevatedLayer(): void {
+    if (this.elevatedLayer) {
+      this.map.removeLayer(this.elevatedLayer);
+      this.elevatedLayer = null;
+    }
+    if (!this.geoJsonData?.features || !this.isAwsActualPage) return;
+
+    const awsFeatures = this.geoJsonData.features.filter((f: any) => {
+      const blockCode = f.properties?.block_code?.toString();
+      const districtCode = f.properties?.district_c?.toString();
+      return this.awsBlockCodeSet.has(blockCode) || this.awsDistrictCodeSet.has(districtCode);
+    });
+
+    if (!awsFeatures.length) return;
+
+    this.elevatedLayer = L.geoJSON(
+      { type: 'FeatureCollection', features: awsFeatures } as any,
+      {
+        pane: 'awsElevatedPane',
+        style: (feature: any) => {
+          const blockCode = feature!.properties['block_code'];
+          const matchedData = this.findMatchingData(blockCode);
+          const departure = matchedData?.departure ?? null;
+          const actual = matchedData?.actual_rainfall != null
+            ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
+            : null;
+          const color = this.selecteddatamode === 'Actual'
+            ? this.constants.getActualColorForRainfall(actual)
+            : this.constants.getColorForRainfall(departure ?? 'NA');
+          return {
+            fillColor: color,
+            weight: 1,
+            opacity: 1.5,
+            color: 'black',
+            fillOpacity: 0.92,
+            pane: 'awsElevatedPane',
+          };
+        },
+        onEachFeature: (feature: any, layer: any) => {
+          const block = feature.properties['block_Name'];
+          const district = feature.properties['district'];
+          const state = feature.properties['state'];
+          const blockCode = feature.properties['block_code'];
+          const matchedData = this.findMatchingData(blockCode);
+          const departure = matchedData?.departure != null
+            ? this.constants.trimToZeroDecimals(matchedData.departure) + '%' : 'NA';
+          const actual = matchedData?.actual_rainfall != null
+            ? this.constants.trimToOneDecimals(matchedData.actual_rainfall) + ' mm' : 'NA';
+          const normal = matchedData?.normal_rainfall != null
+            ? this.constants.trimToOneDecimals(parseFloat(matchedData.normal_rainfall)) + ' mm' : 'NA';
+          const popup = `
+            <div style="background:white;padding:6px;font-family:Arial,sans-serif;">
+              <div style="color:#002467;font-weight:bold;font-size:13px;">&#128752; AWS DATA AVAILABLE</div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">STATE: ${state}</div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">DISTRICT: ${district}</div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">BLOCK: ${block}</div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">ACTUAL: ${actual}</div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">NORMAL: ${normal}</div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">DEPARTURE: ${departure}</div>
+            </div>`;
+          layer.bindPopup(popup);
+          layer.on('mouseover', () => layer.openPopup());
+          layer.on('mouseout',  () => layer.closePopup());
+        }
+      }
+    ).addTo(this.map);
+
+    // Re-apply current filter so layer visibility stays consistent
+    if (this.dataSourceFilter === 'IMD') this.map.removeLayer(this.elevatedLayer!);
+  }
+
   ngOnInit() {
     this.initMap();
     this.fetchRegionData();
@@ -1005,6 +1138,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     this.getAllDistricts();
     this.getAllBlocks();
     this.fetchAllAWSData();
+    if (this.isAwsActualPage) this.fetchAwsActualDeparture();
   }
 
   ngAfterViewInit(): void {
@@ -1020,6 +1154,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     this.calculateInitialZoom();
     this.fetchBackend();
     this.fetchAllAWSData();
+    if (this.isAwsActualPage) this.fetchAwsActualDeparture();
     // this.dataService.setfromAndToDate(JSON.stringify(data));
   }
 
@@ -1110,6 +1245,10 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     this.map.addControl(fullscreenControl);
     this.map.scrollWheelZoom.enable();
     this.map.touchZoom.enable();
+
+    this.map.createPane('awsElevatedPane');
+    this.map.getPane('awsElevatedPane')!.style.zIndex = '450';
+    this.map.getPane('awsElevatedPane')!.classList.add('aws-elevated-pane');
   }
   public isFullscreen(): boolean {
     return !!(
@@ -1242,6 +1381,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
       this.geoJsonData = res;
       // Recompute AWS stats now that GeoJSON district names are available
       if (this.awsStats.length > 0) this.fetchAllAWSData();
+      if (this.isAwsActualPage) this.fetchAwsActualDeparture();
       console.log("india", res);
       this.geoJsonLayer = L.geoJSON(res, {
         style: (feature: any) => {
@@ -1264,7 +1404,9 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
               : "NA";
           console.log(dailyrainfall);
 
-          const color = this.constants.getColorForRainfall(rainfall);
+          const color = this.selecteddatamode === 'Actual'
+            ? this.constants.getActualColorForRainfall(dailyrainfall === 'NA' ? null : dailyrainfall)
+            : this.constants.getColorForRainfall(rainfall);
 
           return {
             fillColor: color,
@@ -1321,6 +1463,11 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
           });
         },
       }).addTo(this.map);
+
+      // Re-apply filter: hide base layer when AWS-only mode is active
+      if (this.isAwsActualPage && this.dataSourceFilter === 'AWS' && this.geoJsonLayer) {
+        this.map.removeLayer(this.geoJsonLayer);
+      }
     });
 
     // this.http.get('assets/geojson/INDIA_STATE.json').subscribe(
@@ -1474,7 +1621,9 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
               : "NA";
           console.log(dailyrainfall);
 
-          const color = this.constants.getColorForRainfall(rainfall);
+          const color = this.selecteddatamode === 'Actual'
+            ? this.constants.getActualColorForRainfall(dailyrainfall === 'NA' ? null : dailyrainfall)
+            : this.constants.getColorForRainfall(rainfall);
           return {
             fillColor: color,
             weight: 1,

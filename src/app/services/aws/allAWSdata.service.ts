@@ -94,6 +94,34 @@ export class AllAWSDataService {
     ];
   }
 
+  // ── Actual-Departure endpoints ────────────────────────────────────────────
+  fetchKarnatakaActualDeparture(body: any): Observable<any>   { return this.post('/api/v1/karnataka-aws/actual-departure', body); }
+  fetchUpActualDeparture(body: any): Observable<any>          { return this.post('/api/v1/up-aws/actual-departure', body); }
+  fetchTamilnaduActualDeparture(body: any): Observable<any>   { return this.post('/api/v1/tamilnadu-aws/actual-departure', body); }
+  fetchUttarakhandActualDeparture(body: any): Observable<any> { return this.post('/api/v1/uttarakhand-aws/actual-departure', body); }
+  fetchTelanganaActualDeparture(body: any): Observable<any>   { return this.post('/api/v1/telangana-aws/actual-departure', body); }
+  fetchMeghalayaActualDeparture(body: any): Observable<any>   { return this.post('/api/v1/meghalaya-aws/actual-departure', body); }
+  fetchMizoramActualDeparture(body: any): Observable<any>     { return this.post('/api/v1/mizoram-aws/actual-departure', body); }
+  fetchNhpActualDeparture(body: any): Observable<any>         { return this.post('/api/v1/nhp-aws/actual-departure', body); }
+  fetchIitmMumbaiActualDeparture(body: any): Observable<any>  { return this.post('/api/v1/iitm-mumbai/actual-departure', body); }
+  fetchZomatoActualDeparture(body: any): Observable<any>      { return this.post('/api/v1/zomato-aws/actual-departure', body); }
+
+  fetchAllActualDeparture(body: any): Observable<any>[] {
+    const safe = (obs: Observable<any>) => obs.pipe(catchError(() => of({ data: [] })));
+    return [
+      safe(this.fetchKarnatakaActualDeparture(body)),
+      safe(this.fetchUpActualDeparture(body)),
+      safe(this.fetchTamilnaduActualDeparture(body)),
+      safe(this.fetchUttarakhandActualDeparture(body)),
+      safe(this.fetchTelanganaActualDeparture(body)),
+      safe(this.fetchMeghalayaActualDeparture(body)),
+      safe(this.fetchMizoramActualDeparture(body)),
+      safe(this.fetchNhpActualDeparture(body)),
+      safe(this.fetchIitmMumbaiActualDeparture(body)),
+      safe(this.fetchZomatoActualDeparture(body)),
+    ];
+  }
+
   private post(path: string, body: any): Observable<any> {
     return this.http.post<any>(`${this.base}${path}`, body);
   }

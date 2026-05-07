@@ -113,6 +113,23 @@
         >Departure</button>
       </div>
 
+      <!-- Data Source Filter — only on block-rainfall-aws-actual page -->
+      <ng-container *ngIf="isAwsActualPage">
+        <div class="filter-separator"></div>
+        <div class="d-flex gap-2 align-items-center">
+          <span style="font-size:12px;font-weight:600;color:#002467;white-space:nowrap;">Data Source:</span>
+          <button mat-button class="mode-button"
+            [ngClass]="{ active: dataSourceFilter === 'IMD' }"
+            (click)="setDataSourceFilter('IMD')">IMD Only</button>
+          <button mat-button class="mode-button"
+            [ngClass]="{ active: dataSourceFilter === 'AWS' }"
+            (click)="setDataSourceFilter('AWS')">AWS Only</button>
+          <button mat-button class="mode-button"
+            [ngClass]="{ active: dataSourceFilter === 'BOTH' }"
+            (click)="setDataSourceFilter('BOTH')">IMD + AWS</button>
+        </div>
+      </ng-container>
+
       <!-- AWS Time Granularity Filter -->
       <div class="d-flex gap-2 align-items-center">
         <button mat-button class="mode-button time-filter-btn"
