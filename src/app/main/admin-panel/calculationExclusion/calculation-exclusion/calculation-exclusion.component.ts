@@ -28,30 +28,21 @@ export class CalculationExclusionComponent implements OnInit {
   refreshError: string = '';
 
 
-  activeTab: string = 'region';
+  activeTab: string = 'district';
 
   tabs = [
-    { key: 'region', label: 'Region' },
-    { key: 'subdivision', label: 'Sub Division' },
-    { key: 'state', label: 'State' },
     { key: 'district', label: 'District' },
     { key: 'block', label: 'Block' },
     { key: 'station', label: 'Station' },
   ];
 
   data: { [tab: string]: EntityRow[] } = {
-    region: [],
-    subdivision: [],
-    state: [],
     district: [],
     block: [],
     station: []
   };
 
   searchText: { [tab: string]: string } = {
-    region: '',
-    subdivision: '',
-    state: '',
     district: '',
     block: '',
     station: ''
@@ -105,9 +96,6 @@ export class CalculationExclusionComponent implements OnInit {
     this.isLoading = true;
 
     forkJoin({
-      regions: this.exclusionService.getAllRegions(),
-      subdivs: this.exclusionService.getAllSubDivisions(),
-      states: this.exclusionService.getAllStates(),
       districts: this.exclusionService.getAllDistricts(),
       blocks: this.exclusionService.getAllBlocks(),
       stations: this.exclusionService.getAllStations(),
@@ -116,43 +104,19 @@ export class CalculationExclusionComponent implements OnInit {
         to_date: this.toDate
       }),
     }).subscribe({
-      next: ({ regions, subdivs, states, districts, blocks, stations, exclusions }) => {
+      next: ({ districts, blocks, stations, exclusions }) => {
         this.excludedSet.clear();
         (exclusions?.exclusions || []).forEach((e: any) => {
           this.excludedSet.add(`${e.entity_type}_${e.entity_code}`);
         });
 
-        this.data['region'] = (regions?.data || []).map((r: any) => ({
-          code: r.region_code,
-          name: r.region_name,
-          extra: '',
-          isExcluded: this.excludedSet.has(`region_${r.region_code}`),
+        this.data['district'] = (districts?.data || []).map((d: any) => ({
+          code: d.district_code,
+          name: d.district_name,
+          extra: d.state_name,
+          isExcluded: this.excludedSet.has(`district_${d.district_code}`),
           isLoading: false
         }));
-
-        this.data['subdivision'] = (subdivs?.data || []).map((s: any) => ({
-          code: s.subdiv_code,
-          name: s.subdiv_name,
-          extra: s.region_name,
-          isExcluded: this.excludedSet.has(`subdivision_${s.subdiv_code}`),
-          isLoading: false
-        }));
-
-        this.data['state'] = (states?.data || []).map((s: any) => ({
-          code: s.state_code,
-          name: s.state_name,
-          extra: s.region_name,
-          isExcluded: this.excludedSet.has(`state_${s.state_code}`),
-          isLoading: false
-        }));
-
-this.data['district'] = (districts?.data || []).map((d: any) => ({
-  code: d.district_code,
-  name: d.district_name,
-  extra: d.state_name,   // ✅ was d.district_name before (wrong)
-  isExcluded: this.excludedSet.has(`district_${d.district_code}`),
-  isLoading: false
-}));
 
         this.data['block'] = (blocks?.data || []).map((b: any) => ({
           code: b.block_code,

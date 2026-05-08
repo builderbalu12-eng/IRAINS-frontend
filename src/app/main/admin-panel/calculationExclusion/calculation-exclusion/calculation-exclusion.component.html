@@ -185,7 +185,7 @@
                   <tr>
                     <th style="width: 60px" class="text-center">Include</th>
                     <th>{{ tab.label }} Name</th>
-                    <th *ngIf="tab.key !== 'region'">{{ getParentLabel(tab.key) }}</th>
+                    <th>{{ getParentLabel(tab.key) }}</th>
                     <th style="width: 110px">Code</th>
                     <th style="width: 110px" class="text-center">Status</th>
                   </tr>
@@ -218,9 +218,8 @@
                       </span>
                     </td>
 
-                    <!-- Parent info (hidden for region tab) -->
+                    <!-- Parent info -->
                     <td
-                      *ngIf="tab.key !== 'region'"
                       class="text-muted"
                       style="font-size: 12px"
                     >
@@ -255,7 +254,7 @@
                   <!-- Empty state -->
                   <tr *ngIf="filteredData(tab.key).length === 0 && !isLoading">
                     <td
-                      [attr.colspan]="tab.key !== 'region' ? 5 : 4"
+                      colspan="5"
                       class="text-center text-muted py-5"
                     >
                       <i class="fa fa-search me-2"></i>
