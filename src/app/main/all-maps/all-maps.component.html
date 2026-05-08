@@ -1,35 +1,225 @@
 <div class="main-body">
     <app-front-page></app-front-page>
+
+    <!-- MC/RMC maps (Departure) -->
     <div *ngIf="selecteddatamode == 'Departure'">
         <div *ngIf="loggedInUserObject.data[0].mcorhq == 'mc'">
             <app-mc-rmc-map-component-for-mcs></app-mc-rmc-map-component-for-mcs>
         </div>
     </div>
 
+    <!-- MC/RMC maps (Actual) -->
     <div *ngIf="selecteddatamode == 'Actual'">
         <div *ngIf="loggedInUserObject.data[0].mcorhq == 'mc'">
             <app-mc-rmc-map-component-for-mcs-actual></app-mc-rmc-map-component-for-mcs-actual>
         </div>
     </div>
 
+    <!-- HQ / SP / Public maps — Departure -->
     <div *ngIf="selecteddatamode == 'Departure'">
-        <div *ngIf="loggedInUserObject.data[0].mcorhq == 'hq' || loggedInUserObject.data[0].mcorhq == 'sp'|| loggedInUserObject.data[0].mcorhq == 'public'" class="d-flex justify-content-center flex-wrap gap-3">
-            <app-district-map></app-district-map>
-            <app-state-map></app-state-map>
-            <app-subdivision-map></app-subdivision-map>
-            <app-region-map></app-region-map>
-            <!-- <app-country-map></app-country-map> -->
+        <div *ngIf="loggedInUserObject.data[0].mcorhq == 'hq' || loggedInUserObject.data[0].mcorhq == 'sp' || loggedInUserObject.data[0].mcorhq == 'public'"
+             class="d-flex justify-content-center flex-wrap gap-3">
+
+            <div class="map-card-wrapper">
+                <app-district-map></app-district-map>
+                <button class="coverage-icon-btn" (click)="openCoveragePanel('district')"
+                        title="District Station Coverage">
+                    <i class="fa fa-bar-chart"></i>
+                </button>
+            </div>
+
+            <div class="map-card-wrapper">
+                <app-state-map></app-state-map>
+                <button class="coverage-icon-btn" (click)="openCoveragePanel('state')"
+                        title="State District Coverage">
+                    <i class="fa fa-bar-chart"></i>
+                </button>
+            </div>
+
+            <div class="map-card-wrapper">
+                <app-subdivision-map></app-subdivision-map>
+                <button class="coverage-icon-btn" (click)="openCoveragePanel('subdivision')"
+                        title="Subdivision District Coverage">
+                    <i class="fa fa-bar-chart"></i>
+                </button>
+            </div>
+
+            <div class="map-card-wrapper">
+                <app-region-map></app-region-map>
+                <button class="coverage-icon-btn" (click)="openCoveragePanel('region')"
+                        title="Region Coverage Summary">
+                    <i class="fa fa-bar-chart"></i>
+                </button>
+            </div>
+
         </div>
     </div>
 
+    <!-- HQ / SP / Public maps — Actual -->
     <div *ngIf="selecteddatamode == 'Actual'">
-        <div *ngIf="loggedInUserObject.data[0].mcorhq == 'hq' || loggedInUserObject.data[0].mcorhq == 'sp' ||loggedInUserObject.data[0].mcorhq == 'public'" class="d-flex justify-content-center flex-wrap gap-3">
-            <app-district-actual-map></app-district-actual-map>
-            <app-state-actual-map></app-state-actual-map>
-            <app-subdivision-actual-map></app-subdivision-actual-map>
-            <app-region-actual-map></app-region-actual-map>
-            <!-- <app-country-map></app-country-map> -->
+        <div *ngIf="loggedInUserObject.data[0].mcorhq == 'hq' || loggedInUserObject.data[0].mcorhq == 'sp' || loggedInUserObject.data[0].mcorhq == 'public'"
+             class="d-flex justify-content-center flex-wrap gap-3">
+
+            <div class="map-card-wrapper">
+                <app-district-actual-map></app-district-actual-map>
+                <button class="coverage-icon-btn" (click)="openCoveragePanel('district')"
+                        title="District Station Coverage">
+                    <i class="fa fa-bar-chart"></i>
+                </button>
+            </div>
+
+            <div class="map-card-wrapper">
+                <app-state-actual-map></app-state-actual-map>
+                <button class="coverage-icon-btn" (click)="openCoveragePanel('state')"
+                        title="State District Coverage">
+                    <i class="fa fa-bar-chart"></i>
+                </button>
+            </div>
+
+            <div class="map-card-wrapper">
+                <app-subdivision-actual-map></app-subdivision-actual-map>
+                <button class="coverage-icon-btn" (click)="openCoveragePanel('subdivision')"
+                        title="Subdivision District Coverage">
+                    <i class="fa fa-bar-chart"></i>
+                </button>
+            </div>
+
+            <div class="map-card-wrapper">
+                <app-region-actual-map></app-region-actual-map>
+                <button class="coverage-icon-btn" (click)="openCoveragePanel('region')"
+                        title="Region Coverage Summary">
+                    <i class="fa fa-bar-chart"></i>
+                </button>
+            </div>
+
         </div>
-    </div>    
+    </div>
 
 </div>
+
+<!-- ─── Coverage Stats Sidebar (slides in from left) ──────────────────────── -->
+<div class="coverage-sidebar" [class.open]="activePanelType !== null">
+
+    <!-- Header -->
+    <div class="coverage-sidebar-header">
+        <h6 class="mb-0">{{ coveragePanelTitle }}</h6>
+        <button class="sidebar-close-btn" (click)="closeCoveragePanel()">&#x2715;</button>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="isCoverageLoading" class="text-center p-5">
+        <i class="fa fa-spinner fa-pulse fa-2x" style="color:#002467"></i>
+        <p class="mt-3 text-muted small">Fetching coverage data...</p>
+    </div>
+
+    <!-- Content -->
+    <div *ngIf="!isCoverageLoading && coverageTableData.length > 0">
+
+        <!-- Summary pills (region panel shows 3 metrics) -->
+        <div *ngIf="activePanelType === 'region'" class="summary-pills px-3 pt-3">
+            <div class="summary-pill" *ngFor="let row of coverageTableData" style="margin-bottom:8px">
+                <span class="pill-label">{{ row.region_name }}</span>
+                <span class="pill-val"><i class="fa fa-map-marker"></i> {{ row.district_count }} Districts</span>
+                <span class="pill-val"><i class="fa fa-flag"></i> {{ row.state_count }} States</span>
+                <span class="pill-val"><i class="fa fa-sitemap"></i> {{ row.subdivision_count }} Subdivisions</span>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="sidebar-table-wrap">
+            <table class="table table-sm table-hover table-bordered align-middle text-center mb-0">
+
+                <!-- District table -->
+                <thead *ngIf="activePanelType === 'district'"
+                       style="background-color:#002467; color:white; position:sticky; top:0; z-index:1;">
+                    <tr>
+                        <th>District</th>
+                        <th>State</th>
+                        <th>Region</th>
+                        <th>Stations</th>
+                    </tr>
+                </thead>
+                <tbody *ngIf="activePanelType === 'district'">
+                    <tr *ngFor="let row of coverageTableData">
+                        <td class="text-start fw-semibold">{{ row.district_name }}</td>
+                        <td>{{ row.state_name }}</td>
+                        <td>{{ row.region_name }}</td>
+                        <td><span class="badge-count">{{ row.station_count }}</span></td>
+                    </tr>
+                </tbody>
+
+                <!-- State table -->
+                <thead *ngIf="activePanelType === 'state'"
+                       style="background-color:#002467; color:white; position:sticky; top:0; z-index:1;">
+                    <tr>
+                        <th>State</th>
+                        <th>Region</th>
+                        <th>Districts Covered</th>
+                    </tr>
+                </thead>
+                <tbody *ngIf="activePanelType === 'state'">
+                    <tr *ngFor="let row of coverageTableData">
+                        <td class="text-start fw-semibold">{{ row.state_name }}</td>
+                        <td>{{ row.region_name }}</td>
+                        <td><span class="badge-count">{{ row.district_count }}</span></td>
+                    </tr>
+                </tbody>
+
+                <!-- Subdivision table -->
+                <thead *ngIf="activePanelType === 'subdivision'"
+                       style="background-color:#002467; color:white; position:sticky; top:0; z-index:1;">
+                    <tr>
+                        <th>Subdivision</th>
+                        <th>Region</th>
+                        <th>Districts Covered</th>
+                    </tr>
+                </thead>
+                <tbody *ngIf="activePanelType === 'subdivision'">
+                    <tr *ngFor="let row of coverageTableData">
+                        <td class="text-start fw-semibold">{{ row.subdiv_name }}</td>
+                        <td>{{ row.region_name }}</td>
+                        <td><span class="badge-count">{{ row.district_count }}</span></td>
+                    </tr>
+                </tbody>
+
+                <!-- Region table -->
+                <thead *ngIf="activePanelType === 'region'"
+                       style="background-color:#002467; color:white; position:sticky; top:0; z-index:1;">
+                    <tr>
+                        <th>Region</th>
+                        <th>Districts</th>
+                        <th>States</th>
+                        <th>Subdivisions</th>
+                    </tr>
+                </thead>
+                <tbody *ngIf="activePanelType === 'region'">
+                    <tr *ngFor="let row of coverageTableData">
+                        <td class="text-start fw-semibold">{{ row.region_name }}</td>
+                        <td><span class="badge-count">{{ row.district_count }}</span></td>
+                        <td><span class="badge-count">{{ row.state_count }}</span></td>
+                        <td><span class="badge-count">{{ row.subdivision_count }}</span></td>
+                    </tr>
+                </tbody>
+
+            </table>
+        </div>
+
+        <!-- Pie Chart -->
+        <div *ngIf="coverageChart" class="px-3 pb-4">
+            <hr class="my-2"/>
+            <div [chart]="coverageChart"></div>
+        </div>
+
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="!isCoverageLoading && coverageTableData.length === 0"
+         class="text-center text-muted p-5">
+        <i class="fa fa-inbox fa-2x mb-3" style="color:#ccc"></i>
+        <p class="small">No data available for the selected date range.</p>
+    </div>
+
+</div>
+
+<!-- Backdrop -->
+<div class="sidebar-backdrop" *ngIf="activePanelType !== null" (click)="closeCoveragePanel()"></div>

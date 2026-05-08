@@ -546,7 +546,7 @@ export class McRmcMapComponentForMcsActualDupComponent {
             if (Number.isNaN(matchedData.actual_rainfall)) {
               rainfall = " ";
             } else {
-              rainfall = matchedData.departure;
+              rainfall = Math.round(matchedData.departure);
             }
           } else {
             rainfall = " ";

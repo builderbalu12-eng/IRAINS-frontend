@@ -37,4 +37,8 @@ export class RegionService {
     const url = `${this.baseUrl}/api/v1/fetchRegionRangeStatistics`;
     return this.http.post<any>(url, data);
   }
+
+  fetchRegionCoverageCount(data: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRegionCoverageCount`, data);
+  }
 }

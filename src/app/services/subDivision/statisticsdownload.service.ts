@@ -226,6 +226,11 @@ export class SubdivDownloadStatistics {
             this.subdivAreaMap = new Map(
               areaData.data.map((r: any) => [Number(r.subdiv_code), Number(r.area_percentage)])
             );
+            return this.subdivservice.fetchDisplayOrder();
+          }),
+
+          concatMap((orderData) => {
+            this.subdivDisplayOrder = Array.isArray(orderData) ? orderData : (orderData.data ?? []);
             this.downloadPdf();
             return EMPTY;
           })
@@ -309,6 +314,11 @@ export class SubdivDownloadStatistics {
             this.subdivAreaMap = new Map(
               areaData.data.map((r: any) => [Number(r.subdiv_code), Number(r.area_percentage)])
             );
+            return this.subdivservice.fetchDisplayOrder();
+          }),
+
+          concatMap((orderData) => {
+            this.subdivDisplayOrder = Array.isArray(orderData) ? orderData : (orderData.data ?? []);
             this.downloadPdf();
             return EMPTY;
           })
@@ -906,6 +916,7 @@ export class SubdivDownloadStatistics {
 
   // Populated at runtime from GET /api/v1/getSubdivisionAreaPercentages
   private subdivAreaMap: Map<number, number> = new Map();
+  private subdivDisplayOrder: any[] = [];
 
   private buildCategoryStats() {
     const cats = ['LE', 'E', 'N', 'D', 'LD', 'NR'] as const;
@@ -1036,9 +1047,18 @@ export class SubdivDownloadStatistics {
       return acc;
     }, {});
 
-    const sortedRegions = Object.keys(groupedByRegion).sort((a, b) =>
-      a.localeCompare(b)
-    );
+    const regionMinOrder = new Map<number, number>();
+    const subdivOrderMap = new Map<number, number>();
+    for (const item of this.subdivDisplayOrder) {
+      subdivOrderMap.set(Number(item.subdiv_code), Number(item.display_order));
+      const existing = regionMinOrder.get(Number(item.region_code));
+      if (existing === undefined || Number(item.display_order) < existing) {
+        regionMinOrder.set(Number(item.region_code), Number(item.display_order));
+      }
+    }
+    const sortedRegions = Object.keys(groupedByRegion).sort((a, b) => {
+      return (regionMinOrder.get(Number(a)) ?? 9999) - (regionMinOrder.get(Number(b)) ?? 9999);
+    });
     console.group("heygeyye", sortedRegions);
     console.log(
       "printing subdivs",
@@ -1114,9 +1134,9 @@ export class SubdivDownloadStatistics {
 
       // Process States within each Subdivision
       const subdivs = groupedByRegion[regionCode];
-      const sortedsubdivs = Object.keys(subdivs).sort((a, b) =>
-        a.localeCompare(b)
-      );
+      const sortedsubdivs = Object.keys(subdivs).sort((a, b) => {
+        return (subdivOrderMap.get(Number(a)) ?? 9999) - (subdivOrderMap.get(Number(b)) ?? 9999);
+      });
 
       let index = 1;
       for (const subdivCode of sortedsubdivs) {

@@ -587,7 +587,7 @@ isLoadingSubdivs: any;
             // const color = this.getColorForRainfall1(rainfall);
 
             if (matchedData?.departure!=null) {
-              rainfall = matchedData.departure;
+              rainfall = Math.round(matchedData.departure);
             } else {
               rainfall = "NA";
             }

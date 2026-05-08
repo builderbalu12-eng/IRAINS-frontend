@@ -1051,7 +1051,7 @@ export class BlockRainfallMapDailyComponent implements AfterViewInit{
                 let rainfall: any;
                
                 if (matchedData?.departure!=null) {
-                  rainfall = matchedData.departure;
+                  rainfall = Math.round(matchedData.departure);
                 } else {
                   rainfall = "NA";
                 }
@@ -1263,7 +1263,7 @@ export class BlockRainfallMapDailyComponent implements AfterViewInit{
                 let rainfall: any;
                
                 if (matchedData?.departure!=null) {
-                  rainfall = matchedData.departure;
+                  rainfall = Math.round(matchedData.departure);
                 } else {
                   rainfall = "NA";
                 }

@@ -614,7 +614,7 @@ export class SouthPeninsularaRegionComponent implements AfterViewInit{
               let rainfall: any;
 
               if (matchedData?.departure!=null) {
-                rainfall = matchedData.departure;
+                rainfall = Math.round(matchedData.departure);
               } else {
                 rainfall = "NA";
               }

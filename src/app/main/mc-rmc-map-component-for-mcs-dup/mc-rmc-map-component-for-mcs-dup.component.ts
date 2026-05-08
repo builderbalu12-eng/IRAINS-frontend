@@ -487,7 +487,7 @@ async downloadMapImage(downloadpdf : boolean) {
               rainfall = ' ';
             }
             else {
-              rainfall = matchedData.departure;
+              rainfall = Math.round(matchedData.departure);
             }
           }
           else {

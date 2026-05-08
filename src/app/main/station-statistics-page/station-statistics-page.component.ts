@@ -519,9 +519,9 @@ export class StationStatisticsPageComponent implements OnInit, OnDestroy {
   }
 
   getColorForRainfall1(rainfall: any): string {
-    const numericId = rainfall;
+    const numericId = Math.round(rainfall);
     let cat = "";
-    if (numericId == " ") {
+    if (rainfall == " ") {
       return "#c0c0c0";
     }
     if (numericId > 60) {

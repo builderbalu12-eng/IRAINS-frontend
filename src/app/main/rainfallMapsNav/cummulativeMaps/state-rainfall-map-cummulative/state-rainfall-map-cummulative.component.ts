@@ -625,7 +625,7 @@ export class StateRainfallMapCummulativeComponent {
             let rainfall: any;
           
           if (matchedData?.departure!=null) {
-             rainfall = matchedData.departure;
+             rainfall = Math.round(matchedData.departure);
           } else {
             rainfall = "NA";
           }
@@ -956,11 +956,11 @@ export class StateRainfallMapCummulativeComponent {
     }
   
     // getColorForRainfall1(rainfall: any): string {
-    //   const numericId = rainfall;
+    //   const numericId = Math.round(rainfall);
     //   let cat = "";
     //   let count = 0;
   
-    //   if (numericId == null || numericId == " ") {
+    //   if (rainfall == null || rainfall == " ") {
     //     return "#c0c0c0";
     //   }
   

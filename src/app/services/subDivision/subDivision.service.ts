@@ -72,4 +72,13 @@ export class SubdivisionService {
     const url = `${this.baseUrl}/api/v1/getSubdivisionAreaPercentages`;
     return this.http.get<any>(url);
   }
+
+  fetchDisplayOrder() {
+    const url = `${this.baseUrl}/api/v1/getSubdivisionDisplayOrder`;
+    return this.http.get<any>(url);
+  }
+
+  fetchSubDivisionDistrictCount(data: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchSubDivisionDistrictCount`, data);
+  }
 }

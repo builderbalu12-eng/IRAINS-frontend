@@ -173,6 +173,10 @@ export class StateDownloadStatistics {
           }),
           concatMap((districtData) => {
             this.districtDepCurrdate = districtData.data ?? [];
+            return this.stateservice.fetchDisplayOrder();
+          }),
+          concatMap((orderData) => {
+            this.stateDisplayOrder = Array.isArray(orderData) ? orderData : (orderData.data ?? []);
             this.downloadPdf();
             return EMPTY;
           }),
@@ -261,6 +265,10 @@ export class StateDownloadStatistics {
           concatMap((districtData) => {
             this.districtDepCurrdate = districtData.data ?? [];
             console.log('districtDepCurrdate length:', this.districtDepCurrdate.length, 'sample:', JSON.stringify(this.districtDepCurrdate?.[0]));
+            return this.stateservice.fetchDisplayOrder();
+          }),
+          concatMap((orderData) => {
+            this.stateDisplayOrder = Array.isArray(orderData) ? orderData : (orderData.data ?? []);
             this.downloadPdf();
             return EMPTY;
           }),
@@ -774,6 +782,7 @@ export class StateDownloadStatistics {
 
   // Populated at runtime from GET /api/v1/getStateAreaPercentages
   private stateAreaMap: Map<number, number> = new Map();
+  private stateDisplayOrder: any[] = [];
 
   private buildCategoryStats() {
     const cats = ['LE', 'E', 'N', 'D', 'LD', 'NR'] as const;
@@ -1040,14 +1049,17 @@ export class StateDownloadStatistics {
     // console.group('heygeyye', sortedRegions)
 
 
-    const regionNames = this.regiondepCurrdate.map((x: any) => [x.r_code, x.name]);
-    const codeToRegionNameMap = new Map(regionNames.map(([code, name]) => [code, name]));
-
-    // Sort the groupedByRegion keys based on the region names
+    const regionMinOrder = new Map<number, number>();
+    const stateOrderMap = new Map<number, number>();
+    for (const item of this.stateDisplayOrder) {
+      stateOrderMap.set(Number(item.state_code), Number(item.display_order));
+      const existing = regionMinOrder.get(Number(item.region_code));
+      if (existing === undefined || Number(item.display_order) < existing) {
+        regionMinOrder.set(Number(item.region_code), Number(item.display_order));
+      }
+    }
     const sortedRegions = Object.keys(groupedByRegion).sort((a, b) => {
-        const nameA = codeToRegionNameMap.get(a) || '';
-        const nameB = codeToRegionNameMap.get(b) || '';
-        return nameA.localeCompare(nameB);
+      return (regionMinOrder.get(Number(a)) ?? 9999) - (regionMinOrder.get(Number(b)) ?? 9999);
     });
 
     console.group('heygeyye', sortedRegions);
@@ -1080,7 +1092,9 @@ export class StateDownloadStatistics {
 
         // Process States within each Subdivision
         const states = groupedByRegion[regionCode];
-        const sortedStates = Object.keys(states).sort((a, b) => a.localeCompare(b));
+        const sortedStates = Object.keys(states).sort((a, b) => {
+          return (stateOrderMap.get(Number(a)) ?? 9999) - (stateOrderMap.get(Number(b)) ?? 9999);
+        });
 
         let index = 1;
         for (const stateCode of sortedStates) {

@@ -576,7 +576,7 @@ export class StateActualMapComponent {
             if (Number.isNaN(matchedData.actual_rainfall)) {
               rainfall = " ";
             } else {
-              rainfall = matchedData.departure;
+              rainfall = Math.round(matchedData.departure);
             }
           } else {
             rainfall = -100;
@@ -610,9 +610,7 @@ export class StateActualMapComponent {
             if (Number.isNaN(matchedData.actual_rainfall)) {
               rainfall = "NA";
             } else {
-              rainfall = this.constants.trimToOneDecimals(
-                matchedData.departure
-              );
+              rainfall = Math.round(matchedData.departure);
             }
           } else {
             rainfall = -100;
@@ -924,11 +922,11 @@ export class StateActualMapComponent {
   }
 
   getColorForRainfall1(rainfall: any): string {
-    const numericId = rainfall;
+    const numericId = Math.round(rainfall);
     let cat = "";
     let count = 0;
 
-    if (numericId == null || numericId == " ") {
+    if (rainfall == null || rainfall == " ") {
       return "#c0c0c0";
     }
 

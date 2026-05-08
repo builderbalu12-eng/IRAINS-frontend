@@ -31,4 +31,8 @@ export class DistrictService {
     const url = `${this.baseUrl}/api/v1/fetchDistrictRangeStatistics`;
     return this.http.post<any>(url, data);
   }
+
+  fetchDistrictStationCount(data: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchDistrictStationCount`, data);
+  }
 }

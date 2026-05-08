@@ -552,7 +552,7 @@ export class SubdivisionActualMapComponent {
               if (Number.isNaN(matchedData.actual_rainfall)) {
                 rainfall = " ";
               } else {
-                rainfall = matchedData.departure;
+                rainfall = Math.round(matchedData.departure);
               }
             } else {
               rainfall = -100;
@@ -593,9 +593,7 @@ export class SubdivisionActualMapComponent {
               if (Number.isNaN(matchedData.actual_subdiv_rainfall)) {
                 rainfall = "NA";
               } else {
-                rainfall = this.constants.trimToOneDecimals(
-                  matchedData.departure
-                );
+                rainfall = Math.round(matchedData.departure);
               }
             } else {
               rainfall = -100;
@@ -953,15 +951,15 @@ export class SubdivisionActualMapComponent {
       });
   }
   getColorForRainfall1(rainfall: any): string {
-    const numericId = rainfall;
+    const numericId = Math.round(rainfall);
     let cat = "";
     let count = 0;
 
-    if (numericId == null) {
+    if (rainfall == null) {
       return "#c0c0c0";
     }
 
-    if (numericId === " ") {
+    if (rainfall === " ") {
       return "#c0c0c0";
     }
     if (numericId >= 60) {

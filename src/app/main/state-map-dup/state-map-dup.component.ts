@@ -535,7 +535,7 @@ export class StateMapDupComponent implements AfterViewInit {
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
           if (matchedData?.departure!=null) {
-            rainfall = matchedData.departure;
+            rainfall = Math.round(matchedData.departure);
           } else {
             rainfall = "NA";
           }
@@ -559,9 +559,7 @@ export class StateMapDupComponent implements AfterViewInit {
             if (Number.isNaN(matchedData.actual_rainfall)) {
               rainfall = "NA";
             } else {
-              rainfall = this.constants.trimToOneDecimals(
-                matchedData.departure
-              );
+              rainfall = Math.round(matchedData.departure);
             }
           } else {
             rainfall = -100;
@@ -892,11 +890,11 @@ export class StateMapDupComponent implements AfterViewInit {
   }
 
   getColorForRainfall1(rainfall: any): string {
-    const numericId = rainfall;
+    const numericId = Math.round(rainfall);
     let cat = "";
     let count = 0;
 
-    if (numericId == null || numericId == " ") {
+    if (rainfall == null || rainfall == " ") {
       return "#c0c0c0";
     }
 

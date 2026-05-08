@@ -1078,7 +1078,7 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
                   let rainfall: any;
                  
                   if (matchedData?.departure!=null) {
-                    rainfall = matchedData.departure;
+                    rainfall = Math.round(matchedData.departure);
                   } else {
                     rainfall = "NA";
                   }
@@ -1287,7 +1287,7 @@ export class BlockActualRainfallMapIncAwsComponent implements AfterViewInit{
                   let rainfall: any;
                  
                   if (matchedData?.departure!=null) {
-                    rainfall = matchedData.departure;
+                    rainfall = Math.round(matchedData.departure);
                   } else {
                     rainfall = "NA";
                   }

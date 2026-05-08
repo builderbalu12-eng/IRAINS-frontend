@@ -38,4 +38,12 @@ export class StateService {
     const url = `${this.baseUrl}/api/v1/getStateAreaPercentages`;
     return this.http.get<any>(url);
   }
+
+  fetchStateDistrictCount(data: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchStateDistrictCount`, data);
+  }
+
+  fetchDisplayOrder(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getStateDisplayOrder`);
+  }
 }

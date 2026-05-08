@@ -450,7 +450,7 @@ export class CountryMapDupComponent {
             let rainfall: any;
             if (matchedData?.departure!=null) {
 
-              rainfall = matchedData.departure;
+              rainfall = Math.round(matchedData.departure);
               
             }
             else {
@@ -511,15 +511,15 @@ export class CountryMapDupComponent {
   
     }
     // getColorForRainfall1(rainfall: any): string {
-    //   const numericId = rainfall;
+    //   const numericId = Math.round(rainfall);
     //   let cat = '';
     //   let count = 0
       
-    //   if(numericId == null) {
+    //   if(rainfall == null) {
     //     return '#c0c0c0';
     //   }
       
-    //   if (numericId === ' ') {
+    //   if (rainfall === ' ') {
     //     return '#c0c0c0';
     //   }
     //   if (numericId >= 60) {

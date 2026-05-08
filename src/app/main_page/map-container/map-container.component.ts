@@ -210,7 +210,7 @@ export class MapContainerComponent implements OnInit {
 
 
   getColorForRainfall(rainfall: number): string {
-    const numericId = rainfall;
+    const numericId = Math.round(rainfall);
     // console.log(numericId);
     if (numericId >= 60) {
       return '#0096ff';

@@ -592,7 +592,7 @@ export class CentralRegionComponent implements AfterViewInit{
               const matchedData = this.findMatchingData(id2);
               let rainfall: any;
               if (matchedData?.departure!=null) {
-                rainfall = matchedData.departure;
+                rainfall = Math.round(matchedData.departure);
               } else {
                 rainfall = "NA";
               }
