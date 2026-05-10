@@ -135,8 +135,7 @@ export class FetchStationDataService {
 
   fetchFilteredStationUnifiedFileFTP(startDate:any, endDate:any, districtCodes : any[]): Observable<any> {
 
-    let url = `${this.baseUrl}/api/v1/fetchFilteredStationUnifiedFileFTP
-    `;
+    let url = `${this.baseUrl}/api/v1/fetchFilteredStationUnifiedFileFTP`;
 
     const body = {
       startDate: startDate,

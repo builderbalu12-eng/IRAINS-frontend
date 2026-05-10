@@ -18,6 +18,8 @@ export class DownloadPdf {
   private baseUrl: string = environment.baseUrl;
   isView : boolean = false
 
+  districtDisplayOrder: any[] = [];
+
   districtdepCurrdate: any[] = [];
   statedepCurrdate: any[] = [];
   subdivdepCurrdate: any[] = [];
@@ -140,7 +142,11 @@ export class DownloadPdf {
   async updateCurrDateData(data: any, seasonPeriodDate: any) {
     try {
       await lastValueFrom(
-        this.fetchDistrictData(data).pipe(
+        this.fetchDistrictDisplayOrder().pipe(
+          concatMap(displayOrder => {
+            this.districtDisplayOrder = Array.isArray(displayOrder) ? displayOrder : (displayOrder.data ?? []);
+            return this.fetchDistrictData(data);
+          }),
           concatMap(districtData => {
             this.districtdepCurrdate = districtData.data;
             console.log('indownloading---->', this.districtdepCurrdate);
@@ -185,7 +191,11 @@ export class DownloadPdf {
     console.log('updateCurrDateDataFromDataEntry DATA', data);
     try {
       await lastValueFrom(
-        this.fetchDistrictDataFromDataEntry(data).pipe(
+        this.fetchDistrictDisplayOrder().pipe(
+          concatMap(displayOrder => {
+            this.districtDisplayOrder = Array.isArray(displayOrder) ? displayOrder : (displayOrder.data ?? []);
+            return this.fetchDistrictDataFromDataEntry(data);
+          }),
           concatMap(districtData => {
             this.districtdepCurrdate = districtData.data;
             console.log('indownloading---->', this.districtdepCurrdate);
@@ -252,6 +262,10 @@ export class DownloadPdf {
   fetchSubdivData(data: any): Observable<any> {
     const url = `${this.baseUrl}/api/v1/fetchSubDivisionDataFtp`;
     return this.http.post<any>(url, data);
+  }
+
+  fetchDistrictDisplayOrder(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getDistrictDisplayOrder`);
   }
 
   getData(){
@@ -664,14 +678,23 @@ export class DownloadPdf {
     }, {});
 
     const subdivNames = this.subdivdepCurrdate.map((x:any)=> [x.s_code, x.subdiv_name])
-    // const sortedSubDivisions = Object.keys(groupedBySubDivision).sort((a, b) => a.localeCompare(b));
-    // console.group('heygeyye', groupedBySubDivision, sortedSubDivisions, subdivNames)
-    // Create a mapping of codes to names
     const codeToNameMap = new Map(subdivNames.map(([code, name]) => [code, name]));
+
+    const subdivOrderMap = new Map<string, number>();
+    const stateOrderMap  = new Map<string, number>();
+    const districtOrderMap = new Map<string, number>();
+    for (const row of this.districtDisplayOrder) {
+      const sdKey = String(row.subdiv_code);
+      if (!subdivOrderMap.has(sdKey)) subdivOrderMap.set(sdKey, row.display_order);
+      const stKey = `${row.subdiv_code}_${row.state_code}`;
+      if (!stateOrderMap.has(stKey)) stateOrderMap.set(stKey, row.display_order);
+      districtOrderMap.set(String(row.district_code), row.display_order);
+    }
+
     const sortedSubDivisions = Object.keys(groupedBySubDivision).sort((a, b) => {
-        const nameA = codeToNameMap.get(a) || '';
-        const nameB = codeToNameMap.get(b) || '';
-        return nameA.localeCompare(nameB);
+      const orderA = subdivOrderMap.get(a) ?? 999999;
+      const orderB = subdivOrderMap.get(b) ?? 999999;
+      return orderA !== orderB ? orderA - orderB : (codeToNameMap.get(a) || '').localeCompare(codeToNameMap.get(b) || '');
     });
 
     console.group('heygeyye', groupedBySubDivision, sortedSubDivisions, subdivNames);
@@ -700,7 +723,11 @@ export class DownloadPdf {
         ]);
 
         const states = groupedBySubDivision[subDivCode];
-        const sortedStates = Object.keys(states).sort((a, b) => a.localeCompare(b));
+        const sortedStates = Object.keys(states).sort((a, b) => {
+          const orderA = stateOrderMap.get(`${subDivCode}_${a}`) ?? 999999;
+          const orderB = stateOrderMap.get(`${subDivCode}_${b}`) ?? 999999;
+          return orderA - orderB;
+        });
 
         for (const stateCode of sortedStates) {
             const stateDate = this.statedepCurrdate.find(state => stateCode == state.state_code.toString());
@@ -724,7 +751,11 @@ export class DownloadPdf {
 
             // Sort Districts within each State
             const districtsCurrDate = states[stateCode];
-            const sortedDistrictsCurrDate = districtsCurrDate.sort((a:any, b:any) => a.district_name.localeCompare(b.district_name));
+            const sortedDistrictsCurrDate = districtsCurrDate.sort((a: any, b: any) => {
+              const orderA = districtOrderMap.get(String(a.district_code)) ?? 999999;
+              const orderB = districtOrderMap.get(String(b.district_code)) ?? 999999;
+              return orderA - orderB;
+            });
 
             for (let i = 0; i < sortedDistrictsCurrDate.length; i++) {
                 const districtDate = sortedDistrictsCurrDate[i];

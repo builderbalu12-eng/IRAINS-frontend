@@ -35,4 +35,8 @@ export class DistrictService {
   fetchDistrictStationCount(data: any): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchDistrictStationCount`, data);
   }
+
+  fetchDistrictDisplayOrder(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getDistrictDisplayOrder`);
+  }
 }

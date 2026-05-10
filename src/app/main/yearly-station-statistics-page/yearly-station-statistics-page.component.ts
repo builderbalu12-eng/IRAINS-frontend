@@ -1,4 +1,4 @@
-import { Component, OnInit, ElementRef, ViewChild } from "@angular/core";
+import { Component, OnInit, ElementRef, ViewChild, ChangeDetectorRef } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 // import { environment } from 'src/environment/environment';
 // import { RegionService } from 'src/app/services/region/region.service';
@@ -11,7 +11,17 @@ import * as XLSX from "xlsx";
 import * as FileSaver from "file-saver";
 import { FetchStationDataService } from "src/app/services/station/station.service";
 import { DataEntryService } from "src/app/services/dataEntry/dataEntry.service";
+import { AllAWSDataService } from "src/app/services/aws/allAWSdata.service";
 import { saveAs } from 'file-saver';
+import { Chart } from 'angular-highcharts';
+import * as Highcharts from 'highcharts';
+import Exporting from 'highcharts/modules/exporting';
+import ExportData from 'highcharts/modules/export-data';
+import FullScreen from 'highcharts/modules/full-screen';
+Exporting(Highcharts);
+ExportData(Highcharts);
+FullScreen(Highcharts);
+import * as L from 'leaflet';
 
 @Component({
   selector: "app-yearly-station-statistics-page",
@@ -20,9 +30,64 @@ import { saveAs } from 'file-saver';
 })
 export class YearlyStationStatisticsPageComponent {
   selectedOption: any = "UnifiedFile";
+  selectedTab: string = "IMD";
+
   DailyWiseStationcolumns: any;
   DailyWiseStationRows: any;
-  districtCodeList: any;
+
+  stateAwsColumns: any;
+  stateAwsRows: any[] = [];
+  stateAwsDisplayRows: any[] = [];
+  stateAwsIsLoading: boolean = false;
+
+  // Statistics (in-page map+charts)
+  showImdStatistics = false;
+  showAwsStatistics = false;
+  private imdStatsMap: any = null;
+  private awsStatsMap: any = null;
+
+  // IMD Charts
+  showImdModal = false;
+  imdMonsoonChart!: Chart;
+  imdAvailabilityChart!: Chart;
+  imdTop10Chart!: Chart;
+  imdStateChart!: Chart;
+
+  // State AWS Charts
+  showAwsModal = false;
+  awsMonsoonChart!: Chart;
+  awsAvailabilityChart!: Chart;
+  awsTop10Chart!: Chart;
+  awsStateChart!: Chart;
+  awsSourceChart!: Chart;
+
+  // Leaflet map instances (inside Visualise modal)
+  private imdLeafletMap: any = null;
+  private awsLeafletMap: any = null;
+  // Standalone Map modal
+  showImdMapModal = false;
+  showAwsMapModal = false;
+  private imdStandaloneMap: any = null;
+  private awsStandaloneMap: any = null;
+  private indiaStateGeojson: any = null;
+  private indiaCountryGeojson: any = null;
+
+  private readonly imdFixedCols = ['state_name','district_name','block_name','block_code','station_name','station_id','latitude','longitude'];
+  private readonly awsFixedCols  = ['source','state_name','district_name','block_name','block_code','station_name','station_id','latitude','longitude'];
+
+  awsFromDate: string = '';
+  awsToDate: string = '';
+
+  awsSourceList: string[] = [];
+  awsStateList: string[] = [];
+  awsDistrictList: string[] = [];
+  awsBlockList: string[] = [];
+
+  awsFilterSource: string = '';
+  awsFilterState: string = '';
+  awsFilterDistrict: string = '';
+  awsFilterBlock: string = '';
+  districtCodeList: any[] = [];
   selectMode(arg0: string) {
     this.selectedOption = arg0;
   }
@@ -109,7 +174,9 @@ export class YearlyStationStatisticsPageComponent {
     private getDistrictService: getDistrictService,
     private fetchStationDataService: FetchStationDataService,
     private stationService: FetchStationDataService,
-    private dataEntryService: DataEntryService
+    private dataEntryService: DataEntryService,
+    private allAwsDataService: AllAWSDataService,
+    private cdr: ChangeDetectorRef
   ) {
     let loggedInUser: any = localStorage.getItem("isAuthorised");
     this.loggedInUserObject = JSON.parse(loggedInUser);
@@ -190,6 +257,12 @@ export class YearlyStationStatisticsPageComponent {
     const obj = JSON.parse(this.loggedInUser);
     this.currentUserType = obj.data[0].mcorhq;
     console.log("currentUserType", this.currentUserType);
+
+    const today = this.getCurrentDateFormatted();
+    this.awsFromDate = today;
+    this.awsToDate = today;
+    this.enteredFromDate = today;
+    this.enteredEndDate = today;
 
     this.fetchRegionData();
     this.getAllMCData();
@@ -568,7 +641,9 @@ export class YearlyStationStatisticsPageComponent {
             label: region.region_name,
             value: region.region_code,
           }));
-          // console.log('Formatted regions:', this.regions);
+          // Auto-select all regions by default
+          this.selectedRegion = this.regions.map((r: any) => r.value);
+          this.onRegionChange();
         } else {
           console.error("Unexpected response format:", response);
           alert("Data is not coming in the expected format");
@@ -650,7 +725,7 @@ export class YearlyStationStatisticsPageComponent {
   // }
 
   onMcChange(event: any): void {
-    this.selectedMCData = event.value;
+    this.selectedMCData = Array.isArray(event) ? event : event.value;
     this.rmcDisabled = this.selectedMC.length > 0;
   
     console.log("selectedMC", this.selectedMC);
@@ -678,7 +753,7 @@ export class YearlyStationStatisticsPageComponent {
   }
 
   onRMcChange(event: any): void {
-    this.selectedMCData = event.value;
+    this.selectedRMCData = Array.isArray(event) ? event : event.value;
 
     this.mcDisabled = this.selectedRMC.length > 0;
 
@@ -916,6 +991,12 @@ export class YearlyStationStatisticsPageComponent {
         console.log("All Districts", response);
         this.districts.push(response);
         console.log("Districts", this.districts);
+        // Regions may have loaded before districts — recompute districtCodeList now
+        if (this.selectedRegion && this.selectedRegion.length > 0) {
+          this.onRegionChange();
+        }
+        // Auto-load IMD data on page open once districts are ready
+        this.filterStationData();
       },
       (error) => {
         console.error("Error fetching center details:", error);
@@ -924,6 +1005,9 @@ export class YearlyStationStatisticsPageComponent {
   }
 
   groupByDates(data: any): any {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return { columns: [], rows: [] };
+    }
     const uniqueDates = Array.from(
       new Set(
         data.map(
@@ -940,11 +1024,13 @@ export class YearlyStationStatisticsPageComponent {
       const date = new Date(entry.collection_date).toISOString().split("T")[0];
 
       if (!stationMap[entry.station_name]) {
-        stationMap[entry.station_name] = { 
+        stationMap[entry.station_name] = {
+          state_name: entry.state_name,
           district_name: entry.district_name,
+          block_name: entry.block_name,
+          block_code: entry.block_code,
           station_name: entry.station_name,
           station_id: entry.station_id,
-          state_name : entry.state_name,
           latitude: parseFloat(entry.latitude).toFixed(4),
           longitude: parseFloat(entry.longitude).toFixed(4)
         };
@@ -957,7 +1043,7 @@ export class YearlyStationStatisticsPageComponent {
     });
 
     return {
-      columns: ["state_name", "district_name", "station_name", "station_id", "latitude", "longitude", ...uniqueDates],
+      columns: ["state_name", "district_name", "block_name", "block_code", "station_name", "station_id", "latitude", "longitude", ...uniqueDates],
       rows: Object.values(stationMap),
     };
   }
@@ -1025,14 +1111,157 @@ async fetchUnifiedFileFromBackend() {
     const result = this.groupByDates(this.stationData);
     this.DailyWiseStationcolumns = result.columns;
     this.DailyWiseStationRows = result.rows;
-    console.log('result.rows', result.rows)
+    console.log('result.rows', result.rows);
+    this.cdr.detectChanges();
   } catch (error) {
     console.error("Error fetching data:", error);
   } finally {
-    this.isLoading = false; // Set loading to false once data is fetched or in case of error
+    this.isLoading = false;
   }
 }
 
+openImdModal(): void {
+  if (this.imdLeafletMap) { try { this.imdLeafletMap.remove(); } catch(e) {} this.imdLeafletMap = null; }
+  this.showImdModal = false;
+  this.cdr.detectChanges();
+  this.buildImdCharts();
+  this.showImdModal = true;
+  this.cdr.detectChanges();
+  setTimeout(() => this.initImdMap(), 150);
+}
+
+
+openImdMapModal(): void {
+  if (this.imdStandaloneMap) { try { this.imdStandaloneMap.remove(); } catch(e) {} this.imdStandaloneMap = null; }
+  this.showImdMapModal = false;
+  this.cdr.detectChanges();
+  this.showImdMapModal = true;
+  this.cdr.detectChanges();
+  setTimeout(async () => {
+    const dateCols = this.getDateCols(this.DailyWiseStationcolumns, false);
+    this.imdStandaloneMap = await this.initStationMap('imd-standalone-map', this.DailyWiseStationRows, dateCols);
+  }, 150);
+}
+
+openAwsMapModal(): void {
+  if (this.awsStandaloneMap) { try { this.awsStandaloneMap.remove(); } catch(e) {} this.awsStandaloneMap = null; }
+  this.showAwsMapModal = false;
+  this.cdr.detectChanges();
+  this.showAwsMapModal = true;
+  this.cdr.detectChanges();
+  setTimeout(async () => {
+    const dateCols = this.getDateCols(this.stateAwsColumns, true);
+    this.awsStandaloneMap = await this.initStationMap('aws-standalone-map', this.stateAwsDisplayRows, dateCols);
+  }, 150);
+}
+
+onTabChange(tab: string): void {
+  this.selectedTab = tab;
+  if (tab === 'StateAWS' && this.stateAwsRows.length === 0) {
+    this.fetchStateAwsData();
+  }
+}
+
+groupByDatesStateAws(data: any): any {
+  const uniqueDates = Array.from(
+    new Set(
+      data.map((entry: any) => new Date(entry.collection_date).toISOString().split("T")[0])
+    )
+  );
+  uniqueDates.sort();
+
+  const stationMap: any = {};
+
+  data.forEach((entry: any) => {
+    const date = new Date(entry.collection_date).toISOString().split("T")[0];
+    const key = `${entry.source}_${entry.station_id}`;
+
+    if (!stationMap[key]) {
+      stationMap[key] = {
+        source: entry.source,
+        state_name: entry.state_name,
+        district_name: entry.district_name,
+        block_name: entry.block_name,
+        block_code: entry.block_code,
+        station_name: entry.station_name,
+        station_id: entry.station_id,
+        latitude: parseFloat(entry.latitude).toFixed(4),
+        longitude: parseFloat(entry.longitude).toFixed(4),
+      };
+      uniqueDates.forEach((d: any) => { stationMap[key][d] = null; });
+    }
+    stationMap[key][date] = entry.data;
+  });
+
+  // Count non-null data values per source and sort sources by that count descending
+  const sourceDataCount: { [s: string]: number } = {};
+  Object.values(stationMap).forEach((row: any) => {
+    if (!sourceDataCount[row.source]) sourceDataCount[row.source] = 0;
+    (uniqueDates as string[]).forEach(d => {
+      if (row[d] !== null && row[d] !== undefined) sourceDataCount[row.source]++;
+    });
+  });
+
+  const sortedRows = Object.values(stationMap).sort((a: any, b: any) =>
+    (sourceDataCount[b.source] || 0) - (sourceDataCount[a.source] || 0)
+  );
+
+  return {
+    columns: ["source", "state_name", "district_name", "block_name", "block_code", "station_name", "station_id", "latitude", "longitude", ...uniqueDates],
+    rows: sortedRows,
+  };
+}
+
+applyStateAwsFilters(): void {
+  let rows = this.stateAwsRows;
+  if (this.awsFilterSource)   rows = rows.filter(r => r.source === this.awsFilterSource);
+  if (this.awsFilterState)    rows = rows.filter(r => r.state_name === this.awsFilterState);
+  if (this.awsFilterDistrict) rows = rows.filter(r => r.district_name === this.awsFilterDistrict);
+  if (this.awsFilterBlock)    rows = rows.filter(r => r.block_name === this.awsFilterBlock);
+  this.stateAwsDisplayRows = rows;
+}
+
+openAwsModal(): void {
+  if (this.awsLeafletMap) { try { this.awsLeafletMap.remove(); } catch(e) {} this.awsLeafletMap = null; }
+  this.showAwsModal = false;
+  this.cdr.detectChanges();
+  this.buildAwsCharts();
+  this.showAwsModal = true;
+  this.cdr.detectChanges();
+  setTimeout(() => this.initAwsMap(), 150);
+}
+
+async fetchStateAwsData(): Promise<void> {
+  this.stateAwsIsLoading = true;
+
+  try {
+    const response: any = await this.allAwsDataService
+      .fetchStateAwsUnifiedFile({ startDate: this.awsFromDate, endDate: this.awsToDate })
+      .toPromise();
+    const result = this.groupByDatesStateAws(response?.data || []);
+    this.stateAwsColumns = result.columns;
+    this.stateAwsRows = result.rows;
+
+    // Populate filter dropdown lists from returned data
+    this.awsSourceList   = [...new Set(result.rows.map((r: any) => r.source).filter(Boolean))].sort() as string[];
+    this.awsStateList    = [...new Set(result.rows.map((r: any) => r.state_name).filter(Boolean))].sort() as string[];
+    this.awsDistrictList = [...new Set(result.rows.map((r: any) => r.district_name).filter(Boolean))].sort() as string[];
+    this.awsBlockList    = [...new Set(result.rows.map((r: any) => r.block_name).filter(Boolean))].sort() as string[];
+
+    // Reset filters and show all
+    this.awsFilterSource = '';
+    this.awsFilterState = '';
+    this.awsFilterDistrict = '';
+    this.awsFilterBlock = '';
+    this.stateAwsDisplayRows = result.rows;
+    this.cdr.detectChanges();
+  } catch (error) {
+    console.error("Error fetching state AWS data:", error);
+  } finally {
+    this.stateAwsIsLoading = false;
+    this.cdr.detectChanges();
+  }
+}
 
 formatDateToDDMMYYYY(dateString: string): string {
   const date = new Date(dateString);
@@ -1375,6 +1604,277 @@ onDownload() {
 
 
 
+onDownloadStateAws(): void {
+  if (!this.stateAwsColumns || !this.stateAwsDisplayRows || this.stateAwsDisplayRows.length === 0) return;
+
+  const fromFormatted = this.formatDateToDDMMYYYY(this.awsFromDate);
+  const toFormatted = this.formatDateToDDMMYYYY(this.awsToDate);
+
+  const headerInfo = [
+    ['IMD Rainfall Information System - State AWS Daily Station Data'],
+    [''],
+    [`Period: ${fromFormatted} to ${toFormatted}`],
+    ['Generated on: ' + new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })],
+    [''],
+    ['IMPORTANT NOTES:'],
+    ['• All rainfall values are in millimeters (mm)'],
+    ['• State AWS data may not be available for all stations across all dates'],
+    [''],
+  ];
+
+  const formattedRows = this.stateAwsDisplayRows.map((row: any) =>
+    this.stateAwsColumns.map((col: string) => row[col])
+  );
+
+  const worksheetData = [...headerInfo, this.stateAwsColumns, ...formattedRows];
+  const worksheet: XLSX.WorkSheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+  const lastCol = Math.max(this.stateAwsColumns.length - 1, 4);
+  worksheet['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: lastCol } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: lastCol } },
+    { s: { r: 3, c: 0 }, e: { r: 3, c: lastCol } },
+    { s: { r: 5, c: 0 }, e: { r: 5, c: lastCol } },
+    { s: { r: 6, c: 0 }, e: { r: 6, c: lastCol } },
+    { s: { r: 7, c: 0 }, e: { r: 7, c: lastCol } },
+  ];
+
+  const workbook: XLSX.WorkBook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'State AWS Data');
+
+  const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+  const filename = `IMD_StateAWS_${fromFormatted.replace(/-/g, '')}_to_${toFormatted.replace(/-/g, '')}.xlsx`;
+  saveAs(blob, filename);
+}
+
+// ─── Chart helpers ────────────────────────────────────────────────────────────
+
+private getDateCols(columns: string[], isAws: boolean): string[] {
+  const fixed = isAws ? this.awsFixedCols : this.imdFixedCols;
+  return (columns || []).filter(c => !fixed.includes(c));
+}
+
+private monsoonCategory(val: any): string {
+  const v = parseFloat(val);
+  if (val === null || val === undefined || isNaN(v)) return 'No Data';
+  if (v === -999.9) return 'No Data';
+  if (v === 0)      return 'Zero Rain';
+  if (v <= 2.4)     return 'Very Light Rain';
+  if (v <= 15.5)    return 'Light Rain';
+  if (v <= 64.4)    return 'Moderate Rain';
+  if (v <= 115.5)   return 'Heavy Rain';
+  if (v <= 204.4)   return 'Very Heavy Rain';
+  return 'Extremely Heavy';
+}
+
+private readonly imdColorMap: Record<string, string> = {
+  'Zero Rain':       '#FFFFFF',
+  'Very Light Rain': '#AAF200',
+  'Light Rain':      '#00FF00',
+  'Moderate Rain':   '#00FFFF',
+  'Heavy Rain':      '#FFFF00',
+  'Very Heavy Rain': '#FF8C00',
+  'Extremely Heavy': '#FF0000',
+  'No Data':         '#c0c0c0',
+};
+
+private computeMonsoon(rows: any[], dateCols: string[]): { name: string; y: number; color: string }[] {
+  const lastDate = dateCols[dateCols.length - 1];
+  const counts: Record<string, number> = {
+    'Zero Rain':0,'Very Light Rain':0,'Light Rain':0,'Moderate Rain':0,
+    'Heavy Rain':0,'Very Heavy Rain':0,'Extremely Heavy':0,'No Data':0
+  };
+  rows.forEach(r => counts[this.monsoonCategory(r[lastDate])]++);
+  return Object.entries(counts).filter(([,y]) => y > 0).map(([name, y]) => ({ name, y, color: this.imdColorMap[name] }));
+}
+
+private computeAvailability(rows: any[], dateCols: string[]): { name: string; y: number; color: string }[] {
+  let actual = 0, missing = 0, noEntry = 0;
+  rows.forEach(r => dateCols.forEach(d => {
+    const v = r[d];
+    if (v === null || v === undefined) noEntry++;
+    else if (parseFloat(v) === -999.9) missing++;
+    else actual++;
+  }));
+  return [
+    { name: 'Has Data',    y: actual,  color: '#4CAF50' },
+    { name: 'No Data (-999.9)', y: missing, color: '#F44336' },
+    { name: 'Not Entered', y: noEntry, color: '#9E9E9E' }
+  ].filter(d => d.y > 0);
+}
+
+private computeTop10(rows: any[], dateCols: string[]): { names: string[]; totals: number[] } {
+  const totals = rows.map(r => ({
+    name: r.station_name || r.station_id || 'Unknown',
+    total: parseFloat(dateCols.reduce((s,d) => { const v = parseFloat(r[d]); return s + (!isNaN(v) && v !== -999.9 ? v : 0); }, 0).toFixed(2))
+  }));
+  totals.sort((a,b) => b.total - a.total);
+  const top10 = totals.slice(0, 10);
+  return { names: top10.map(t => t.name), totals: top10.map(t => t.total) };
+}
+
+private computeStateAvg(rows: any[], dateCols: string[]): { states: string[]; avgs: number[] } {
+  const map: Record<string, number[]> = {};
+  rows.forEach(r => {
+    const s = r.state_name || 'Unknown';
+    if (!map[s]) map[s] = [];
+    dateCols.forEach(d => { const v = parseFloat(r[d]); if (!isNaN(v) && v !== -999.9) map[s].push(v); });
+  });
+  const states = Object.keys(map).sort();
+  return { states, avgs: states.map(s => map[s].length ? parseFloat((map[s].reduce((a,b)=>a+b,0)/map[s].length).toFixed(2)) : 0) };
+}
+
+private computeSourceCount(rows: any[]): { name: string; y: number }[] {
+  const map: Record<string, number> = {};
+  rows.forEach(r => { const src = r.source || 'Unknown'; map[src] = (map[src]||0)+1; });
+  return Object.entries(map).map(([name,y]) => ({ name, y })).sort((a,b) => b.y - a.y);
+}
+
+// ─── Chart builders ───────────────────────────────────────────────────────────
+
+buildImdCharts(): void {
+  if (!this.DailyWiseStationRows?.length) return;
+  const dateCols = this.getDateCols(this.DailyWiseStationcolumns, false);
+  if (!dateCols.length) return;
+
+  const monsoonData    = this.computeMonsoon(this.DailyWiseStationRows, dateCols);
+  const availData      = this.computeAvailability(this.DailyWiseStationRows, dateCols);
+  const { names, totals } = this.computeTop10(this.DailyWiseStationRows, dateCols);
+  const { states, avgs: stateAvgs } = this.computeStateAvg(this.DailyWiseStationRows, dateCols);
+
+  const pieLabels = { enabled: true, format: '<b>{point.name}</b><br/>{point.percentage:.1f}%', style: { fontSize: '11px' } };
+  const pieLegend = { enabled: true, layout: 'horizontal' as const, align: 'center' as const, verticalAlign: 'bottom' as const, itemStyle: { fontSize: '10px', fontWeight: 'normal' } };
+
+  this.imdMonsoonChart = new Chart({
+    chart: { type: 'pie', height: 320, backgroundColor: '#f0f0f0' },
+    title: { text: `Rainfall Received (${dateCols[dateCols.length-1]})`, style: { fontSize: '13px', fontWeight: '600' } },
+    tooltip: { pointFormat: '<span style="color:{point.color}">●</span> {point.name}: <b>{point.y} stations ({point.percentage:.1f}%)</b>' },
+    legend: pieLegend,
+    plotOptions: { pie: { showInLegend: true, dataLabels: pieLabels, allowPointSelect: true, cursor: 'pointer', borderWidth: 0 } },
+    series: [{ type: 'pie', name: 'Stations', data: monsoonData }],
+    credits: { enabled: false },
+    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
+  });
+
+  this.imdAvailabilityChart = new Chart({
+    chart: { type: 'pie', height: 320 },
+    title: { text: 'Data Availability', style: { fontSize: '13px', fontWeight: '600' } },
+    tooltip: { pointFormat: '<span style="color:{point.color}">●</span> {point.name}: <b>{point.y} ({point.percentage:.1f}%)</b>' },
+    legend: pieLegend,
+    plotOptions: { pie: { innerSize: '50%', showInLegend: true, dataLabels: pieLabels, allowPointSelect: true, cursor: 'pointer', borderWidth: 0 } },
+    series: [{ type: 'pie', name: 'Records', data: availData }],
+    credits: { enabled: false },
+    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
+  });
+
+  this.imdTop10Chart = new Chart({
+    chart: { type: 'bar', height: 320 },
+    title: { text: 'Top 10 Stations by Total Rainfall', style: { fontSize: '13px', fontWeight: '600' } },
+    xAxis: { categories: names, labels: { style: { fontSize: '10px' } } },
+    yAxis: { title: { text: 'Total Rainfall (mm)' } },
+    tooltip: { valueSuffix: ' mm' },
+    legend: { enabled: true },
+    plotOptions: { bar: { dataLabels: { enabled: true, format: '{y:.1f} mm', style: { fontSize: '10px' } } } },
+    series: [{ type: 'bar', name: 'Total Rainfall (mm)', data: totals, color: '#4A90A4' }],
+    credits: { enabled: false },
+    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
+  });
+
+  this.imdStateChart = new Chart({
+    chart: { type: 'column', height: 320 },
+    title: { text: 'State-wise Average Rainfall', style: { fontSize: '13px', fontWeight: '600' } },
+    xAxis: { categories: states, labels: { rotation: -45, style: { fontSize: '10px' } } },
+    yAxis: { title: { text: 'Avg Rainfall (mm)' } },
+    tooltip: { valueSuffix: ' mm' },
+    legend: { enabled: true },
+    plotOptions: { column: { dataLabels: { enabled: true, format: '{y:.1f}', style: { fontSize: '10px' } } } },
+    series: [{ type: 'column', name: 'Avg Rainfall (mm)', data: stateAvgs, color: '#1F4E79' }],
+    credits: { enabled: false },
+    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
+  });
+
+  this.showImdModal = false;
+  this.cdr.detectChanges();
+}
+
+buildAwsCharts(): void {
+  if (!this.stateAwsDisplayRows?.length) return;
+  const dateCols = this.getDateCols(this.stateAwsColumns, true);
+  if (!dateCols.length) return;
+
+  const monsoonData    = this.computeMonsoon(this.stateAwsDisplayRows, dateCols);
+  const availData      = this.computeAvailability(this.stateAwsDisplayRows, dateCols);
+  const { names, totals } = this.computeTop10(this.stateAwsDisplayRows, dateCols);
+  const { states, avgs: stateAvgs } = this.computeStateAvg(this.stateAwsDisplayRows, dateCols);
+  const sourceData = this.computeSourceCount(this.stateAwsDisplayRows);
+
+  const pieLabels = { enabled: true, format: '<b>{point.name}</b><br/>{point.percentage:.1f}%', style: { fontSize: '11px' } };
+  const pieLegend = { enabled: true, layout: 'horizontal' as const, align: 'center' as const, verticalAlign: 'bottom' as const, itemStyle: { fontSize: '10px', fontWeight: 'normal' } };
+
+  this.awsMonsoonChart = new Chart({
+    chart: { type: 'pie', height: 320, backgroundColor: '#f0f0f0' },
+    title: { text: `Rainfall Received (${dateCols[dateCols.length-1]})`, style: { fontSize: '13px', fontWeight: '600' } },
+    tooltip: { pointFormat: '<span style="color:{point.color}">●</span> {point.name}: <b>{point.y} stations ({point.percentage:.1f}%)</b>' },
+    legend: pieLegend,
+    plotOptions: { pie: { showInLegend: true, dataLabels: pieLabels, allowPointSelect: true, cursor: 'pointer', borderWidth: 0 } },
+    series: [{ type: 'pie', name: 'Stations', data: monsoonData }],
+    credits: { enabled: false },
+    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
+  });
+
+  this.awsAvailabilityChart = new Chart({
+    chart: { type: 'pie', height: 320 },
+    title: { text: 'Data Availability', style: { fontSize: '13px', fontWeight: '600' } },
+    tooltip: { pointFormat: '<span style="color:{point.color}">●</span> {point.name}: <b>{point.y} ({point.percentage:.1f}%)</b>' },
+    legend: pieLegend,
+    plotOptions: { pie: { innerSize: '50%', showInLegend: true, dataLabels: pieLabels, allowPointSelect: true, cursor: 'pointer', borderWidth: 0 } },
+    series: [{ type: 'pie', name: 'Records', data: availData }],
+    credits: { enabled: false },
+    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
+  });
+
+  this.awsTop10Chart = new Chart({
+    chart: { type: 'bar', height: 320 },
+    title: { text: 'Top 10 Stations by Total Rainfall', style: { fontSize: '13px', fontWeight: '600' } },
+    xAxis: { categories: names, labels: { style: { fontSize: '10px' } } },
+    yAxis: { title: { text: 'Total Rainfall (mm)' } },
+    tooltip: { valueSuffix: ' mm' },
+    legend: { enabled: true },
+    plotOptions: { bar: { dataLabels: { enabled: true, format: '{y:.1f} mm', style: { fontSize: '10px' } } } },
+    series: [{ type: 'bar', name: 'Total Rainfall (mm)', data: totals, color: '#4A90A4' }],
+    credits: { enabled: false },
+    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
+  });
+
+  this.awsStateChart = new Chart({
+    chart: { type: 'column', height: 320 },
+    title: { text: 'State-wise Average Rainfall', style: { fontSize: '13px', fontWeight: '600' } },
+    xAxis: { categories: states, labels: { rotation: -45, style: { fontSize: '10px' } } },
+    yAxis: { title: { text: 'Avg Rainfall (mm)' } },
+    tooltip: { valueSuffix: ' mm' },
+    legend: { enabled: true },
+    plotOptions: { column: { dataLabels: { enabled: true, format: '{y:.1f}', style: { fontSize: '10px' } } } },
+    series: [{ type: 'column', name: 'Avg Rainfall (mm)', data: stateAvgs, color: '#1F4E79' }],
+    credits: { enabled: false },
+    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
+  });
+
+  this.awsSourceChart = new Chart({
+    chart: { type: 'pie', height: 320 },
+    title: { text: 'Station Count by Source', style: { fontSize: '13px', fontWeight: '600' } },
+    tooltip: { pointFormat: '<span style="color:{point.color}">●</span> {point.name}: <b>{point.y} stations ({point.percentage:.1f}%)</b>' },
+    legend: { enabled: false },
+    plotOptions: { pie: { showInLegend: false, dataLabels: { enabled: true, format: '<b>{point.name}</b><br/>{point.percentage:.1f}%', style: { fontSize: '11px' } }, allowPointSelect: true, cursor: 'pointer', borderWidth: 0 } },
+    series: [{ type: 'pie', name: 'Stations', data: sourceData }],
+    credits: { enabled: false },
+    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
+  });
+
+  this.showAwsModal = false;
+  this.cdr.detectChanges();
+}
+
 formatCellValue(value: any): string {
   if (value === null || value === undefined) {
     return '-';
@@ -1387,6 +1887,156 @@ formatCellValue(value: any): string {
 
 isNumeric(value: any): boolean {
   return typeof value === 'number' || (!isNaN(value) && !isNaN(parseFloat(value)));
+}
+
+// ─── Station Map ─────────────────────────────────────────────────────────────
+
+private async getIndiaStateGeojson(): Promise<any> {
+  if (!this.indiaStateGeojson) {
+    const res = await fetch('assets/geojson/INDIA_STATE.json');
+    this.indiaStateGeojson = await res.json();
+  }
+  return this.indiaStateGeojson;
+}
+
+private async getIndiaCountryGeojson(): Promise<any> {
+  if (!this.indiaCountryGeojson) {
+    const res = await fetch('assets/geojson/INDIA_COUNTRY.json');
+    this.indiaCountryGeojson = await res.json();
+  }
+  return this.indiaCountryGeojson;
+}
+
+private addIndiaMask(map: any, countryGeoJson: any): void {
+  const feature = (countryGeoJson.features || [countryGeoJson])[0];
+  const geom = feature.geometry;
+  const worldBox: [number, number][] = [[-180,-90],[180,-90],[180,90],[-180,90],[-180,-90]];
+
+  let maskCoords: any[];
+  if (geom.type === 'Polygon') {
+    maskCoords = [worldBox, ...geom.coordinates];
+  } else {
+    // MultiPolygon — each polygon's outer ring becomes a hole
+    maskCoords = [worldBox, ...geom.coordinates.map((p: any[][]) => p[0])];
+  }
+
+  L.geoJSON({ type: 'Feature', geometry: { type: 'Polygon', coordinates: maskCoords }, properties: {} } as any, {
+    style: () => ({ stroke: false, fillColor: '#000000', fillOpacity: 0.5, fillRule: 'evenodd' as any })
+  }).addTo(map);
+}
+
+private async initStationMap(mapId: string, rows: any[], dateCols: string[]): Promise<any> {
+  const el = document.getElementById(mapId);
+  if (!el || !rows?.length || !dateCols.length) return null;
+
+  const [stateGeojson, countryGeojson] = await Promise.all([
+    this.getIndiaStateGeojson(),
+    this.getIndiaCountryGeojson()
+  ]);
+  const lastDate = dateCols[dateCols.length - 1];
+
+  const map = L.map(el, { zoomControl: true }).setView([22, 76], 5);
+  setTimeout(() => map.invalidateSize(), 200);
+
+  // Satellite base layer
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri',
+    maxZoom: 18
+  }).addTo(map);
+
+  // Pale mask over everything outside India
+  this.addIndiaMask(map, countryGeojson);
+
+  // White state boundary lines over satellite
+  L.geoJSON(stateGeojson, {
+    style: () => ({ color: '#ffffff', weight: 1, fillColor: 'transparent', fillOpacity: 0 })
+  }).addTo(map);
+
+  rows.forEach((row: any) => {
+    const lat = parseFloat(row.latitude);
+    const lng = parseFloat(row.longitude);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const val = row[lastDate];
+    const category = this.monsoonCategory(val);
+    const color = this.imdColorMap[category] || '#c0c0c0';
+    const rainfall = (val === null || val === undefined)
+      ? 'N/A'
+      : (parseFloat(val) === -999.9 ? 'No Data' : `${val} mm`);
+
+    L.circleMarker([lat, lng] as [number, number], {
+      radius: 5, fillColor: color, color: '#444', weight: 0.5, opacity: 1, fillOpacity: 0.9
+    })
+    .bindPopup(
+      `<b>${row.station_name || row.station_id || '—'}</b><br>` +
+      `State: ${row.state_name || '—'}<br>` +
+      `District: ${row.district_name || '—'}<br>` +
+      `${lastDate}: ${rainfall}`
+    )
+    .addTo(map);
+  });
+
+  // Custom legend
+  const legend = (L.control as any)({ position: 'bottomright' });
+  legend.onAdd = () => {
+    const div = L.DomUtil.create('div', '');
+    div.style.cssText = 'background:white;padding:8px 12px;border-radius:6px;font-size:11px;line-height:2;box-shadow:0 2px 6px rgba(0,0,0,0.25)';
+    div.innerHTML = `<b style="font-size:12px;display:block;margin-bottom:2px">Rainfall (${lastDate})</b>` +
+      Object.entries(this.imdColorMap).map(([name, clr]) =>
+        `<span style="display:inline-block;width:11px;height:11px;background:${clr};border-radius:50%;` +
+        `margin-right:5px;border:1px solid #555;vertical-align:middle;"></span>${name}`
+      ).join('<br>');
+    return div;
+  };
+  legend.addTo(map);
+
+  return map;
+}
+
+private async initImdMap(): Promise<void> {
+  const dateCols = this.getDateCols(this.DailyWiseStationcolumns, false);
+  if (!dateCols.length) return;
+  this.imdLeafletMap = await this.initStationMap('imd-station-map', this.DailyWiseStationRows, dateCols);
+}
+
+private async initAwsMap(): Promise<void> {
+  const dateCols = this.getDateCols(this.stateAwsColumns, true);
+  if (!dateCols.length) return;
+  this.awsLeafletMap = await this.initStationMap('aws-station-map', this.stateAwsDisplayRows, dateCols);
+}
+
+// ─── Statistics: in-page map left + charts right ─────────────────────────────
+
+openImdStatistics(): void {
+  this.buildImdCharts();
+  this.showImdStatistics = true;
+  this.cdr.detectChanges();
+  setTimeout(async () => {
+    if (this.imdStatsMap) { try { this.imdStatsMap.remove(); } catch(e){} this.imdStatsMap = null; }
+    const dateCols = this.getDateCols(this.DailyWiseStationcolumns, false);
+    this.imdStatsMap = await this.initStationMap('imd-stats-map', this.DailyWiseStationRows, dateCols);
+  }, 150);
+}
+
+closeImdStatistics(): void {
+  if (this.imdStatsMap) { try { this.imdStatsMap.remove(); } catch(e){} this.imdStatsMap = null; }
+  this.showImdStatistics = false;
+}
+
+openAwsStatistics(): void {
+  this.buildAwsCharts();
+  this.showAwsStatistics = true;
+  this.cdr.detectChanges();
+  setTimeout(async () => {
+    if (this.awsStatsMap) { try { this.awsStatsMap.remove(); } catch(e){} this.awsStatsMap = null; }
+    const dateCols = this.getDateCols(this.stateAwsColumns, true);
+    this.awsStatsMap = await this.initStationMap('aws-stats-map', this.stateAwsDisplayRows, dateCols);
+  }, 150);
+}
+
+closeAwsStatistics(): void {
+  if (this.awsStatsMap) { try { this.awsStatsMap.remove(); } catch(e){} this.awsStatsMap = null; }
+  this.showAwsStatistics = false;
 }
 
 }

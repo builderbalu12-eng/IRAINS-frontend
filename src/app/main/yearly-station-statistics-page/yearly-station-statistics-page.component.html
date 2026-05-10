@@ -1,6 +1,13 @@
 <app-header></app-header>
 
+<!-- Tabs -->
+<div class="d-flex border-bottom px-3 mt-3">
+  <button class="tab-btn me-2" [class.active-tab]="selectedTab === 'IMD'" (click)="onTabChange('IMD')">IMD</button>
+  <button class="tab-btn" [class.active-tab]="selectedTab === 'StateAWS'" (click)="onTabChange('StateAWS')">State AWS</button>
+</div>
 
+<!-- IMD Tab -->
+<ng-container *ngIf="selectedTab === 'IMD'">
 
 <div class="mt-3 mb-0 p-3 bg-light rounded">
   <div class="row row-cols-1 row-cols-md-2 row-cols-lg-6 d-flex justify-content-center">
@@ -92,111 +99,213 @@
   
     <div class="col mb-2">
         <label for="fromDate" class="form-label">From Date</label>
-        <input id="fromDate" type="date" class="form-control" (change)="onDateChangeFromDate($event)">
+        <input id="fromDate" type="date" class="form-control" [(ngModel)]="enteredFromDate" (change)="onDateChangeFromDate($event)">
       </div>
-      
+
       <!-- To Date -->
       <div class="col mb-2">
         <label for="toDate" class="form-label">To Date</label>
-        <input id="toDate" type="date" class="form-control" (change)="onDateChangeEndDate($event)">
+        <input id="toDate" type="date" class="form-control" [(ngModel)]="enteredEndDate" (change)="onDateChangeEndDate($event)">
       </div>
     </div>
 
     
-    <!-- Submit Button -->
-    <div class="col mb-2 mx-auto w-25 d-flex justify-content-center mt-3">
-        <button class="btn btn-success w-50" type="button" (click)="filterStationData()">Submit</button>
+    <!-- Submit + Download -->
+    <div class="row mt-3">
+      <div class="d-flex justify-content-center gap-3">
+        <button class="btn btn-success px-4" type="button" (click)="filterStationData()">Submit</button>
+        <button class="btn btn-primary px-4" type="button" (click)="onDownload()" [disabled]="!DailyWiseStationRows?.length">Download</button>
+      </div>
     </div>
 
 </div>
 
-<div class="container-fluid">
+<div class="container-fluid px-3 pt-2">
 
-    <div class="toolbar-center">
-      <!-- <button mat-button (click)="selectMode('UnifiedFile')" class="mode-button" [ngClass]="{'active': selectedOption === 'UnifiedFile'}">Unified File</button> -->
-      <div *ngIf="selectedOption =='UnifiedFile'" class="col-md-4 col-sm-6 mb-3">
-        <button class="btn btn-primary" (click)="onDownload()">
-          Download
-        </button>
-      </div>
-    </div>
-
-
-  
-  <div *ngIf="selectedOption == 'StationDetails'" style="text-align: center; padding-top: 40px;">
-    <div class="dataentry">
-      <br />
-      <div class="overflow-x-scroll">
-       <table class="mx-auto" style=" margin: auto; border-collapse: collapse; width: 90%; border: 1px solid black;">
-        <thead>
-            <tr>
-                <th style="border: 1px solid black">S No.</th>
-                <th style="border: 1px solid black">Region</th>
-                <th style="border: 1px solid black">State</th>
-                <th style="border: 1px solid black">District</th>
-                <th style="border: 1px solid black">Station</th>
-                <th style="border: 1px solid black">Rainfall(mm)</th>
-              </tr>
-        </thead>
-        <div *ngIf="isLoading">Loading ...</div>
-        <tbody *ngIf="filteredData && filteredData.length > 0">
-          <tr *ngFor="let item of filteredData; let i = index;">
-            <td style="border: 1px solid black">{{i+1}}</td>
-            <td style="border: 1px solid black">{{item.region_name}}</td>
-            <td style="border: 1px solid black">{{item.state_name}}</td>
-            <td style="border: 1px solid black">{{item.district_name}}</td>
-            <td style="border: 1px solid black">{{item.station_name}}</td>
-            <td style="border: 1px solid black">{{(item.data).toFixed(2)}}</td>
-          </tr>
-        </tbody>
-      </table>
-      </div>
-    </div>
+  <!-- Statistics button -->
+  <div class="d-flex justify-content-end mb-2" *ngIf="DailyWiseStationRows?.length">
+    <button class="btn btn-outline-primary btn-sm px-4" (click)="openImdStatistics()">&#x1F4CA; Statistics</button>
   </div>
+
   <div class="loading-overlay" *ngIf="isLoading">
     <div class="loading-spinner"></div>
     <span>Loading...</span>
   </div>
 
-  <div *ngIf="selectedOption == 'UnifiedFile'" class="unified-file-container">
-    <div class="data-table-wrapper">
-      <!-- <div class="loading-overlay" *ngIf="isLoading">
-        <div class="loading-spinner"></div>
-        <span>Loading...</span>
-      </div> -->
-      
+  <!-- Table (hidden while Statistics is open) -->
+  <div *ngIf="!showImdStatistics" class="data-table-wrapper">
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th *ngFor="let col of DailyWiseStationcolumns">{{ col | titlecase }}</th>
+          </tr>
+        </thead>
+        <tbody *ngIf="DailyWiseStationRows && DailyWiseStationRows.length > 0">
+          <tr *ngFor="let row of DailyWiseStationRows; let i = index" [class.even-row]="i % 2 === 0">
+            <td *ngFor="let col of DailyWiseStationcolumns" [class.numeric]="isNumeric(row[col])">
+              {{ formatCellValue(row[col]) }}
+            </td>
+          </tr>
+        </tbody>
+        <tbody *ngIf="!isLoading && (!DailyWiseStationRows || DailyWiseStationRows.length === 0)">
+          <tr>
+            <td [attr.colspan]="DailyWiseStationcolumns?.length" class="no-data">
+              Select the appropriate options and Submit
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Statistics: satellite map LEFT + charts RIGHT (in-page, no modal) -->
+  <div *ngIf="showImdStatistics" class="statistics-split-layout">
+    <div class="stats-map-panel">
+      <div id="imd-stats-map" style="position:absolute;inset:0;"></div>
+    </div>
+    <div class="stats-charts-panel">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="fw-bold" style="font-size:15px;color:#1F4E79;">Analytics — IMD Station Data</span>
+        <button class="btn btn-outline-secondary btn-sm" (click)="closeImdStatistics()">&#8592; Back to Table</button>
+      </div>
+      <div class="chart-grid-2">
+        <div class="chart-card"><div [chart]="imdMonsoonChart"></div></div>
+        <div class="chart-card"><div [chart]="imdAvailabilityChart"></div></div>
+      </div>
+      <div class="chart-grid-2 mt-3">
+        <div class="chart-card"><div [chart]="imdTop10Chart"></div></div>
+        <div class="chart-card"><div [chart]="imdStateChart"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</ng-container>
+<!-- END IMD Tab -->
+
+<!-- State AWS Tab -->
+<ng-container *ngIf="selectedTab === 'StateAWS'">
+
+  <!-- Filters (always shown on top) -->
+  <div class="mt-3 mb-0 p-3 bg-white border rounded">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-2">
+      <div class="col">
+        <label class="form-label fw-semibold">Source</label>
+        <select class="form-select" [(ngModel)]="awsFilterSource" (change)="applyStateAwsFilters()">
+          <option value="">All Sources</option>
+          <option *ngFor="let s of awsSourceList" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+      <div class="col">
+        <label class="form-label fw-semibold">State</label>
+        <select class="form-select" [(ngModel)]="awsFilterState" (change)="applyStateAwsFilters()">
+          <option value="">All States</option>
+          <option *ngFor="let s of awsStateList" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+      <div class="col">
+        <label class="form-label fw-semibold">District</label>
+        <select class="form-select" [(ngModel)]="awsFilterDistrict" (change)="applyStateAwsFilters()">
+          <option value="">All Districts</option>
+          <option *ngFor="let d of awsDistrictList" [value]="d">{{ d }}</option>
+        </select>
+      </div>
+      <div class="col">
+        <label class="form-label fw-semibold">Block</label>
+        <select class="form-select" [(ngModel)]="awsFilterBlock" (change)="applyStateAwsFilters()">
+          <option value="">All Blocks</option>
+          <option *ngFor="let b of awsBlockList" [value]="b">{{ b }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Range -->
+  <div class="mt-2 mb-0 p-3 bg-light rounded">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 d-flex justify-content-center">
+      <div class="col mb-2">
+        <label for="awsFromDate" class="form-label">From Date</label>
+        <input id="awsFromDate" type="date" class="form-control" [(ngModel)]="awsFromDate">
+      </div>
+      <div class="col mb-2">
+        <label for="awsToDate" class="form-label">To Date</label>
+        <input id="awsToDate" type="date" class="form-control" [(ngModel)]="awsToDate">
+      </div>
+    </div>
+    <div class="d-flex justify-content-center gap-3 mt-3">
+      <button class="btn btn-success px-4" type="button" (click)="fetchStateAwsData()">Submit</button>
+      <button class="btn btn-primary px-4" type="button" (click)="onDownloadStateAws()" [disabled]="!stateAwsDisplayRows || stateAwsDisplayRows.length === 0">Download</button>
+    </div>
+  </div>
+
+  <!-- Gentle note -->
+  <div class="alert alert-info mx-3 mt-2 py-2 px-3" style="font-size: 13px;">
+    <strong>Note:</strong> State AWS data may not be available for all stations across all dates. Missing values are shown as <strong>-</strong>.
+  </div>
+
+  <div class="loading-overlay" *ngIf="stateAwsIsLoading">
+    <div class="loading-spinner"></div>
+    <span>Loading...</span>
+  </div>
+
+  <div class="container-fluid px-3 pt-2">
+
+    <!-- Statistics button -->
+    <div class="d-flex justify-content-end mb-2" *ngIf="stateAwsDisplayRows.length">
+      <button class="btn btn-outline-primary btn-sm px-4" (click)="openAwsStatistics()">&#x1F4CA; Statistics</button>
+    </div>
+
+    <!-- Table (hidden while Statistics is open) -->
+    <div *ngIf="!showAwsStatistics" class="data-table-wrapper">
       <div class="table-container">
         <table class="data-table">
           <thead>
             <tr>
-              <th *ngFor="let col of DailyWiseStationcolumns">{{ col | titlecase }}</th>
+              <th *ngFor="let col of stateAwsColumns">{{ col | titlecase }}</th>
             </tr>
           </thead>
-          <tbody *ngIf="DailyWiseStationRows && DailyWiseStationRows.length > 0">
-            <tr *ngFor="let row of DailyWiseStationRows; let i = index" 
-                [class.even-row]="i % 2 === 0">
-              <td *ngFor="let col of DailyWiseStationcolumns" 
-                  [class.numeric]="isNumeric(row[col])">
+          <tbody *ngIf="stateAwsDisplayRows && stateAwsDisplayRows.length > 0">
+            <tr *ngFor="let row of stateAwsDisplayRows; let i = index" [class.even-row]="i % 2 === 0">
+              <td *ngFor="let col of stateAwsColumns" [class.numeric]="isNumeric(row[col])">
                 {{ formatCellValue(row[col]) }}
               </td>
             </tr>
           </tbody>
-          <tbody *ngIf="!isLoading && (!DailyWiseStationRows || DailyWiseStationRows.length === 0)">
+          <tbody *ngIf="!stateAwsIsLoading && (!stateAwsDisplayRows || stateAwsDisplayRows.length === 0)">
             <tr>
-              <td [attr.colspan]="DailyWiseStationcolumns?.length" class="no-data">
-                Select the appropriate options and Submit
+              <td [attr.colspan]="stateAwsColumns?.length" class="no-data">
+                Select date range and Submit
               </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
+
+    <!-- Statistics: satellite map LEFT + charts RIGHT (in-page, no modal) -->
+    <div *ngIf="showAwsStatistics" class="statistics-split-layout">
+      <div class="stats-map-panel">
+        <div id="aws-stats-map" style="position:absolute;inset:0;"></div>
+      </div>
+      <div class="stats-charts-panel">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="fw-bold" style="font-size:15px;color:#1F4E79;">Analytics — State AWS Station Data</span>
+          <button class="btn btn-outline-secondary btn-sm" (click)="closeAwsStatistics()">&#8592; Back to Table</button>
+        </div>
+        <div class="chart-grid-1">
+          <div class="chart-card"><div [chart]="awsSourceChart"></div></div>
+        </div>
+        <div class="chart-grid-1 mt-3">
+          <div class="chart-card"><div [chart]="awsMonsoonChart"></div></div>
+        </div>
+        <div class="chart-grid-2 mt-3">
+          <div class="chart-card"><div [chart]="awsTop10Chart"></div></div>
+          <div class="chart-card"><div [chart]="awsStateChart"></div></div>
+        </div>
+      </div>
+    </div>
   </div>
-  
 
-  <br>
-</div>
-
-
-
-
+</ng-container>
+<!-- END State AWS Tab -->
