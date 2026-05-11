@@ -711,7 +711,7 @@ export class DownloadPdf {
 
         this.rows.push([
             { content: '', styles: { fillColor: subdivColorCode } },
-            { content: `SUBDIVISION : ${subdivisionDate.subdiv_name}`, styles: { fillColor: subdivColorCode } },
+            { content: subdivisionDate.subdiv_name, styles: { fillColor: subdivColorCode } },
             { content: subdivisionDate.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionDate.actual_subdiv_rainfall) : ' ', styles: { fillColor: subdivColorCode } },
             { content: this.constants.trimToOneDecimals(parseFloat(subdivisionDate.rainfall_normal_value)), styles: { fillColor: subdivColorCode } },
             { content: subdivisionDate.departure != null ? this.constants.trimToZeroDecimals(subdivisionDate.departure) : ' ', styles: { fillColor: subdivColorCode } },
@@ -738,7 +738,7 @@ export class DownloadPdf {
 
             this.rows.push([
                 { content: '', styles: { fillColor: stateColorCode } },
-                { content: `STATE : ${stateDate.state_name}`, styles: { fillColor: stateColorCode } },
+                { content: stateDate.state_name, styles: { fillColor: stateColorCode } },
                 { content: stateDate.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateDate.actual_state_rainfall) : ' ', styles: { fillColor: stateColorCode } },
                 { content: this.constants.trimToOneDecimals(parseFloat(stateDate.rainfall_normal_value)), styles: { fillColor: stateColorCode } },
                 { content: stateDate.departure != null ? this.constants.trimToZeroDecimals(stateDate.departure) : ' ', styles: { fillColor: stateColorCode } },
