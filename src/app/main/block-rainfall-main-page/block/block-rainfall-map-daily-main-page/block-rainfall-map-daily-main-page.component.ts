@@ -1084,9 +1084,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
           const actual = matchedData?.actual_rainfall != null
             ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
             : null;
-          const color = this.selecteddatamode === 'Actual'
-            ? this.constants.getActualColorForRainfall(actual)
-            : this.constants.getColorForRainfall(departure ?? 'NA');
+          const color = this.constants.getActualColorForRainfall(actual);
           return {
             fillColor: color,
             weight: 1,
