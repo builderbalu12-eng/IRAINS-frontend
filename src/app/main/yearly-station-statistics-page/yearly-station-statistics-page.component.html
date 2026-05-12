@@ -123,7 +123,7 @@
 <div class="container-fluid px-3 pt-2">
 
   <!-- Statistics button -->
-  <div class="d-flex justify-content-end mb-2" *ngIf="DailyWiseStationRows?.length">
+  <div class="d-flex justify-content-end mb-2" *ngIf="DailyWiseStationRows?.length && !showImdStatistics">
     <button class="btn btn-outline-primary btn-sm px-4" (click)="openImdStatistics()">&#x1F4CA; Statistics</button>
   </div>
 
@@ -252,8 +252,8 @@
   <div class="container-fluid px-3 pt-2">
 
     <!-- Statistics button -->
-    <div class="d-flex justify-content-end mb-2" *ngIf="stateAwsDisplayRows.length">
-      <button class="btn btn-outline-primary btn-sm px-4" (click)="openAwsStatistics()">&#x1F4CA; Statistics</button>
+    <div class="d-flex justify-content-end mb-2" *ngIf="!showAwsStatistics">
+      <button class="btn btn-outline-primary btn-sm px-4" (click)="openAwsStatistics()" [disabled]="!stateAwsDisplayRows.length">&#x1F4CA; Statistics</button>
     </div>
 
     <!-- Table (hidden while Statistics is open) -->

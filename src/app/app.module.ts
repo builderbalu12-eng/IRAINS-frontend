@@ -188,6 +188,8 @@ import { BlockRainfallMapDailyMainPagePubicComponent } from './main/block-rainfa
 import { BlockActualRainfallMapDailyMainPagePubicComponent } from './main/block-rainfall-main-page/block/Guest/block-actual-rainfall-map-daily-main-page-pubic/block-actual-rainfall-map-daily-main-page-pubic.component';
 import { BlockActualOrgawsRainfallMapDailyMainPagePubicComponent } from './main/block-rainfall-main-page/block/Guest/block-actual-orgaws-rainfall-map-daily-main-page-pubic/block-actual-orgaws-rainfall-map-daily-main-page-pubic.component';
 import { CalculationExclusionComponent } from './main/admin-panel/calculationExclusion/calculation-exclusion/calculation-exclusion.component';
+import { DisplayOrderManagementComponent } from './main/display-order-management/display-order-management.component';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -349,9 +351,11 @@ import { CalculationExclusionComponent } from './main/admin-panel/calculationExc
     BlockActualRainfallMapDailyMainPagePubicComponent,
     BlockActualOrgawsRainfallMapDailyMainPagePubicComponent,
     CalculationExclusionComponent,
+    DisplayOrderManagementComponent,
   ],
   imports: [
     MatCardModule,
+    DragDropModule,
     PdfViewerModule,
     HttpClientModule,
     LeafletModule,
