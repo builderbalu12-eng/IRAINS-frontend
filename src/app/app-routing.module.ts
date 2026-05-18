@@ -113,6 +113,19 @@ import { UserManualv2Component } from './user-manualv2/user-manualv2.component';
 import { BlockActualRainfallMapDailyMainPagePubicComponent } from './main/block-rainfall-main-page/block/Guest/block-actual-rainfall-map-daily-main-page-pubic/block-actual-rainfall-map-daily-main-page-pubic.component';
 import { CalculationExclusionComponent } from './main/admin-panel/calculationExclusion/calculation-exclusion/calculation-exclusion.component';
 import { BlockRainfallMapDailyMainPageComponent } from './main/block-rainfall-main-page/block/block-rainfall-map-daily-main-page/block-rainfall-map-daily-main-page.component';
+import { DisplayOrderManagementComponent } from './main/display-order-management/display-order-management.component';
+import { DataManagementComponent } from './main/data-management/data-management.component';
+import { GeojsonUploadComponent } from './main/data-management/geojson-upload/geojson-upload.component';
+import { BlockManagementComponent } from './main/data-management/block-management/block-management.component';
+import { DistrictManagementComponent } from './main/data-management/district-management/district-management.component';
+import { StateManagementComponent } from './main/data-management/state-management/state-management.component';
+import { SubdivisionManagementComponent } from './main/data-management/subdivision-management/subdivision-management.component';
+import { RegionManagementComponent } from './main/data-management/region-management/region-management.component';
+import { PermissionsComponent } from './main/permissions/permissions.component';
+import { RbacComponent } from './main/permissions/rbac/rbac.component';
+import { NewRegisterComponent } from './main/permissions/new-register/new-register.component';
+import { RoleManagementComponent } from './main/permissions/role-management/role-management.component';
+import { RouteManagementComponent } from './main/permissions/route-management/route-management.component';
 
 
 export const routes: Routes = [
@@ -141,7 +154,46 @@ export const routes: Routes = [
  { path: 'spatial-table', component: SpatialTableComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'monsoon-activity', component: MonsoonActivityComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'river-basin', component: GangaRiverBasinComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'calulate-exclusion', component: CalculationExclusionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ { path: 'calulate-exclusion', redirectTo: '/data-management/calculation-exclusion', pathMatch: 'full' },
+ { path: 'display-order-management', redirectTo: '/data-management/display-order', pathMatch: 'full' },
+
+ {
+  path: 'data-management',
+  component: DataManagementComponent,
+  canActivate: [AuthGuard],
+  data: { allowedUsers: ['hq'] },
+  children: [
+    { path: 'calculation-exclusion', component: CalculationExclusionComponent },
+    { path: 'display-order',         component: DisplayOrderManagementComponent },
+    { path: 'station-management',    component: StationManagementComponent },
+    { path: 'geojson-upload',        component: GeojsonUploadComponent },
+    { path: 'block-management',      component: BlockManagementComponent },
+    { path: 'district-management',   component: DistrictManagementComponent },
+    { path: 'state-management',      component: StateManagementComponent },
+    { path: 'subdivision-management',component: SubdivisionManagementComponent },
+    { path: 'region-management',     component: RegionManagementComponent },
+    { path: 'rbac',             component: RbacComponent },
+    { path: 'new-register',     component: NewRegisterComponent },
+    { path: 'role-management',  component: RoleManagementComponent },
+    { path: 'route-management', component: RouteManagementComponent },
+    { path: '', redirectTo: 'calculation-exclusion', pathMatch: 'full' }
+  ]
+ },
+
+ {
+  path: 'permissions',
+  component: PermissionsComponent,
+  canActivate: [AuthGuard],
+  data: { allowedUsers: ['hq'] },
+  children: [
+    { path: 'rbac',             component: RbacComponent },
+    { path: 'new-register',     component: NewRegisterComponent },
+    { path: 'role-management',  component: RoleManagementComponent },
+    { path: 'route-management', component: RouteManagementComponent },
+    { path: '', redirectTo: 'rbac', pathMatch: 'full' }
+  ]
+ },
+
  {
   path: 'admin-panel',
   component: AdminPanelComponent,

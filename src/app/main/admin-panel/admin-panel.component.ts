@@ -1,5 +1,4 @@
-// src/app/main/admin-panel/admin-panel.component.ts
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 
@@ -17,61 +16,38 @@ interface MenuItem {
   styleUrls: ['./admin-panel.component.css']
 })
 export class AdminPanelComponent implements OnInit, OnDestroy {
-  isCollapsed = false;
-  sidebarHeight = 600;
+  isPinned = true;
+  isHovered = false;
   currentRoute = '';
 
+  get isExpanded(): boolean { return this.isPinned || this.isHovered; }
+
   menuItems: MenuItem[] = [
-    { label: 'Dashboard', icon: 'bi bi-speedometer2', route: '/irains-dashboard' },
-    { label: 'Station Management', icon: 'bi bi-geo-alt-fill', route: '/admin-panel/station-management' },
-    { label: 'Master Data', icon: 'bi bi-building', expanded: false, children: [
-      { label: 'Location Master', icon: 'bi bi-map', route: '/admin/location-master' },
-      { label: 'Block Codes', icon: 'bi bi-grid-3x3-gap', route: '/admin/blocks' }
-    ]},
-    { label: 'Reports', icon: 'bi bi-file-earmark-bar-graph', route: '/admin/reports' },
-    { label: 'System Health', icon: 'bi bi-heart-pulse-fill', route: '/spatial-table' },
-    { label: 'User Management', icon: 'bi bi-people-fill', route: '/admin/users' },
-    { label: 'Settings', icon: 'bi bi-gear-fill', route: '/admin/settings' }
+    { label: 'Dashboard',          icon: 'bi bi-speedometer2',       route: '/irains-dashboard' },
+    { label: 'Station Management', icon: 'bi bi-geo-alt-fill',       route: '/admin-panel/station-management' },
+    { label: 'Data Management',    icon: 'bi bi-database-fill-gear', route: '/data-management' },
+    { label: 'Permissions',        icon: 'bi bi-shield-lock-fill',   route: '/permissions' },
+    { label: 'System Health',      icon: 'bi bi-heart-pulse-fill',   route: '/spatial-table' },
   ];
 
-  private routerEvents$!: any;
+  private routerSub: any;
 
   constructor(private router: Router) {}
 
   ngOnInit(): void {
-    this.updateSidebarHeight();
-    this.routerEvents$ = this.router.events
-      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe((e: NavigationEnd) => {
-        this.currentRoute = e.urlAfterRedirects;
-      });
     this.currentRoute = this.router.url;
+    this.routerSub = this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe((e: NavigationEnd) => { this.currentRoute = e.urlAfterRedirects; });
   }
 
-  ngOnDestroy(): void {
-    this.routerEvents$?.unsubscribe();
-  }
+  ngOnDestroy(): void { this.routerSub?.unsubscribe(); }
 
-  @HostListener('window:resize')
-  updateSidebarHeight() {
-    this.sidebarHeight = window.innerHeight - 80; // 80px = your header height
-  }
+  onMouseEnter(): void { this.isHovered = true; }
+  onMouseLeave(): void { this.isHovered = false; }
+  togglePin(): void    { this.isPinned = !this.isPinned; }
 
-  toggleSidebar() {
-    this.isCollapsed = !this.isCollapsed;
-  }
-
-  toggleSubmenu(item: MenuItem) {
-    if (item.children) {
-      item.expanded = !item.expanded;
-    }
-  }
-
-  isActive(route: string): boolean {
-    return this.currentRoute.startsWith(route);
-  }
-
-  hasActiveChild(item: MenuItem): boolean {
-    return item.children?.some(child => child.route && this.isActive(child.route)) || false;
+  toggleSubmenu(item: MenuItem): void {
+    if (item.children) item.expanded = !item.expanded;
   }
 }

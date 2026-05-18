@@ -141,9 +141,6 @@
         <button mat-button class="mode-button time-filter-btn"
           [ngClass]="{ active: selectedTimeFilter === 'daily' }"
           (click)="setTimeFilter('daily')">Daily</button>
-        <button mat-button class="mode-button time-filter-btn"
-          [ngClass]="{ active: selectedTimeFilter === 'cumulative' }"
-          (click)="setTimeFilter('cumulative')">Cumul.</button>
       </div>
     </div>
   </div>
@@ -576,6 +573,161 @@
             <span class="badge bg-secondary me-1">IMD Blocks DB: {{ totalBlocksInGetBlock }}</span>
             <span class="badge bg-info text-dark">Filter: {{ selectedTimeFilter }}</span>
           </div>
+
+          <!-- ── INDIA_BLOCK.json Coverage Analysis ───────────────────────── -->
+          <div *ngIf="!awsLoading && coverageTotal > 0" class="mb-3">
+            <div class="fw-bold small mb-2" style="color:#002467;">INDIA_BLOCK Coverage Analysis</div>
+
+            <!-- Country-level summary cards -->
+            <div class="coverage-summary-row mb-3">
+              <div class="cov-card cov-total">
+                <div class="cov-num">{{ coverageTotal }}</div>
+                <div class="cov-lbl">Total Blocks<br><small>(INDIA_BLOCK.json)</small></div>
+              </div>
+              <div class="cov-card cov-imd">
+                <div class="cov-num">{{ coverageIMD }}</div>
+                <div class="cov-lbl">From IMD<br><small>(Actual)</small></div>
+              </div>
+              <div class="cov-card cov-aws">
+                <div class="cov-num">{{ coverageAWS }}</div>
+                <div class="cov-lbl">From STATE AWS<br><small>(Actual)</small></div>
+              </div>
+              <div class="cov-card cov-nodata">
+                <div class="cov-num">{{ coverageNoData }}</div>
+                <div class="cov-lbl">No Data<br><small>(Unmatched)</small></div>
+              </div>
+            </div>
+
+            <!-- Toggle buttons for all 3 tables -->
+            <div class="d-flex gap-2 mb-2 flex-wrap">
+              <button class="btn btn-sm py-0 px-2"
+                      [ngClass]="showStateTable ? 'btn-primary' : 'btn-outline-primary'"
+                      style="font-size:0.75rem;"
+                      (click)="showStateTable = !showStateTable; showDistrictTable = false; showBlockTable = false">
+                State Table
+              </button>
+              <button class="btn btn-sm py-0 px-2"
+                      [ngClass]="showDistrictTable ? 'btn-primary' : 'btn-outline-primary'"
+                      style="font-size:0.75rem;"
+                      (click)="showDistrictTable = !showDistrictTable; showStateTable = false; showBlockTable = false">
+                District Table
+              </button>
+              <button class="btn btn-sm py-0 px-2"
+                      [ngClass]="showBlockTable ? 'btn-primary' : 'btn-outline-primary'"
+                      style="font-size:0.75rem;"
+                      (click)="showBlockTable = !showBlockTable; showStateTable = false; showDistrictTable = false">
+                Block Table (all {{ coverageTotal }})
+              </button>
+            </div>
+
+            <!-- State table -->
+            <div *ngIf="showStateTable" class="table-responsive cov-table-wrap">
+              <table class="table table-sm table-bordered coverage-table">
+                <thead class="table-dark">
+                  <tr>
+                    <th>State</th>
+                    <th class="text-center">Total</th>
+                    <th class="text-center">IMD</th>
+                    <th class="text-center">STATE AWS</th>
+                    <th class="text-center">No Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of coverageByState">
+                    <td class="small fw-semibold">{{ row.state }}</td>
+                    <td class="text-center small">{{ row.total }}</td>
+                    <td class="text-center"><span class="badge bg-success">{{ row.imd }}</span></td>
+                    <td class="text-center"><span class="badge bg-info text-dark">{{ row.aws }}</span></td>
+                    <td class="text-center">
+                      <span class="badge" [ngClass]="row.noData > 0 ? 'bg-danger' : 'bg-light text-muted'">{{ row.noData }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot class="table-secondary fw-bold">
+                  <tr>
+                    <td>INDIA TOTAL</td>
+                    <td class="text-center">{{ coverageTotal }}</td>
+                    <td class="text-center"><span class="badge bg-success">{{ coverageIMD }}</span></td>
+                    <td class="text-center"><span class="badge bg-info text-dark">{{ coverageAWS }}</span></td>
+                    <td class="text-center"><span class="badge bg-danger">{{ coverageNoData }}</span></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- District table -->
+            <div *ngIf="showDistrictTable" class="table-responsive cov-table-wrap">
+              <table class="table table-sm table-bordered coverage-table">
+                <thead class="table-dark">
+                  <tr>
+                    <th>State</th>
+                    <th>District</th>
+                    <th class="text-center">Total</th>
+                    <th class="text-center">IMD</th>
+                    <th class="text-center">STATE AWS</th>
+                    <th class="text-center">No Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of coverageByDistrict">
+                    <td class="small fw-semibold">{{ row.state }}</td>
+                    <td class="small">{{ row.district }}</td>
+                    <td class="text-center small">{{ row.total }}</td>
+                    <td class="text-center"><span class="badge bg-success">{{ row.imd }}</span></td>
+                    <td class="text-center"><span class="badge bg-info text-dark">{{ row.aws }}</span></td>
+                    <td class="text-center">
+                      <span class="badge" [ngClass]="row.noData > 0 ? 'bg-danger' : 'bg-light text-muted'">{{ row.noData }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot class="table-secondary fw-bold">
+                  <tr>
+                    <td colspan="2">INDIA TOTAL</td>
+                    <td class="text-center">{{ coverageTotal }}</td>
+                    <td class="text-center"><span class="badge bg-success">{{ coverageIMD }}</span></td>
+                    <td class="text-center"><span class="badge bg-info text-dark">{{ coverageAWS }}</span></td>
+                    <td class="text-center"><span class="badge bg-danger">{{ coverageNoData }}</span></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- Block table -->
+            <div *ngIf="showBlockTable" class="table-responsive cov-table-wrap">
+              <table class="table table-sm table-bordered coverage-table">
+                <thead class="table-dark">
+                  <tr>
+                    <th>#</th>
+                    <th>State</th>
+                    <th>District</th>
+                    <th>Block</th>
+                    <th>Block Code</th>
+                    <th class="text-center">Source</th>
+                    <th class="text-center">Actual (mm)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of coverageByBlock; let i = index">
+                    <td class="text-muted small">{{ i + 1 }}</td>
+                    <td class="small fw-semibold">{{ row.state }}</td>
+                    <td class="small">{{ row.district }}</td>
+                    <td class="small">{{ row.block }}</td>
+                    <td class="small text-muted">{{ row.blockCode }}</td>
+                    <td class="text-center">
+                      <span class="badge"
+                        [ngClass]="row.source === 'IMD' ? 'bg-success' : row.source === 'AWS' ? 'bg-info text-dark' : 'bg-danger'">
+                        {{ row.source }}
+                      </span>
+                    </td>
+                    <td class="text-center small">
+                      {{ row.actual !== null ? row.actual : '—' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <hr class="my-2"/>
 
           <!-- Per-source block stats table -->
           <div *ngIf="!awsLoading" class="table-responsive">

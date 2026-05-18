@@ -658,129 +658,165 @@ export class DownloadPdf {
 
 
   private loadTheRows() {
-    // Group by Subdivision and then State
-    this.rows = []
-    const groupedBySubDivision = this.districtdepCurrdate.reduce((acc, item) => {
-        const subDivision = item.sub_division_code;
-        const subDivName = item.subdiv_name;
-        const state = item.state_code;
+    this.rows = [];
 
-        if (!acc[subDivision]) {
-            acc[subDivision] = {};
-        }
-
-        if (!acc[subDivision][state]) {
-            acc[subDivision][state] = [];
-        }
-        
-        acc[subDivision][state].push(item);
-        return acc;
+    // Group districts: subdiv_code -> state_code -> districts[]
+    const groupedBySubDivision = this.districtdepCurrdate.reduce((acc: any, item: any) => {
+      const sd = item.sub_division_code;
+      const st = item.state_code;
+      if (!acc[sd]) acc[sd] = {};
+      if (!acc[sd][st]) acc[sd][st] = [];
+      acc[sd][st].push(item);
+      return acc;
     }, {});
 
-    const subdivNames = this.subdivdepCurrdate.map((x:any)=> [x.s_code, x.subdiv_name])
-    const codeToNameMap = new Map(subdivNames.map(([code, name]) => [code, name]));
+    // Build order maps from districtDisplayOrder (now includes parent_group_order & parent_group_name)
+    const parentGroupOrderMap  = new Map<string, number>();   // parent_group_name -> order
+    const subdivOrderMap       = new Map<string, number>();   // subdiv_code        -> first display_order
+    const stateOrderMap        = new Map<string, number>();   // subdiv_code_state  -> first display_order
+    const districtOrderMap     = new Map<string, number>();   // district_code      -> display_order
+    // Track which subdiv_codes belong to each parent group
+    const parentGroupSubdivs   = new Map<string, Set<string>>();
 
-    const subdivOrderMap = new Map<string, number>();
-    const stateOrderMap  = new Map<string, number>();
-    const districtOrderMap = new Map<string, number>();
     for (const row of this.districtDisplayOrder) {
-      const sdKey = String(row.subdiv_code);
+      const sdKey  = String(row.subdiv_code);
+      const pgName = row.parent_group_name ?? row.subdiv_name;
+      const pgOrd  = row.parent_group_order ?? row.display_order;
+
+      if (!parentGroupOrderMap.has(pgName)) parentGroupOrderMap.set(pgName, pgOrd);
+      if (!parentGroupSubdivs.has(pgName)) parentGroupSubdivs.set(pgName, new Set());
+      parentGroupSubdivs.get(pgName)!.add(sdKey);
+
       if (!subdivOrderMap.has(sdKey)) subdivOrderMap.set(sdKey, row.display_order);
       const stKey = `${row.subdiv_code}_${row.state_code}`;
       if (!stateOrderMap.has(stKey)) stateOrderMap.set(stKey, row.display_order);
       districtOrderMap.set(String(row.district_code), row.display_order);
     }
 
-    const sortedSubDivisions = Object.keys(groupedBySubDivision).sort((a, b) => {
-      const orderA = subdivOrderMap.get(a) ?? 999999;
-      const orderB = subdivOrderMap.get(b) ?? 999999;
-      return orderA !== orderB ? orderA - orderB : (codeToNameMap.get(a) || '').localeCompare(codeToNameMap.get(b) || '');
-    });
+    // Sort parent groups by their order
+    const sortedParentGroups = [...parentGroupOrderMap.entries()]
+      .sort((a, b) => a[1] - b[1])
+      .map(([name]) => name);
 
-    console.group('heygeyye', groupedBySubDivision, sortedSubDivisions, subdivNames);
-    let subdivColorCode = [72, 209, 204];
-    let stateColorCode = [238, 130, 238];
 
-    for (const subDivCode of sortedSubDivisions) {
+    const subdivColorCode  = [72, 209, 204];
+    const stateColorCode   = [238, 130, 238];
 
-        const subdivisionDate = this.subdivdepCurrdate.find(subdiv => subDivCode === subdiv.s_code);
-        const subdivisionSeason = this.subdivdepSeasondate.find(subdiv => subDivCode === subdiv.s_code);
+    for (const pgName of sortedParentGroups) {
+      const subdivsInGroup = [...(parentGroupSubdivs.get(pgName) ?? [])]
+        .filter(sd => groupedBySubDivision[sd])
+        .sort((a, b) => (subdivOrderMap.get(a) ?? 999999) - (subdivOrderMap.get(b) ?? 999999));
 
-        const DateCat = this.constants.getColorAndCat(subdivisionDate.departure);
+      if (subdivsInGroup.length === 0) continue;
+
+      // If this parent group spans multiple subdivisions it is a STATE parent
+      // (e.g. UTTAR PRADESH covers East UP + West UP).
+      // Add a state header row (same pink as all state rows) before the subdivisions.
+      const isStateParent = subdivsInGroup.length > 1;
+      if (isStateParent) {
+        const pgStateDate   = this.statedepCurrdate.find((s: any) => s.state_name === pgName);
+        const pgStateSeason = this.statedepSeasondate.find((s: any) => s.state_name === pgName);
+        const pgDateCat     = this.constants.getColorAndCat(pgStateDate?.departure);
+        const pgSeasonCat   = this.constants.getColorAndCat(pgStateSeason?.departure);
+        this.rows.push([
+          { content: '', styles: { fillColor: stateColorCode } },
+          { content: pgName, styles: { fillColor: stateColorCode, fontStyle: 'bold' } },
+          { content: pgStateDate?.actual_state_rainfall != null ? this.constants.trimToOneDecimals(pgStateDate.actual_state_rainfall) : ' ', styles: { fillColor: stateColorCode } },
+          { content: pgStateDate ? this.constants.trimToOneDecimals(parseFloat(pgStateDate.rainfall_normal_value)) : ' ', styles: { fillColor: stateColorCode } },
+          { content: pgStateDate?.departure != null ? this.constants.trimToZeroDecimals(pgStateDate.departure) : ' ', styles: { fillColor: stateColorCode } },
+          { content: pgDateCat.Cat, styles: { fillColor: pgDateCat.color } },
+          { content: pgStateSeason?.actual_state_rainfall != null ? this.constants.trimToOneDecimals(pgStateSeason.actual_state_rainfall) : ' ', styles: { fillColor: stateColorCode } },
+          { content: pgStateSeason ? this.constants.trimToOneDecimals(parseFloat(pgStateSeason.rainfall_normal_value)) : ' ', styles: { fillColor: stateColorCode } },
+          { content: pgStateSeason?.departure != null ? this.constants.trimToZeroDecimals(pgStateSeason.departure) : ' ', styles: { fillColor: stateColorCode } },
+          { content: pgSeasonCat.Cat, styles: { fillColor: pgSeasonCat.color } },
+        ]);
+      }
+
+      for (const subDivCode of subdivsInGroup) {
+        const subdivisionDate   = this.subdivdepCurrdate.find((s: any) => subDivCode === s.s_code);
+        const subdivisionSeason = this.subdivdepSeasondate.find((s: any) => subDivCode === s.s_code);
+        if (!subdivisionDate || !subdivisionSeason) continue;
+
+        const DateCat   = this.constants.getColorAndCat(subdivisionDate.departure);
         const SeasonCat = this.constants.getColorAndCat(subdivisionSeason.departure);
 
         this.rows.push([
-            { content: '', styles: { fillColor: subdivColorCode } },
-            { content: `SUBDIVISION : ${subdivisionDate.subdiv_name}`, styles: { fillColor: subdivColorCode } },
-            { content: subdivisionDate.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionDate.actual_subdiv_rainfall) : ' ', styles: { fillColor: subdivColorCode } },
-            { content: this.constants.trimToOneDecimals(parseFloat(subdivisionDate.rainfall_normal_value)), styles: { fillColor: subdivColorCode } },
-            { content: subdivisionDate.departure != null ? this.constants.trimToZeroDecimals(subdivisionDate.departure) : ' ', styles: { fillColor: subdivColorCode } },
-            { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
-            { content: subdivisionSeason.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionSeason.actual_subdiv_rainfall) : ' ', styles: { fillColor: subdivColorCode } },
-            { content: this.constants.trimToOneDecimals(parseFloat(subdivisionSeason.rainfall_normal_value)), styles: { fillColor: subdivColorCode } },
-            { content: subdivisionSeason.departure != null ? this.constants.trimToZeroDecimals(subdivisionSeason.departure) : ' ', styles: { fillColor: subdivColorCode } },
-            { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
+          { content: '', styles: { fillColor: subdivColorCode } },
+          { content: subdivisionDate.subdiv_name, styles: { fillColor: subdivColorCode } },
+          { content: subdivisionDate.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionDate.actual_subdiv_rainfall) : ' ', styles: { fillColor: subdivColorCode } },
+          { content: this.constants.trimToOneDecimals(parseFloat(subdivisionDate.rainfall_normal_value)), styles: { fillColor: subdivColorCode } },
+          { content: subdivisionDate.departure != null ? this.constants.trimToZeroDecimals(subdivisionDate.departure) : ' ', styles: { fillColor: subdivColorCode } },
+          { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
+          { content: subdivisionSeason.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionSeason.actual_subdiv_rainfall) : ' ', styles: { fillColor: subdivColorCode } },
+          { content: this.constants.trimToOneDecimals(parseFloat(subdivisionSeason.rainfall_normal_value)), styles: { fillColor: subdivColorCode } },
+          { content: subdivisionSeason.departure != null ? this.constants.trimToZeroDecimals(subdivisionSeason.departure) : ' ', styles: { fillColor: subdivColorCode } },
+          { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } },
         ]);
 
         const states = groupedBySubDivision[subDivCode];
         const sortedStates = Object.keys(states).sort((a, b) => {
-          const orderA = stateOrderMap.get(`${subDivCode}_${a}`) ?? 999999;
-          const orderB = stateOrderMap.get(`${subDivCode}_${b}`) ?? 999999;
-          return orderA - orderB;
+          const minA = Math.min(...states[a].map((d: any) => districtOrderMap.get(String(d.district_code)) ?? 999999));
+          const minB = Math.min(...states[b].map((d: any) => districtOrderMap.get(String(d.district_code)) ?? 999999));
+          return minA - minB;
         });
 
-        for (const stateCode of sortedStates) {
-            const stateDate = this.statedepCurrdate.find(state => stateCode == state.state_code.toString());
-            const stateSeason = this.statedepSeasondate.find(state => stateCode == state.state_code.toString());
+        const isMultiState = sortedStates.length > 1;
 
-            const DateCat = this.constants.getColorAndCat(stateDate.departure);
-            const SeasonCat = this.constants.getColorAndCat(stateSeason.departure);
+        for (const stateCode of sortedStates) {
+          const stateDate   = this.statedepCurrdate.find((s: any) => stateCode == s.state_code.toString());
+          const stateSeason = this.statedepSeasondate.find((s: any) => stateCode == s.state_code.toString());
+          if (!stateDate || !stateSeason) continue;
+
+          const sDateCat   = this.constants.getColorAndCat(stateDate.departure);
+          const sSeasonCat = this.constants.getColorAndCat(stateSeason.departure);
+
+          // Only add a separate state header when the subdivision spans multiple states.
+          // For single-state subdivisions the teal subdiv row already serves as the combined header.
+          if (isMultiState) {
+            this.rows.push([
+              { content: '', styles: { fillColor: stateColorCode } },
+              { content: stateDate.state_name, styles: { fillColor: stateColorCode } },
+              { content: stateDate.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateDate.actual_state_rainfall) : ' ', styles: { fillColor: stateColorCode } },
+              { content: this.constants.trimToOneDecimals(parseFloat(stateDate.rainfall_normal_value)), styles: { fillColor: stateColorCode } },
+              { content: stateDate.departure != null ? this.constants.trimToZeroDecimals(stateDate.departure) : ' ', styles: { fillColor: stateColorCode } },
+              { content: sDateCat.Cat, styles: { fillColor: sDateCat.color } },
+              { content: stateSeason.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateSeason.actual_state_rainfall) : ' ', styles: { fillColor: stateColorCode } },
+              { content: this.constants.trimToOneDecimals(parseFloat(stateSeason.rainfall_normal_value)), styles: { fillColor: stateColorCode } },
+              { content: stateSeason.departure != null ? this.constants.trimToZeroDecimals(stateSeason.departure) : ' ', styles: { fillColor: stateColorCode } },
+              { content: sSeasonCat.Cat, styles: { fillColor: sSeasonCat.color } },
+            ]);
+          }
+
+          const districtsCurrDate = states[stateCode];
+          const sortedDistricts = [...districtsCurrDate].sort((a: any, b: any) =>
+            (districtOrderMap.get(String(a.district_code)) ?? 999999) -
+            (districtOrderMap.get(String(b.district_code)) ?? 999999)
+          );
+
+          for (let i = 0; i < sortedDistricts.length; i++) {
+            const districtDate   = sortedDistricts[i];
+            const districtSeason = this.districtdepSeasondate.find((d: any) => d.district_code == districtDate.district_code);
+
+            const dDateCat   = this.constants.getColorAndCat(districtDate.departure);
+            const dSeasonCat = this.constants.getColorAndCat(districtSeason?.departure);
 
             this.rows.push([
-                { content: '', styles: { fillColor: stateColorCode } },
-                { content: `STATE : ${stateDate.state_name}`, styles: { fillColor: stateColorCode } },
-                { content: stateDate.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateDate.actual_state_rainfall) : ' ', styles: { fillColor: stateColorCode } },
-                { content: this.constants.trimToOneDecimals(parseFloat(stateDate.rainfall_normal_value)), styles: { fillColor: stateColorCode } },
-                { content: stateDate.departure != null ? this.constants.trimToZeroDecimals(stateDate.departure) : ' ', styles: { fillColor: stateColorCode } },
-                { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
-                { content: stateSeason.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateSeason.actual_state_rainfall) : ' ', styles: { fillColor: stateColorCode } },
-                { content: this.constants.trimToOneDecimals(parseFloat(stateSeason.rainfall_normal_value)), styles: { fillColor: stateColorCode } },
-                { content: stateSeason.departure != null ? this.constants.trimToZeroDecimals(stateSeason.departure) : ' ', styles: { fillColor: stateColorCode } },
-                { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
+              i + 1,
+              districtDate.district_name,
+              districtDate.actual_rainfall != null ? this.constants.trimToOneDecimals(districtDate.actual_rainfall) : ' ',
+              this.constants.trimToOneDecimals(parseFloat(districtDate.normal_rainfall)),
+              districtDate.departure != null ? this.constants.trimToZeroDecimals(districtDate.departure) : ' ',
+              { content: dDateCat.Cat, styles: { fillColor: dDateCat.color } },
+              districtSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(districtSeason.actual_rainfall) : ' ',
+              this.constants.trimToOneDecimals(parseFloat(districtSeason?.normal_rainfall)),
+              districtSeason?.departure != null ? this.constants.trimToZeroDecimals(districtSeason.departure) : ' ',
+              { content: dSeasonCat.Cat, styles: { fillColor: dSeasonCat.color } },
             ]);
-
-            // Sort Districts within each State
-            const districtsCurrDate = states[stateCode];
-            const sortedDistrictsCurrDate = districtsCurrDate.sort((a: any, b: any) => {
-              const orderA = districtOrderMap.get(String(a.district_code)) ?? 999999;
-              const orderB = districtOrderMap.get(String(b.district_code)) ?? 999999;
-              return orderA - orderB;
-            });
-
-            for (let i = 0; i < sortedDistrictsCurrDate.length; i++) {
-                const districtDate = sortedDistrictsCurrDate[i];
-                const districtSeason = this.districtdepSeasondate.find(district => district.district_code == districtDate.district_code);
-
-                const DateCat = this.constants.getColorAndCat(districtDate.departure);
-                const SeasonCat = this.constants.getColorAndCat(districtSeason?.departure);
-
-                // Add District Row
-                this.rows.push([
-                    i + 1,
-                    districtDate.district_name,
-                    districtDate.actual_rainfall != null ? this.constants.trimToOneDecimals(districtDate.actual_rainfall) : ' ',
-                    this.constants.trimToOneDecimals(parseFloat(districtDate.normal_rainfall)),
-                    districtDate.departure != null ? this.constants.trimToZeroDecimals(districtDate.departure) : ' ',
-                    { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
-                    districtSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(districtSeason.actual_rainfall) : ' ',
-                    this.constants.trimToOneDecimals(parseFloat(districtSeason?.normal_rainfall)),
-                    districtSeason?.departure != null ? this.constants.trimToZeroDecimals(districtSeason.departure) : ' ',
-                    { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
-                ]);
-            }
+          }
         }
+      }
     }
-}
+  }
 
 
 

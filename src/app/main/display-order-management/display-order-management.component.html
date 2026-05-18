@@ -1,0 +1,356 @@
+<div class="dom-page">
+  <div class="dom-header">
+    <h2>Display Order Management</h2>
+  </div>
+
+  <mat-tab-group (selectedIndexChange)="onTabChange($event)">
+
+    <!-- ══════════════════════════════════════════
+         TAB 1: DISTRICTS  (district_display_order)
+    ══════════════════════════════════════════ -->
+    <mat-tab label="District Display Order">
+      <div class="tab-content">
+        <div class="toolbar">
+          <button class="btn-primary" (click)="openAddDialog()" [disabled]="districtLoading">+ Add District</button>
+          <button class="btn-save" (click)="saveDistrictOrder()" [disabled]="districtSaving || districtLoading">
+            {{ districtSaving ? 'Saving...' : 'Save Order' }}
+          </button>
+          <span class="hint">Drag rows to reorder. Click Save Order to persist.</span>
+        </div>
+
+        <div *ngIf="districtLoading" class="loading">Loading...</div>
+
+        <div *ngIf="!districtLoading" class="flat-list-wrap">
+          <div class="list-header-row">
+            <span class="col-pos">#</span>
+            <span class="col-group">Grp</span>
+            <span class="col-subdiv">Subdivision</span>
+            <span class="col-state">State</span>
+            <span class="col-district">District</span>
+            <span class="col-actions">Del</span>
+          </div>
+
+          <div
+            cdkDropList
+            [cdkDropListData]="flatDistricts"
+            (cdkDropListDropped)="onDistrictDrop($event)"
+            class="flat-drop-list"
+          >
+            <div
+              *ngFor="let row of flatDistricts; let i = index"
+              cdkDrag
+              class="flat-row"
+              [class.group-start]="i === 0 || flatDistricts[i-1].parent_group_name !== row.parent_group_name"
+            >
+              <!-- Group label at first row of each parent group -->
+              <div
+                *ngIf="i === 0 || flatDistricts[i-1].parent_group_name !== row.parent_group_name"
+                class="group-label"
+              >
+                {{ row.parent_group_order }}. {{ row.parent_group_name }}
+              </div>
+
+              <div class="row-body">
+                <span class="col-pos drag-icon">⠿ {{ i + 1 }}</span>
+                <span class="col-group">{{ row.parent_group_order }}</span>
+                <span class="col-subdiv">{{ row.subdiv_name }}</span>
+                <span class="col-state">{{ row.state_name }}</span>
+                <span class="col-district">
+                  {{ row.district_name }}
+                  <span *ngIf="row.is_common" class="badge-common">common</span>
+                </span>
+                <span class="col-actions">
+                  <button class="btn-del" (click)="deleteDistrict(row, i)" title="Delete">✕</button>
+                </span>
+              </div>
+
+              <div *cdkDragPreview class="drag-preview">{{ row.district_name }}</div>
+              <div *cdkDragPlaceholder class="drag-placeholder"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- ══════════════════════════════════════════
+         TAB 2: STATES  (state_display_order)
+    ══════════════════════════════════════════ -->
+    <mat-tab label="State Display Order">
+      <div class="tab-content">
+        <div class="toolbar">
+          <button class="btn-primary" (click)="openAddStateDialog()" [disabled]="stateLoading">+ Add State</button>
+          <button class="btn-save" (click)="saveStateOrder()" [disabled]="stateSaving || stateLoading">
+            {{ stateSaving ? 'Saving...' : 'Save Order' }}
+          </button>
+          <span class="hint">Drag states to reorder. Click Save Order to persist.</span>
+        </div>
+
+        <div *ngIf="stateLoading" class="loading">Loading...</div>
+
+        <div *ngIf="!stateLoading" class="flat-list-wrap">
+          <div class="list-header-row">
+            <span class="col-pos">#</span>
+            <span class="col-region">Region</span>
+            <span class="col-name">State Name</span>
+            <span class="col-code">Code</span>
+            <span class="col-actions">Del</span>
+          </div>
+
+          <div
+            cdkDropList
+            [cdkDropListData]="flatStates"
+            (cdkDropListDropped)="onStateDrop($event)"
+            class="flat-drop-list"
+          >
+            <div
+              *ngFor="let row of flatStates; let i = index"
+              cdkDrag
+              class="flat-row"
+              [class.group-start]="i === 0 || flatStates[i-1].region_code !== row.region_code"
+            >
+              <div
+                *ngIf="i === 0 || flatStates[i-1].region_code !== row.region_code"
+                class="group-label state-group-label"
+              >
+                {{ row.region_name || regionNameMap.get(row.region_code) || row.region_code }}
+              </div>
+
+              <div class="row-body">
+                <span class="col-pos drag-icon">⠿ {{ i + 1 }}</span>
+                <span class="col-region">{{ row.region_name || regionNameMap.get(row.region_code) || row.region_code }}</span>
+                <span class="col-name">{{ row.state_name }}</span>
+                <span class="col-code">{{ row.state_code }}</span>
+                <span class="col-actions">
+                  <button class="btn-del" (click)="deleteState(row, i)" title="Delete">✕</button>
+                </span>
+              </div>
+
+              <div *cdkDragPreview class="drag-preview">{{ row.state_name }}</div>
+              <div *cdkDragPlaceholder class="drag-placeholder"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- ══════════════════════════════════════════
+         TAB 3: SUBDIVISIONS  (subdivision_display_order)
+    ══════════════════════════════════════════ -->
+    <mat-tab label="Subdivision Display Order">
+      <div class="tab-content">
+        <div class="toolbar">
+          <button class="btn-primary" (click)="openAddSubdivDialog()" [disabled]="subdivLoading">+ Add Subdivision</button>
+          <button class="btn-save" (click)="saveSubdivOrder()" [disabled]="subdivSaving || subdivLoading">
+            {{ subdivSaving ? 'Saving...' : 'Save Order' }}
+          </button>
+          <span class="hint">Drag subdivisions to reorder. Click Save Order to persist.</span>
+        </div>
+
+        <div *ngIf="subdivLoading" class="loading">Loading...</div>
+
+        <div *ngIf="!subdivLoading" class="flat-list-wrap">
+          <div class="list-header-row">
+            <span class="col-pos">#</span>
+            <span class="col-region">Region</span>
+            <span class="col-name">Subdivision Name</span>
+            <span class="col-code">Code</span>
+            <span class="col-actions">Del</span>
+          </div>
+
+          <div
+            cdkDropList
+            [cdkDropListData]="flatSubdivs"
+            (cdkDropListDropped)="onSubdivDrop($event)"
+            class="flat-drop-list"
+          >
+            <div
+              *ngFor="let row of flatSubdivs; let i = index"
+              cdkDrag
+              class="flat-row"
+              [class.group-start]="i === 0 || flatSubdivs[i-1].region_code !== row.region_code"
+            >
+              <div
+                *ngIf="i === 0 || flatSubdivs[i-1].region_code !== row.region_code"
+                class="group-label subdiv-group-label"
+              >
+                {{ row.region_name || regionNameMap.get(row.region_code) || row.region_code }}
+              </div>
+
+              <div class="row-body">
+                <span class="col-pos drag-icon">⠿ {{ i + 1 }}</span>
+                <span class="col-region">{{ row.region_name || regionNameMap.get(row.region_code) || row.region_code }}</span>
+                <span class="col-name">{{ row.subdivision_name }}</span>
+                <span class="col-code">{{ row.subdiv_code }}</span>
+                <span class="col-actions">
+                  <button class="btn-del" (click)="deleteSubdiv(row, i)" title="Delete">✕</button>
+                </span>
+              </div>
+
+              <div *cdkDragPreview class="drag-preview">{{ row.subdivision_name }}</div>
+              <div *cdkDragPlaceholder class="drag-placeholder"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ADD STATE DIALOG
+══════════════════════════════════════════ -->
+<div *ngIf="showAddStateDialog" class="dialog-overlay" (click)="showAddStateDialog = false">
+  <div class="dialog-box" (click)="$event.stopPropagation()">
+    <div class="dialog-header">
+      <h3>Add State to Display Order</h3>
+      <button class="btn-close" (click)="showAddStateDialog = false">✕</button>
+    </div>
+    <div class="dialog-body">
+      <label>Search State</label>
+      <input type="text" [(ngModel)]="stateSearchText" (input)="onStateSearch()"
+        placeholder="Type state or region name..." class="search-input" autocomplete="off" />
+      <div *ngIf="filteredStateRows.length > 0 && stateSearchText.length > 0" class="search-results">
+        <div *ngFor="let r of filteredStateRows" class="search-result-row" (click)="selectStateRow(r)">
+          <strong>{{ r.state_name }}</strong>
+          <span class="muted"> — {{ r.region_name }}</span>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>State</label>
+          <input type="text" [(ngModel)]="addStateForm.state_name" class="form-input" readonly />
+        </div>
+        <div class="form-row">
+          <label>Region</label>
+          <input type="text" [(ngModel)]="addStateForm.region_name" class="form-input" readonly />
+        </div>
+        <div class="form-row">
+          <label>Insert after position # (blank = at end)
+            <span class="info-btn" title="Enter the position number after which this entry should be inserted.&#10;&#10;Example: If you type 10, the new entry will appear at position 11, and everything after it shifts down by 1.&#10;&#10;Leave blank to add at the very end of the list.&#10;&#10;Tip: Check the # column in the list to find the right position number.">i</span>
+          </label>
+          <input type="number" [(ngModel)]="addStateForm.insert_after" class="form-input" placeholder="e.g. 10" />
+        </div>
+      </div>
+    </div>
+    <div class="dialog-footer">
+      <button class="btn-save" (click)="submitAddState()">Add</button>
+      <button class="btn-cancel" (click)="showAddStateDialog = false">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ADD SUBDIVISION DIALOG
+══════════════════════════════════════════ -->
+<div *ngIf="showAddSubdivDialog" class="dialog-overlay" (click)="showAddSubdivDialog = false">
+  <div class="dialog-box" (click)="$event.stopPropagation()">
+    <div class="dialog-header">
+      <h3>Add Subdivision to Display Order</h3>
+      <button class="btn-close" (click)="showAddSubdivDialog = false">✕</button>
+    </div>
+    <div class="dialog-body">
+      <label>Search Subdivision</label>
+      <input type="text" [(ngModel)]="subdivSearchText" (input)="onSubdivSearch()"
+        placeholder="Type subdivision or region name..." class="search-input" autocomplete="off" />
+      <div *ngIf="filteredSubdivRows.length > 0 && subdivSearchText.length > 0" class="search-results">
+        <div *ngFor="let r of filteredSubdivRows" class="search-result-row" (click)="selectSubdivRow(r)">
+          <strong>{{ r.subdiv_name }}</strong>
+          <span class="muted"> — {{ r.region_name }}</span>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Subdivision</label>
+          <input type="text" [(ngModel)]="addSubdivForm.subdivision_name" class="form-input" readonly />
+        </div>
+        <div class="form-row">
+          <label>Region</label>
+          <input type="text" [(ngModel)]="addSubdivForm.region_name" class="form-input" readonly />
+        </div>
+        <div class="form-row">
+          <label>Insert after position # (blank = at end)
+            <span class="info-btn" title="Enter the position number after which this entry should be inserted.&#10;&#10;Example: If you type 10, the new entry will appear at position 11, and everything after it shifts down by 1.&#10;&#10;Leave blank to add at the very end of the list.&#10;&#10;Tip: Check the # column in the list to find the right position number.">i</span>
+          </label>
+          <input type="number" [(ngModel)]="addSubdivForm.insert_after" class="form-input" placeholder="e.g. 5" />
+        </div>
+      </div>
+    </div>
+    <div class="dialog-footer">
+      <button class="btn-save" (click)="submitAddSubdiv()">Add</button>
+      <button class="btn-cancel" (click)="showAddSubdivDialog = false">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ADD DISTRICT DIALOG
+══════════════════════════════════════════ -->
+<div *ngIf="showAddDialog" class="dialog-overlay" (click)="showAddDialog = false">
+  <div class="dialog-box" (click)="$event.stopPropagation()">
+    <div class="dialog-header">
+      <h3>Add District to Display Order</h3>
+      <button class="btn-close" (click)="showAddDialog = false">✕</button>
+    </div>
+
+    <div class="dialog-body">
+      <label>Search District</label>
+      <input
+        type="text"
+        [(ngModel)]="addSearchText"
+        (input)="onAddSearch()"
+        placeholder="Type district, state or subdivision name..."
+        class="search-input"
+        autocomplete="off"
+      />
+      <div *ngIf="filteredNormalRows.length > 0 && addSearchText.length > 0" class="search-results">
+        <div
+          *ngFor="let r of filteredNormalRows"
+          class="search-result-row"
+          (click)="selectNormalRow(r)"
+        >
+          <strong>{{ r.district_name }}</strong>
+          <span class="muted"> — {{ r.state_name }} / {{ r.subdiv_name }}</span>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-row">
+          <label>District</label>
+          <input type="text" [(ngModel)]="addForm.district_name" class="form-input" readonly />
+        </div>
+        <div class="form-row">
+          <label>State</label>
+          <input type="text" [(ngModel)]="addForm.state_name" class="form-input" readonly />
+        </div>
+        <div class="form-row">
+          <label>Subdivision</label>
+          <input type="text" [(ngModel)]="addForm.subdiv_name" class="form-input" readonly />
+        </div>
+        <div class="form-row">
+          <label>Parent Group Name</label>
+          <input type="text" [(ngModel)]="addForm.parent_group_name" class="form-input" placeholder="e.g. GUJARAT" />
+        </div>
+        <div class="form-row">
+          <label>Parent Group Order (number)</label>
+          <input type="number" [(ngModel)]="addForm.parent_group_order" class="form-input" />
+        </div>
+        <div class="form-row">
+          <label>Insert after position # (blank = at end)
+            <span class="info-btn" title="Enter the position number after which this entry should be inserted.&#10;&#10;Example: If you type 10, the new entry will appear at position 11, and everything after it shifts down by 1.&#10;&#10;Leave blank to add at the very end of the list.&#10;&#10;Tip: Check the # column in the list to find the right position number.">i</span>
+          </label>
+          <input type="number" [(ngModel)]="addForm.insert_after" class="form-input" placeholder="e.g. 240" />
+        </div>
+        <div class="form-row form-row-inline">
+          <label>Is Common (YANAM/MAHE type)</label>
+          <input type="checkbox" [(ngModel)]="addForm.is_common" />
+        </div>
+      </div>
+    </div>
+
+    <div class="dialog-footer">
+      <button class="btn-save" (click)="submitAdd()">Add</button>
+      <button class="btn-cancel" (click)="showAddDialog = false">Cancel</button>
+    </div>
+  </div>
+</div>

@@ -108,6 +108,19 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
   get totalBlocksWithAwsData()  { return this.awsStats.reduce((s, r) => s + r.blocksWithAwsData, 0); }
   get totalBlocksPlottedOnMap() { return this.awsStats.reduce((s, r) => s + r.blocksPlottedOnMap, 0); }
 
+  // ── INDIA_BLOCK.json Coverage Analysis ─────────────────────────────────────
+  showStateTable    = false;
+  showDistrictTable = false;
+  showBlockTable    = false;
+  coverageTotal    = 0;
+  coverageIMD      = 0;
+  coverageAWS      = 0;
+  coverageNoData   = 0;
+  coverageByState:    { state: string; region: string; total: number; imd: number; aws: number; noData: number }[] = [];
+  coverageByDistrict: { state: string; district: string; region: string; total: number; imd: number; aws: number; noData: number }[] = [];
+  coverageByBlock:    { state: string; district: string; region: string; block: string; blockCode: string; source: string; actual: number | null }[] = [];
+  private allAwsBlockDistrictNames = new Set<string>(); // populated in computeBlockStat
+
   formatDate(date: Date): string {
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero based
@@ -914,6 +927,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
 
   fetchAllAWSData(): void {
     this.awsLoading = true;
+    this.allAwsBlockDistrictNames.clear();
     const body = this.buildAwsBody();
     const sourceLabels = [
       'UP AWS', 'NHP AWS', 'Zomato AWS', 'Meghalaya AWS', 'Mizoram AWS',
@@ -928,6 +942,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
           );
           this.awsLoading = false;
           this.buildAWSCharts();
+          this.computeIndiaCoverage();
         },
         error: () => { this.awsLoading = false; }
       });
@@ -976,6 +991,73 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     } as any);
   }
 
+  computeIndiaCoverage(): void {
+    if (!this.geoJsonData?.features) return;
+
+    // IMD actual lookup: block_name → actual_rainfall
+    const imdMap = new Map<string, number | null>();
+    (this.blockdatacum ?? []).forEach((b: any) => {
+      if (b.block_name) imdMap.set(b.block_name.trim(), b.actual_rainfall ?? null);
+    });
+
+    const stateMap    = new Map<string, { region: string; total: number; imd: number; aws: number; noData: number }>();
+    const districtMap = new Map<string, { state: string; district: string; region: string; total: number; imd: number; aws: number; noData: number }>();
+    const blockRows:   { state: string; district: string; region: string; block: string; blockCode: string; source: string; actual: number | null }[] = [];
+
+    let total = 0, imdCount = 0, awsCount = 0, noDataCount = 0;
+
+    for (const f of this.geoJsonData.features) {
+      const p          = f.properties;
+      const blockName  = (p.block_Name ?? '').trim();
+      const distLower  = (p.district   ?? '').toLowerCase().trim();
+      const blockLower = blockName.toLowerCase();
+      const stateName  = (p.state    ?? '');
+      const distName   = (p.district ?? '');
+      const regionName = (p.region   ?? '');
+      const blockCode  = (p.block_code ?? '');
+
+      let src: 'imd' | 'aws' | 'noData';
+      let actual: number | null = null;
+
+      if (imdMap.has(blockName)) {
+        src    = 'imd';
+        actual = imdMap.get(blockName) ?? null;
+      } else if (
+        this.allAwsBlockDistrictNames.has(blockLower) ||
+        this.allAwsBlockDistrictNames.has(distLower)
+      ) {
+        src = 'aws';
+      } else {
+        src = 'noData';
+      }
+
+      total++;
+      if (src === 'imd')      imdCount++;
+      else if (src === 'aws') awsCount++;
+      else                    noDataCount++;
+
+      // State
+      if (!stateMap.has(stateName)) stateMap.set(stateName, { region: regionName, total: 0, imd: 0, aws: 0, noData: 0 });
+      const st = stateMap.get(stateName)!; st.total++; st[src]++;
+
+      // District
+      const distKey = `${stateName}||${distName}`;
+      if (!districtMap.has(distKey)) districtMap.set(distKey, { state: stateName, district: distName, region: regionName, total: 0, imd: 0, aws: 0, noData: 0 });
+      const d = districtMap.get(distKey)!; d.total++; d[src]++;
+
+      // Block
+      blockRows.push({ state: stateName, district: distName, region: regionName, block: blockName, blockCode, source: src.toUpperCase().replace('NODATA','NO_DATA'), actual });
+    }
+
+    this.coverageTotal      = total;
+    this.coverageIMD        = imdCount;
+    this.coverageAWS        = awsCount;
+    this.coverageNoData     = noDataCount;
+    this.coverageByState    = Array.from(stateMap.entries()).map(([state, v]) => ({ state, ...v })).sort((a, b) => a.state.localeCompare(b.state));
+    this.coverageByDistrict = Array.from(districtMap.values()).sort((a, b) => a.state.localeCompare(b.state) || a.district.localeCompare(b.district));
+    this.coverageByBlock    = blockRows.sort((a, b) => a.state.localeCompare(b.state) || a.district.localeCompare(b.district) || a.block.localeCompare(b.block));
+  }
+
   private buildAwsBody(): any {
     if (this.selectedTimeFilter === '15min') {
       return { date: this.fromDate };
@@ -999,6 +1081,9 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
     );
     blocksWithData.delete('');
     const blocksWithAwsData = blocksWithData.size;
+
+    // Accumulate all AWS block/district names for coverage analysis
+    blocksWithData.forEach(name => this.allAwsBlockDistrictNames.add(name));
 
     // Build known-district set from:
     //   1. blockdatacum → field is district_name (from fetchBlockData API)
@@ -1084,9 +1169,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
           const actual = matchedData?.actual_rainfall != null
             ? this.constants.trimToOneDecimals(matchedData.actual_rainfall)
             : null;
-          const color = this.selecteddatamode === 'Actual'
-            ? this.constants.getActualColorForRainfall(actual)
-            : this.constants.getColorForRainfall(departure ?? 'NA');
+          const color = this.constants.getActualColorForRainfall(actual);
           return {
             fillColor: color,
             weight: 1,

@@ -41,4 +41,20 @@ body{
   .button{
     text-align: center;
   }
-  
+
+  .admin-nav-btn {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: background 0.2s;
+  }
+  .admin-nav-btn:hover {
+    background: rgba(255,255,255,0.3);
+  }
