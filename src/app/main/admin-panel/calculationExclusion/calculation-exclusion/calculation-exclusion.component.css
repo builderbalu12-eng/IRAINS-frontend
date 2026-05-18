@@ -345,3 +345,37 @@
     padding: 5px 10px;
   }
 }
+/* ── Excel Upload ─────────────────────────────────────────────── */
+.btn-upload {
+  background-color: #1d6f42;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 16px;
+  transition: all 0.2s ease;
+}
+
+.btn-upload:hover {
+  background-color: #155233;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.toolbar-divider {
+  color: #ccc;
+  font-size: 16px;
+  margin: 0 4px;
+}
+
+.upload-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #eef6ff;
+  border: 1px solid #b6d4fe;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+}

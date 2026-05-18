@@ -136,7 +136,7 @@
               </div>
 
               <!-- Bulk actions -->
-              <div class="d-flex gap-2 align-items-center">
+              <div class="d-flex gap-2 align-items-center flex-wrap">
                 <span class="text-muted" style="font-size: 12px">Bulk:</span>
                 <button
                   class="btn btn-sm btn-include"
@@ -151,6 +151,76 @@
                   [disabled]="isLoading"
                 >
                   <i class="fa fa-ban me-1"></i> Exclude All
+                </button>
+
+                <span class="toolbar-divider">|</span>
+
+                <!-- Excel Upload -->
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  [id]="'upload-' + tab.key"
+                  class="d-none"
+                  (change)="onExcelUpload($event, tab.key)"
+                />
+                <button
+                  class="btn btn-sm btn-upload"
+                  (click)="triggerFileInput(tab.key)"
+                  [disabled]="isLoading"
+                  title="Upload Excel with entity_code column"
+                >
+                  <i class="fa fa-upload me-1"></i> Upload Excel
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  style="border-radius:20px; font-size:12px;"
+                  (click)="downloadTemplate(tab.key)"
+                  title="Download template with all {{ tab.label }} codes"
+                >
+                  <i class="fa fa-download me-1"></i> Template
+                </button>
+              </div>
+            </div>
+
+            <!-- Upload error -->
+            <div *ngIf="uploadError" class="alert alert-danger py-2 mb-2 d-flex align-items-center gap-2" style="font-size:13px;">
+              <i class="fa fa-exclamation-circle"></i>
+              <span>{{ uploadError }}</span>
+              <button type="button" class="btn-close ms-auto" style="font-size:10px;" (click)="uploadError = ''"></button>
+            </div>
+
+            <!-- Not-found codes warning -->
+            <div *ngIf="uploadNotFoundNames.length > 0" class="alert alert-warning py-2 mb-2" style="font-size:12px;">
+              <i class="fa fa-warning me-1"></i>
+              <strong>{{ uploadNotFoundNames.length }} name(s) from the Excel were not found in {{ tab.label }} list:</strong>
+              <span class="ms-1 font-monospace">{{ uploadNotFoundNames.slice(0, 10).join(', ') }}<span *ngIf="uploadNotFoundNames.length > 10"> … and {{ uploadNotFoundNames.length - 10 }} more</span></span>
+            </div>
+
+            <!-- Upload preview bar -->
+            <div *ngIf="(uploadedRows[tab.key] || []).length > 0" class="upload-preview-bar mb-2">
+              <i class="fa fa-file-excel-o me-1 text-success"></i>
+              <span class="fw-semibold text-primary">{{ (uploadedRows[tab.key] || []).length }} {{ tab.label }}(s) ready from Excel</span>
+              <div class="d-flex gap-2 ms-auto">
+                <button
+                  class="btn btn-sm btn-include"
+                  (click)="onUploadedBulkAction(tab.key, 'include')"
+                  [disabled]="isLoading"
+                >
+                  <i class="fa fa-check me-1"></i> Include
+                </button>
+                <button
+                  class="btn btn-sm btn-exclude"
+                  (click)="onUploadedBulkAction(tab.key, 'exclude')"
+                  [disabled]="isLoading"
+                >
+                  <i class="fa fa-ban me-1"></i> Exclude
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  style="border-radius:20px; font-size:12px;"
+                  (click)="clearUpload(tab.key)"
+                >
+                  <i class="fa fa-times me-1"></i> Clear
                 </button>
               </div>
             </div>

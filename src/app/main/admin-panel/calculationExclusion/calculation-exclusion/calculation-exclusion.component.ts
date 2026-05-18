@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { CalculationExclusionService } from 'src/app/services/admin-panel/calculationExclusion.service';
+import * as XLSX from 'xlsx-js-style';
 
 export interface EntityRow {
   code: number;
@@ -26,6 +27,10 @@ export class CalculationExclusionComponent implements OnInit {
   isTriggeringRefresh: boolean = false;
   refreshMessage: string = '';
   refreshError: string = '';
+
+  uploadedRows: { [tab: string]: EntityRow[] } = { district: [], block: [], station: [] };
+  uploadError: string = '';
+  uploadNotFoundNames: string[] = [];
 
 
   activeTab: string = 'district';
@@ -292,6 +297,152 @@ triggerMapRefresh(): void {
       this.refreshError = err?.error?.message || 'Failed to refresh map data';
     }
   });
+}
+
+triggerFileInput(tab: string): void {
+  const el = document.getElementById(`upload-${tab}`) as HTMLInputElement;
+  el?.click();
+}
+
+onExcelUpload(event: Event, tab: string): void {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  this.uploadError = '';
+  this.uploadNotFoundNames = [];
+  this.uploadedRows[tab] = [];
+
+  const reader = new FileReader();
+  reader.onload = (e: any) => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const rows: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+      if (!rows.length) {
+        this.uploadError = 'Excel file is empty.';
+        input.value = '';
+        return;
+      }
+
+      // Read from_date / to_date from the first row if present
+      const firstRow = rows[0];
+      const excelFromDate: string = firstRow['from_date'] ?? firstRow['From Date'] ?? firstRow['FROM_DATE'] ?? '';
+      const excelToDate: string   = firstRow['to_date']   ?? firstRow['To Date']   ?? firstRow['TO_DATE']   ?? '';
+      if (excelFromDate) this.fromDate = excelFromDate;
+      if (excelToDate)   this.toDate   = excelToDate;
+
+      // Match by entity_code (primary) or entity_name (fallback)
+      const hasCodeColumn = rows.some(r =>
+        r['entity_code'] !== undefined || r['code'] !== undefined || r['Code'] !== undefined
+      );
+
+      if (hasCodeColumn) {
+        const uploadedCodes = rows
+          .map(r => Number(r['entity_code'] ?? r['code'] ?? r['Code']))
+          .filter(c => !isNaN(c) && c > 0);
+
+        if (uploadedCodes.length === 0) {
+          this.uploadError = 'entity_code column found but contains no valid numeric codes.';
+          input.value = '';
+          return;
+        }
+
+        const codeSet    = new Set(uploadedCodes.map(String));
+        const knownCodes = new Set(this.data[tab].map(r => String(r.code)));
+
+        this.uploadedRows[tab]    = this.data[tab].filter(r => codeSet.has(String(r.code)));
+        this.uploadNotFoundNames  = uploadedCodes.filter(c => !knownCodes.has(String(c))).map(String);
+
+        if (this.uploadedRows[tab].length === 0) {
+          this.uploadError = `None of the ${uploadedCodes.length} code(s) in the Excel matched any ${tab}.`;
+        }
+      } else {
+        // Fall back to matching by entity_name
+        const uploadedNames = rows
+          .map(r => (r['entity_name'] ?? r['name'] ?? r['Name'] ?? '').toString().trim().toLowerCase())
+          .filter(n => n.length > 0);
+
+        if (uploadedNames.length === 0) {
+          this.uploadError = 'No valid entity_code or entity_name column found in the Excel file.';
+          input.value = '';
+          return;
+        }
+
+        const nameSet    = new Set(uploadedNames);
+        const knownNames = new Set(this.data[tab].map(r => r.name.toLowerCase()));
+
+        this.uploadedRows[tab]   = this.data[tab].filter(r => nameSet.has(r.name.toLowerCase()));
+        this.uploadNotFoundNames = uploadedNames.filter(n => !knownNames.has(n));
+
+        if (this.uploadedRows[tab].length === 0) {
+          this.uploadError = `None of the ${uploadedNames.length} name(s) in the Excel matched any ${tab}.`;
+        }
+      }
+    } catch {
+      this.uploadError = 'Failed to parse Excel file. Please upload a valid .xlsx file.';
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+onUploadedBulkAction(tab: string, action: 'include' | 'exclude'): void {
+  const rows = this.uploadedRows[tab];
+  if (!rows?.length) return;
+
+  const entities = rows.map(r => ({
+    entity_type: tab,
+    entity_code: r.code,
+    entity_name: r.name
+  }));
+
+  this.isLoading = true;
+
+  this.exclusionService.bulkToggle({
+    action,
+    from_date: this.fromDate,
+    to_date: this.toDate || this.fromDate,
+    entities
+  }).subscribe({
+    next: () => {
+      rows.forEach(r => {
+        r.isExcluded = action === 'exclude';
+        const key = `${tab}_${r.code}`;
+        if (action === 'exclude') this.excludedSet.add(key);
+        else this.excludedSet.delete(key);
+      });
+      this.uploadedRows[tab] = [];
+      this.uploadNotFoundNames = [];
+      this.isLoading = false;
+    },
+    error: (err: any) => {
+      console.error('Upload bulk action failed:', err);
+      this.isLoading = false;
+    }
+  });
+}
+
+clearUpload(tab: string): void {
+  this.uploadedRows[tab] = [];
+  this.uploadError = '';
+  this.uploadNotFoundNames = [];
+}
+
+downloadTemplate(tab: string): void {
+  const from = this.fromDate;
+  const to   = this.toDate || this.fromDate;
+  const rows = this.data[tab].map(r => ({
+    entity_type: tab,
+    entity_code: r.code,
+    entity_name: r.name,
+    from_date:   from,
+    to_date:     to
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, tab);
+  XLSX.writeFile(wb, `${tab}_exclusion_template.xlsx`);
 }
 
 
