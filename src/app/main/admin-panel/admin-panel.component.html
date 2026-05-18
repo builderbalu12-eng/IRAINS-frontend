@@ -1,66 +1,67 @@
 <!-- src/app/main/admin-panel/admin-panel.component.html -->
-<div class="admin-layout">
+<div class="ap-layout">
 
-  <!-- YOUR ORIGINAL HEADER -->
   <app-header></app-header>
 
-  <!-- MAIN LAYOUT -->
-  <div class="d-flex" style="height: calc(100vh - 80px);">
+  <div class="ap-body">
 
-    <!-- LEFT SIDEBAR - FIXED -->
-    <nav class="sidebar bg-primary text-white d-flex flex-column"
-         [class.collapsed]="isCollapsed">
+    <!-- SIDEBAR -->
+    <nav class="ap-sidebar" [class.collapsed]="!isExpanded"
+         (mouseenter)="onMouseEnter()" (mouseleave)="onMouseLeave()">
 
-      <div class="sidebar-header p-4 text-center border-bottom">
-        <h5 class="mb-0" [hidden]="isCollapsed">IRAINS Admin Panel</h5>
-        <!-- <small [hidden]="isCollapsed">Management Portal</small> -->
-      </div>
-
-      <div class="flex-grow-1 overflow-auto px-3 pt-3">
-        <ul class="nav flex-column">
-          <li class="nav-item" *ngFor="let item of menuItems">
-            <a *ngIf="!item.children"
-               class="nav-link text-white d-flex align-items-center px-3 py-3 rounded mb-2"
-               [routerLink]="item.route"
-               routerLinkActive="active">
-              <i [class]="item.icon + ' me-3'" [class.fs-4]="isCollapsed"></i>
-              <span [hidden]="isCollapsed">{{ item.label }}</span>
-            </a>
-
-            <div *ngIf="item.children">
-              <a class="nav-link text-white d-flex align-items-center justify-content-between px-3 py-3 rounded mb-2 cursor-pointer"
-                 (click)="toggleSubmenu(item)">
-                <div class="d-flex align-items-center">
-                  <i [class]="item.icon + ' me-3'" [class.fs-4]="isCollapsed"></i>
-                  <span [hidden]="isCollapsed">{{ item.label }}</span>
-                </div>
-                <i class="bi bi-chevron-down transition" [class.rotate-180]="item.expanded"></i>
-              </a>
-              <ul class="nav flex-column ms-5" [hidden]="isCollapsed || !item.expanded">
-                <li *ngFor="let child of item.children">
-                  <a class="nav-link text-white-50 py-2 small" [routerLink]="child.route">
-                    <i [class]="child.icon + ' me-2'"></i>{{ child.label }}
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </li>
-        </ul>
-      </div>
-
-      <div class="p-3 border-top">
-        <button class="btn btn-outline-light w-100" (click)="toggleSidebar()">
-          <i class="bi bi-list"></i>
-          <span [hidden]="isCollapsed">Collapse</span>
+      <!-- Logo / hamburger row -->
+      <div class="sb-logo">
+        <button class="sb-hamburger" (click)="togglePin()" [title]="isPinned ? 'Unpin sidebar' : 'Pin sidebar open'">
+          <i class="bi" [ngClass]="isPinned ? 'bi-x-lg' : 'bi-list'"></i>
         </button>
+        <span class="sb-logo-text">Admin Panel</span>
       </div>
+
+      <div class="sb-scroll">
+        <ng-container *ngFor="let item of menuItems">
+
+          <!-- Plain link (no children) -->
+          <ng-container *ngIf="!item.children">
+            <a class="sb-plain"
+               [routerLink]="item.route"
+               routerLinkActive="active"
+               [routerLinkActiveOptions]="{exact:false}"
+               [title]="!isExpanded ? item.label : ''">
+              <i [class]="item.icon + ' sb-icon'"></i>
+              <span class="sb-label">{{ item.label }}</span>
+            </a>
+          </ng-container>
+
+          <!-- Expandable group -->
+          <ng-container *ngIf="item.children">
+            <div class="sb-parent" [class.open]="item.expanded"
+                 (click)="toggleSubmenu(item)" [title]="!isExpanded ? item.label : ''">
+              <i [class]="item.icon + ' sb-icon'"></i>
+              <span class="sb-label">{{ item.label }}</span>
+              <i class="bi bi-chevron-down sb-chevron" [class.down]="item.expanded"></i>
+            </div>
+
+            <div class="sb-children" [class.open]="item.expanded">
+              <a *ngFor="let child of item.children"
+                 class="sb-child"
+                 [routerLink]="child.route"
+                 routerLinkActive="active"
+                 [routerLinkActiveOptions]="{exact:false}">
+                <i [class]="child.icon"></i>
+                <span>{{ child.label }}</span>
+              </a>
+            </div>
+          </ng-container>
+
+        </ng-container>
+      </div>
+
     </nav>
 
-    <!-- RIGHT CONTENT — ONLY THIS SCROLLS -->
-    <div class="content-area flex-grow-1 d-flex flex-column">
-      <div class="content-scroll overflow-auto flex-grow-1 p-4">
-        <router-outlet></router-outlet>
-      </div>
+    <!-- CONTENT -->
+    <div class="ap-content flex-grow-1 overflow-auto">
+      <router-outlet></router-outlet>
     </div>
+
   </div>
 </div>

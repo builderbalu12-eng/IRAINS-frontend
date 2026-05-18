@@ -190,6 +190,18 @@ import { BlockActualOrgawsRainfallMapDailyMainPagePubicComponent } from './main/
 import { CalculationExclusionComponent } from './main/admin-panel/calculationExclusion/calculation-exclusion/calculation-exclusion.component';
 import { DisplayOrderManagementComponent } from './main/display-order-management/display-order-management.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { DataManagementComponent } from './main/data-management/data-management.component';
+import { GeojsonUploadComponent } from './main/data-management/geojson-upload/geojson-upload.component';
+import { BlockManagementComponent } from './main/data-management/block-management/block-management.component';
+import { DistrictManagementComponent } from './main/data-management/district-management/district-management.component';
+import { StateManagementComponent } from './main/data-management/state-management/state-management.component';
+import { SubdivisionManagementComponent } from './main/data-management/subdivision-management/subdivision-management.component';
+import { RegionManagementComponent } from './main/data-management/region-management/region-management.component';
+import { PermissionsComponent } from './main/permissions/permissions.component';
+import { RbacComponent } from './main/permissions/rbac/rbac.component';
+import { NewRegisterComponent } from './main/permissions/new-register/new-register.component';
+import { RoleManagementComponent } from './main/permissions/role-management/role-management.component';
+import { RouteManagementComponent } from './main/permissions/route-management/route-management.component';
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -352,6 +364,18 @@ import { DragDropModule } from '@angular/cdk/drag-drop';
     BlockActualOrgawsRainfallMapDailyMainPagePubicComponent,
     CalculationExclusionComponent,
     DisplayOrderManagementComponent,
+    DataManagementComponent,
+    GeojsonUploadComponent,
+    BlockManagementComponent,
+    DistrictManagementComponent,
+    StateManagementComponent,
+    SubdivisionManagementComponent,
+    RegionManagementComponent,
+    PermissionsComponent,
+    RbacComponent,
+    NewRegisterComponent,
+    RoleManagementComponent,
+    RouteManagementComponent,
   ],
   imports: [
     MatCardModule,

@@ -402,3 +402,43 @@ button:hover {
 .aws-elevated-pane {
   filter: drop-shadow(3px 5px 6px rgba(0, 0, 0, 0.55));
 }
+
+/* ── INDIA_BLOCK Coverage Summary Cards ─────────────────────────────────── */
+.coverage-summary-row {
+  display: flex;
+  gap: 8px;
+}
+
+.cov-card {
+  flex: 1;
+  border-radius: 8px;
+  padding: 8px 6px;
+  text-align: center;
+  color: white;
+}
+
+.cov-num {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.cov-lbl {
+  font-size: 0.65rem;
+  margin-top: 2px;
+  opacity: 0.92;
+}
+
+.cov-total  { background: #002467; }
+.cov-imd    { background: #198754; }
+.cov-aws    { background: #0dcaf0; color: #000; }
+.cov-nodata { background: #dc3545; }
+
+.coverage-table {
+  font-size: 0.78rem;
+}
+
+.cov-table-wrap {
+  max-height: 340px;
+  overflow-y: auto;
+}

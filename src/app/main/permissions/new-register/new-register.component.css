@@ -1,0 +1,71 @@
+/* shared management page styles */
+.page-wrap { padding: 8px; }
+
+.page-header {
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 12px;
+}
+
+.text-purple { color: #7c3aed; }
+
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  background: #fff;
+  border-radius: 12px;
+  width: 520px;
+  max-width: 95vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  overflow: hidden;
+}
+
+.modal-card-header {
+  background: linear-gradient(135deg, #1a0a45, #2d1a6e);
+  color: #fff;
+  padding: 16px 20px;
+}
+
+.modal-card-body { padding: 24px 20px; }
+
+.modal-card-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.role-header-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  min-width: 44px;
+  text-align: center;
+}
+
+.role-toggle-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  color: #94a3b8;
+  background: #f1f5f9;
+  transition: all 0.2s;
+  min-width: 44px;
+  text-align: center;
+}
+
+.role-toggle-badge.enabled {
+  background: #1e40af;
+  color: #fff;
+  border-color: #1e40af;
+}
+

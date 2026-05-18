@@ -1,5 +1,4 @@
 <div class="wholebody background-effect">
-  <app-header></app-header>
 
   <!-- ── Date Range Selector ── -->
   <div class="pt-3 pb-1">
@@ -198,10 +197,26 @@
               [class.badge-has-excluded]="excludedCount(tab.key) > 0"
               [class.badge-all-ok]="excludedCount(tab.key) === 0"
             >
-              {{ totalCount(tab.key) - excludedCount(tab.key) }}/{{
-                totalCount(tab.key)
-              }}
+              {{ totalCount(tab.key) - excludedCount(tab.key) }}/{{ totalCount(tab.key) }}
             </span>
+          </button>
+        </li>
+        <!-- Seasonal tab -->
+        <li class="nav-item">
+          <button class="nav-link tab-btn" [class.active]="activeTab === 'seasonal'" (click)="setActiveTab('seasonal')">
+            <i class="fa fa-line-chart me-1"></i> Seasonal Charts
+          </button>
+        </li>
+        <!-- Monthly tab -->
+        <li class="nav-item">
+          <button class="nav-link tab-btn" [class.active]="activeTab === 'monthly'" (click)="setActiveTab('monthly')">
+            <i class="fa fa-calendar me-1"></i> Monthly Charts
+          </button>
+        </li>
+        <!-- Weekly tab -->
+        <li class="nav-item">
+          <button class="nav-link tab-btn" [class.active]="activeTab === 'weekly'" (click)="setActiveTab('weekly')">
+            <i class="fa fa-calendar-o me-1"></i> Weekly Charts
           </button>
         </li>
       </ul>
@@ -399,8 +414,367 @@
             <!-- /table-scroll -->
           </div>
         </ng-container>
+
+      <!-- ── Seasonal Charts Tab ── -->
+      <div *ngIf="activeTab === 'seasonal'">
+
+        <!-- Loading -->
+        <div *ngIf="seasonalLoading" class="text-center py-5 text-muted">
+          <i class="fa fa-spinner fa-pulse fa-2x mb-2"></i>
+          <div>Loading seasonal data...</div>
+        </div>
+
+        <div *ngIf="!seasonalLoading">
+          <!-- Toolbar -->
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="search-box">
+              <i class="fa fa-search search-icon"></i>
+              <input type="text" class="form-control search-input"
+                placeholder="Search district or state..."
+                [(ngModel)]="seasonalSearchText" />
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <span class="text-muted" style="font-size:12px">
+                <strong>{{ currentSeasonName }}</strong> &nbsp;|&nbsp;
+                {{ currentSeasonRange }} &nbsp;|&nbsp;
+                {{ filteredSeasonalDistricts().length }} districts
+              </span>
+              <button class="btn btn-sm btn-outline-primary" (click)="reloadSeasonal()">
+                <i class="fa fa-refresh me-1"></i> Reload
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div *ngIf="seasonalLoaded && filteredSeasonalDistricts().length === 0" class="text-center text-muted py-5">
+            <i class="fa fa-search me-2"></i> No districts found.
+          </div>
+
+          <!-- Table -->
+          <div class="table-scroll" *ngIf="filteredSeasonalDistricts().length > 0">
+            <table class="table table-hover table-bordered align-middle mb-0">
+              <thead class="table-head">
+                <tr>
+                  <th style="width:60px; cursor:pointer" class="text-center" (click)="setSeasonalSort('status')">
+                    Include
+                    <i class="fa ms-1"
+                       [class.fa-sort]="seasonalSortCol !== 'status'"
+                       [class.fa-sort-asc]="seasonalSortCol === 'status' && seasonalSortDir === 'asc'"
+                       [class.fa-sort-desc]="seasonalSortCol === 'status' && seasonalSortDir === 'desc'"></i>
+                  </th>
+                  <th style="width:180px; cursor:pointer" (click)="setSeasonalSort('name')">
+                    District
+                    <i class="fa ms-1"
+                       [class.fa-sort]="seasonalSortCol !== 'name'"
+                       [class.fa-sort-asc]="seasonalSortCol === 'name' && seasonalSortDir === 'asc'"
+                       [class.fa-sort-desc]="seasonalSortCol === 'name' && seasonalSortDir === 'desc'"></i>
+                  </th>
+                  <th style="width:130px; cursor:pointer" (click)="setSeasonalSort('state')">
+                    State
+                    <i class="fa ms-1"
+                       [class.fa-sort]="seasonalSortCol !== 'state'"
+                       [class.fa-sort-asc]="seasonalSortCol === 'state' && seasonalSortDir === 'asc'"
+                       [class.fa-sort-desc]="seasonalSortCol === 'state' && seasonalSortDir === 'desc'"></i>
+                  </th>
+                  <th style="cursor:pointer" (click)="setSeasonalSort('gaps')">
+                    Seasonal Actual Rainfall (mm)
+                    <i class="fa ms-1"
+                       [class.fa-sort]="seasonalSortCol !== 'gaps'"
+                       [class.fa-sort-asc]="seasonalSortCol === 'gaps' && seasonalSortDir === 'asc'"
+                       [class.fa-sort-desc]="seasonalSortCol === 'gaps' && seasonalSortDir === 'desc'"></i>
+                  </th>
+                </tr>
+                <tr>
+                  <th>
+                    <select class="form-select form-select-sm" [(ngModel)]="seasonalColFilter.status">
+                      <option value="">All</option>
+                      <option value="included">Included</option>
+                      <option value="excluded">Excluded</option>
+                    </select>
+                  </th>
+                  <th><input type="text" class="form-control form-control-sm" placeholder="Filter district..." [(ngModel)]="seasonalColFilter.name" /></th>
+                  <th><input type="text" class="form-control form-control-sm" placeholder="Filter state..." [(ngModel)]="seasonalColFilter.state" /></th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let d of filteredSeasonalDistricts()" style="height:80px; cursor:pointer"
+                    (click)="openDistrictModal(d)">
+
+                  <!-- Include toggle -->
+                  <td class="text-center" (click)="$event.stopPropagation()">
+                    <i *ngIf="d.isLoading" class="fa fa-spinner fa-spin text-primary"></i>
+                    <input *ngIf="!d.isLoading"
+                           type="checkbox"
+                           class="form-check-input custom-checkbox"
+                           [checked]="!d.isExcluded"
+                           (change)="toggleSeasonalDistrict(d)" />
+                  </td>
+
+                  <!-- District name -->
+                  <td><strong style="font-size:13px">{{ d.name }}</strong></td>
+
+                  <!-- State -->
+                  <td class="text-muted" style="font-size:12px">{{ d.state || '—' }}</td>
+
+                  <!-- Sparkline chart -->
+                  <td style="padding: 6px 10px; min-width:300px">
+                    <svg *ngIf="d.segments.length > 0"
+                         viewBox="0 0 280 56"
+                         width="100%" height="56"
+                         preserveAspectRatio="none"
+                         style="display:block; overflow:visible">
+                      <path *ngFor="let seg of d.segments"
+                            [attr.d]="seg.areaD"
+                            fill="rgba(59,130,246,0.18)"
+                            stroke="none"/>
+                      <path *ngFor="let seg of d.segments"
+                            [attr.d]="seg.lineD"
+                            fill="none"
+                            stroke="#3b82f6"
+                            stroke-width="1.8"
+                            stroke-linejoin="round"
+                            stroke-linecap="round"/>
+                      <circle *ngFor="let pt of d.hoverPoints"
+                              [attr.cx]="pt.x"
+                              [attr.cy]="pt.y"
+                              r="5"
+                              fill="transparent"
+                              stroke="none"
+                              style="cursor:crosshair">
+                        <title>{{ pt.date }} — {{ pt.value | number:'1.1-1' }} mm</title>
+                      </circle>
+                    </svg>
+                    <span *ngIf="d.segments.length === 0" class="text-muted" style="font-size:12px">
+                      <i class="fa fa-minus-circle me-1"></i> No data
+                    </span>
+                  </td>
+
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Monthly Charts Tab ── -->
+      <ng-template #chartTabTpl let-loading="loading" let-loaded="loaded" let-rangeLabel="rangeLabel" let-districts="districts" let-searchText="searchText" let-colFilter="colFilter" let-sortCol="sortCol" let-sortDir="sortDir"></ng-template>
+
+      <div *ngIf="activeTab === 'monthly'">
+        <div *ngIf="monthlyLoading" class="text-center py-5 text-muted">
+          <i class="fa fa-spinner fa-pulse fa-2x mb-2"></i><div>Loading monthly data...</div>
+        </div>
+        <div *ngIf="!monthlyLoading">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="search-box">
+              <i class="fa fa-search search-icon"></i>
+              <input type="text" class="form-control search-input" placeholder="Search district or state..." [(ngModel)]="monthlySearchText" />
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <span class="text-muted" style="font-size:12px">
+                <strong>Monthly</strong> &nbsp;|&nbsp; {{ monthlyRangeLabel }} &nbsp;|&nbsp; {{ filteredMonthlyDistricts().length }} districts
+              </span>
+              <button class="btn btn-sm btn-outline-primary" (click)="reloadMonthly()"><i class="fa fa-refresh me-1"></i> Reload</button>
+            </div>
+          </div>
+          <div *ngIf="monthlyLoaded && filteredMonthlyDistricts().length === 0" class="text-center text-muted py-5">
+            <i class="fa fa-search me-2"></i> No districts found.
+          </div>
+          <div class="table-scroll" *ngIf="filteredMonthlyDistricts().length > 0">
+            <table class="table table-hover table-bordered align-middle mb-0">
+              <thead class="table-head">
+                <tr>
+                  <th style="width:60px;cursor:pointer" class="text-center" (click)="setMonthlySort('status')">Include <i class="fa ms-1" [class.fa-sort]="monthlySortCol!=='status'" [class.fa-sort-asc]="monthlySortCol==='status'&&monthlySortDir==='asc'" [class.fa-sort-desc]="monthlySortCol==='status'&&monthlySortDir==='desc'"></i></th>
+                  <th style="width:180px;cursor:pointer" (click)="setMonthlySort('name')">District <i class="fa ms-1" [class.fa-sort]="monthlySortCol!=='name'" [class.fa-sort-asc]="monthlySortCol==='name'&&monthlySortDir==='asc'" [class.fa-sort-desc]="monthlySortCol==='name'&&monthlySortDir==='desc'"></i></th>
+                  <th style="width:130px;cursor:pointer" (click)="setMonthlySort('state')">State <i class="fa ms-1" [class.fa-sort]="monthlySortCol!=='state'" [class.fa-sort-asc]="monthlySortCol==='state'&&monthlySortDir==='asc'" [class.fa-sort-desc]="monthlySortCol==='state'&&monthlySortDir==='desc'"></i></th>
+                  <th style="cursor:pointer" (click)="setMonthlySort('gaps')">Monthly Actual Rainfall (mm) <i class="fa ms-1" [class.fa-sort]="monthlySortCol!=='gaps'" [class.fa-sort-asc]="monthlySortCol==='gaps'&&monthlySortDir==='asc'" [class.fa-sort-desc]="monthlySortCol==='gaps'&&monthlySortDir==='desc'"></i></th>
+                </tr>
+                <tr>
+                  <th><select class="form-select form-select-sm" [(ngModel)]="monthlyColFilter.status"><option value="">All</option><option value="included">Included</option><option value="excluded">Excluded</option></select></th>
+                  <th><input type="text" class="form-control form-control-sm" placeholder="Filter district..." [(ngModel)]="monthlyColFilter.name" /></th>
+                  <th><input type="text" class="form-control form-control-sm" placeholder="Filter state..." [(ngModel)]="monthlyColFilter.state" /></th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let d of filteredMonthlyDistricts()" style="height:80px;cursor:pointer" (click)="openDistrictModal(d)">
+                  <td class="text-center" (click)="$event.stopPropagation()">
+                    <i *ngIf="d.isLoading" class="fa fa-spinner fa-spin text-primary"></i>
+                    <input *ngIf="!d.isLoading" type="checkbox" class="form-check-input custom-checkbox" [checked]="!d.isExcluded" (change)="toggleMonthlyDistrict(d)" />
+                  </td>
+                  <td><strong style="font-size:13px">{{ d.name }}</strong></td>
+                  <td class="text-muted" style="font-size:12px">{{ d.state || '—' }}</td>
+                  <td style="padding:6px 10px;min-width:300px">
+                    <svg *ngIf="d.segments.length > 0" viewBox="0 0 280 56" width="100%" height="56" preserveAspectRatio="none" style="display:block;overflow:visible">
+                      <path *ngFor="let seg of d.segments" [attr.d]="seg.areaD" fill="rgba(16,185,129,0.18)" stroke="none"/>
+                      <path *ngFor="let seg of d.segments" [attr.d]="seg.lineD" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+                      <circle *ngFor="let pt of d.hoverPoints" [attr.cx]="pt.x" [attr.cy]="pt.y" r="5" fill="transparent" stroke="none" style="cursor:crosshair"><title>{{ pt.date }} — {{ pt.value | number:'1.1-1' }} mm</title></circle>
+                    </svg>
+                    <span *ngIf="d.segments.length === 0" class="text-muted" style="font-size:12px"><i class="fa fa-minus-circle me-1"></i> No data</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Weekly Charts Tab ── -->
+      <div *ngIf="activeTab === 'weekly'">
+        <div *ngIf="weeklyLoading" class="text-center py-5 text-muted">
+          <i class="fa fa-spinner fa-pulse fa-2x mb-2"></i><div>Loading weekly data...</div>
+        </div>
+        <div *ngIf="!weeklyLoading">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="search-box">
+              <i class="fa fa-search search-icon"></i>
+              <input type="text" class="form-control search-input" placeholder="Search district or state..." [(ngModel)]="weeklySearchText" />
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <span class="text-muted" style="font-size:12px">
+                <strong>Weekly</strong> &nbsp;|&nbsp; {{ weeklyRangeLabel }} &nbsp;|&nbsp; {{ filteredWeeklyDistricts().length }} districts
+              </span>
+              <button class="btn btn-sm btn-outline-primary" (click)="reloadWeekly()"><i class="fa fa-refresh me-1"></i> Reload</button>
+            </div>
+          </div>
+          <div *ngIf="weeklyLoaded && filteredWeeklyDistricts().length === 0" class="text-center text-muted py-5">
+            <i class="fa fa-search me-2"></i> No districts found.
+          </div>
+          <div class="table-scroll" *ngIf="filteredWeeklyDistricts().length > 0">
+            <table class="table table-hover table-bordered align-middle mb-0">
+              <thead class="table-head">
+                <tr>
+                  <th style="width:60px;cursor:pointer" class="text-center" (click)="setWeeklySort('status')">Include <i class="fa ms-1" [class.fa-sort]="weeklySortCol!=='status'" [class.fa-sort-asc]="weeklySortCol==='status'&&weeklySortDir==='asc'" [class.fa-sort-desc]="weeklySortCol==='status'&&weeklySortDir==='desc'"></i></th>
+                  <th style="width:180px;cursor:pointer" (click)="setWeeklySort('name')">District <i class="fa ms-1" [class.fa-sort]="weeklySortCol!=='name'" [class.fa-sort-asc]="weeklySortCol==='name'&&weeklySortDir==='asc'" [class.fa-sort-desc]="weeklySortCol==='name'&&weeklySortDir==='desc'"></i></th>
+                  <th style="width:130px;cursor:pointer" (click)="setWeeklySort('state')">State <i class="fa ms-1" [class.fa-sort]="weeklySortCol!=='state'" [class.fa-sort-asc]="weeklySortCol==='state'&&weeklySortDir==='asc'" [class.fa-sort-desc]="weeklySortCol==='state'&&weeklySortDir==='desc'"></i></th>
+                  <th style="cursor:pointer" (click)="setWeeklySort('gaps')">Weekly Actual Rainfall (mm) <i class="fa ms-1" [class.fa-sort]="weeklySortCol!=='gaps'" [class.fa-sort-asc]="weeklySortCol==='gaps'&&weeklySortDir==='asc'" [class.fa-sort-desc]="weeklySortCol==='gaps'&&weeklySortDir==='desc'"></i></th>
+                </tr>
+                <tr>
+                  <th><select class="form-select form-select-sm" [(ngModel)]="weeklyColFilter.status"><option value="">All</option><option value="included">Included</option><option value="excluded">Excluded</option></select></th>
+                  <th><input type="text" class="form-control form-control-sm" placeholder="Filter district..." [(ngModel)]="weeklyColFilter.name" /></th>
+                  <th><input type="text" class="form-control form-control-sm" placeholder="Filter state..." [(ngModel)]="weeklyColFilter.state" /></th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let d of filteredWeeklyDistricts()" style="height:80px;cursor:pointer" (click)="openDistrictModal(d)">
+                  <td class="text-center" (click)="$event.stopPropagation()">
+                    <i *ngIf="d.isLoading" class="fa fa-spinner fa-spin text-primary"></i>
+                    <input *ngIf="!d.isLoading" type="checkbox" class="form-check-input custom-checkbox" [checked]="!d.isExcluded" (change)="toggleWeeklyDistrict(d)" />
+                  </td>
+                  <td><strong style="font-size:13px">{{ d.name }}</strong></td>
+                  <td class="text-muted" style="font-size:12px">{{ d.state || '—' }}</td>
+                  <td style="padding:6px 10px;min-width:300px">
+                    <svg *ngIf="d.segments.length > 0" viewBox="0 0 280 56" width="100%" height="56" preserveAspectRatio="none" style="display:block;overflow:visible">
+                      <path *ngFor="let seg of d.segments" [attr.d]="seg.areaD" fill="rgba(245,158,11,0.18)" stroke="none"/>
+                      <path *ngFor="let seg of d.segments" [attr.d]="seg.lineD" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+                      <circle *ngFor="let pt of d.hoverPoints" [attr.cx]="pt.x" [attr.cy]="pt.y" r="5" fill="transparent" stroke="none" style="cursor:crosshair"><title>{{ pt.date }} — {{ pt.value | number:'1.1-1' }} mm</title></circle>
+                    </svg>
+                    <span *ngIf="d.segments.length === 0" class="text-muted" style="font-size:12px"><i class="fa fa-minus-circle me-1"></i> No data</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       </div>
       <!-- /tab-content-area -->
     </div>
+  </div>
+</div>
+
+<!-- ── District Modal ── -->
+<div *ngIf="modalDistrict" class="modal-backdrop-custom" (click)="closeDistrictModal()">
+  <div class="modal-panel-custom" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-3">
+      <div>
+        <h5 class="fw-bold mb-1">{{ modalDistrict.name }}</h5>
+        <div class="text-muted" style="font-size:13px">
+          <i class="fa fa-map-marker me-1"></i>{{ modalDistrict.state || '—' }}
+          &nbsp;&nbsp;
+          <span class="badge bg-primary">
+            <i class="fa fa-tachometer me-1"></i>
+            {{ stationCountForDistrict(modalDistrict.name) }} station(s)
+          </span>
+          &nbsp;&nbsp;
+          <span class="badge" [ngClass]="modalDistrict.isExcluded ? 'bg-danger' : 'bg-success'">
+            {{ modalDistrict.isExcluded ? 'Excluded this season' : 'Included this season' }}
+          </span>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeDistrictModal()">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Weekly chart -->
+    <div class="mb-2">
+      <div class="fw-semibold mb-1" style="font-size:11px; color:#3b82f6; text-transform:uppercase; letter-spacing:.5px">
+        <i class="fa fa-calendar-o me-1"></i> Weekly Rainfall
+      </div>
+      <div style="background:#f8fafc; border-radius:8px; padding:10px;">
+        <svg *ngIf="modalSegments.length > 0"
+             viewBox="0 0 560 120"
+             width="100%" height="120"
+             preserveAspectRatio="none"
+             style="display:block; overflow:visible">
+          <path *ngFor="let seg of modalSegments"
+                [attr.d]="seg.areaD"
+                fill="rgba(59,130,246,0.15)"
+                stroke="none"/>
+          <path *ngFor="let seg of modalSegments"
+                [attr.d]="seg.lineD"
+                fill="none"
+                stroke="#3b82f6"
+                stroke-width="2"
+                stroke-linejoin="round"
+                stroke-linecap="round"/>
+          <circle *ngFor="let pt of modalHoverPoints"
+                  [attr.cx]="pt.x"
+                  [attr.cy]="pt.y"
+                  r="6"
+                  fill="#3b82f6"
+                  fill-opacity="0.8"
+                  stroke="#fff"
+                  stroke-width="1.5"
+                  style="cursor:crosshair">
+            <title>{{ pt.date }} — {{ pt.value | number:'1.1-1' }} mm</title>
+          </circle>
+        </svg>
+        <div *ngIf="modalSegments.length === 0" class="text-center text-muted py-3">
+          <i class="fa fa-minus-circle me-2"></i> No weekly data
+        </div>
+      </div>
+    </div>
+
+    <!-- Data table -->
+    <div style="max-height:260px; overflow-y:auto;">
+      <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-dark sticky-top">
+          <tr>
+            <th style="width:80px">Period</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th class="text-end">Actual (mm)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of modalDistrict.series" [class.table-secondary]="row.value === null">
+            <td class="text-muted">{{ row.label }}</td>
+            <td>{{ row.startDate }}</td>
+            <td>{{ row.endDate }}</td>
+            <td class="text-end fw-bold">
+              <span *ngIf="row.value !== null">{{ row.value | number:'1.1-1' }}</span>
+              <span *ngIf="row.value === null" class="text-muted fst-italic">—</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 </div>

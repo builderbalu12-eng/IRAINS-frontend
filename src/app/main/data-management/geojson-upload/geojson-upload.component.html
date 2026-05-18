@@ -1,0 +1,138 @@
+<div class="page-wrap">
+
+  <!-- Header -->
+  <div class="page-header mb-4">
+    <div>
+      <h4 class="mb-1"><i class="bi bi-file-earmark-code-fill me-2 text-primary"></i>GeoJSON Upload</h4>
+      <small class="text-muted">Upload boundary GeoJSON files for map layers</small>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- Upload Card -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold bg-primary text-white">
+          <i class="bi bi-cloud-upload me-2"></i>Upload GeoJSON File
+        </div>
+        <div class="card-body">
+
+          <!-- Layer selector -->
+          <div class="mb-3">
+            <label class="form-label fw-bold">Target Layer <span class="text-danger">*</span></label>
+            <select class="form-select" [(ngModel)]="selectedLayer">
+              <option value="">-- Select layer --</option>
+              <option *ngFor="let l of layerOptions" [value]="l.value">{{ l.label }}</option>
+            </select>
+          </div>
+
+          <!-- Drop zone -->
+          <div class="drop-zone mb-3"
+               [class.drag-over]="dragOver"
+               [class.has-file]="selectedFile"
+               (dragover)="onDragOver($event)"
+               (dragleave)="onDragLeave()"
+               (drop)="onDrop($event)"
+               (click)="geoInput.click()">
+            <ng-container *ngIf="!selectedFile">
+              <i class="bi bi-cloud-arrow-up fs-1 text-primary opacity-50"></i>
+              <p class="mb-1 fw-semibold mt-2">Click or Drag & Drop .geojson / .json</p>
+              <small class="text-muted">FeatureCollection format recommended</small>
+            </ng-container>
+            <ng-container *ngIf="selectedFile">
+              <i class="bi bi-file-earmark-check fs-1 text-success"></i>
+              <p class="mb-1 fw-semibold mt-2">{{ selectedFile.name }}</p>
+              <small class="text-success">{{ featureCount }} features detected</small>
+            </ng-container>
+            <input #geoInput type="file" accept=".geojson,.json" style="display:none" (change)="onFileSelected($event)" />
+          </div>
+
+          <!-- Errors / Success -->
+          <div *ngIf="uploadError" class="alert alert-danger py-2">
+            <i class="bi bi-exclamation-triangle me-2"></i>{{ uploadError }}
+          </div>
+          <div *ngIf="uploadSuccess" class="alert alert-success py-2">
+            <i class="bi bi-check-circle me-2"></i>{{ uploadSuccess }}
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary px-4"
+                    [disabled]="!selectedFile || !selectedLayer || isUploading"
+                    (click)="upload()">
+              <span *ngIf="isUploading" class="spinner-border spinner-border-sm me-1"></span>
+              <i *ngIf="!isUploading" class="bi bi-upload me-1"></i>
+              {{ isUploading ? 'Uploading...' : 'Upload' }}
+            </button>
+            <button class="btn btn-outline-secondary" *ngIf="selectedFile" (click)="clearFile()">
+              <i class="bi bi-x-circle me-1"></i>Clear
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Card -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-eye me-2"></i>Preview
+        </div>
+        <div class="card-body">
+          <div *ngIf="!previewJson" class="text-center text-muted py-5">
+            <i class="bi bi-file-earmark-code fs-1 opacity-25"></i>
+            <p class="mt-2">No file loaded</p>
+          </div>
+          <div *ngIf="previewJson">
+            <div class="mb-2 d-flex gap-2 flex-wrap">
+              <span class="badge bg-primary">Type: {{ previewJson.type }}</span>
+              <span class="badge bg-success">{{ featureCount }} Features</span>
+              <span class="badge bg-secondary" *ngIf="previewJson.features?.[0]?.geometry?.type">
+                Geometry: {{ previewJson.features[0].geometry.type }}
+              </span>
+            </div>
+            <div class="json-preview">{{ previewJsonStr }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Logs -->
+    <div class="col-12" *ngIf="logs.length > 0">
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-clock-history me-2"></i>Upload History
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>File</th>
+                <th>Layer</th>
+                <th>Features</th>
+                <th>Uploaded At</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let log of logs">
+                <td><i class="bi bi-file-earmark-code me-1 text-primary"></i>{{ log.filename }}</td>
+                <td><span class="badge bg-info text-dark">{{ log.layer }}</span></td>
+                <td>{{ log.features }}</td>
+                <td class="text-muted small">{{ log.uploadedAt }}</td>
+                <td>
+                  <span class="badge" [ngClass]="log.status === 'success' ? 'bg-success' : 'bg-danger'">
+                    {{ log.status }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

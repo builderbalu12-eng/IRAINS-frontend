@@ -22,7 +22,16 @@ import { getStateService } from "src/app/services/state/getState.service";
 import { getDistrictService } from "src/app/services/district/getdistrict.service";
 import { getBlockService } from "src/app/services/block/getblock.service";
 import { BlockService } from "src/app/services/block/BlockService.service";
+import { AllAWSDataService } from "src/app/services/aws/allAWSdata.service";
 import { forkJoin } from "rxjs";
+import { Chart } from "angular-highcharts";
+
+interface AwsSourceStat {
+  sourceLabel: string;
+  totalStations: number;
+  blocksWithAwsData: number;
+  blocksPlottedOnMap: number;
+}
 
 @Component({
   selector: 'app-block-rainfall-map-actual-orgaws-main-page',
@@ -78,6 +87,23 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
       filterBlocks: any[]|undefined;
       selectedBlockData: any;
       selecteddatamode: string = 'Actual';
+
+      // ── AWS Coverage Panel ────────────────────────────────────────────────
+      awsStats: AwsSourceStat[] = [];
+      awsLoading = false;
+      totalBlocksInGetBlock = 0;
+      awsPieChart: Chart | null = null;
+      awsBarChart: Chart | null = null;
+
+      private readonly awsSourceColors: string[] = [
+        '#003f88', '#0077b6', '#00b4d8', '#48cae4',
+        '#90e0ef', '#2dc653', '#f4a261', '#e76f51',
+        '#9b2226', '#6a4c93'
+      ];
+
+      get totalAwsStations()        { return this.awsStats.reduce((s, r) => s + r.totalStations, 0); }
+      get totalBlocksWithAwsData()  { return this.awsStats.reduce((s, r) => s + r.blocksWithAwsData, 0); }
+      get totalBlocksPlottedOnMap() { return this.awsStats.reduce((s, r) => s + r.blocksPlottedOnMap, 0); }
     
       formatDate(date: Date): string {
         const day = String(date.getDate()).padStart(2, '0');
@@ -187,7 +213,6 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
           private dataService: DataService,
           private renderer: Renderer2,
           private elRef: ElementRef,
-          // private district: DistrictService,
           private block : BlockService,
           private downloadPdf$: DownloadPdf,
           private countryService: CountryService,
@@ -197,6 +222,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
           private getStateService: getStateService,
           private getDistrictService: getDistrictService,
           private getBlockService : getBlockService,
+          private allAwsService: AllAWSDataService,
         ) {
           // var currentDate = new Date();
           // var dd = String(currentDate.getDate());
@@ -487,13 +513,14 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
               const aws = awsData?.data || [];
               const normal = normalData?.data || [];
               console.log('API AWS data', aws)
-          
+
               this.blockdatacum = [...aws, ...normal];
               // this.blockdatacum = [...normal];
-          
+
               console.log("Combined block data:", this.blockdatacum);
-          
+
               this.loadGeoJSON();
+              this.fetchAllAWSData();
               this.StartDate = this.convertToIndianDateFormat(this.StartDate);
               this.EndDate = this.convertToIndianDateFormat(this.EndDate);
             });
@@ -520,22 +547,13 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
             console.log('hi1')
             // Fetch both AWS and normal block data (even in non-unified mode)
             forkJoin({
-              // awsData: this.block.fetchDatablockaws(data),
               normalData: this.block.fetchData(dateforfetchdata)
             }).subscribe(({ normalData }) => {
-              console.log('hi2')
-
-              // const aws = awsData?.data || [];
               const normal = normalData?.data || [];
-              // console.log('API AWS data', aws)
-          
-              // this.blockdatacum = [...aws, ...normal];
               this.blockdatacum = [...normal];
-
-          
               console.log("Combined block data:", this.blockdatacum);
-          
               this.loadGeoJSON();
+              this.fetchAllAWSData();
               this.StartDate = this.convertToIndianDateFormat(this.StartDate);
               this.EndDate = this.convertToIndianDateFormat(this.EndDate);
             });
@@ -879,12 +897,89 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
         (response:any) => {
           console.log("All Blocks", response);
           this.blocks.push(response);
-          console.log("Blocks", this.blocks);
+          this.totalBlocksInGetBlock = response.data?.length ?? 0;
         },
         (error:any) => {
           console.error("Error fetching center details:", error);
         }
       );
+    }
+
+    fetchAllAWSData(): void {
+      this.awsLoading = true;
+      const body = { startDate: this.fromDate, endDate: this.fromDate };
+      const sourceLabels = [
+        'UP AWS', 'NHP AWS', 'Zomato AWS', 'Meghalaya AWS', 'Mizoram AWS',
+        'Tamilnadu AWS', 'Uttarakhand AWS', 'Telangana AWS', 'Karnataka AWS', 'IITM Mumbai'
+      ];
+      forkJoin(this.allAwsService.fetchAllByGranularity('daily', body)).subscribe({
+        next: (results: any[]) => {
+          this.awsStats = results.map((res, i) => this.computeBlockStat(sourceLabels[i], res?.data ?? []));
+          this.awsLoading = false;
+          this.buildAWSCharts();
+        },
+        error: () => { this.awsLoading = false; }
+      });
+    }
+
+    private computeBlockStat(sourceLabel: string, rows: any[]): AwsSourceStat {
+      const totalStations = new Set(rows.map((r: any) => r.id)).size;
+      const rowsWithData = rows.filter((r: any) =>
+        r.total_rainfall != null || r.rainfall != null || r.daily_rainfall != null
+      );
+      const blocksWithData = new Set(
+        rowsWithData.map((r: any) => (r.block ?? r.district ?? '').toString().toLowerCase().trim())
+      );
+      blocksWithData.delete('');
+      const blocksWithAwsData = blocksWithData.size;
+
+      const knownDistricts = new Set<string>();
+      (this.blockdatacum ?? []).forEach((b: any) => {
+        const v = (b.district_name ?? '').toString().toLowerCase().trim();
+        if (v) knownDistricts.add(v);
+      });
+      if (this.geoJsonData?.features) {
+        this.geoJsonData.features.forEach((f: any) => {
+          const v = (f.properties?.district ?? '').toString().toLowerCase().trim();
+          if (v) knownDistricts.add(v);
+        });
+      }
+
+      let blocksPlottedOnMap = 0;
+      blocksWithData.forEach(name => { if (knownDistricts.has(name)) blocksPlottedOnMap++; });
+      return { sourceLabel, totalStations, blocksWithAwsData, blocksPlottedOnMap };
+    }
+
+    private buildAWSCharts(): void {
+      const active = this.awsStats.filter(s => s.blocksWithAwsData > 0);
+      const pieData = active.map(s => ({
+        name: s.sourceLabel, y: s.blocksWithAwsData,
+        color: this.awsSourceColors[this.awsStats.indexOf(s)]
+      }));
+      this.awsPieChart = pieData.length ? new Chart({
+        chart: { type: 'pie', height: 300 },
+        title: { text: 'Blocks w/ AWS by Source', style: { fontSize: '12px', color: '#002467' } },
+        tooltip: { pointFormat: '<b>{point.name}</b>: {point.y} ({point.percentage:.1f}%)' },
+        plotOptions: { pie: { allowPointSelect: true, cursor: 'pointer',
+          dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.y}', style: { fontSize: '10px' } } } },
+        credits: { enabled: false },
+        series: [{ type: 'pie', name: 'Blocks', data: pieData }]
+      } as any) : null;
+
+      this.awsBarChart = new Chart({
+        chart: { type: 'bar', height: 300 },
+        title: { text: 'AWS Blocks vs IMD Coverage', style: { fontSize: '12px', color: '#002467' } },
+        xAxis: { categories: this.awsStats.map(s => s.sourceLabel), labels: { style: { fontSize: '10px' } } },
+        yAxis: { min: 0, title: { text: 'Blocks', style: { fontSize: '10px' } } },
+        legend: { enabled: true, itemStyle: { fontSize: '10px' } },
+        tooltip: { shared: true },
+        plotOptions: { bar: { dataLabels: { enabled: true, style: { fontSize: '10px' } } } },
+        credits: { enabled: false },
+        series: [
+          { type: 'bar', name: 'Blocks w/ AWS', data: this.awsStats.map(s => s.blocksWithAwsData), color: '#2dc653' },
+          { type: 'bar', name: 'In IMD Map',    data: this.awsStats.map(s => s.blocksPlottedOnMap), color: '#00b4d8' }
+        ]
+      } as any);
     }
   
         

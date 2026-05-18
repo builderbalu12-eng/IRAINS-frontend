@@ -13,9 +13,10 @@ interface User {
 })
 export class HeaderComponent implements OnInit {
 
-  loggedInUser: any; // Initialize loggedInUser as null
+  loggedInUser: any;
   Mode: any;
-  isGuest : any = false
+  isGuest: any = false;
+  isHQ = false;
 
   constructor(
     private router: Router,
@@ -31,11 +32,9 @@ export class HeaderComponent implements OnInit {
 
     let loggedInUser: any = localStorage.getItem("isAuthorised");
     this.loggedInUser = JSON.parse(loggedInUser);
-    if(this.loggedInUser.data[0].mcorhq=='public'){
-      this.isGuest = true
-    }else{
-      this.isGuest = false
-    }
+    const role = this.loggedInUser?.data?.[0]?.mcorhq;
+    this.isGuest = role === 'public';
+    this.isHQ    = role === 'hq';
 
     console.log('this.isGuest in header', this.isGuest )
   }

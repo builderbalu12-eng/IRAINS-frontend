@@ -286,3 +286,52 @@ button:hover {
 .no-border {
   border: none !important;
 }
+
+/* ── AWS Block Coverage Panel ────────────────────────────────────────────── */
+.aws-stats-panel {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  padding: 16px;
+  min-width: 420px;
+}
+
+.stats-title {
+  font-weight: 700;
+  color: #002467;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  border-bottom: 2px solid #002467;
+  padding-bottom: 6px;
+}
+
+.stats-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.aws-table {
+  font-size: 0.82rem;
+}
+
+.aws-table .source-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chart-half {
+  flex: 1;
+  min-width: 0;
+}
+
+.charts-row .d-flex {
+  flex-wrap: wrap;
+}
+
+.comparison-box {
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  font-size: 0.85rem;
+}

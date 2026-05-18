@@ -2,8 +2,8 @@
   padding: 16px 24px;
   font-family: Arial, sans-serif;
   font-size: 13px;
-  min-height: 100vh;
-  background: #f5f5f5;
+  min-height: 100%;
+  background: #a2c5b6;
 }
 
 .dom-header h2 {

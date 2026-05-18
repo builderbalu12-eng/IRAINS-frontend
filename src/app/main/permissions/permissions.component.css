@@ -1,24 +1,30 @@
-.ap-layout { height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #1a1a2e; }
-.ap-body { display: flex; flex: 1; min-height: 0; }
+.perm-layout { height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #1a1a2e; }
+.perm-body { display: flex; flex: 1; min-height: 0; }
 
 /* ── Sidebar — default: WIDE ── */
-.ap-sidebar {
-  width: 240px;
-  min-width: 240px;
+.perm-sidebar {
+  width: 260px;
+  min-width: 260px;
   background: #1a1a2e;
   display: flex;
   flex-direction: column;
   transition: width 0.25s ease, min-width 0.25s ease;
   overflow: hidden;
 }
-.ap-sidebar.collapsed { width: 56px; min-width: 56px; }
+.perm-sidebar.collapsed { width: 56px; min-width: 56px; }
 
 .sb-logo {
-  display: flex; align-items: center; justify-content: flex-start;
-  gap: 10px; padding: 0 14px; background: #111120;
-  border-bottom: 1px solid rgba(255,255,255,0.07); min-height: 56px; flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 14px;
+  background: #111120;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  min-height: 56px;
+  flex-shrink: 0;
 }
-.ap-sidebar.collapsed .sb-logo { justify-content: center; padding: 0; }
+.perm-sidebar.collapsed .sb-logo { justify-content: center; padding: 0; }
 
 .sb-hamburger {
   background: none; border: none; color: rgba(255,255,255,0.7);
@@ -29,21 +35,11 @@
 .sb-hamburger:hover { color: #f59e0b; background: rgba(245,158,11,0.1); }
 
 .sb-logo-text { color: #fff; font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; }
-.ap-sidebar.collapsed .sb-logo-text { display: none; }
+.perm-sidebar.collapsed .sb-logo-text { display: none; }
 
 .sb-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px 0; }
 .sb-scroll::-webkit-scrollbar { width: 4px; }
 .sb-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-
-.sb-plain {
-  display: flex; align-items: center; gap: 12px;
-  padding: 11px 14px; justify-content: flex-start;
-  color: rgba(255,255,255,0.65); font-size: 13.5px; font-weight: 500;
-  text-decoration: none; transition: color 0.15s; white-space: nowrap; min-height: 44px;
-}
-.ap-sidebar.collapsed .sb-plain { gap: 0; padding: 11px 0; justify-content: center; }
-.sb-plain:hover  { color: #f59e0b; }
-.sb-plain.active { color: #f59e0b; font-weight: 600; }
 
 .sb-parent {
   display: flex; align-items: center; gap: 12px;
@@ -52,31 +48,30 @@
   font-size: 13.5px; font-weight: 500;
   transition: color 0.15s; user-select: none; white-space: nowrap; min-height: 44px;
 }
-.ap-sidebar.collapsed .sb-parent { gap: 0; padding: 11px 0; justify-content: center; }
+.perm-sidebar.collapsed .sb-parent { gap: 0; padding: 11px 0; justify-content: center; }
 .sb-parent:hover { color: #f59e0b; }
 .sb-parent.open  { color: #f59e0b; }
 
-.sb-icon { font-size: 17px; flex-shrink: 0; }
-
-.sb-label { flex: 1; overflow: hidden; }
-.ap-sidebar.collapsed .sb-label { display: none; }
+.sb-parent-icon { font-size: 17px; flex-shrink: 0; }
+.sb-parent-label { flex: 1; overflow: hidden; }
+.perm-sidebar.collapsed .sb-parent-label { display: none; }
 
 .sb-chevron { font-size: 11px; flex-shrink: 0; opacity: 0.6; transition: transform 0.22s; }
-.ap-sidebar.collapsed .sb-chevron { display: none; }
+.perm-sidebar.collapsed .sb-chevron { display: none; }
 .sb-chevron.down { transform: rotate(180deg); }
 
 .sb-children { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; background: rgba(0,0,0,0.2); }
 .sb-children.open { max-height: 400px; }
-.ap-sidebar.collapsed .sb-children { max-height: 0 !important; }
+.perm-sidebar.collapsed .sb-children { max-height: 0 !important; }
 
 .sb-child {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 14px 9px 36px; color: rgba(255,255,255,0.55);
   font-size: 13px; text-decoration: none;
-  transition: color 0.15s, background 0.15s; white-space: nowrap;
+  transition: color 0.15s, background 0.15s; white-space: nowrap; cursor: pointer;
 }
 .sb-child:hover  { color: #f59e0b; background: rgba(245,158,11,0.06); }
 .sb-child.active { color: #f59e0b; font-weight: 600; border-left: 3px solid #f59e0b; padding-left: 33px; }
-.sb-child i { font-size: 13px; flex-shrink: 0; }
+.sb-child i      { font-size: 13px; flex-shrink: 0; }
 
-.ap-content { background: #f1f5f9; }
+.perm-content { background: #f1f5f9; }
