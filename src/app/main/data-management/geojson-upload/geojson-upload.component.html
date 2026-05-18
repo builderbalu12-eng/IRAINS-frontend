@@ -1,14 +1,26 @@
 <div class="page-wrap">
 
   <!-- Header -->
-  <div class="page-header mb-4">
+  <div class="page-header mb-4 d-flex align-items-center justify-content-between">
     <div>
       <h4 class="mb-1"><i class="bi bi-file-earmark-code-fill me-2 text-primary"></i>GeoJSON Upload</h4>
       <small class="text-muted">Upload boundary GeoJSON files for map layers</small>
     </div>
+    <!-- Mode toggle -->
+    <div class="btn-group" role="group">
+      <button class="btn btn-sm" [class.btn-primary]="mode==='single'" [class.btn-outline-primary]="mode!=='single'"
+              (click)="mode='single'">
+        <i class="bi bi-file-earmark-arrow-up me-1"></i>Single
+      </button>
+      <button class="btn btn-sm" [class.btn-primary]="mode==='bulk'" [class.btn-outline-primary]="mode!=='bulk'"
+              (click)="mode='bulk'">
+        <i class="bi bi-stack me-1"></i>Bulk
+      </button>
+    </div>
   </div>
 
-  <div class="row g-4">
+  <!-- ══════════════════ SINGLE MODE ══════════════════ -->
+  <div *ngIf="mode === 'single'" class="row g-4">
 
     <!-- Upload Card -->
     <div class="col-lg-7">
@@ -18,7 +30,6 @@
         </div>
         <div class="card-body">
 
-          <!-- Layer selector -->
           <div class="mb-3">
             <label class="form-label fw-bold">Target Layer <span class="text-danger">*</span></label>
             <select class="form-select" [(ngModel)]="selectedLayer">
@@ -27,7 +38,6 @@
             </select>
           </div>
 
-          <!-- Drop zone -->
           <div class="drop-zone mb-3"
                [class.drag-over]="dragOver"
                [class.has-file]="selectedFile"
@@ -38,7 +48,7 @@
             <ng-container *ngIf="!selectedFile">
               <i class="bi bi-cloud-arrow-up fs-1 text-primary opacity-50"></i>
               <p class="mb-1 fw-semibold mt-2">Click or Drag & Drop .geojson / .json</p>
-              <small class="text-muted">FeatureCollection format recommended</small>
+              <small class="text-muted">FeatureCollection format</small>
             </ng-container>
             <ng-container *ngIf="selectedFile">
               <i class="bi bi-file-earmark-check fs-1 text-success"></i>
@@ -48,19 +58,11 @@
             <input #geoInput type="file" accept=".geojson,.json" style="display:none" (change)="onFileSelected($event)" />
           </div>
 
-          <!-- Errors / Success -->
-          <div *ngIf="uploadError" class="alert alert-danger py-2">
-            <i class="bi bi-exclamation-triangle me-2"></i>{{ uploadError }}
-          </div>
-          <div *ngIf="uploadSuccess" class="alert alert-success py-2">
-            <i class="bi bi-check-circle me-2"></i>{{ uploadSuccess }}
-          </div>
+          <div *ngIf="uploadError"   class="alert alert-danger py-2"><i class="bi bi-exclamation-triangle me-2"></i>{{ uploadError }}</div>
+          <div *ngIf="uploadSuccess" class="alert alert-success py-2"><i class="bi bi-check-circle me-2"></i>{{ uploadSuccess }}</div>
 
-          <!-- Actions -->
           <div class="d-flex gap-2">
-            <button class="btn btn-primary px-4"
-                    [disabled]="!selectedFile || !selectedLayer || isUploading"
-                    (click)="upload()">
+            <button class="btn btn-primary px-4" [disabled]="!selectedFile || !selectedLayer || isUploading" (click)="upload()">
               <span *ngIf="isUploading" class="spinner-border spinner-border-sm me-1"></span>
               <i *ngIf="!isUploading" class="bi bi-upload me-1"></i>
               {{ isUploading ? 'Uploading...' : 'Upload' }}
@@ -77,9 +79,7 @@
     <!-- Preview Card -->
     <div class="col-lg-5">
       <div class="card shadow-sm h-100">
-        <div class="card-header fw-semibold">
-          <i class="bi bi-eye me-2"></i>Preview
-        </div>
+        <div class="card-header fw-semibold"><i class="bi bi-eye me-2"></i>Preview</div>
         <div class="card-body">
           <div *ngIf="!previewJson" class="text-center text-muted py-5">
             <i class="bi bi-file-earmark-code fs-1 opacity-25"></i>
@@ -99,40 +99,152 @@
       </div>
     </div>
 
-    <!-- Upload Logs -->
-    <div class="col-12" *ngIf="logs.length > 0">
-      <div class="card shadow-sm">
-        <div class="card-header fw-semibold">
-          <i class="bi bi-clock-history me-2"></i>Upload History
-        </div>
-        <div class="card-body p-0">
-          <table class="table table-hover mb-0 align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>File</th>
-                <th>Layer</th>
-                <th>Features</th>
-                <th>Uploaded At</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let log of logs">
-                <td><i class="bi bi-file-earmark-code me-1 text-primary"></i>{{ log.filename }}</td>
-                <td><span class="badge bg-info text-dark">{{ log.layer }}</span></td>
-                <td>{{ log.features }}</td>
-                <td class="text-muted small">{{ log.uploadedAt }}</td>
-                <td>
-                  <span class="badge" [ngClass]="log.status === 'success' ? 'bg-success' : 'bg-danger'">
-                    {{ log.status }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+  </div>
+
+  <!-- ══════════════════ BULK MODE ══════════════════ -->
+  <div *ngIf="mode === 'bulk'">
+
+    <!-- Drop zone for multiple files -->
+    <div class="drop-zone mb-3"
+         [class.drag-over]="dragOver"
+         (dragover)="onDragOver($event)"
+         (dragleave)="onDragLeave()"
+         (drop)="onBulkDrop($event)"
+         (click)="bulkInput.click()">
+      <i class="bi bi-cloud-arrow-up fs-1 text-primary opacity-50"></i>
+      <p class="mb-1 fw-semibold mt-2">Click or Drag & Drop — select as many files as you want</p>
+      <small class="text-muted">Folder is auto-detected from filename — you can override below</small>
+      <input #bulkInput type="file" accept=".geojson,.json" multiple style="display:none" (change)="onBulkFilesSelected($event)" />
+    </div>
+
+    <!-- Queue table -->
+    <div *ngIf="bulkQueue.length > 0" class="card shadow-sm mb-3">
+      <div class="card-header fw-semibold d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-list-check me-2"></i>Upload Queue — {{ bulkQueue.length }} files</span>
+        <div class="d-flex align-items-center gap-2">
+          <!-- Summary badges -->
+          <span class="badge bg-secondary">{{ bulkPendingCount }} pending</span>
+          <span class="badge bg-success"  *ngIf="bulkSuccessCount">{{ bulkSuccessCount }} done</span>
+          <span class="badge bg-danger"   *ngIf="bulkErrorCount">{{ bulkErrorCount }} failed</span>
+          <button class="btn btn-sm btn-outline-secondary ms-2" (click)="clearBulkQueue()" [disabled]="isBulkUploading">
+            <i class="bi bi-trash me-1"></i>Clear
+          </button>
         </div>
       </div>
+
+      <!-- Progress bar -->
+      <div *ngIf="isBulkUploading || bulkSuccessCount + bulkErrorCount > 0" class="px-3 pt-3">
+        <div class="progress" style="height:8px">
+          <div class="progress-bar bg-success" [style.width.%]="bulkProgressPct"></div>
+        </div>
+        <small class="text-muted">{{ bulkSuccessCount + bulkErrorCount }} / {{ bulkQueue.length }} processed ({{ bulkProgressPct }}%)</small>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>File</th>
+              <th style="width:200px">Folder <span class="text-danger">*</span></th>
+              <th>Features</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of bulkQueue; let i = index"
+                [class.table-success]="item.status==='success'"
+                [class.table-danger]="item.status==='error'">
+              <td class="text-muted small">{{ i + 1 }}</td>
+              <td>
+                <i class="bi bi-file-earmark-code me-1 text-primary"></i>
+                <span class="small">{{ item.file.name }}</span>
+              </td>
+              <td>
+                <select class="form-select form-select-sm"
+                        [(ngModel)]="item.folder"
+                        [disabled]="item.status === 'uploading' || item.status === 'success'">
+                  <option value="">-- required --</option>
+                  <option *ngFor="let l of layerOptions" [value]="l.value">{{ l.label }}</option>
+                </select>
+              </td>
+              <td class="small text-muted">{{ item.features || '—' }}</td>
+              <td>
+                <span *ngIf="item.status === 'pending'"   class="badge bg-secondary">Pending</span>
+                <span *ngIf="item.status === 'uploading'" class="badge bg-primary">
+                  <span class="spinner-border spinner-border-sm me-1" style="width:10px;height:10px"></span>Uploading
+                </span>
+                <span *ngIf="item.status === 'success'"   class="badge bg-success">Done</span>
+                <span *ngIf="item.status === 'error'"     class="badge bg-danger" [title]="item.message">Failed</span>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-outline-danger"
+                        *ngIf="item.status !== 'uploading'"
+                        (click)="removeBulkItem(i)"
+                        [disabled]="isBulkUploading">
+                  <i class="bi bi-x"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Actions -->
+      <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary"
+                [disabled]="isBulkUploading || bulkPendingCount === 0 || !allFolderSelected"
+                (click)="uploadAll()">
+          <span *ngIf="isBulkUploading" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!isBulkUploading" class="bi bi-upload me-1"></i>
+          {{ isBulkUploading ? 'Uploading ' + bulkDoneCount + ' / ' + bulkQueue.length + '...' : 'Upload All (' + bulkPendingCount + ')' }}
+        </button>
+        <button class="btn btn-warning" *ngIf="bulkErrorCount > 0 && !isBulkUploading" (click)="retryErrors()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Retry Failed ({{ bulkErrorCount }})
+        </button>
+        <small *ngIf="!allFolderSelected" class="text-danger align-self-center ms-2">
+          <i class="bi bi-exclamation-triangle me-1"></i>Some files are missing a folder selection
+        </small>
+      </div>
+
     </div>
 
   </div>
+
+  <!-- ══════════════════ UPLOAD HISTORY ══════════════════ -->
+  <div class="col-12 mt-4" *ngIf="logs.length > 0">
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-clock-history me-2"></i>Upload History
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>File</th>
+              <th>Layer</th>
+              <th>Features</th>
+              <th>Uploaded At</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let log of logs">
+              <td><i class="bi bi-file-earmark-code me-1 text-primary"></i>{{ log.filename }}</td>
+              <td><span class="badge bg-info text-dark">{{ log.layer }}</span></td>
+              <td>{{ log.features }}</td>
+              <td class="text-muted small">{{ log.uploadedAt }}</td>
+              <td>
+                <span class="badge" [ngClass]="log.status === 'success' ? 'bg-success' : 'bg-danger'">
+                  {{ log.status }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </div>

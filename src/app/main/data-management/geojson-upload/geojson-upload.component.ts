@@ -10,24 +10,44 @@ interface GeoUploadLog {
   status: 'success' | 'error';
 }
 
+interface BulkQueueItem {
+  file: File;
+  folder: string;
+  features: number;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  message: string;
+}
+
 @Component({
   selector: 'app-geojson-upload',
   templateUrl: './geojson-upload.component.html',
   styleUrls: ['./geojson-upload.component.css']
 })
 export class GeojsonUploadComponent implements OnInit {
+
+  // ── Mode toggle ────────────────────────────────────────────
+  mode: 'single' | 'bulk' = 'single';
+
+  // ── Single upload state ────────────────────────────────────
   selectedLayer = '';
   dragOver = false;
   selectedFile: File | null = null;
   previewJson: any = null;
+  previewJsonStr = '';
   featureCount = 0;
   uploadError = '';
   uploadSuccess = '';
   isUploading = false;
 
+  // ── Bulk upload state ──────────────────────────────────────
+  bulkQueue: BulkQueueItem[] = [];
+  isBulkUploading = false;
+  bulkDoneCount = 0;
+
+  // ── Shared ─────────────────────────────────────────────────
   layerOptions = [
-    { value: 'root',        label: 'India-wide (INDIA_STATE, INDIA_DISTRICT …)' },
-    { value: 'state',       label: 'State-level District Boundaries' },
+    { value: 'root',        label: 'India-wide (INDIA_*)' },
+    { value: 'state',       label: 'State-level Districts' },
     { value: 'subdivision', label: 'Subdivision Boundaries' },
     { value: 'regions',     label: 'Regional Boundaries' },
     { value: 'mcrmcs',      label: 'MC / RMC Boundaries' },
@@ -56,12 +76,23 @@ export class GeojsonUploadComponent implements OnInit {
     });
   }
 
-  onDragOver(e: DragEvent) {
-    e.preventDefault();
-    this.dragOver = true;
+  // ── Auto-detect folder from filename ──────────────────────
+  detectFolder(fileName: string): string {
+    const n = fileName.toUpperCase().replace(/\.GEOJSON$|\.JSON$/, '');
+    if (n.startsWith('ST_'))  return 'state';
+    if (n.startsWith('SD_'))  return 'subdivision';
+    if (n.startsWith('MC_') || n.startsWith('RMC_') || n === 'AHM' || n === 'AMV') return 'mcrmcs';
+    if (n === 'BASIN_BOUNDARY') return 'river_basin';
+    if (n.startsWith('INDIA_')) return 'root';
+    // Known region filenames
+    if (['C_INDIA','EAST_AND_NORTH_EAST_INDIA','NORTH_WEST_INDIA','SOUTH_PENINSULA'].includes(n)) return 'regions';
+    // Remaining subdivision files without SD_ prefix (e.g. Chattisgarh.json)
+    return 'subdivision';
   }
 
-  onDragLeave() { this.dragOver = false; }
+  // ── Single upload ──────────────────────────────────────────
+  onDragOver(e: DragEvent)  { e.preventDefault(); this.dragOver = true; }
+  onDragLeave()              { this.dragOver = false; }
 
   onDrop(e: DragEvent) {
     e.preventDefault();
@@ -75,12 +106,10 @@ export class GeojsonUploadComponent implements OnInit {
     if (file) this.loadFile(file);
   }
 
-  previewJsonStr = '';
-
   loadFile(file: File) {
     this.uploadError = '';
     this.uploadSuccess = '';
-    if (!file.name.endsWith('.geojson') && !file.name.endsWith('.json')) {
+    if (!file.name.match(/\.(geojson|json)$/i)) {
       this.uploadError = 'Only .geojson or .json files are accepted.';
       return;
     }
@@ -116,11 +145,11 @@ export class GeojsonUploadComponent implements OnInit {
     this.uploadSuccess = '';
     this.uploadError = '';
 
-    const formData = new FormData();
-    formData.append('folder', this.selectedLayer);
-    formData.append('file', this.selectedFile, this.selectedFile.name);
+    const fd = new FormData();
+    fd.append('folder', this.selectedLayer);
+    fd.append('file', this.selectedFile, this.selectedFile.name);
 
-    this.http.post<any>(`${this.apiBase}/api/v1/geojson/upload`, formData).subscribe({
+    this.http.post<any>(`${this.apiBase}/api/v1/geojson/upload`, fd).subscribe({
       next: (res) => {
         this.logs.unshift({
           filename:   this.selectedFile!.name,
@@ -146,5 +175,107 @@ export class GeojsonUploadComponent implements OnInit {
         this.isUploading = false;
       }
     });
+  }
+
+  // ── Bulk upload ────────────────────────────────────────────
+  onBulkFilesSelected(e: Event) {
+    const files = Array.from((e.target as HTMLInputElement).files ?? []);
+    this.addFilesToQueue(files);
+    (e.target as HTMLInputElement).value = '';
+  }
+
+  onBulkDrop(e: DragEvent) {
+    e.preventDefault();
+    this.dragOver = false;
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    this.addFilesToQueue(files);
+  }
+
+  private addFilesToQueue(files: File[]) {
+    const valid = files.filter(f => f.name.match(/\.(geojson|json)$/i));
+    const added: BulkQueueItem[] = [];
+
+    for (const file of valid) {
+      if (this.bulkQueue.some(q => q.file.name === file.name && q.status !== 'error')) continue;
+      added.push({ file, folder: this.detectFolder(file.name), features: 0, status: 'pending', message: '' });
+    }
+
+    // Read feature counts for preview
+    for (const item of added) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const parsed = JSON.parse(ev.target?.result as string);
+          item.features = parsed?.features?.length ?? 0;
+        } catch {}
+      };
+      reader.readAsText(item.file);
+    }
+
+    this.bulkQueue.push(...added);
+  }
+
+  removeBulkItem(index: number) {
+    this.bulkQueue.splice(index, 1);
+  }
+
+  clearBulkQueue() {
+    this.bulkQueue = this.bulkQueue.filter(i => i.status === 'uploading');
+  }
+
+  get bulkPendingCount()  { return this.bulkQueue.filter(i => i.status === 'pending').length; }
+  get bulkSuccessCount()  { return this.bulkQueue.filter(i => i.status === 'success').length; }
+  get bulkErrorCount()    { return this.bulkQueue.filter(i => i.status === 'error').length; }
+  get bulkProgressPct()   {
+    if (!this.bulkQueue.length) return 0;
+    return Math.round(((this.bulkSuccessCount + this.bulkErrorCount) / this.bulkQueue.length) * 100);
+  }
+  get allFolderSelected() { return this.bulkQueue.every(i => i.folder !== ''); }
+
+  async uploadAll() {
+    const pending = this.bulkQueue.filter(i => i.status === 'pending');
+    if (!pending.length || this.isBulkUploading) return;
+    this.isBulkUploading = true;
+    this.bulkDoneCount = 0;
+
+    for (const item of pending) {
+      item.status = 'uploading';
+      item.message = '';
+
+      const fd = new FormData();
+      fd.append('folder', item.folder);
+      fd.append('file', item.file, item.file.name);
+
+      await new Promise<void>((resolve) => {
+        this.http.post<any>(`${this.apiBase}/api/v1/geojson/upload`, fd).subscribe({
+          next: (res) => {
+            item.status = 'success';
+            item.message = res.message ?? 'Uploaded';
+            this.logs.unshift({
+              filename:   item.file.name,
+              layer:      item.folder,
+              features:   item.features,
+              uploadedAt: new Date().toLocaleString(),
+              status:     'success'
+            });
+            this.bulkDoneCount++;
+            resolve();
+          },
+          error: (err) => {
+            item.status = 'error';
+            item.message = err.error?.message ?? 'Upload failed';
+            this.bulkDoneCount++;
+            resolve();
+          }
+        });
+      });
+    }
+
+    this.isBulkUploading = false;
+  }
+
+  retryErrors() {
+    this.bulkQueue.filter(i => i.status === 'error').forEach(i => { i.status = 'pending'; i.message = ''; });
+    this.uploadAll();
   }
 }
