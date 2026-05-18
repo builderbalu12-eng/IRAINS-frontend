@@ -113,44 +113,55 @@
                 <div class="row g-0">
 
                   <!-- Map (left side of preview) -->
-                  <div class="col-md-7 border-end">
+                  <div class="col-md-8 border-end">
                     <div class="preview-map-label">
                       <i class="bi bi-map me-1"></i>Shape Preview
-                      <span *ngIf="features[tab.key] > 600" class="text-warning ms-2 small">
-                        (showing first 600 of {{ features[tab.key] | number }} features)
-                      </span>
+                      <span class="text-muted ms-2 small">{{ features[tab.key] | number }} features</span>
                     </div>
                     <div [id]="'preview-map-' + tab.key" class="preview-map"></div>
                   </div>
 
                   <!-- Properties (right side of preview) -->
-                  <div class="col-md-5">
+                  <div class="col-md-4">
                     <div class="preview-map-label">
                       <i class="bi bi-list-ul me-1"></i>Fields
                     </div>
 
-                    <!-- File summary -->
-                    <div class="px-3 pb-2">
-                      <div class="d-flex gap-2 flex-wrap mb-2">
-                        <span class="badge bg-primary">{{ uploadFile[tab.key]!.name }}</span>
-                        <span class="badge bg-success">{{ features[tab.key] | number }} features</span>
+                    <!-- File summary badges -->
+                    <div class="px-3 pt-2 pb-1">
+                      <div class="d-flex gap-1 flex-wrap">
+                        <span class="badge bg-primary text-truncate" style="max-width:140px" [title]="uploadFile[tab.key]!.name">{{ uploadFile[tab.key]!.name }}</span>
                         <span class="badge bg-secondary" *ngIf="geomType[tab.key]">{{ geomType[tab.key] }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Missing required fields alert -->
+                    <div *ngIf="missingFields[tab.key]?.length" class="px-3 pb-2">
+                      <div class="alert alert-danger py-2 mb-0" style="font-size:11px">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i><strong>Missing required fields:</strong>
+                        <div class="mt-1 d-flex flex-wrap gap-1">
+                          <span *ngFor="let f of missingFields[tab.key]" class="badge bg-danger">{{ f }}</span>
+                        </div>
                       </div>
                     </div>
 
                     <!-- Fields table -->
                     <div class="props-scroll">
-                      <table class="table table-sm mb-0" style="font-size:12px">
+                      <table class="table table-sm mb-0" style="font-size:11px">
                         <thead class="table-light sticky-top">
                           <tr>
                             <th>Field</th>
-                            <th>Sample value</th>
+                            <th>Sample</th>
                           </tr>
                         </thead>
                         <tbody>
-                          <tr *ngFor="let p of props[tab.key]">
-                            <td class="fw-semibold text-primary text-nowrap">{{ p.key }}</td>
-                            <td class="text-muted text-truncate" style="max-width:120px" [title]="p.sample">{{ p.sample }}</td>
+                          <tr *ngFor="let p of props[tab.key]"
+                              [class.table-success]="isRequired(tab.key, p.key)">
+                            <td class="fw-semibold text-nowrap">
+                              <i *ngIf="isRequired(tab.key, p.key)" class="bi bi-check-circle-fill text-success me-1" style="font-size:10px"></i>
+                              {{ p.key }}
+                            </td>
+                            <td class="text-muted text-truncate" style="max-width:100px" [title]="p.sample">{{ p.sample }}</td>
                           </tr>
                           <tr *ngIf="!props[tab.key].length">
                             <td colspan="2" class="text-muted text-center">No properties found</td>
@@ -166,7 +177,7 @@
               <!-- Upload controls -->
               <div class="card-footer d-flex gap-2 align-items-center">
                 <button class="btn btn-primary btn-sm px-4"
-                        [disabled]="uploading[tab.key]"
+                        [disabled]="uploading[tab.key] || !!missingFields[tab.key]?.length"
                         (click)="upload(tab.key)">
                   <span *ngIf="uploading[tab.key]" class="spinner-border spinner-border-sm me-1"></span>
                   <i *ngIf="!uploading[tab.key]" class="bi bi-upload me-1"></i>

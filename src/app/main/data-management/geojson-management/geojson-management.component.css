@@ -90,12 +90,12 @@
 }
 
 .preview-map {
-  height: 300px;
+  height: 400px;
   width: 100%;
   background: #e5e7eb;
 }
 
 .props-scroll {
-  max-height: 280px;
+  max-height: 340px;
   overflow-y: auto;
 }

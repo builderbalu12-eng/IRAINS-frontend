@@ -23,8 +23,8 @@ interface TabConfig {
   icon: string;
   folder: string;
   fetchFolders: string[];
-  fileFilter?: string;       // filter applied only to 'root' folder
-  folderFilter?: string;     // filter applied to non-root folders
+  fileFilter?: string;
+  requiredFields?: string[];
   description: string;
 }
 
@@ -36,17 +36,14 @@ interface TabConfig {
 export class GeojsonManagementComponent implements OnInit, OnDestroy {
 
   tabs: TabConfig[] = [
-    { key: 'country',     label: 'Country',        icon: 'bi-globe',             folder: 'root',        fetchFolders: ['root'],              fileFilter: 'COUNTRY',           description: 'India country boundary (INDIA_COUNTRY.json)' },
-    { key: 'region_all',  label: 'All Regions',    icon: 'bi-globe-americas',    folder: 'root',        fetchFolders: ['root'],              fileFilter: 'REGIONS',           description: 'All-India combined meteorological regions (INDIA_REGIONS.json)' },
-    { key: 'region_c',    label: 'Central India',  icon: 'bi-compass',           folder: 'regions',     fetchFolders: ['regions'],           folderFilter: 'C_INDIA',         description: 'Central India region boundary (C_India.json)' },
-    { key: 'region_e',    label: 'East & NE',      icon: 'bi-compass',           folder: 'regions',     fetchFolders: ['regions'],           folderFilter: 'EAST_AND_NORTH',  description: 'East and North East India region boundary' },
-    { key: 'region_nw',   label: 'North West',     icon: 'bi-compass',           folder: 'regions',     fetchFolders: ['regions'],           folderFilter: 'NORTH_WEST',      description: 'North West India region boundary (NORTH_WEST_INDIA.json)' },
-    { key: 'region_sp',   label: 'S. Peninsula',   icon: 'bi-compass',           folder: 'regions',     fetchFolders: ['regions'],           folderFilter: 'SOUTH_PENINSULA', description: 'South Peninsula region boundary (SOUTH_PENINSULA.json)' },
-    { key: 'state',       label: 'State',          icon: 'bi-flag-fill',         folder: 'state',       fetchFolders: ['state','root'],       fileFilter: 'STATE',             description: 'State boundaries — all-India file + per-state district files' },
-    { key: 'subdivision', label: 'Subdivision',    icon: 'bi-diagram-3-fill',    folder: 'subdivision', fetchFolders: ['subdivision','root'], fileFilter: 'SUB_DIVISION',      description: 'Meteorological subdivisions — all-India + per-subdivision files' },
-    { key: 'district',    label: 'District',       icon: 'bi-pin-map-fill',      folder: 'root',        fetchFolders: ['root'],              fileFilter: 'DISTRICT',          description: 'All-India district boundaries (INDIA_DISTRICT.json)' },
-    { key: 'block',       label: 'Block',          icon: 'bi-grid-3x3-gap-fill', folder: 'root',        fetchFolders: ['root'],              fileFilter: 'BLOCK',             description: 'All-India block boundaries (INDIA_BLOCK.json)' },
-    { key: 'mcrmcs',      label: 'MC / RMC',       icon: 'bi-broadcast',         folder: 'mcrmcs',      fetchFolders: ['mcrmcs'],                                             description: 'Meteorological Centre and Regional MC boundary files' },
+    { key: 'country',     label: 'Country',    icon: 'bi-globe',             folder: 'root',        fetchFolders: ['root'],              fileFilter: 'COUNTRY',      description: 'India country boundary (INDIA_COUNTRY.json)' },
+    { key: 'region',      label: 'Region',     icon: 'bi-globe-americas',    folder: 'regions',     fetchFolders: ['regions','root'],     fileFilter: 'REGION',       description: 'Meteorological regions — all-India file + per-region files' },
+    { key: 'state',       label: 'State',      icon: 'bi-flag-fill',         folder: 'state',       fetchFolders: ['state','root'],       fileFilter: 'STATE',        description: 'State boundaries — all-India file + per-state district files' },
+    { key: 'subdivision', label: 'Subdivision',icon: 'bi-diagram-3-fill',    folder: 'subdivision', fetchFolders: ['subdivision','root'], fileFilter: 'SUB_DIVISION', description: 'Meteorological subdivisions — all-India + per-subdivision files' },
+    { key: 'district',    label: 'District',   icon: 'bi-pin-map-fill',      folder: 'root',        fetchFolders: ['root'],              fileFilter: 'DISTRICT',     description: 'All-India district boundaries (INDIA_DISTRICT.json)',
+      requiredFields: ['region','region_cod','subdivisio','subdivis_1','state','state_code','district','district_c','block','block_code','country','area_sqkm','area_sqmi','abb','RMC_MC','RMC_MC_ID'] },
+    { key: 'block',       label: 'Block',      icon: 'bi-grid-3x3-gap-fill', folder: 'root',        fetchFolders: ['root'],              fileFilter: 'BLOCK',        description: 'All-India block boundaries (INDIA_BLOCK.json)' },
+    { key: 'mcrmcs',      label: 'MC / RMC',   icon: 'bi-broadcast',         folder: 'mcrmcs',      fetchFolders: ['mcrmcs'],            fileFilter: undefined,      description: 'Meteorological Centre and Regional MC boundary files' },
   ];
 
   activeTab = 'country';
@@ -61,9 +58,10 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
   features:   { [k: string]: number }      = {};
 
   // Preview state
-  props:       { [k: string]: PropRow[] }  = {};
-  geomType:    { [k: string]: string }     = {};
-  previewMaps: { [k: string]: L.Map | null } = {};
+  props:         { [k: string]: PropRow[] }    = {};
+  geomType:      { [k: string]: string }       = {};
+  previewMaps:   { [k: string]: L.Map | null } = {};
+  missingFields: { [k: string]: string[] }     = {};
 
   private apiBase = environment.baseUrl;
 
@@ -77,9 +75,10 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
       this.uploadErr[t.key]   = '';
       this.dragOver[t.key]    = false;
       this.features[t.key]    = 0;
-      this.props[t.key]       = [];
-      this.geomType[t.key]    = '';
-      this.previewMaps[t.key] = null;
+      this.props[t.key]         = [];
+      this.geomType[t.key]      = '';
+      this.previewMaps[t.key]   = null;
+      this.missingFields[t.key] = [];
     });
   }
 
@@ -116,9 +115,6 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
           let rows: GeoFile[] = res.files ?? [];
           if (cfg.fileFilter && folder === 'root') {
             rows = rows.filter(f => f.file_name.toUpperCase().includes(cfg.fileFilter!));
-          }
-          if (cfg.folderFilter && folder !== 'root') {
-            rows = rows.filter(f => f.file_name.toUpperCase().includes(cfg.folderFilter!));
           }
           allFiles.push(...rows);
           if (--pending === 0) {
@@ -163,7 +159,7 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
         const geojson = JSON.parse(ev.target?.result as string);
         this.features[key] = geojson?.features?.length ?? 0;
         this.extractProps(key, geojson);
-        // Let Angular render the map div, then initialize Leaflet
+        this.checkRequiredFields(key, geojson);
         setTimeout(() => this.initMap(key, geojson), 80);
       } catch {
         this.uploadErr[key] = 'Invalid JSON.';
@@ -191,6 +187,18 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
     }));
   }
 
+  // ── Required-field validation ─────────────────────────────
+  private checkRequiredFields(key: string, geojson: any) {
+    const tab = this.tabs.find(t => t.key === key);
+    if (!tab?.requiredFields?.length) { this.missingFields[key] = []; return; }
+    const props = Object.keys(geojson?.features?.[0]?.properties ?? {});
+    this.missingFields[key] = tab.requiredFields.filter(f => !props.includes(f));
+  }
+
+  isRequired(tabKey: string, fieldName: string): boolean {
+    return this.tabs.find(t => t.key === tabKey)?.requiredFields?.includes(fieldName) ?? false;
+  }
+
   // ── Leaflet map preview ───────────────────────────────────
   private initMap(key: string, geojson: any) {
     const el = document.getElementById(`preview-map-${key}`);
@@ -212,18 +220,14 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
       maxZoom: 18
     }).addTo(map);
 
-    // Limit features rendered for performance (large files like INDIA_BLOCK)
-    const displayGeo = geojson.features.length > 600
-      ? { ...geojson, features: geojson.features.slice(0, 600) }
-      : geojson;
-
-    const layer = L.geoJSON(displayGeo, {
+    const layer = L.geoJSON(geojson, {
       style: { color: '#002467', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.25 }
     }).addTo(map);
 
-    try { map.fitBounds(layer.getBounds(), { padding: [8, 8] }); } catch {}
+    try { map.fitBounds(layer.getBounds(), { padding: [16, 16] }); } catch {}
 
     this.previewMaps[key] = map;
+    setTimeout(() => map.invalidateSize(), 150);
   }
 
   private renderMap(key: string) {
@@ -237,8 +241,9 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
     this.features[key]   = 0;
     this.uploadErr[key]  = '';
     this.uploadMsg[key]  = '';
-    this.props[key]      = [];
-    this.geomType[key]   = '';
+    this.props[key]         = [];
+    this.geomType[key]      = '';
+    this.missingFields[key] = [];
     if (this.previewMaps[key]) { this.previewMaps[key]!.remove(); this.previewMaps[key] = null; }
   }
 
