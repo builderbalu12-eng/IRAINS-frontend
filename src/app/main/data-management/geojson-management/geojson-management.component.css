@@ -1,0 +1,78 @@
+.page-wrap { padding: 8px; }
+
+.page-header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+.geo-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.geo-tab-btn {
+  background: #f0f4ff;
+  color: #002467;
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid #dee2e6;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.geo-tab-btn:hover { background: #dce8ff; }
+
+.geo-tab-btn.active {
+  background: #002467;
+  color: #fff;
+  border-color: #002467;
+}
+
+.tab-count {
+  background: rgba(255,255,255,0.25);
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.geo-tab-btn.active .tab-count { background: rgba(255,255,255,0.3); }
+.geo-tab-btn:not(.active) .tab-count { background: #c8d8ff; color: #002467; }
+
+/* ── Tab panel ────────────────────────────────────────────── */
+.tab-panel {
+  border: 1px solid #dee2e6;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  padding: 20px;
+  background: #fff;
+}
+
+/* ── Drop zone ────────────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed #93c5fd;
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #eff6ff;
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over { border-color: #3b82f6; background: #dbeafe; }
+.drop-zone.has-file  { border-color: #22c55e; background: #f0fdf4; }
+
+/* ── Table ────────────────────────────────────────────────── */
+.table thead th {
+  background: #002467;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.table tbody td { font-size: 13px; }

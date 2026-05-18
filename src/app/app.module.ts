@@ -192,6 +192,7 @@ import { DisplayOrderManagementComponent } from './main/display-order-management
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DataManagementComponent } from './main/data-management/data-management.component';
 import { GeojsonUploadComponent } from './main/data-management/geojson-upload/geojson-upload.component';
+import { GeojsonManagementComponent } from './main/data-management/geojson-management/geojson-management.component';
 import { BlockManagementComponent } from './main/data-management/block-management/block-management.component';
 import { DistrictManagementComponent } from './main/data-management/district-management/district-management.component';
 import { StateManagementComponent } from './main/data-management/state-management/state-management.component';
@@ -366,6 +367,7 @@ import { RouteManagementComponent } from './main/permissions/route-management/ro
     DisplayOrderManagementComponent,
     DataManagementComponent,
     GeojsonUploadComponent,
+    GeojsonManagementComponent,
     BlockManagementComponent,
     DistrictManagementComponent,
     StateManagementComponent,

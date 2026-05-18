@@ -1,0 +1,153 @@
+<div class="page-wrap">
+
+  <!-- Header -->
+  <div class="page-header mb-4">
+    <h4 class="mb-1"><i class="bi bi-layers-fill me-2 text-primary"></i>GeoJSON Management</h4>
+    <small class="text-muted">Manage boundary GeoJSON files for each geographic level</small>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav geo-tabs mb-0">
+    <li class="nav-item" *ngFor="let tab of tabs">
+      <button class="nav-link geo-tab-btn"
+              [class.active]="activeTab === tab.key"
+              (click)="selectTab(tab.key)">
+        <i [class]="'bi ' + tab.icon + ' me-1'"></i>
+        {{ tab.label }}
+        <span class="tab-count ms-1" *ngIf="files[tab.key]?.length">{{ files[tab.key].length }}</span>
+      </button>
+    </li>
+  </ul>
+
+  <!-- Tab content -->
+  <div class="tab-panel">
+
+    <ng-container *ngFor="let tab of tabs">
+      <div *ngIf="activeTab === tab.key">
+
+        <!-- Description -->
+        <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>{{ tab.description }}</p>
+
+        <div class="row g-4">
+
+          <!-- File list -->
+          <div class="col-lg-7">
+            <div class="card shadow-sm">
+              <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-database me-2"></i>Stored in Database</span>
+                <button class="btn btn-sm btn-outline-secondary" (click)="loadTab(tab.key)">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+              <div class="card-body p-0">
+
+                <!-- Loading -->
+                <div *ngIf="loading[tab.key]" class="text-center py-5 text-muted">
+                  <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+                </div>
+
+                <!-- Empty -->
+                <div *ngIf="!loading[tab.key] && files[tab.key].length === 0" class="text-center py-5 text-muted">
+                  <i class="bi bi-inbox fs-1 opacity-25"></i>
+                  <p class="mt-2 mb-0">No files stored yet for {{ tab.label }}</p>
+                  <small>Upload a file using the panel on the right</small>
+                </div>
+
+                <!-- Table -->
+                <div *ngIf="!loading[tab.key] && files[tab.key].length > 0" class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                      <tr>
+                        <th>File Name</th>
+                        <th>Features</th>
+                        <th>Version</th>
+                        <th>Source</th>
+                        <th>Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let f of files[tab.key]">
+                        <td>
+                          <i class="bi bi-file-earmark-code me-1 text-primary"></i>
+                          {{ f.file_name }}
+                        </td>
+                        <td>{{ f.feature_count | number }}</td>
+                        <td>
+                          <span class="badge bg-secondary">v{{ f.version }}</span>
+                        </td>
+                        <td>
+                          <span class="badge" [ngClass]="f.source === 'manual_upload' ? 'bg-info text-dark' : 'bg-light text-muted border'">
+                            {{ f.source === 'manual_upload' ? 'Uploaded' : 'Seeded' }}
+                          </span>
+                        </td>
+                        <td class="text-muted">{{ f.updated_at | date: 'dd MMM yyyy' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload panel -->
+          <div class="col-lg-5">
+            <div class="card shadow-sm">
+              <div class="card-header fw-semibold bg-primary text-white">
+                <i class="bi bi-cloud-upload me-2"></i>Upload New File
+                <span class="badge bg-white text-primary ms-2 small">→ {{ tab.folder }}</span>
+              </div>
+              <div class="card-body">
+
+                <div class="drop-zone mb-3"
+                     [class.drag-over]="dragOver[tab.key]"
+                     [class.has-file]="uploadFile[tab.key]"
+                     (dragover)="onDragOver($event, tab.key)"
+                     (dragleave)="onDragLeave(tab.key)"
+                     (drop)="onDrop($event, tab.key)"
+                     (click)="fileInput.click()">
+                  <ng-container *ngIf="!uploadFile[tab.key]">
+                    <i class="bi bi-cloud-arrow-up fs-2 text-primary opacity-50"></i>
+                    <p class="mb-0 fw-semibold mt-2 small">Click or drag a .json file here</p>
+                  </ng-container>
+                  <ng-container *ngIf="uploadFile[tab.key]">
+                    <i class="bi bi-file-earmark-check fs-2 text-success"></i>
+                    <p class="mb-0 fw-semibold mt-2 small">{{ uploadFile[tab.key]!.name }}</p>
+                    <small class="text-success">{{ features[tab.key] | number }} features</small>
+                  </ng-container>
+                  <input #fileInput type="file" accept=".geojson,.json" style="display:none"
+                         (change)="onFileSelected($event, tab.key)" />
+                </div>
+
+                <div *ngIf="uploadErr[tab.key]" class="alert alert-danger py-2 small">
+                  <i class="bi bi-exclamation-triangle me-1"></i>{{ uploadErr[tab.key] }}
+                </div>
+                <div *ngIf="uploadMsg[tab.key]" class="alert alert-success py-2 small">
+                  <i class="bi bi-check-circle me-1"></i>{{ uploadMsg[tab.key] }}
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button class="btn btn-primary btn-sm px-3"
+                          [disabled]="!uploadFile[tab.key] || uploading[tab.key]"
+                          (click)="upload(tab.key)">
+                    <span *ngIf="uploading[tab.key]" class="spinner-border spinner-border-sm me-1"></span>
+                    <i *ngIf="!uploading[tab.key]" class="bi bi-upload me-1"></i>
+                    {{ uploading[tab.key] ? 'Uploading…' : 'Upload' }}
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" *ngIf="uploadFile[tab.key]"
+                          (click)="clearFile(tab.key)">
+                    <i class="bi bi-x me-1"></i>Clear
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </ng-container>
+
+  </div>
+
+</div>

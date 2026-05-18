@@ -116,6 +116,7 @@ import { BlockRainfallMapDailyMainPageComponent } from './main/block-rainfall-ma
 import { DisplayOrderManagementComponent } from './main/display-order-management/display-order-management.component';
 import { DataManagementComponent } from './main/data-management/data-management.component';
 import { GeojsonUploadComponent } from './main/data-management/geojson-upload/geojson-upload.component';
+import { GeojsonManagementComponent } from './main/data-management/geojson-management/geojson-management.component';
 import { BlockManagementComponent } from './main/data-management/block-management/block-management.component';
 import { DistrictManagementComponent } from './main/data-management/district-management/district-management.component';
 import { StateManagementComponent } from './main/data-management/state-management/state-management.component';
@@ -167,6 +168,7 @@ export const routes: Routes = [
     { path: 'display-order',         component: DisplayOrderManagementComponent },
     { path: 'station-management',    component: StationManagementComponent },
     { path: 'geojson-upload',        component: GeojsonUploadComponent },
+    { path: 'geojson',               component: GeojsonManagementComponent },
     { path: 'block-management',      component: BlockManagementComponent },
     { path: 'district-management',   component: DistrictManagementComponent },
     { path: 'state-management',      component: StateManagementComponent },

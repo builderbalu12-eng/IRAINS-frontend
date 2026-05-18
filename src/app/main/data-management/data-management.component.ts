@@ -37,7 +37,7 @@ export class DataManagementComponent implements OnInit, OnDestroy {
       icon: 'bi bi-map-fill',
       expanded: true,
       children: [
-        { label: 'GeoJSON Upload', icon: 'bi bi-file-earmark-code-fill', route: '/data-management/geojson-upload' },
+        { label: 'GeoJSON',        icon: 'bi bi-layers-fill',             route: '/data-management/geojson' },
         { label: 'Region',         icon: 'bi bi-globe-americas',         route: '/data-management/region-management' },
         { label: 'State',          icon: 'bi bi-flag-fill',              route: '/data-management/state-management' },
         { label: 'Subdivision',    icon: 'bi bi-diagram-3-fill',         route: '/data-management/subdivision-management' },
