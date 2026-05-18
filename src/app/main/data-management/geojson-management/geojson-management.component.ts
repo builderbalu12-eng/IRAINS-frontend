@@ -23,7 +23,8 @@ interface TabConfig {
   icon: string;
   folder: string;
   fetchFolders: string[];
-  fileFilter?: string;
+  fileFilter?: string;       // filter applied only to 'root' folder
+  folderFilter?: string;     // filter applied to non-root folders
   description: string;
 }
 
@@ -35,13 +36,17 @@ interface TabConfig {
 export class GeojsonManagementComponent implements OnInit, OnDestroy {
 
   tabs: TabConfig[] = [
-    { key: 'country',     label: 'Country',    icon: 'bi-globe',             folder: 'root',        fetchFolders: ['root'],              fileFilter: 'COUNTRY',      description: 'India country boundary (INDIA_COUNTRY.json)' },
-    { key: 'region',      label: 'Region',     icon: 'bi-globe-americas',    folder: 'regions',     fetchFolders: ['regions','root'],     fileFilter: 'REGION',       description: 'Meteorological regions — all-India file + per-region files' },
-    { key: 'state',       label: 'State',      icon: 'bi-flag-fill',         folder: 'state',       fetchFolders: ['state','root'],       fileFilter: 'STATE',        description: 'State boundaries — all-India file + per-state district files' },
-    { key: 'subdivision', label: 'Subdivision',icon: 'bi-diagram-3-fill',    folder: 'subdivision', fetchFolders: ['subdivision','root'], fileFilter: 'SUB_DIVISION', description: 'Meteorological subdivisions — all-India + per-subdivision files' },
-    { key: 'district',    label: 'District',   icon: 'bi-pin-map-fill',      folder: 'root',        fetchFolders: ['root'],              fileFilter: 'DISTRICT',     description: 'All-India district boundaries (INDIA_DISTRICT.json)' },
-    { key: 'block',       label: 'Block',      icon: 'bi-grid-3x3-gap-fill', folder: 'root',        fetchFolders: ['root'],              fileFilter: 'BLOCK',        description: 'All-India block boundaries (INDIA_BLOCK.json)' },
-    { key: 'mcrmcs',      label: 'MC / RMC',   icon: 'bi-broadcast',         folder: 'mcrmcs',      fetchFolders: ['mcrmcs'],            fileFilter: undefined,      description: 'Meteorological Centre and Regional MC boundary files' },
+    { key: 'country',     label: 'Country',        icon: 'bi-globe',             folder: 'root',        fetchFolders: ['root'],              fileFilter: 'COUNTRY',           description: 'India country boundary (INDIA_COUNTRY.json)' },
+    { key: 'region_all',  label: 'All Regions',    icon: 'bi-globe-americas',    folder: 'root',        fetchFolders: ['root'],              fileFilter: 'REGIONS',           description: 'All-India combined meteorological regions (INDIA_REGIONS.json)' },
+    { key: 'region_c',    label: 'Central India',  icon: 'bi-compass',           folder: 'regions',     fetchFolders: ['regions'],           folderFilter: 'C_INDIA',         description: 'Central India region boundary (C_India.json)' },
+    { key: 'region_e',    label: 'East & NE',      icon: 'bi-compass',           folder: 'regions',     fetchFolders: ['regions'],           folderFilter: 'EAST_AND_NORTH',  description: 'East and North East India region boundary' },
+    { key: 'region_nw',   label: 'North West',     icon: 'bi-compass',           folder: 'regions',     fetchFolders: ['regions'],           folderFilter: 'NORTH_WEST',      description: 'North West India region boundary (NORTH_WEST_INDIA.json)' },
+    { key: 'region_sp',   label: 'S. Peninsula',   icon: 'bi-compass',           folder: 'regions',     fetchFolders: ['regions'],           folderFilter: 'SOUTH_PENINSULA', description: 'South Peninsula region boundary (SOUTH_PENINSULA.json)' },
+    { key: 'state',       label: 'State',          icon: 'bi-flag-fill',         folder: 'state',       fetchFolders: ['state','root'],       fileFilter: 'STATE',             description: 'State boundaries — all-India file + per-state district files' },
+    { key: 'subdivision', label: 'Subdivision',    icon: 'bi-diagram-3-fill',    folder: 'subdivision', fetchFolders: ['subdivision','root'], fileFilter: 'SUB_DIVISION',      description: 'Meteorological subdivisions — all-India + per-subdivision files' },
+    { key: 'district',    label: 'District',       icon: 'bi-pin-map-fill',      folder: 'root',        fetchFolders: ['root'],              fileFilter: 'DISTRICT',          description: 'All-India district boundaries (INDIA_DISTRICT.json)' },
+    { key: 'block',       label: 'Block',          icon: 'bi-grid-3x3-gap-fill', folder: 'root',        fetchFolders: ['root'],              fileFilter: 'BLOCK',             description: 'All-India block boundaries (INDIA_BLOCK.json)' },
+    { key: 'mcrmcs',      label: 'MC / RMC',       icon: 'bi-broadcast',         folder: 'mcrmcs',      fetchFolders: ['mcrmcs'],                                             description: 'Meteorological Centre and Regional MC boundary files' },
   ];
 
   activeTab = 'country';
@@ -111,6 +116,9 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
           let rows: GeoFile[] = res.files ?? [];
           if (cfg.fileFilter && folder === 'root') {
             rows = rows.filter(f => f.file_name.toUpperCase().includes(cfg.fileFilter!));
+          }
+          if (cfg.folderFilter && folder !== 'root') {
+            rows = rows.filter(f => f.file_name.toUpperCase().includes(cfg.folderFilter!));
           }
           allFiles.push(...rows);
           if (--pending === 0) {
