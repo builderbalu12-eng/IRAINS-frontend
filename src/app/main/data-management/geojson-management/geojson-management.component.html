@@ -21,18 +21,16 @@
 
   <!-- Tab content -->
   <div class="tab-panel">
-
     <ng-container *ngFor="let tab of tabs">
       <div *ngIf="activeTab === tab.key">
 
-        <!-- Description -->
         <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>{{ tab.description }}</p>
 
-        <div class="row g-4">
+        <div class="row g-3">
 
-          <!-- File list -->
-          <div class="col-lg-7">
-            <div class="card shadow-sm">
+          <!-- ── Left: files in DB ────────────────────────────── -->
+          <div [class]="uploadFile[tab.key] ? 'col-lg-4' : 'col-lg-7'">
+            <div class="card shadow-sm h-100">
               <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-database me-2"></i>Stored in Database</span>
                 <button class="btn btn-sm btn-outline-secondary" (click)="loadTab(tab.key)">
@@ -40,114 +38,154 @@
                 </button>
               </div>
               <div class="card-body p-0">
-
-                <!-- Loading -->
                 <div *ngIf="loading[tab.key]" class="text-center py-5 text-muted">
                   <div class="spinner-border spinner-border-sm me-2"></div>Loading…
                 </div>
-
-                <!-- Empty -->
                 <div *ngIf="!loading[tab.key] && files[tab.key].length === 0" class="text-center py-5 text-muted">
                   <i class="bi bi-inbox fs-1 opacity-25"></i>
-                  <p class="mt-2 mb-0">No files stored yet for {{ tab.label }}</p>
-                  <small>Upload a file using the panel on the right</small>
+                  <p class="mt-2 mb-0 small">No files stored yet</p>
                 </div>
-
-                <!-- Table -->
                 <div *ngIf="!loading[tab.key] && files[tab.key].length > 0" class="table-responsive">
                   <table class="table table-hover align-middle mb-0 small">
                     <thead class="table-light">
                       <tr>
-                        <th>File Name</th>
+                        <th>File</th>
                         <th>Features</th>
-                        <th>Version</th>
-                        <th>Source</th>
+                        <th>v</th>
                         <th>Updated</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr *ngFor="let f of files[tab.key]">
-                        <td>
-                          <i class="bi bi-file-earmark-code me-1 text-primary"></i>
-                          {{ f.file_name }}
-                        </td>
+                        <td><i class="bi bi-file-earmark-code me-1 text-primary"></i>{{ f.file_name }}</td>
                         <td>{{ f.feature_count | number }}</td>
-                        <td>
-                          <span class="badge bg-secondary">v{{ f.version }}</span>
-                        </td>
-                        <td>
-                          <span class="badge" [ngClass]="f.source === 'manual_upload' ? 'bg-info text-dark' : 'bg-light text-muted border'">
-                            {{ f.source === 'manual_upload' ? 'Uploaded' : 'Seeded' }}
-                          </span>
-                        </td>
-                        <td class="text-muted">{{ f.updated_at | date: 'dd MMM yyyy' }}</td>
+                        <td><span class="badge bg-secondary">v{{ f.version }}</span></td>
+                        <td class="text-muted">{{ f.updated_at | date:'dd MMM yy' }}</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-
               </div>
             </div>
           </div>
 
-          <!-- Upload panel -->
-          <div class="col-lg-5">
-            <div class="card shadow-sm">
+          <!-- ── Right: upload + preview ──────────────────────── -->
+          <div [class]="uploadFile[tab.key] ? 'col-lg-8' : 'col-lg-5'">
+
+            <!-- No file selected: show drop zone -->
+            <div *ngIf="!uploadFile[tab.key]" class="card shadow-sm">
               <div class="card-header fw-semibold bg-primary text-white">
                 <i class="bi bi-cloud-upload me-2"></i>Upload New File
-                <span class="badge bg-white text-primary ms-2 small">→ {{ tab.folder }}</span>
+                <span class="badge bg-white text-primary ms-2 small">folder: {{ tab.folder }}</span>
               </div>
               <div class="card-body">
-
-                <div class="drop-zone mb-3"
+                <div class="drop-zone"
                      [class.drag-over]="dragOver[tab.key]"
-                     [class.has-file]="uploadFile[tab.key]"
                      (dragover)="onDragOver($event, tab.key)"
                      (dragleave)="onDragLeave(tab.key)"
                      (drop)="onDrop($event, tab.key)"
                      (click)="fileInput.click()">
-                  <ng-container *ngIf="!uploadFile[tab.key]">
-                    <i class="bi bi-cloud-arrow-up fs-2 text-primary opacity-50"></i>
-                    <p class="mb-0 fw-semibold mt-2 small">Click or drag a .json file here</p>
-                  </ng-container>
-                  <ng-container *ngIf="uploadFile[tab.key]">
-                    <i class="bi bi-file-earmark-check fs-2 text-success"></i>
-                    <p class="mb-0 fw-semibold mt-2 small">{{ uploadFile[tab.key]!.name }}</p>
-                    <small class="text-success">{{ features[tab.key] | number }} features</small>
-                  </ng-container>
+                  <i class="bi bi-cloud-arrow-up fs-2 text-primary opacity-50"></i>
+                  <p class="mb-0 fw-semibold mt-2 small">Click or drag a .json file here</p>
+                  <small class="text-muted">Preview will appear after selection</small>
                   <input #fileInput type="file" accept=".geojson,.json" style="display:none"
                          (change)="onFileSelected($event, tab.key)" />
                 </div>
-
-                <div *ngIf="uploadErr[tab.key]" class="alert alert-danger py-2 small">
+                <div *ngIf="uploadErr[tab.key]" class="alert alert-danger py-2 small mt-2">
                   <i class="bi bi-exclamation-triangle me-1"></i>{{ uploadErr[tab.key] }}
                 </div>
-                <div *ngIf="uploadMsg[tab.key]" class="alert alert-success py-2 small">
+                <div *ngIf="uploadMsg[tab.key]" class="alert alert-success py-2 small mt-2">
                   <i class="bi bi-check-circle me-1"></i>{{ uploadMsg[tab.key] }}
                 </div>
-
-                <div class="d-flex gap-2">
-                  <button class="btn btn-primary btn-sm px-3"
-                          [disabled]="!uploadFile[tab.key] || uploading[tab.key]"
-                          (click)="upload(tab.key)">
-                    <span *ngIf="uploading[tab.key]" class="spinner-border spinner-border-sm me-1"></span>
-                    <i *ngIf="!uploading[tab.key]" class="bi bi-upload me-1"></i>
-                    {{ uploading[tab.key] ? 'Uploading…' : 'Upload' }}
-                  </button>
-                  <button class="btn btn-outline-secondary btn-sm" *ngIf="uploadFile[tab.key]"
-                          (click)="clearFile(tab.key)">
-                    <i class="bi bi-x me-1"></i>Clear
-                  </button>
-                </div>
-
               </div>
+            </div>
+
+            <!-- File selected: show preview + upload controls -->
+            <div *ngIf="uploadFile[tab.key]" class="card shadow-sm">
+              <div class="card-header fw-semibold bg-primary text-white d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-eye me-2"></i>File Preview</span>
+                <button class="btn btn-sm btn-outline-light" (click)="clearFile(tab.key)">
+                  <i class="bi bi-x-lg"></i> Clear
+                </button>
+              </div>
+
+              <div class="card-body p-0">
+                <div class="row g-0">
+
+                  <!-- Map (left side of preview) -->
+                  <div class="col-md-7 border-end">
+                    <div class="preview-map-label">
+                      <i class="bi bi-map me-1"></i>Shape Preview
+                      <span *ngIf="features[tab.key] > 600" class="text-warning ms-2 small">
+                        (showing first 600 of {{ features[tab.key] | number }} features)
+                      </span>
+                    </div>
+                    <div [id]="'preview-map-' + tab.key" class="preview-map"></div>
+                  </div>
+
+                  <!-- Properties (right side of preview) -->
+                  <div class="col-md-5">
+                    <div class="preview-map-label">
+                      <i class="bi bi-list-ul me-1"></i>Fields
+                    </div>
+
+                    <!-- File summary -->
+                    <div class="px-3 pb-2">
+                      <div class="d-flex gap-2 flex-wrap mb-2">
+                        <span class="badge bg-primary">{{ uploadFile[tab.key]!.name }}</span>
+                        <span class="badge bg-success">{{ features[tab.key] | number }} features</span>
+                        <span class="badge bg-secondary" *ngIf="geomType[tab.key]">{{ geomType[tab.key] }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Fields table -->
+                    <div class="props-scroll">
+                      <table class="table table-sm mb-0" style="font-size:12px">
+                        <thead class="table-light sticky-top">
+                          <tr>
+                            <th>Field</th>
+                            <th>Sample value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let p of props[tab.key]">
+                            <td class="fw-semibold text-primary text-nowrap">{{ p.key }}</td>
+                            <td class="text-muted text-truncate" style="max-width:120px" [title]="p.sample">{{ p.sample }}</td>
+                          </tr>
+                          <tr *ngIf="!props[tab.key].length">
+                            <td colspan="2" class="text-muted text-center">No properties found</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Upload controls -->
+              <div class="card-footer d-flex gap-2 align-items-center">
+                <button class="btn btn-primary btn-sm px-4"
+                        [disabled]="uploading[tab.key]"
+                        (click)="upload(tab.key)">
+                  <span *ngIf="uploading[tab.key]" class="spinner-border spinner-border-sm me-1"></span>
+                  <i *ngIf="!uploading[tab.key]" class="bi bi-upload me-1"></i>
+                  {{ uploading[tab.key] ? 'Uploading…' : 'Upload to ' + tab.folder }}
+                </button>
+                <div *ngIf="uploadErr[tab.key]" class="text-danger small">
+                  <i class="bi bi-exclamation-triangle me-1"></i>{{ uploadErr[tab.key] }}
+                </div>
+                <div *ngIf="uploadMsg[tab.key]" class="text-success small">
+                  <i class="bi bi-check-circle me-1"></i>{{ uploadMsg[tab.key] }}
+                </div>
+              </div>
+
             </div>
           </div>
 
         </div>
       </div>
     </ng-container>
-
   </div>
 
 </div>

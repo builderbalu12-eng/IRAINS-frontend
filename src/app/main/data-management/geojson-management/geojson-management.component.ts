@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environment/environment';
+import * as L from 'leaflet';
 
 interface GeoFile {
   id: number;
@@ -14,13 +15,15 @@ interface GeoFile {
   updated_at: string;
 }
 
+interface PropRow { key: string; sample: string; }
+
 interface TabConfig {
   key: string;
   label: string;
   icon: string;
-  folder: string;           // folder to upload to
-  fetchFolders: string[];   // folders to fetch files from
-  fileFilter?: string;      // if set, only show files whose name contains this (for root folder)
+  folder: string;
+  fetchFolders: string[];
+  fileFilter?: string;
   description: string;
 }
 
@@ -29,94 +32,98 @@ interface TabConfig {
   templateUrl: './geojson-management.component.html',
   styleUrls: ['./geojson-management.component.css']
 })
-export class GeojsonManagementComponent implements OnInit {
+export class GeojsonManagementComponent implements OnInit, OnDestroy {
 
   tabs: TabConfig[] = [
-    { key: 'country',     label: 'Country',     icon: 'bi-globe',              folder: 'root',        fetchFolders: ['root'],        fileFilter: 'COUNTRY',     description: 'India country boundary (INDIA_COUNTRY.json)' },
-    { key: 'region',      label: 'Region',       icon: 'bi-globe-americas',     folder: 'regions',     fetchFolders: ['regions','root'], fileFilter: 'REGION',    description: 'Meteorological regions — all-India file + per-region files' },
-    { key: 'state',       label: 'State',        icon: 'bi-flag-fill',          folder: 'state',       fetchFolders: ['state','root'],  fileFilter: 'STATE',     description: 'State boundaries — all-India file + per-state district files' },
-    { key: 'subdivision', label: 'Subdivision',  icon: 'bi-diagram-3-fill',     folder: 'subdivision', fetchFolders: ['subdivision','root'], fileFilter: 'SUB_DIVISION', description: 'Meteorological subdivisions — all-India file + per-subdivision files' },
-    { key: 'district',    label: 'District',     icon: 'bi-pin-map-fill',       folder: 'root',        fetchFolders: ['root'],        fileFilter: 'DISTRICT',    description: 'All-India district boundaries (INDIA_DISTRICT.json)' },
-    { key: 'block',       label: 'Block',        icon: 'bi-grid-3x3-gap-fill',  folder: 'root',        fetchFolders: ['root'],        fileFilter: 'BLOCK',       description: 'All-India block boundaries (INDIA_BLOCK.json)' },
-    { key: 'mcrmcs',      label: 'MC / RMC',     icon: 'bi-broadcast',          folder: 'mcrmcs',      fetchFolders: ['mcrmcs'],      fileFilter: undefined,     description: 'Meteorological Centre and Regional MC boundary files' },
+    { key: 'country',     label: 'Country',    icon: 'bi-globe',             folder: 'root',        fetchFolders: ['root'],              fileFilter: 'COUNTRY',      description: 'India country boundary (INDIA_COUNTRY.json)' },
+    { key: 'region',      label: 'Region',     icon: 'bi-globe-americas',    folder: 'regions',     fetchFolders: ['regions','root'],     fileFilter: 'REGION',       description: 'Meteorological regions — all-India file + per-region files' },
+    { key: 'state',       label: 'State',      icon: 'bi-flag-fill',         folder: 'state',       fetchFolders: ['state','root'],       fileFilter: 'STATE',        description: 'State boundaries — all-India file + per-state district files' },
+    { key: 'subdivision', label: 'Subdivision',icon: 'bi-diagram-3-fill',    folder: 'subdivision', fetchFolders: ['subdivision','root'], fileFilter: 'SUB_DIVISION', description: 'Meteorological subdivisions — all-India + per-subdivision files' },
+    { key: 'district',    label: 'District',   icon: 'bi-pin-map-fill',      folder: 'root',        fetchFolders: ['root'],              fileFilter: 'DISTRICT',     description: 'All-India district boundaries (INDIA_DISTRICT.json)' },
+    { key: 'block',       label: 'Block',      icon: 'bi-grid-3x3-gap-fill', folder: 'root',        fetchFolders: ['root'],              fileFilter: 'BLOCK',        description: 'All-India block boundaries (INDIA_BLOCK.json)' },
+    { key: 'mcrmcs',      label: 'MC / RMC',   icon: 'bi-broadcast',         folder: 'mcrmcs',      fetchFolders: ['mcrmcs'],            fileFilter: undefined,      description: 'Meteorological Centre and Regional MC boundary files' },
   ];
 
   activeTab = 'country';
 
-  // Per-tab state (keyed by tab.key)
-  files:       { [k: string]: GeoFile[] }   = {};
-  loading:     { [k: string]: boolean }     = {};
-  uploadFile:  { [k: string]: File | null } = {};
-  uploading:   { [k: string]: boolean }     = {};
-  uploadMsg:   { [k: string]: string }      = {};
-  uploadErr:   { [k: string]: string }      = {};
-  dragOver:    { [k: string]: boolean }     = {};
-  features:    { [k: string]: number }      = {};
+  files:      { [k: string]: GeoFile[] }   = {};
+  loading:    { [k: string]: boolean }     = {};
+  uploadFile: { [k: string]: File | null } = {};
+  uploading:  { [k: string]: boolean }     = {};
+  uploadMsg:  { [k: string]: string }      = {};
+  uploadErr:  { [k: string]: string }      = {};
+  dragOver:   { [k: string]: boolean }     = {};
+  features:   { [k: string]: number }      = {};
+
+  // Preview state
+  props:       { [k: string]: PropRow[] }  = {};
+  geomType:    { [k: string]: string }     = {};
+  previewMaps: { [k: string]: L.Map | null } = {};
 
   private apiBase = environment.baseUrl;
 
   constructor(private http: HttpClient) {
     this.tabs.forEach(t => {
-      this.files[t.key]      = [];
-      this.loading[t.key]    = false;
-      this.uploadFile[t.key] = null;
-      this.uploading[t.key]  = false;
-      this.uploadMsg[t.key]  = '';
-      this.uploadErr[t.key]  = '';
-      this.dragOver[t.key]   = false;
-      this.features[t.key]   = 0;
+      this.files[t.key]       = [];
+      this.loading[t.key]     = false;
+      this.uploadFile[t.key]  = null;
+      this.uploading[t.key]   = false;
+      this.uploadMsg[t.key]   = '';
+      this.uploadErr[t.key]   = '';
+      this.dragOver[t.key]    = false;
+      this.features[t.key]    = 0;
+      this.props[t.key]       = [];
+      this.geomType[t.key]    = '';
+      this.previewMaps[t.key] = null;
     });
   }
 
-  ngOnInit(): void {
-    this.loadTab('country');
+  ngOnInit(): void { this.loadTab('country'); }
+
+  ngOnDestroy(): void {
+    // Clean up Leaflet maps to avoid memory leaks
+    Object.values(this.previewMaps).forEach(m => m?.remove());
   }
 
   selectTab(key: string) {
     this.activeTab = key;
-    if (!this.files[key].length && !this.loading[key]) {
-      this.loadTab(key);
-    }
+    if (!this.files[key].length && !this.loading[key]) this.loadTab(key);
+    // Re-render map if a file is already loaded on this tab
+    if (this.uploadFile[key]) setTimeout(() => this.renderMap(key), 80);
   }
 
   get activeConfig(): TabConfig {
     return this.tabs.find(t => t.key === this.activeTab)!;
   }
 
+  // ── Fetch files from DB ──────────────────────────────────
   loadTab(key: string) {
     const cfg = this.tabs.find(t => t.key === key)!;
     this.loading[key] = true;
     this.files[key] = [];
-
-    // For tabs that fetch from multiple folders, merge results
-    const foldersToFetch = [...new Set(cfg.fetchFolders)];
-    let pending = foldersToFetch.length;
+    const folders = [...new Set(cfg.fetchFolders)];
+    let pending = folders.length;
     let allFiles: GeoFile[] = [];
 
-    foldersToFetch.forEach(folder => {
+    folders.forEach(folder => {
       this.http.get<any>(`${this.apiBase}/api/v1/geojson/${folder}`).subscribe({
         next: (res) => {
           let rows: GeoFile[] = res.files ?? [];
-          // If a fileFilter is set and this is the root folder, filter by filename
           if (cfg.fileFilter && folder === 'root') {
             rows = rows.filter(f => f.file_name.toUpperCase().includes(cfg.fileFilter!));
           }
           allFiles.push(...rows);
-          pending--;
-          if (pending === 0) {
+          if (--pending === 0) {
             this.files[key] = allFiles.sort((a, b) => a.file_name.localeCompare(b.file_name));
             this.loading[key] = false;
           }
         },
-        error: () => {
-          pending--;
-          if (pending === 0) this.loading[key] = false;
-        }
+        error: () => { if (--pending === 0) this.loading[key] = false; }
       });
     });
   }
 
-  // ── Upload handlers ──────────────────────────────────────
+  // ── File pick / drag ─────────────────────────────────────
   onDragOver(e: DragEvent, key: string)  { e.preventDefault(); this.dragOver[key] = true; }
   onDragLeave(key: string)               { this.dragOver[key] = false; }
 
@@ -141,11 +148,15 @@ export class GeojsonManagementComponent implements OnInit {
       return;
     }
     this.uploadFile[key] = file;
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const parsed = JSON.parse(ev.target?.result as string);
-        this.features[key] = parsed?.features?.length ?? 0;
+        const geojson = JSON.parse(ev.target?.result as string);
+        this.features[key] = geojson?.features?.length ?? 0;
+        this.extractProps(key, geojson);
+        // Let Angular render the map div, then initialize Leaflet
+        setTimeout(() => this.initMap(key, geojson), 80);
       } catch {
         this.uploadErr[key] = 'Invalid JSON.';
         this.uploadFile[key] = null;
@@ -154,21 +165,84 @@ export class GeojsonManagementComponent implements OnInit {
     reader.readAsText(file);
   }
 
+  // ── Extract property fields + sample values ──────────────
+  private extractProps(key: string, geojson: any) {
+    const features = geojson?.features ?? [];
+    if (!features.length) { this.props[key] = []; return; }
+
+    this.geomType[key] = features[0]?.geometry?.type ?? 'Unknown';
+
+    // Collect unique keys from first 5 features
+    const keySet = new Set<string>();
+    features.slice(0, 5).forEach((f: any) => Object.keys(f.properties ?? {}).forEach((k: string) => keySet.add(k)));
+
+    const first = features[0]?.properties ?? {};
+    this.props[key] = Array.from(keySet).map(k => ({
+      key: k,
+      sample: first[k] !== null && first[k] !== undefined ? String(first[k]) : '—'
+    }));
+  }
+
+  // ── Leaflet map preview ───────────────────────────────────
+  private initMap(key: string, geojson: any) {
+    const el = document.getElementById(`preview-map-${key}`);
+    if (!el) return;
+
+    // Destroy old map instance
+    if (this.previewMaps[key]) {
+      this.previewMaps[key]!.remove();
+      this.previewMaps[key] = null;
+    }
+
+    const map = L.map(`preview-map-${key}`, {
+      zoomControl: true,
+      attributionControl: false,
+      scrollWheelZoom: false
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18
+    }).addTo(map);
+
+    // Limit features rendered for performance (large files like INDIA_BLOCK)
+    const displayGeo = geojson.features.length > 600
+      ? { ...geojson, features: geojson.features.slice(0, 600) }
+      : geojson;
+
+    const layer = L.geoJSON(displayGeo, {
+      style: { color: '#002467', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.25 }
+    }).addTo(map);
+
+    try { map.fitBounds(layer.getBounds(), { padding: [8, 8] }); } catch {}
+
+    this.previewMaps[key] = map;
+  }
+
+  private renderMap(key: string) {
+    if (this.previewMaps[key]) {
+      setTimeout(() => this.previewMaps[key]?.invalidateSize(), 50);
+    }
+  }
+
   clearFile(key: string) {
     this.uploadFile[key] = null;
     this.features[key]   = 0;
     this.uploadErr[key]  = '';
     this.uploadMsg[key]  = '';
+    this.props[key]      = [];
+    this.geomType[key]   = '';
+    if (this.previewMaps[key]) { this.previewMaps[key]!.remove(); this.previewMaps[key] = null; }
   }
 
+  // ── Upload ───────────────────────────────────────────────
   upload(key: string) {
     const cfg  = this.tabs.find(t => t.key === key)!;
     const file = this.uploadFile[key];
     if (!file) return;
 
-    this.uploading[key]  = true;
-    this.uploadMsg[key]  = '';
-    this.uploadErr[key]  = '';
+    this.uploading[key] = true;
+    this.uploadMsg[key] = '';
+    this.uploadErr[key] = '';
 
     const fd = new FormData();
     fd.append('folder', cfg.folder);
@@ -179,7 +253,7 @@ export class GeojsonManagementComponent implements OnInit {
         this.uploadMsg[key] = res.message ?? 'Uploaded successfully.';
         this.uploading[key] = false;
         this.clearFile(key);
-        this.files[key] = [];    // force reload
+        this.files[key] = [];
         this.loadTab(key);
       },
       error: (err) => {
