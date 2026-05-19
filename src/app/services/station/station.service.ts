@@ -156,4 +156,8 @@ export class FetchStationDataService {
 
     return this.http.post<any>(url, body);
   }
+
+  getAllStations(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/api/v1/getAllStations`);
+  }
 }

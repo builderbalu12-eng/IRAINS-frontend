@@ -45,21 +45,23 @@
                   <i class="bi bi-inbox fs-1 opacity-25"></i>
                   <p class="mt-2 mb-0 small">No files stored yet</p>
                 </div>
-                <div *ngIf="!loading[tab.key] && files[tab.key].length > 0" class="table-responsive">
+                <div *ngIf="!loading[tab.key] && files[tab.key].length > 0" class="db-table-scroll">
                   <table class="table table-hover align-middle mb-0 small">
                     <thead class="table-light">
                       <tr>
                         <th>File</th>
+                        <th>Folder</th>
                         <th>Features</th>
-                        <th>v</th>
                         <th>Updated</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr *ngFor="let f of files[tab.key]">
-                        <td><i class="bi bi-file-earmark-code me-1 text-primary"></i>{{ f.file_name }}</td>
+                        <td class="text-truncate" style="max-width:180px" [title]="f.file_name">
+                          <i class="bi bi-file-earmark-code me-1 text-primary"></i>{{ f.file_name }}
+                        </td>
+                        <td><span class="badge bg-secondary" style="font-size:10px">{{ f.folder }}</span></td>
                         <td>{{ f.feature_count | number }}</td>
-                        <td><span class="badge bg-secondary">v{{ f.version }}</span></td>
                         <td class="text-muted">{{ f.updated_at | date:'dd MMM yy' }}</td>
                       </tr>
                     </tbody>
@@ -103,14 +105,35 @@
             <!-- File selected: show preview + upload controls -->
             <div *ngIf="uploadFile[tab.key]" class="card shadow-sm">
               <div class="card-header fw-semibold bg-primary text-white d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-eye me-2"></i>File Preview</span>
-                <button class="btn btn-sm btn-outline-light" (click)="clearFile(tab.key)">
-                  <i class="bi bi-x-lg"></i> Clear
-                </button>
+                <span>
+                  <i class="bi me-2"
+                     [class.bi-eye]="previewMode[tab.key] !== 'compare'"
+                     [class.bi-layout-split]="previewMode[tab.key] === 'compare'"></i>
+                  {{ previewMode[tab.key] === 'compare' ? 'Compare Mode' : 'File Preview' }}
+                </span>
+                <div class="d-flex gap-2">
+                  <button *ngIf="previewMode[tab.key] !== 'compare' && hasDbMatch(tab.key)"
+                          class="btn btn-sm btn-outline-light"
+                          [disabled]="compareLoading[tab.key]"
+                          (click)="enterCompare(tab.key)">
+                    <span *ngIf="compareLoading[tab.key]" class="spinner-border spinner-border-sm me-1"></span>
+                    <i *ngIf="!compareLoading[tab.key]" class="bi bi-layout-split me-1"></i>Compare
+                  </button>
+                  <button *ngIf="previewMode[tab.key] === 'compare'"
+                          class="btn btn-sm btn-outline-light"
+                          (click)="exitCompare(tab.key)">
+                    <i class="bi bi-eye me-1"></i>Preview
+                  </button>
+                  <button class="btn btn-sm btn-outline-light" (click)="clearFile(tab.key)">
+                    <i class="bi bi-x-lg"></i> Clear
+                  </button>
+                </div>
               </div>
 
               <div class="card-body p-0">
-                <div class="row g-0">
+
+                <!-- ── Normal preview mode ──────────────────────────── -->
+                <div *ngIf="previewMode[tab.key] !== 'compare'" class="row g-0">
 
                   <!-- Map (left side of preview) -->
                   <div class="col-md-8 border-end">
@@ -172,6 +195,73 @@
                   </div>
 
                 </div>
+
+                <!-- ── Compare mode ──────────────────────────────────── -->
+                <div *ngIf="previewMode[tab.key] === 'compare'">
+
+                  <!-- Controls row -->
+                  <div class="compare-header px-3 py-2 d-flex align-items-center gap-3 flex-wrap">
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn"
+                              [class.btn-primary]="compareView[tab.key]==='overlay'"
+                              [class.btn-outline-secondary]="compareView[tab.key]!=='overlay'"
+                              (click)="setCompareView('overlay', tab.key)">
+                        <i class="bi bi-layers me-1"></i>Overlay
+                      </button>
+                      <button class="btn"
+                              [class.btn-primary]="compareView[tab.key]==='side-by-side'"
+                              [class.btn-outline-secondary]="compareView[tab.key]!=='side-by-side'"
+                              (click)="setCompareView('side-by-side', tab.key)">
+                        <i class="bi bi-layout-split me-1"></i>Side by Side
+                      </button>
+                    </div>
+                    <span class="compare-stat db-stat">
+                      <i class="bi bi-database me-1"></i>DB: <strong>{{ getDbMatch(tab.key)?.feature_count | number }}</strong>
+                    </span>
+                    <span class="compare-stat new-stat">
+                      <i class="bi bi-file-earmark-code me-1"></i>New: <strong>{{ features[tab.key] | number }}</strong>
+                    </span>
+                    <span *ngIf="!compareLoading[tab.key] && getDbMatch(tab.key) && featureDelta(tab.key) !== 0"
+                          class="badge"
+                          [class.bg-success]="featureDelta(tab.key) > 0"
+                          [class.bg-danger]="featureDelta(tab.key) < 0">
+                      {{ featureDelta(tab.key) > 0 ? '+' : '' }}{{ featureDelta(tab.key) }}
+                    </span>
+                    <span *ngIf="compareLoading[tab.key]" class="spinner-border spinner-border-sm text-primary ms-2"></span>
+                    <span *ngIf="compareErr[tab.key]" class="text-danger small ms-2">
+                      <i class="bi bi-exclamation-triangle me-1"></i>{{ compareErr[tab.key] }}
+                    </span>
+                  </div>
+
+                  <!-- Loading state -->
+                  <div *ngIf="compareLoading[tab.key]" class="text-center py-5 text-muted">
+                    <div class="spinner-border text-primary mb-2"></div>
+                    <p class="mb-0 small fw-semibold">Loading DB version…</p>
+                  </div>
+
+                  <!-- Overlay map -->
+                  <div *ngIf="!compareLoading[tab.key] && compareView[tab.key]==='overlay'" class="compare-overlay-wrap">
+                    <div [id]="'compare-overlay-' + tab.key" class="compare-map"></div>
+                    <div class="compare-legend">
+                      <span class="legend-item"><span class="legend-swatch db-swatch"></span>DB Version</span>
+                      <span class="legend-item"><span class="legend-swatch new-swatch"></span>New Upload</span>
+                    </div>
+                  </div>
+
+                  <!-- Side-by-side maps -->
+                  <div *ngIf="!compareLoading[tab.key] && compareView[tab.key]==='side-by-side'" class="compare-sbs-wrap">
+                    <div class="compare-sbs-col">
+                      <div class="compare-sbs-label db-label"><i class="bi bi-database me-1"></i>DB Version</div>
+                      <div [id]="'compare-left-' + tab.key" class="compare-map"></div>
+                    </div>
+                    <div class="compare-sbs-col">
+                      <div class="compare-sbs-label new-label"><i class="bi bi-file-earmark-code me-1"></i>New Upload</div>
+                      <div [id]="'compare-right-' + tab.key" class="compare-map"></div>
+                    </div>
+                  </div>
+
+                </div>
+
               </div>
 
               <!-- Upload controls -->
@@ -195,6 +285,198 @@
           </div>
 
         </div>
+
+        <!-- ── Step 2: Derived Files (district tab only) ─────────────── -->
+        <ng-container *ngIf="tab.key === 'district'">
+
+          <!-- Generating spinner -->
+          <div *ngIf="generating" class="mt-4 text-center py-5 text-muted">
+            <div class="spinner-border text-primary mb-2"></div>
+            <p class="mb-0 small fw-semibold">
+              Generating all geographic levels from {{ features['district'] | number }} district features…
+            </p>
+          </div>
+
+          <!-- Derived files panel -->
+          <div *ngIf="!generating && derivedFiles.length" class="mt-4">
+
+            <!-- Section header -->
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="mb-0 fw-bold" style="color:#002467">
+                <i class="bi bi-diagram-3-fill me-2"></i>Derived Files
+                <span class="badge bg-primary ms-1">{{ derivedFiles.length }}</span>
+              </h6>
+              <button class="btn btn-sm btn-success" (click)="uploadGroupDerived('all')">
+                <i class="bi bi-cloud-upload me-1"></i>Upload All to DB
+              </button>
+            </div>
+
+            <!-- Two-column panel -->
+            <div class="row g-0 derived-panel rounded shadow-sm border">
+
+              <!-- LEFT: accordion file list -->
+              <div class="col-5 derived-list border-end">
+                <ng-container *ngFor="let grp of derivedGroups">
+                  <div class="derived-group-header" (click)="toggleGroup(grp.key)">
+                    <i class="bi me-1"
+                       [class.bi-chevron-down]="openGroups[grp.key]"
+                       [class.bi-chevron-right]="!openGroups[grp.key]"></i>
+                    {{ grp.label }}
+                    <span class="badge bg-secondary ms-1">{{ countGroup(grp.key) }}</span>
+                    <span class="ms-auto">
+                      <button *ngIf="openGroups[grp.key]"
+                              class="derived-grp-upload-btn"
+                              (click)="$event.stopPropagation(); uploadGroupDerived(grp.key)"
+                              title="Upload all in this group">
+                        ↑ All
+                      </button>
+                    </span>
+                  </div>
+                  <ng-container *ngIf="openGroups[grp.key]">
+                    <div *ngFor="let f of getDerivedGroup(grp.key)"
+                         class="derived-row"
+                         [class.selected]="selectedDerived === f"
+                         (click)="selectDerived(f)">
+                      <span class="derived-filename flex-grow-1 text-truncate" [title]="f.fileName">
+                        {{ f.fileName }}
+                      </span>
+                      <span class="derived-count">{{ f.featureCount | number }}</span>
+                      <i *ngIf="f.status === 'success'" class="bi bi-check-circle-fill text-success derived-status-icon"></i>
+                      <i *ngIf="f.status === 'error'"   class="bi bi-exclamation-circle-fill text-danger derived-status-icon" [title]="f.msg"></i>
+                      <span *ngIf="f.status === 'uploading'" class="spinner-border text-primary derived-spinner"></span>
+                      <button class="derived-btn cmp-btn"
+                              (click)="$event.stopPropagation(); enterDerivedCompare(f)"
+                              title="Compare new vs DB">
+                        <i class="bi bi-layout-split"></i> vs
+                      </button>
+                      <button class="derived-btn upload-btn"
+                              [disabled]="f.status === 'uploading' || f.status === 'success'"
+                              (click)="$event.stopPropagation(); uploadDerived(f)"
+                              title="Upload to DB">
+                        <i class="bi bi-upload"></i>
+                      </button>
+                      <button class="derived-btn dl-btn"
+                              (click)="$event.stopPropagation(); downloadDerived(f)"
+                              title="Download JSON">
+                        <i class="bi bi-download"></i>
+                      </button>
+                    </div>
+                  </ng-container>
+                </ng-container>
+              </div>
+
+              <!-- RIGHT: preview / compare panel -->
+              <div class="col-7 d-flex flex-column">
+
+                <!-- ── Normal preview header ─────────────────────── -->
+                <div *ngIf="!derivedCompareMode" class="derived-preview-header px-3 d-flex align-items-center justify-content-between">
+                  <div *ngIf="selectedDerived; else noSel">
+                    <span class="fw-semibold text-primary" style="font-size:13px">{{ selectedDerived.fileName }}</span>
+                    <span class="badge bg-info text-dark ms-2">{{ selectedDerived.folder }}</span>
+                    <span class="badge bg-secondary ms-1">{{ selectedDerived.featureCount | number }} features</span>
+                  </div>
+                  <ng-template #noSel>
+                    <span class="text-muted small">Select a file to preview</span>
+                  </ng-template>
+                  <div class="d-flex gap-2" *ngIf="selectedDerived">
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                            (click)="downloadDerived(selectedDerived!)">
+                      <i class="bi bi-download me-1"></i>Download
+                    </button>
+                    <button class="btn btn-sm btn-primary py-0 px-2"
+                            [disabled]="selectedDerived!.status === 'uploading' || selectedDerived!.status === 'success'"
+                            (click)="uploadDerived(selectedDerived!)">
+                      <i class="bi bi-upload me-1"></i>
+                      {{ selectedDerived!.status === 'success' ? 'Uploaded ✓' : 'Upload to DB' }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- ── Compare header ─────────────────────────────── -->
+                <div *ngIf="derivedCompareMode" class="derived-preview-header px-3 d-flex flex-column gap-1 py-2">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                      <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                              (click)="exitDerivedCompare()">
+                        <i class="bi bi-arrow-left me-1"></i>Preview
+                      </button>
+                      <span class="fw-semibold text-primary" style="font-size:13px">{{ derivedCompareFile?.fileName }}</span>
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn"
+                              [class.btn-primary]="derivedCompareView==='overlay'"
+                              [class.btn-outline-secondary]="derivedCompareView!=='overlay'"
+                              (click)="setDerivedCompareView('overlay')">
+                        <i class="bi bi-layers me-1"></i>Overlay
+                      </button>
+                      <button class="btn"
+                              [class.btn-primary]="derivedCompareView==='side-by-side'"
+                              [class.btn-outline-secondary]="derivedCompareView!=='side-by-side'"
+                              (click)="setDerivedCompareView('side-by-side')">
+                        <i class="bi bi-layout-split me-1"></i>Side by Side
+                      </button>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-2 mt-1" *ngIf="!derivedCompareLoading">
+                    <span class="compare-stat db-stat">
+                      <i class="bi bi-database me-1"></i>DB: <strong>{{ derivedCompareGeo?.features?.length | number }}</strong>
+                    </span>
+                    <span class="compare-stat new-stat">
+                      <i class="bi bi-cpu me-1"></i>New: <strong>{{ derivedCompareFile?.featureCount | number }}</strong>
+                    </span>
+                    <span *ngIf="derivedCompareDelta() !== 0"
+                          class="badge"
+                          [class.bg-success]="derivedCompareDelta() > 0"
+                          [class.bg-danger]="derivedCompareDelta() < 0">
+                      {{ derivedCompareDelta() > 0 ? '+' : '' }}{{ derivedCompareDelta() }}
+                    </span>
+                    <span *ngIf="derivedCompareErr" class="text-danger small">
+                      <i class="bi bi-exclamation-triangle me-1"></i>{{ derivedCompareErr }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- ── Normal preview map ─────────────────────────── -->
+                <div *ngIf="!derivedCompareMode" id="derived-preview-map" class="derived-map"></div>
+
+                <!-- ── Compare: loading ───────────────────────────── -->
+                <div *ngIf="derivedCompareMode && derivedCompareLoading"
+                     class="derived-map d-flex align-items-center justify-content-center text-muted flex-column">
+                  <div class="spinner-border text-primary mb-2"></div>
+                  <small>Loading DB version…</small>
+                </div>
+
+                <!-- ── Compare: overlay ───────────────────────────── -->
+                <div *ngIf="derivedCompareMode && !derivedCompareLoading && derivedCompareView==='overlay'"
+                     class="compare-overlay-wrap flex-grow-1">
+                  <div id="derived-compare-overlay" class="derived-map"></div>
+                  <div class="compare-legend">
+                    <span class="legend-item"><span class="legend-swatch db-swatch"></span>DB Version</span>
+                    <span class="legend-item"><span class="legend-swatch new-swatch"></span>New Derived</span>
+                  </div>
+                </div>
+
+                <!-- ── Compare: side by side ──────────────────────── -->
+                <div *ngIf="derivedCompareMode && !derivedCompareLoading && derivedCompareView==='side-by-side'"
+                     class="compare-sbs-wrap flex-grow-1">
+                  <div class="compare-sbs-col">
+                    <div class="compare-sbs-label db-label"><i class="bi bi-database me-1"></i>DB Version</div>
+                    <div id="derived-compare-left" class="derived-map"></div>
+                  </div>
+                  <div class="compare-sbs-col">
+                    <div class="compare-sbs-label new-label"><i class="bi bi-cpu me-1"></i>New Derived</div>
+                    <div id="derived-compare-right" class="derived-map"></div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+        </ng-container>
+        <!-- ── End Step 2 ──────────────────────────────────────────────── -->
+
       </div>
     </ng-container>
   </div>
