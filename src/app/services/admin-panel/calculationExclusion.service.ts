@@ -38,7 +38,7 @@ export class CalculationExclusionService {
   }
 
   getAllStations(): Observable<any> {
-    const url = `${this.baseUrl}/api/v1/getAllStations`;
+    const url = `${this.baseUrl}/api/v1/getStationsForExclusion`;
     return this.http.get<any>(url);
   }
 

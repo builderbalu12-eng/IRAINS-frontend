@@ -141,6 +141,8 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
   };
 
   allStations: any[] = [];
+  showStations = false;
+  private stationLayerMap = new Map<L.Map, L.LayerGroup>();
 
   private apiBase = environment.baseUrl;
 
@@ -464,7 +466,7 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
       });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         { maxZoom: 18 }).addTo(map);
-      this.addStationDots(map);
+      if (this.showStations) this.addStationDots(map);
       this.derivedMap = map;
     }
 
@@ -672,7 +674,19 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
     return `<table style="border-collapse:collapse;min-width:120px">${rows}</table>`;
   }
 
+  toggleStations() {
+    this.showStations = !this.showStations;
+    const activeMaps = [
+      ...Object.values(this.previewMaps),
+      this.derivedMap,
+    ].filter((m): m is L.Map => !!m);
+    activeMaps.forEach(m => this.showStations ? this.addStationDots(m) : this.removeStationDots(m));
+  }
+
   private addStationDots(map: L.Map) {
+    const existing = this.stationLayerMap.get(map);
+    if (existing) { existing.remove(); this.stationLayerMap.delete(map); }
+    const group = L.layerGroup();
     this.allStations.forEach(s => {
       const lat = parseFloat(s.latitude);
       const lng = parseFloat(s.longitude);
@@ -685,8 +699,15 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
         weight: 1
       })
       .bindTooltip(`<b>${s.station_name}</b><br>${s.station_code}`, { sticky: true })
-      .addTo(map);
+      .addTo(group);
     });
+    group.addTo(map);
+    this.stationLayerMap.set(map, group);
+  }
+
+  private removeStationDots(map: L.Map) {
+    const layer = this.stationLayerMap.get(map);
+    if (layer) { layer.remove(); this.stationLayerMap.delete(map); }
   }
 
   // ── Leaflet map preview ───────────────────────────────────
@@ -695,7 +716,8 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
     if (!el) return;
     if (this.previewMaps[key]) { this.previewMaps[key]!.remove(); this.previewMaps[key] = null; }
     const map = L.map(`preview-map-${key}`, {
-      zoomControl: true, attributionControl: false, scrollWheelZoom: true });
+      zoomControl: true, attributionControl: false, scrollWheelZoom: true,
+      center: [20.5937, 78.9629], zoom: 4 });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       { maxZoom: 18 }).addTo(map);
     const layer = L.geoJSON(geojson, {
@@ -707,12 +729,12 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
         }
       }
     }).addTo(map);
-    this.addStationDots(map);
+    if (this.showStations) this.addStationDots(map);
     this.previewMaps[key] = map;
     setTimeout(() => {
       map.invalidateSize();
       try { map.fitBounds(layer.getBounds(), { padding: [20, 20] }); } catch {}
-    }, 150);
+    }, 300);
   }
 
   private renderMap(key: string) {

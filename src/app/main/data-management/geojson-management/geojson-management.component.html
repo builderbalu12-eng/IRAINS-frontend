@@ -137,9 +137,18 @@
 
                   <!-- Map (left side of preview) -->
                   <div class="col-md-8 border-end">
-                    <div class="preview-map-label">
-                      <i class="bi bi-map me-1"></i>Shape Preview
-                      <span class="text-muted ms-2 small">{{ features[tab.key] | number }} features</span>
+                    <div class="preview-map-label d-flex align-items-center justify-content-between">
+                      <div>
+                        <i class="bi bi-map me-1"></i>Shape Preview
+                        <span class="text-muted ms-2 small">{{ features[tab.key] | number }} features</span>
+                      </div>
+                      <button class="btn btn-sm me-2 py-0 px-2"
+                              style="font-size:11px"
+                              [class.btn-outline-danger]="!showStations"
+                              [class.btn-danger]="showStations"
+                              (click)="toggleStations()">
+                        <i class="bi bi-geo-alt-fill me-1"></i>{{ showStations ? 'Hide Stations' : 'Plot Stations' }}
+                      </button>
                     </div>
                     <div [id]="'preview-map-' + tab.key" class="preview-map"></div>
                   </div>
@@ -379,6 +388,13 @@
                     <span class="text-muted small">Select a file to preview</span>
                   </ng-template>
                   <div class="d-flex gap-2" *ngIf="selectedDerived">
+                    <button class="btn btn-sm py-0 px-2"
+                            style="font-size:11px"
+                            [class.btn-outline-danger]="!showStations"
+                            [class.btn-danger]="showStations"
+                            (click)="toggleStations()">
+                      <i class="bi bi-geo-alt-fill me-1"></i>{{ showStations ? 'Hide Stations' : 'Plot Stations' }}
+                    </button>
                     <button class="btn btn-sm btn-outline-secondary py-0 px-2"
                             (click)="downloadDerived(selectedDerived!)">
                       <i class="bi bi-download me-1"></i>Download
