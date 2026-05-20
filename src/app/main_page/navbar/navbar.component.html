@@ -31,7 +31,8 @@
     </button>
   </div>
   <span class="toolbar-visitors">
-    VISITORS - {{ visitorCount || '289' }}
+    <!-- <span>DAILY VISITORS - {{ visitorCount || '0' }}</span> -->
+    <span>TOTAL VISITORS - {{ totalVisitorCount || '0' }}</span>
   </span>
 </mat-toolbar>
 <div id="loader" class="loader" *ngIf="isLoading">

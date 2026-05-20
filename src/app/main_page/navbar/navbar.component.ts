@@ -32,17 +32,23 @@ export class NavbarComponent implements OnInit {
 
   documentTypes: any[] = [];
   visitorCount: number = 0;
-  // ✅ REPLACE WITH THIS
-  private visitorApiUrl = `${environment.baseUrl}/api/v1/visitor`;  // your own backend
+  totalVisitorCount: number = 0;
+  private visitorApiUrl = `${environment.baseUrl}/api/v1/visitor`;
 
   trackAndLoadVisitorCount() {
     // 1. Track this visit
     this.http.post(`${this.visitorApiUrl}/track`, {}).subscribe();
 
-    // 2. Get today's count and show in toolbar
+    // 2. Get today's daily count
     this.http.get<any>(`${this.visitorApiUrl}/count`).subscribe({
       next: (res) => { this.visitorCount = res.count; },
       error: () => { this.visitorCount = 0; }
+    });
+
+    // 3. Get total count (all rows)
+    this.http.get<any>(`${this.visitorApiUrl}/total-count`).subscribe({
+      next: (res) => { this.totalVisitorCount = res.count; },
+      error: () => { this.totalVisitorCount = 0; }
     });
   }
 

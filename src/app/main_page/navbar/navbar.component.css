@@ -9,6 +9,16 @@
   background: linear-gradient(to top, #246a90, #42b883);
 }
 
+.toolbar-visitors {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: bold;
+  color: white;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
 nav.open {
   display: block; /* Display the navigation when .open class is present */
 }
