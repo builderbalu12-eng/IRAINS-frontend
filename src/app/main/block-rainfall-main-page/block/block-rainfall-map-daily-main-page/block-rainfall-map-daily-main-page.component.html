@@ -130,8 +130,8 @@
         </div>
       </ng-container>
 
-      <!-- AWS Time Granularity Filter -->
-      <div class="d-flex gap-2 align-items-center">
+      <!-- AWS Time Granularity Filter — only on /block-rainfall-aws-actual -->
+      <div class="d-flex gap-2 align-items-center" *ngIf="isAwsActualPage">
         <button mat-button class="mode-button time-filter-btn"
           [ngClass]="{ active: selectedTimeFilter === '15min' }"
           (click)="setTimeFilter('15min')">15 Min</button>
@@ -173,7 +173,7 @@
     </div> -->
 
   <div class="container-fluid px-3">
-    <div class="row g-3 align-items-stretch flex-nowrap">
+    <div class="row g-3 align-items-stretch flex-nowrap" [ngClass]="{'justify-content-center': !isAwsActualPage}">
       <!-- MAP — left column (auto-sized to map width) -->
       <div class="col-auto" id="mapdiv1-ftp">
         <div class="map-container">
@@ -556,8 +556,8 @@
         </div>
       </div>
 
-      <!-- STATS PANEL — fills all remaining space beside the map -->
-      <div class="col">
+      <!-- STATS PANEL — only shown on /block-rainfall-aws-actual -->
+      <div class="col" *ngIf="isAwsActualPage">
         <div class="aws-stats-panel">
           <h6 class="stats-title">AWS Block Coverage</h6>
 

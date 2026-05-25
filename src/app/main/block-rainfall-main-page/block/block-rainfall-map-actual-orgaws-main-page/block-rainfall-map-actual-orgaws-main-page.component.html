@@ -155,7 +155,7 @@
     </div> -->
 
 <div class="container-fluid">
-  <div class="row g-3 align-items-start">
+  <div class="row g-3 align-items-start justify-content-center">
     <div class="col-auto" id="mapdiv1-ftp">
       <div class="map-container">
         <div class="map-frame d-flex justify-content-center">
@@ -527,103 +527,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── AWS Block Coverage Panel ─────────────────────────────────────── -->
-    <div class="col">
-      <div class="aws-stats-panel">
-        <h6 class="stats-title">AWS Block Coverage</h6>
-
-        <!-- Loading -->
-        <div *ngIf="awsLoading" class="text-center py-4">
-          <i class="fa fa-spinner fa-pulse fa-2x"></i>
-          <p class="mt-2 small text-muted">Loading AWS data...</p>
-        </div>
-
-        <!-- Summary badges -->
-        <div *ngIf="!awsLoading" class="stats-summary mb-3">
-          <span class="badge bg-primary me-1">AWS Stations: {{ totalAwsStations }}</span>
-          <span class="badge bg-secondary me-1">IMD Blocks DB: {{ totalBlocksInGetBlock }}</span>
-          <span class="badge bg-info text-dark">Filter: daily</span>
-        </div>
-
-        <!-- Per-source table -->
-        <div *ngIf="!awsLoading" class="table-responsive">
-          <table class="table table-sm table-bordered aws-table mb-2">
-            <thead class="table-dark">
-              <tr>
-                <th>AWS Source</th>
-                <th title="Unique station IDs">Stns</th>
-                <th title="Unique blocks/districts with AWS rainfall data">Blocks w/ AWS</th>
-                <th title="Of those, how many already appear in INDIA_BLOCK.json">In IMD Map</th>
-                <th title="Blocks with AWS data NOT yet in IMD block map">New Blocks</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let stat of awsStats">
-                <td class="source-label">{{ stat.sourceLabel }}</td>
-                <td class="text-center text-muted small">{{ stat.totalStations }}</td>
-                <td class="text-center">
-                  <span class="badge bg-success">{{ stat.blocksWithAwsData }}</span>
-                </td>
-                <td class="text-center">
-                  <span class="badge bg-info text-dark">{{ stat.blocksPlottedOnMap }}</span>
-                </td>
-                <td class="text-center">
-                  <span class="badge"
-                    [ngClass]="(stat.blocksWithAwsData - stat.blocksPlottedOnMap) > 0 ? 'bg-warning text-dark' : 'bg-light text-muted'">
-                    {{ stat.blocksWithAwsData - stat.blocksPlottedOnMap }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-            <tfoot class="table-secondary fw-bold">
-              <tr>
-                <td>Total</td>
-                <td class="text-center small">{{ totalAwsStations }}</td>
-                <td class="text-center"><span class="badge bg-success">{{ totalBlocksWithAwsData }}</span></td>
-                <td class="text-center"><span class="badge bg-info text-dark">{{ totalBlocksPlottedOnMap }}</span></td>
-                <td class="text-center"><span class="badge bg-warning text-dark">{{ totalBlocksWithAwsData - totalBlocksPlottedOnMap }}</span></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        <!-- Charts -->
-        <div *ngIf="!awsLoading && (awsPieChart || awsBarChart)" class="charts-row mt-3">
-          <hr class="my-2"/>
-          <div class="d-flex gap-2">
-            <div class="chart-half" *ngIf="awsPieChart">
-              <div [chart]="awsPieChart"></div>
-            </div>
-            <div class="chart-half" *ngIf="awsBarChart">
-              <div [chart]="awsBarChart"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Comparison box -->
-        <div *ngIf="!awsLoading" class="comparison-box p-2 mt-3">
-          <div class="small">
-            <div class="d-flex justify-content-between mb-1">
-              <span class="text-muted">Total IMD Blocks in DB:</span>
-              <strong>{{ totalBlocksInGetBlock }}</strong>
-            </div>
-            <div class="d-flex justify-content-between mb-1">
-              <span class="text-muted">Blocks with AWS data (all sources):</span>
-              <strong class="text-success">{{ totalBlocksWithAwsData }}</strong>
-            </div>
-            <div class="d-flex justify-content-between mb-1">
-              <span class="text-muted">Already in IMD map:</span>
-              <strong class="text-info">{{ totalBlocksPlottedOnMap }}</strong>
-            </div>
-            <div class="d-flex justify-content-between border-top pt-1 mt-1">
-              <span class="fw-semibold">New blocks (AWS only, not in IMD map):</span>
-              <strong class="text-warning">{{ totalBlocksWithAwsData - totalBlocksPlottedOnMap }}</strong>
             </div>
           </div>
         </div>
