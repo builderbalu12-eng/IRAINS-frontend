@@ -38,32 +38,36 @@ export class DownloadPdf {
   convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
 
   async updateanddownloadpdf(){
-    const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.seasonPeriodDate = this.data.startDate === this.data.endDate
+      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
 
   async updateanddownloadpdfFromDataEntry(){
-    const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.seasonPeriodDate = this.data.startDate === this.data.endDate
+      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 
   async updateandViewpdf(){
     this.isView = true
-    const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.seasonPeriodDate = this.data.startDate === this.data.endDate
+      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
-  
+
   async updateandViewpdfFromDataEntry(){
     this.isView = true
-    const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.seasonPeriodDate = this.data.startDate === this.data.endDate
+      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 
@@ -76,56 +80,36 @@ export class DownloadPdf {
 
   async updateanddownloadpdfCustom(fromDate : any, toDate : any){
     console.log('custom date download', fromDate, toDate)
-    const currDate = new Date();
-    // this.data = this.constants.getRangeFromDateRange();
-    this.data  = {
-      startDate : fromDate, // 2024-09-18 format
-      endDate : toDate
-    }
-    
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.data  = { startDate: fromDate, endDate: toDate }
+    this.seasonPeriodDate = fromDate === toDate
+      ? this.constants.getFullSeasonForDate(toDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
 
-
-
-  
-
   async updateanddownloadpdfFromDataEntryCustom(fromDate : any, toDate : any){
-    const currDate = new Date();
-    // this.data = this.constants.getRangeFromDateRange();
-    this.data  = {
-      startDate : fromDate, // 2024-09-18 format
-      endDate : toDate
-    }
-    
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.data  = { startDate: fromDate, endDate: toDate }
+    this.seasonPeriodDate = fromDate === toDate
+      ? this.constants.getFullSeasonForDate(toDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 
   async updateandViewpdfCustom(fromDate : any, toDate : any){
     this.isView = true
-    const currDate = new Date();
-    // this.data = this.constants.getRangeFromDateRange();
-    this.data  = {
-      startDate : fromDate, // 2024-09-18 format
-      endDate : toDate
-    }
-    
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.data  = { startDate: fromDate, endDate: toDate }
+    this.seasonPeriodDate = fromDate === toDate
+      ? this.constants.getFullSeasonForDate(toDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
 
   async updateandViewpdfFromDataEntryCustom(fromDate : any, toDate : any){
     this.isView = true
-    const currDate = new Date();
-    // this.data = this.constants.getRangeFromDateRange();
-    this.data  = {
-      startDate : fromDate, // 2024-09-18 format
-      endDate : toDate
-    }
-    
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.data  = { startDate: fromDate, endDate: toDate }
+    this.seasonPeriodDate = fromDate === toDate
+      ? this.constants.getFullSeasonForDate(toDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 
@@ -528,7 +512,6 @@ export class DownloadPdf {
       setTimeout(()=>{
         doc.save(filename);
         this.exportAsExcelFile(newArr, excelName, dayStart, dayEnd, periodStart, periodEnd);
-        this.exportDistrictDistributionExcel(`DISTRICT_DIST_${dateLabel}`);
       },3000)
     }
 
@@ -645,7 +628,8 @@ export class DownloadPdf {
         seasonEndDate = endDate;
     }
 
-    if(seasonEndDate > endDate){
+    const isSingleDate = this.formatDate(startDate) === this.formatDate(endDate);
+    if (!isSingleDate && seasonEndDate > endDate) {
       seasonEndDate = endDate;
     }
   

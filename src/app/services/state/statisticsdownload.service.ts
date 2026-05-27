@@ -46,83 +46,71 @@ export class StateDownloadStatistics {
 
 
   async updateanddownloadpdf(){
-    const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.seasonPeriodDate = this.data.startDate === this.data.endDate
+      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
 
   async updateanddownloadpdfFromDataEntry(){
-    const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.seasonPeriodDate = this.data.startDate === this.data.endDate
+      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 
   async updateandViewpdf(){
     this.isView = true
-    const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.seasonPeriodDate = this.data.startDate === this.data.endDate
+      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
 
   async updateandViewpdfFromDataEntry(){
     this.isView = true
-    const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.seasonPeriodDate = this.data.startDate === this.data.endDate
+      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 
 
   async updateanddownloadpdfCustom(fromDate : any, toDate : any){
-    const currDate = new Date();
-    // this.data = this.constants.getRangeFromDateRange();
-    this.data  = {
-      startDate : fromDate, // 2024-09-18 format
-      endDate : toDate
-    }
-    
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.data  = { startDate: fromDate, endDate: toDate }
+    this.seasonPeriodDate = fromDate === toDate
+      ? this.constants.getFullSeasonForDate(toDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
 
   async updateanddownloadpdfFromDataEntryCustom(fromDate : any, toDate : any){
-    const currDate = new Date();
-    // this.data = this.constants.getRangeFromDateRange();
-    this.data  = {
-      startDate : fromDate, // 2024-09-18 format
-      endDate : toDate
-    }
-    
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.data  = { startDate: fromDate, endDate: toDate }
+    this.seasonPeriodDate = fromDate === toDate
+      ? this.constants.getFullSeasonForDate(toDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 
   async updateandViewpdfCustom(fromDate : any, toDate : any){
     this.isView = true
-    const currDate = new Date();
-    // this.data = this.constants.getRangeFromDateRange();
-    this.data  = {
-      startDate : fromDate, // 2024-09-18 format
-      endDate : toDate
-    }
-    
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.data  = { startDate: fromDate, endDate: toDate }
+    this.seasonPeriodDate = fromDate === toDate
+      ? this.constants.getFullSeasonForDate(toDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
 
   async updateandViewpdfFromDataEntryCustom(fromDate : any, toDate : any){
     this.isView = true
-    const currDate = new Date();
-    // this.data = this.constants.getRangeFromDateRange();
-    this.data  = {
-      startDate : fromDate, // 2024-09-18 format
-      endDate : toDate
-    }
-    
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.data  = { startDate: fromDate, endDate: toDate }
+    this.seasonPeriodDate = fromDate === toDate
+      ? this.constants.getFullSeasonForDate(toDate)
+      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 
@@ -738,7 +726,27 @@ export class StateDownloadStatistics {
           regionRowIndices,
           countryRowIndex
         );
-        this.exportDistrictDistributionExcel(`DISTRICT_DIST_STATE_${dateLabel}`);
+        const isSingleDate = this.data.startDate === this.data.endDate;
+        let distExcelName: string;
+        if (isSingleDate) {
+          const [y, m, d] = this.data.endDate.split('-');
+          distExcelName = `State Distribution_${d}${m}${y}`;
+        } else {
+          const s = new Date(this.data.startDate);
+          const e = new Date(this.data.endDate);
+          const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+          const MON    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const d1 = String(s.getDate()).padStart(2, '0');
+          const d2 = String(e.getDate()).padStart(2, '0');
+          if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+            distExcelName = `State Distribution (${d1}-${d2}) ${MONTHS[s.getMonth()]} ${s.getFullYear()}`;
+          } else if (s.getFullYear() === e.getFullYear()) {
+            distExcelName = `State Distribution (${d1}${MON[s.getMonth()]}-${d2}${MON[e.getMonth()]}) ${s.getFullYear()}`;
+          } else {
+            distExcelName = `State Distribution (${d1}${MON[s.getMonth()]}${s.getFullYear()}-${d2}${MON[e.getMonth()]}${e.getFullYear()})`;
+          }
+        }
+        this.exportDistrictDistributionExcel(distExcelName);
       },3000)
     }
 

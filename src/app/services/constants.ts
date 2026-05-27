@@ -19,12 +19,29 @@ export class Constants {
     return this.GuestMode;
   }
 
+  getFullSeasonForDate(dateStr: string): { startDate: string, endDate: string } {
+    const date = new Date(dateStr);
+    const month = date.getMonth();
+    const year = date.getFullYear();
+    const seasons = [
+      { startMonth: 0, endMonth: 1 },
+      { startMonth: 2, endMonth: 4 },
+      { startMonth: 5, endMonth: 8 },
+      { startMonth: 9, endMonth: 11 },
+    ];
+    const matched = seasons.find(s => month >= s.startMonth && month <= s.endMonth)!;
+    const start = new Date(year, matched.startMonth, 1);
+    const end   = new Date(year, matched.endMonth + 1, 0); // last day of season end month
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { startDate: fmt(start), endDate: fmt(end) };
+  }
+
   getDateSuffix(startDate: string, endDate: string): string {
     if (startDate === endDate) return 'cd';
     const start = new Date(startDate);
     const end   = new Date(endDate);
     const days  = Math.round((end.getTime() - start.getTime()) / 86400000);
-    if (days === 6 && start.getDay() === 4) return 'w';
     if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) return 'm';
     return 'c';
   }
