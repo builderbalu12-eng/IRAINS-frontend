@@ -766,10 +766,28 @@ export class SubdivDownloadStatistics {
       },
     });
     // DISTRIBUTION_COUNTRY_INDIA_cd.pdf
-    const suffix  = this.constants.getDateSuffix(this.data.startDate, this.data.endDate);
-    const dateLabel = this.constants.getExcelDateLabel(this.data.startDate, this.data.endDate);
-    const filename  = `SUBDIVISION_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_${suffix}.pdf`;
-    const excelName = `SUBDIV_${dateLabel}`;
+    const suffix = this.constants.getDateSuffix(this.data.startDate, this.data.endDate);
+    const filename = `SUBDIVISION_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_${suffix}.pdf`;
+    const isSingleDate = this.data.startDate === this.data.endDate;
+    let excelName: string;
+    if (isSingleDate) {
+      const [y, m, d] = this.data.startDate.split('-');
+      excelName = `SUBDIV_${d}${m}${y}`;
+    } else {
+      const s = new Date(this.data.startDate);
+      const e = new Date(this.data.endDate);
+      const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const MON    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const d1 = String(s.getDate()).padStart(2, '0');
+      const d2 = String(e.getDate()).padStart(2, '0');
+      if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+        excelName = `SUBDIV (${d1}-${d2}) ${MONTHS[s.getMonth()]} ${s.getFullYear()}`;
+      } else if (s.getFullYear() === e.getFullYear()) {
+        excelName = `SUBDIV (${d1}${MON[s.getMonth()]}-${d2}${MON[e.getMonth()]}) ${s.getFullYear()}`;
+      } else {
+        excelName = `SUBDIV (${d1}${MON[s.getMonth()]}${s.getFullYear()}-${d2}${MON[e.getMonth()]}${e.getFullYear()})`;
+      }
+    }
 
     // Build category rows for Excel
     const catStats = this.buildCategoryStats();
