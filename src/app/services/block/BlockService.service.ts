@@ -16,6 +16,11 @@ export class BlockService {
     return this.http.post<any>(url, data);
   }
 
+  fetchDataWithAWS(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchBlockDataWithAWS`;
+    return this.http.post<any>(url, data);
+  }
+
   fetchDataFtp(data:any): Observable<any> {
     const url = `${this.baseUrl}/api/v1/fetchBlockData`;
     console.log('called fetchDataFtp');

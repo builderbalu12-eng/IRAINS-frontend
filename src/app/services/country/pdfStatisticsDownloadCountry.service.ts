@@ -1,3 +1,4 @@
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { EMPTY, Observable, concatMap, lastValueFrom } from 'rxjs';
@@ -27,7 +28,8 @@ export class CountryDownloadStatistics {
   data: any;
   seasonPeriodDate: any;
 
-  constructor(private http: HttpClient, private constants: Constants, private counrtryService : CountryService) {
+  constructor(
+    private calcMode: CalculationsModeService,private http: HttpClient, private constants: Constants, private counrtryService : CountryService) {
   }
 
   convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
@@ -193,11 +195,11 @@ export class CountryDownloadStatistics {
 
     try{
       await lastValueFrom(
-        this.counrtryService.fetchData(data).pipe(
+        (this.calcMode.isAwsEnabled ? this.counrtryService.fetchDataWithAWS(data) : this.counrtryService.fetchData(data)).pipe(
           concatMap(country => {
             this.countrydepCurrdate = country.data;
             console.log('indownloading---->',this.countrydepCurrdate)
-            return this.counrtryService.fetchData(seasonPeriodDate);
+            return (this.calcMode.isAwsEnabled ? this.counrtryService.fetchDataWithAWS(seasonPeriodDate) : this.counrtryService.fetchData(seasonPeriodDate));
           }),
     
           concatMap(seasoncountryData => {

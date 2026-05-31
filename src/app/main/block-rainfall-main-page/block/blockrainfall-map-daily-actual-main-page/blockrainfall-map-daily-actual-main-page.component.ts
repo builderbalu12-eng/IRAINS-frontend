@@ -514,14 +514,14 @@ export class BlockrainfallMapDailyActualMainPageComponent
         );
       });
     } else {
-      this.block.fetchData(data).subscribe((res) => {
+      this.block.fetchDataWithAWS(data).subscribe((res) => {
         this.blockdatacum = res.data;
         console.log("fbdudusdubsudbsud", res.data);
         this.loadGeoJSON();
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       });
-      this.countryService.fetchData(data).subscribe((res) => {
+      this.countryService.fetchDataWithAWS(data).subscribe((res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
           this.countrydatacum[0].actual_rainfall
@@ -1170,21 +1170,27 @@ export class BlockrainfallMapDailyActualMainPageComponent
                 ) + " mm"
               : "NA";
           const popupContent = `
-                    <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-                    </div>
-                `;
-          layer.bindPopup(popupContent);
-          layer.on("mouseover", () => {
-            layer.openPopup();
+            <div style="background:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+              <div style="color:#002467;font-weight:bold;font-size:12px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">
+                ${region} › ${state} › ${district}
+              </div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">BLOCK: ${block}</div>
+              <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall} mm</div>
+              <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
+              <div style="font-size:12px;"><b>Departure:</b> ${rainfall ?? 'NA'}%</div>
+              <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+                <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+              </div>
+            </div>
+          `;
+          layer.on('mouseover', () => {
+            layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip();
           });
-          layer.on("mouseout", () => {
-            layer.closePopup();
-          });
+          layer.on('mouseout', () => layer.closeTooltip());
         },
       }).addTo(this.map);
     });
@@ -1378,21 +1384,27 @@ export class BlockrainfallMapDailyActualMainPageComponent
                 ) + " mm"
               : "NA";
           const popupContent = `
-                  <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-                  </div>
-              `;
-          layer.bindPopup(popupContent);
-          layer.on("mouseover", () => {
-            layer.openPopup();
+            <div style="background:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+              <div style="color:#002467;font-weight:bold;font-size:12px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">
+                ${region} › ${state} › ${district}
+              </div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">BLOCK: ${block}</div>
+              <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall} mm</div>
+              <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
+              <div style="font-size:12px;"><b>Departure:</b> ${rainfall ?? 'NA'}%</div>
+              <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+                <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+              </div>
+            </div>
+          `;
+          layer.on('mouseover', () => {
+            layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip();
           });
-          layer.on("mouseout", () => {
-            layer.closePopup();
-          });
+          layer.on('mouseout', () => layer.closeTooltip());
         },
       }).addTo(this.map);
 

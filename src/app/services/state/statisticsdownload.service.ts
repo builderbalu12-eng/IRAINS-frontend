@@ -1,3 +1,4 @@
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
 import { Injectable, Input } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { EMPTY, Observable, concatMap, lastValueFrom } from 'rxjs';
@@ -34,6 +35,7 @@ export class StateDownloadStatistics {
   seasonPeriodDate: any;
 
   constructor(
+    private calcMode: CalculationsModeService,
     private http: HttpClient,
     private constants: Constants,
     private regionService: RegionService,
@@ -215,30 +217,30 @@ export class StateDownloadStatistics {
   async updateCurrDateDataFromDataEntry(data:any, seasonPeriodDate:any ){
     try{
       await lastValueFrom(
-        this.stateservice.fetchData(data).pipe(
+        (this.calcMode.isAwsEnabled ? this.stateservice.fetchDataWithAWS(data) : this.stateservice.fetchData(data)).pipe(
           concatMap(stateData => {
             this.statedepCurrdate = stateData.data;
             console.log('indownloading---->',this.statedepCurrdate)
-            return this.regionService.fetchData(data);
+            return (this.calcMode.isAwsEnabled ? this.regionService.fetchDataWithAWS(data) : this.regionService.fetchData(data));
           }),
           concatMap(region => {
             this.regiondepCurrdate = region.data;
             console.log('indownloading---->',this.regiondepCurrdate)
-            return this.stateservice.fetchData(seasonPeriodDate);
+            return (this.calcMode.isAwsEnabled ? this.stateservice.fetchDataWithAWS(seasonPeriodDate) : this.stateservice.fetchData(seasonPeriodDate));
           }),
           concatMap(seasonstateData => {
             this.statedepSeasondate = seasonstateData.data;
             console.log('indownloading---->',this.statedepSeasondate)
-            return this.regionService.fetchData(seasonPeriodDate);
+            return (this.calcMode.isAwsEnabled ? this.regionService.fetchDataWithAWS(seasonPeriodDate) : this.regionService.fetchData(seasonPeriodDate));
           }),
           concatMap(seasonregionData => {
             this.regiondepSeasondate = seasonregionData.data;
             console.log('indownloading---->', this.regiondepSeasondate)
-            return this.countryService.fetchData(data);
+            return (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data));
           }),
           concatMap(countryData => {
             this.countrydepCurrdate = countryData.data;
-            return this.countryService.fetchData(seasonPeriodDate);
+            return (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(seasonPeriodDate) : this.countryService.fetchData(seasonPeriodDate));
           }),
           concatMap(seasonCountryData => {
             this.countrydepSeasondate = seasonCountryData.data;
@@ -248,7 +250,7 @@ export class StateDownloadStatistics {
             this.stateAreaMap = new Map(
               areaData.data.map((r: any) => [Number(r.state_code), Number(r.area_percentage)])
             );
-            return this.districtService.fetchData({ startDate: data.startDate, endDate: data.endDate });
+            return (this.calcMode.isAwsEnabled ? this.districtService.fetchDataWithAWS({ startDate: data.startDate, endDate: data.endDate }) : this.districtService.fetchData({ startDate: data.startDate, endDate: data.endDate }));
           }),
           concatMap((districtData) => {
             this.districtDepCurrdate = districtData.data ?? [];

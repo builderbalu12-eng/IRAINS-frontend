@@ -16,6 +16,11 @@ export class RegionService {
     return this.http.post<any>(url, data);
   }
 
+  fetchDataWithAWS(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchRegionDataWithAWS`;
+    return this.http.post<any>(url, data);
+  }
+
   fetchDataFtp(data:any): Observable<any> {
     const url = `${this.baseUrl}/api/v1/fetchRegionDataFtp`;
     return this.http.post<any>(url, data);

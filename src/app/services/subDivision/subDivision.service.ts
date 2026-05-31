@@ -16,6 +16,11 @@ export class SubdivisionService {
     return this.http.post<any>(url, data);
   }
 
+  fetchDataWithAWS(data:any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchSubDivisionDataWithAWS`;
+    return this.http.post<any>(url, data);
+  }
+
   fetchDataFtp(data:any) {
     const url = `${this.baseUrl}/api/v1/fetchSubDivisionDataFtp`;
     return this.http.post<any>(url, data);

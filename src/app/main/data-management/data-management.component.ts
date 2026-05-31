@@ -30,6 +30,7 @@ export class DataManagementComponent implements OnInit, OnDestroy {
       children: [
         { label: 'Calculation Exclusion', icon: 'bi bi-slash-circle',  route: '/data-management/calculation-exclusion' },
         { label: 'Display Order',         icon: 'bi bi-list-ol',        route: '/data-management/display-order' },
+        { label: 'Calculation Mode',      icon: 'bi bi-toggle-on',      route: '/data-management/calculation-mode' },
       ]
     },
     {

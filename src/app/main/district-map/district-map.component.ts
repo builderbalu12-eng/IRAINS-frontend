@@ -10,6 +10,7 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
 import { DistrictService } from "src/app/services/district/district.service";
 import { DownloadPdf } from "src/app/services/district/pdfdownload.service";
 import jsPDF from "jspdf";
@@ -84,6 +85,7 @@ export class DistrictMapComponent implements AfterViewInit {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     private district: DistrictService,
@@ -133,7 +135,7 @@ export class DistrictMapComponent implements AfterViewInit {
       endDate: this.EndDate,
     };
     console.log("Fetching district data with dates:", data);
-    this.district.fetchData(data).subscribe({
+    (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe({
       next: (res) => {
         this.districtdatacum = res.data || [];
         console.log(
@@ -163,7 +165,7 @@ export class DistrictMapComponent implements AfterViewInit {
       },
     });
 
-    this.countryService.fetchData(data).subscribe({
+    (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe({
       next: (res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
@@ -607,7 +609,7 @@ export class DistrictMapComponent implements AfterViewInit {
               });
             },
           }).addTo(this.map);
-          stateLayer.bringToFront();
+          stateLayer.setZIndex(1);  // keep state borders behind district layer so district gets mouse events
           console.log("State layers populated:", Object.keys(this.stateLayers));
           resolve();
         },
@@ -704,29 +706,27 @@ export class DistrictMapComponent implements AfterViewInit {
                   ) + " mm"
                 : "NA";
             const popupContent = `
-  <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-  <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${
-    state || "Unknown"
-  }</div>
-  <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${id1}</div>
-  <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-  <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
-  <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall} % </div>
+  <div style="background:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+    <div style="color:#002467;font-weight:bold;font-size:13px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">STATE: ${state || 'Unknown'}</div>
+    <div style="color:#002467;font-weight:bold;font-size:13px;">DISTRICT: ${id1}</div>
+    <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall}</div>
+    <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
+    <div style="font-size:12px;"><b>Departure:</b> ${rainfall ?? 'NA'}%</div>
+    <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+      <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+      <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+      <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+    </div>
   </div>
   `;
-            layer.bindPopup(popupContent);
 
             // Enable interactivity for the layer
             layer.options.interactive = true;
 
-            layer.on("mouseover", (e: any) => {
-              console.log(
-                "Mouseover event triggered for district:",
-                id1,
-                "state:",
-                state
-              );
-              layer.openPopup();
+            layer.on('mouseover', () => {
+              layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip();
               const stateLayer = this.stateLayers[state];
               if (stateLayer) {
                 stateLayer.setStyle({
@@ -755,7 +755,7 @@ export class DistrictMapComponent implements AfterViewInit {
 
             layer.on("mouseout", (e: any) => {
               console.log("Mouseout event triggered for district:", id1);
-              layer.closePopup();
+              layer.closeTooltip();
               const stateLayer = this.stateLayers[state];
               if (stateLayer) {
                 stateLayer.setStyle({

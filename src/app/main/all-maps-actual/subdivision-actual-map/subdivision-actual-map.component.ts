@@ -10,6 +10,7 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
 import { SubdivisionService } from "src/app/services/subDivision/subDivision.service";
 import { SubdivDownloadStatistics } from "src/app/services/subDivision/statisticsdownload.service";
 import jsPDF from "jspdf";
@@ -101,6 +102,7 @@ export class SubdivisionActualMapComponent {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     private subdivisionService: SubdivisionService,
@@ -147,8 +149,8 @@ export class SubdivisionActualMapComponent {
       startDate: this.StartDate || `${year}-${mon}-${dd}`,
       endDate: this.EndDate || `${year}-${mon}-${dd}`,
     };
-    console.log('dates check', this.StartDate, this.EndDate)
-    this.subdivisionService.fetchData(data).subscribe((res) => {
+    console.log('dates check', this.StartDate, this.EndDate);
+    (this.calcMode.isAwsEnabled ? this.subdivisionService.fetchDataWithAWS(data) : this.subdivisionService.fetchData(data)).subscribe((res: any) => {
       this.subdivisiondatacum = res.data;
       this.loadGeoJSON(false);
       this.StartDate = this.convertToIndianDateFormat(this.StartDate);
@@ -611,6 +613,26 @@ export class SubdivisionActualMapComponent {
               matchedData && !Number.isNaN(matchedData.rainfall_normal_value)
                 ? matchedData.rainfall_normal_value
                 : "NA";
+
+            // Hover tooltip with AWS station breakdown
+            layer.on('mouseover', () => {
+              layer.bindTooltip(`
+                <div style="background:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+                  <div style="color:#002467;font-weight:bold;font-size:13px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">${id1}</div>
+                  <div style="font-size:12px;"><b>Actual:</b> ${dailyrainfall} mm</div>
+                  <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall} mm</div>
+                  <div style="font-size:12px;"><b>Departure:</b> ${rainfall ?? 'NA'}%</div>
+                  <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+                    <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+                    <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+                    <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                  </div>
+                </div>
+              `, { sticky: true, opacity: 0.95 }).openTooltip();
+            });
+            layer.on('mouseout', () => layer.closeTooltip());
 
             // Determine label position and abbreviation
             let center = {

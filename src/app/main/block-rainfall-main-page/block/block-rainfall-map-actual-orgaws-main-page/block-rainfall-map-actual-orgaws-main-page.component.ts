@@ -10,6 +10,7 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
 import { DistrictService } from "src/app/services/district/district.service";
 import { DownloadPdf } from "src/app/services/block/pdfdownload.service";
 import jsPDF from "jspdf";
@@ -211,6 +212,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
         constructor(
           private http: HttpClient,
           private dataService: DataService,
+    private calcMode: CalculationsModeService,
           private renderer: Renderer2,
           private elRef: ElementRef,
           private block : BlockService,
@@ -507,7 +509,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
             // Fetch both AWS and normal block data
             forkJoin({
               awsData: this.block.fetchDatablockaws(data),
-              normalData: this.block.fetchData(dateforfetchdata)
+              normalData: (this.calcMode.isAwsEnabled ? this.block.fetchDataWithAWS(dateforfetchdata) : this.block.fetchData(dateforfetchdata))
             }).subscribe(({ awsData, normalData }) => {
               // Append second response to the first
               const aws = awsData?.data || [];
@@ -526,7 +528,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
             });
           
             // Fetch country-level data (as before)
-            this.countryService.fetchData(dateforfetchdata).subscribe((res) => {
+            (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(dateforfetchdata) : this.countryService.fetchData(dateforfetchdata)).subscribe((res) => {
               this.countrydatacum = res.data;
               this.countryActual = this.constants.trimToOneDecimals(
                 this.countrydatacum[0].actual_rainfall
@@ -547,7 +549,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
             console.log('hi1')
             // Fetch both AWS and normal block data (even in non-unified mode)
             forkJoin({
-              normalData: this.block.fetchData(dateforfetchdata)
+              normalData: (this.calcMode.isAwsEnabled ? this.block.fetchDataWithAWS(dateforfetchdata) : this.block.fetchData(dateforfetchdata))
             }).subscribe(({ normalData }) => {
               const normal = normalData?.data || [];
               this.blockdatacum = [...normal];
@@ -559,7 +561,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
             });
           
             // Fetch country-level data
-            this.countryService.fetchData(dateforfetchdata).subscribe((res) => {
+            (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(dateforfetchdata) : this.countryService.fetchData(dateforfetchdata)).subscribe((res) => {
               this.countrydatacum = res.data;
               this.countryActual = this.constants.trimToOneDecimals(
                 this.countrydatacum[0].actual_rainfall
@@ -1259,21 +1261,23 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
                         ) + " mm"
                       : "NA";
                   const popupContent = `
-                      <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-                      <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
-                      <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
-                      <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
-                      <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
-                      <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
+                    <div style="background:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+                      <div style="color:#002467;font-weight:bold;font-size:12px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">${region} › ${state} › ${district}</div>
+                      <div style="color:#002467;font-weight:bold;font-size:13px;">BLOCK: ${block}</div>
+                      <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall} mm</div>
+                      <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
+                      <div style="font-size:12px;"><b>Departure:</b> ${rainfall}%</div>
+                      <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+                        <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+                        <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+                        <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                        <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                        <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
                       </div>
+                    </div>
                   `;
-                  layer.bindPopup(popupContent);
-                  layer.on("mouseover", () => {
-                    layer.openPopup();
-                  });
-                  layer.on("mouseout", () => {
-                    layer.closePopup();
-                  });
+                  layer.on('mouseover', () => layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip());
+                  layer.on('mouseout', () => layer.closeTooltip());
                 },
               }).addTo(this.map);
             });
@@ -1467,21 +1471,23 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
                       ) + " mm"
                     : "NA";
                 const popupContent = `
-                    <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
+                  <div style="background:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+                    <div style="color:#002467;font-weight:bold;font-size:12px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">${region} › ${state} › ${district}</div>
+                    <div style="color:#002467;font-weight:bold;font-size:13px;">BLOCK: ${block}</div>
+                    <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall} mm</div>
+                    <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
+                    <div style="font-size:12px;"><b>Departure:</b> ${rainfall}%</div>
+                    <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+                      <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+                      <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+                      <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                      <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                      <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
                     </div>
+                  </div>
                 `;
-                layer.bindPopup(popupContent);
-                layer.on("mouseover", () => {
-                  layer.openPopup();
-                });
-                layer.on("mouseout", () => {
-                  layer.closePopup();
-                });
+                layer.on('mouseover', () => layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip());
+                layer.on('mouseout', () => layer.closeTooltip());
               },
             }).addTo(this.map);
         

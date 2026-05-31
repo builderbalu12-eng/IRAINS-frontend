@@ -1,41 +1,321 @@
-/* shared management page styles */
-.page-wrap { padding: 8px; }
-
-.page-header {
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 12px;
+/* ── Host fills the flex container ──────────────────────────── */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
+/* ── Page wrapper — fills dm-content completely ──────────────── */
+.dm-page-wrap {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 28px;
+  box-sizing: border-box;
+}
+.dm-page-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 0;
+}
+
+/* ── Main Card ───────────────────────────────────────────────── */
+.main-card {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+}
+.page-title {
+  color: #002467;
+  font-size: 1.4rem;
+}
+
+/* ── Loader ──────────────────────────────────────────────────── */
+.loader-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.88);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  border-radius: 16px;
+}
+.loading-message {
+  background: white;
+  padding: 25px 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  font-size: 18px;
+  font-weight: 600;
+  color: #002467;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* ── Search Box ──────────────────────────────────────────────── */
+.search-box {
+  position: relative;
+  width: 320px;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #aaa;
+  pointer-events: none;
+}
+.search-input {
+  padding-left: 34px;
+  border-radius: 20px;
+  border: 1px solid #ced4da;
+  font-size: 13px;
+}
+.search-input:focus {
+  border-color: #002467;
+  box-shadow: 0 0 0 0.2rem rgba(0, 36, 103, 0.12);
+}
+
+/* ── Summary Bar ─────────────────────────────────────────────── */
+.summary-bar {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  padding: 8px 14px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+.divider-dot {
+  margin: 0 10px;
+  color: #ccc;
+}
+
+/* ── Table ───────────────────────────────────────────────────── */
+.table-scroll {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  min-height: 0;
+}
+.table-head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.table-head th {
+  background-color: #002467 !important;
+  color: white !important;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 12px 14px;
+  border-color: #1a3a7a !important;
+}
+.table {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+.table td {
+  vertical-align: middle;
+  padding: 10px 14px;
+}
+.table tbody tr:hover {
+  background-color: #eef3ff;
+}
+
+/* ── Modal Backdrop ──────────────────────────────────────────── */
 .modal-backdrop-custom {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 2000;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1050;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
 }
 
-.modal-card {
+/* ── Modal Panel ─────────────────────────────────────────────── */
+.modal-panel-custom {
   background: #fff;
-  border-radius: 12px;
-  width: 520px;
-  max-width: 95vw;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-  overflow: hidden;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
 }
+.modal-panel-sm { max-width: 480px; }
+.modal-panel-lg { max-width: 720px; }
 
-.modal-card-header {
-  background: linear-gradient(135deg, #1e40af, #1e3a8a);
+.modal-panel-header {
+  background: linear-gradient(135deg, #002467, #1a3a7a);
   color: #fff;
-  padding: 16px 20px;
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-radius: 14px 14px 0 0;
+  flex-shrink: 0;
 }
+.btn-close-white-custom {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  line-height: 1;
+  transition: background 0.2s;
+}
+.btn-close-white-custom:hover { background: rgba(255,255,255,0.28); color: #fff; }
 
-.modal-card-body { padding: 24px 20px; }
-
-.modal-card-footer {
-  padding: 16px 20px;
+.modal-panel-body {
+  padding: 22px;
+  flex: 1;
+  overflow-y: auto;
+}
+.modal-panel-footer {
+  padding: 16px 22px;
   border-top: 1px solid #e2e8f0;
   background: #f8fafc;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  border-radius: 0 0 14px 14px;
 }
 
+/* ── Format Hint ─────────────────────────────────────────────── */
+.format-hint {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.format-hint code {
+  background: #fef3c7;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+  color: #92400e;
+}
+
+/* ── Drop Zone ───────────────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed #ced4da;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.drop-zone:hover,
+.drop-zone-active {
+  border-color: #002467;
+  background: #eef3ff;
+}
+.drop-zone-ready {
+  border-color: #198754;
+  background: #f0fdf4;
+  border-style: solid;
+}
+
+/* ── Column Info Grid ────────────────────────────────────────── */
+.col-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.col-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.col-badge {
+  flex-shrink: 0;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-family: monospace;
+  color: #92400e;
+  font-weight: 600;
+  min-width: 130px;
+  text-align: center;
+}
+.col-badge-date {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+.col-desc {
+  font-size: 12px;
+  color: #555;
+  padding-top: 2px;
+  line-height: 1.5;
+}
+
+/* ── File Info Bar ───────────────────────────────────────────── */
+.file-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+/* ── Upload Error Banner ─────────────────────────────────────── */
+.upload-error-banner {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: #fff1f2;
+  border: 2px solid #f87171;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 8px;
+  animation: shake 0.3s ease;
+}
+.upload-error-icon {
+  color: #dc2626;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.upload-error-body {
+  font-size: 13px;
+  color: #7f1d1d;
+  flex: 1;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-6px); }
+  75%       { transform: translateX(6px); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .search-box { width: 100%; }
+  .page-title { font-size: 1.1rem; }
+  .table { font-size: 12px; }
+}

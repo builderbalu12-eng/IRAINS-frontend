@@ -1,6 +1,7 @@
 import { filter } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
 import { DataService } from './data.service';
+import { CalculationsModeService } from './services/calculationsMode.service';
 
 @Component({
   selector: 'app-root',
@@ -11,7 +12,11 @@ export class AppComponent implements OnInit {
   title = 'CRIS';
   loadedFeature = 'Departure';
 
-  constructor(private dataService: DataService){
+  constructor(
+    private dataService: DataService,
+    private calcMode: CalculationsModeService
+  ){
+    this.calcMode.loadMode().subscribe();   // load IMD/AWS toggle from DB on startup
     this.scheduleFunction();
     // this.CreateColumn();
   }

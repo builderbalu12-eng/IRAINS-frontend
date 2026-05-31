@@ -10,6 +10,7 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
 import { DistrictService } from "src/app/services/district/district.service";
 import { DownloadPdf } from "src/app/services/block/pdfdownload.service";
 import jsPDF from "jspdf";
@@ -239,6 +240,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     // private district: DistrictService,
@@ -549,7 +551,7 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       });
-      this.countryService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
           this.countrydatacum[0].actual_rainfall
@@ -567,14 +569,14 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
         );
       });
     } else {
-      this.block.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.block.fetchDataWithAWS(data) : this.block.fetchData(data)).subscribe((res) => {
         this.blockdatacum = res.data;
         console.log("fbdudusdubsudbsud", res.data);
         this.loadGeoJSON();
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       });
-      this.countryService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
           this.countrydatacum[0].actual_rainfall
@@ -1192,18 +1194,22 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
           const normal = matchedData?.normal_rainfall != null
             ? this.constants.trimToOneDecimals(parseFloat(matchedData.normal_rainfall)) + ' mm' : 'NA';
           const popup = `
-            <div style="background:white;padding:6px;font-family:Arial,sans-serif;">
-              <div style="color:#002467;font-weight:bold;font-size:13px;">&#128752; AWS DATA AVAILABLE</div>
-              <div style="color:#002467;font-weight:bold;font-size:13px;">STATE: ${state}</div>
-              <div style="color:#002467;font-weight:bold;font-size:13px;">DISTRICT: ${district}</div>
+            <div style="background:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+              <div style="color:#002467;font-weight:bold;font-size:12px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">${state} › ${district}</div>
               <div style="color:#002467;font-weight:bold;font-size:13px;">BLOCK: ${block}</div>
-              <div style="color:#002467;font-weight:bold;font-size:13px;">ACTUAL: ${actual}</div>
-              <div style="color:#002467;font-weight:bold;font-size:13px;">NORMAL: ${normal}</div>
-              <div style="color:#002467;font-weight:bold;font-size:13px;">DEPARTURE: ${departure}</div>
+              <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${actual}</div>
+              <div style="font-size:12px;"><b>Normal:</b> ${normal}</div>
+              <div style="font-size:12px;"><b>Departure:</b> ${departure}</div>
+              <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+                <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+              </div>
             </div>`;
-          layer.bindPopup(popup);
-          layer.on('mouseover', () => layer.openPopup());
-          layer.on('mouseout',  () => layer.closePopup());
+          layer.on('mouseover', () => layer.bindTooltip(popup, { sticky: true, opacity: 0.95 }).openTooltip());
+          layer.on('mouseout',  () => layer.closeTooltip());
         }
       }
     ).addTo(this.map);
@@ -1527,23 +1533,23 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
                 ) + " mm"
               : "NA";
           const popupContent = `
-                    <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
-                    <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall}</div>
-                    </div>
-                `;
-          layer.bindPopup(popupContent);
-          layer.on("mouseover", () => {
-            layer.openPopup();
-          });
-          layer.on("mouseout", () => {
-            layer.closePopup();
-          });
+            <div style="background:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+              <div style="color:#002467;font-weight:bold;font-size:12px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">${region} › ${state} › ${district}</div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">BLOCK: ${block}</div>
+              <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall} mm</div>
+              <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
+              <div style="font-size:12px;"><b>Departure:</b> ${rainfall}%</div>
+              <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+                <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+              </div>
+            </div>
+          `;
+          layer.on('mouseover', () => layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip());
+          layer.on('mouseout', () => layer.closeTooltip());
         },
       }).addTo(this.map);
 
@@ -1744,23 +1750,23 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
                 ) + " mm"
               : "NA";
           const popupContent = `
-                  <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">REGION: ${region}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${district}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">BLOCK: ${block}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">NORMAL RAINFALL: ${normalrainfall}</div>
-                  <div style="color: #002467; font-weight: bold; font-size: 13px;">DEPARTURE: ${rainfall}</div>
-                  </div>
-              `;
-          layer.bindPopup(popupContent);
-          layer.on("mouseover", () => {
-            layer.openPopup();
-          });
-          layer.on("mouseout", () => {
-            layer.closePopup();
-          });
+            <div style="background:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+              <div style="color:#002467;font-weight:bold;font-size:12px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">${region} › ${state} › ${district}</div>
+              <div style="color:#002467;font-weight:bold;font-size:13px;">BLOCK: ${block}</div>
+              <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall} mm</div>
+              <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
+              <div style="font-size:12px;"><b>Departure:</b> ${rainfall}%</div>
+              <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+                <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+              </div>
+            </div>
+          `;
+          layer.on('mouseover', () => layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip());
+          layer.on('mouseout', () => layer.closeTooltip());
         },
       }).addTo(this.map);
 

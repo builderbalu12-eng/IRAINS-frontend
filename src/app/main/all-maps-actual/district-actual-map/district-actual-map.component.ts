@@ -10,6 +10,7 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
 import { DistrictService } from "src/app/services/district/district.service";
 import { DownloadPdf } from "src/app/services/district/pdfdownload.service";
 import jsPDF from "jspdf";
@@ -120,6 +121,7 @@ export class DistrictActualMapComponent {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     private district: DistrictService,
@@ -167,7 +169,7 @@ export class DistrictActualMapComponent {
       startDate: this.StartDate,
       endDate: this.EndDate,
     };
-    this.district.fetchData(data).subscribe((res) => {
+    (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe((res) => {
       this.districtdatacum = res.data;
       console.log("fbdudusdubsudbsud", res.data);
       this.loadGeoJSON();
@@ -176,7 +178,7 @@ export class DistrictActualMapComponent {
       this.EndDate = this.convertToIndianDateFormat(this.EndDate);
     });
 
-    this.countryService.fetchData(data).subscribe((res) => {
+    (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
       this.countrydatacum = res.data;
       this.countryActual = this.constants.trimToOneDecimals(
         this.countrydatacum[0].actual_rainfall
@@ -817,19 +819,25 @@ export class DistrictActualMapComponent {
                   ) + " mm"
                 : "NA";
             const popupContent = `
- <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">
- <div style="color: #002467; font-weight: bold; font-size: 13px;">STATE: ${state}</div>
- <div style="color: #002467; font-weight: bold; font-size: 13px;">DISTRICT: ${id1}</div>
- <div style="color: #002467; font-weight: bold; font-size: 13px;">DAILY RAINFALL: ${dailyrainfall}</div>
+ <div style="background-color:white;padding:8px;font-family:Arial,sans-serif;min-width:190px;">
+   <div style="color:#002467;font-weight:bold;font-size:13px;border-bottom:1px solid #eee;padding-bottom:4px;margin-bottom:4px;">STATE: ${state}</div>
+   <div style="color:#002467;font-weight:bold;font-size:13px;">DISTRICT: ${id1}</div>
+   <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall}</div>
+   <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
+   <div style="font-size:12px;"><b>Departure:</b> ${rainfall ?? 'NA'}%</div>
+   <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
+     <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
+     <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
+     <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                  <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+   </div>
  </div>
  `;
-            layer.bindPopup(popupContent);
-            layer.on("mouseover", () => {
-              layer.openPopup();
+            layer.on('mouseover', () => {
+              layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip();
             });
-            layer.on("mouseout", () => {
-              layer.closePopup();
-            });
+            layer.on('mouseout', () => layer.closeTooltip());
           },
         }).addTo(this.map);
       });
