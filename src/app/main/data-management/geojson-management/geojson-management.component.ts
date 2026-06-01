@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environment/environment';
 import * as L from 'leaflet';
 import { FetchStationDataService } from 'src/app/services/station/station.service';
+import * as JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 interface GeoFile {
   id: number;
@@ -80,6 +82,9 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
   geomType:      { [k: string]: string }       = {};
   previewMaps:   { [k: string]: L.Map | null } = {};
   missingFields: { [k: string]: string[] }     = {};
+
+  // Download all state
+  downloadingZip: { [k: string]: boolean } = {};
 
   // Derived files state
   derivedFiles:    DerivedFile[]      = [];
@@ -537,6 +542,49 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
     const a = document.createElement('a');
     a.href = url; a.download = file.fileName; a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async downloadAllAsZip(tabKey: string) {
+    const tabFiles = this.files[tabKey];
+    if (!tabFiles || tabFiles.length === 0) return;
+    this.downloadingZip[tabKey] = true;
+
+    try {
+      const zip = new (JSZip as any)();
+
+      // Group files by folder
+      const byFolder: { [folder: string]: GeoFile[] } = {};
+      tabFiles.forEach(f => {
+        const folder = f.folder || 'root';
+        if (!byFolder[folder]) byFolder[folder] = [];
+        byFolder[folder].push(f);
+      });
+
+      // Fetch each file and add to ZIP inside its folder
+      const fetches: Promise<void>[] = [];
+      for (const [folder, folderFiles] of Object.entries(byFolder)) {
+        for (const f of folderFiles) {
+          const p = this.http
+            .get<any>(`${this.apiBase}/api/v1/geojson/${folder}/${f.file_name}`)
+            .toPromise()
+            .then(res => {
+              const content = JSON.stringify(res.geojson ?? res, null, 2);
+              zip.folder(folder).file(f.file_name, content);
+            })
+            .catch(() => {
+              zip.folder(folder).file(f.file_name, '{}');
+            });
+          fetches.push(p);
+        }
+      }
+
+      await Promise.all(fetches);
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      saveAs(blob, `geojson_${tabKey}_${new Date().toISOString().slice(0,10)}.zip`);
+    } finally {
+      this.downloadingZip[tabKey] = false;
+    }
   }
 
   // ── Derived compare ──────────────────────────────────────

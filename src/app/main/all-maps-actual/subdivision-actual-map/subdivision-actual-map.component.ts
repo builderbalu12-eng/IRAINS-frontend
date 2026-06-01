@@ -1,3 +1,4 @@
+import { skip } from 'rxjs';
 import {
   Component,
   Input,
@@ -22,6 +23,7 @@ import { Constants } from "src/app/services/constants";
   styleUrls: ["./subdivision-actual-map.component.css"],
 })
 export class SubdivisionActualMapComponent {
+  private modeSub?: any;
   subdivisiondatacum: any[] = [];
   isLoading: boolean = false;
   countrydatacum: any;
@@ -382,10 +384,13 @@ export class SubdivisionActualMapComponent {
   }
 
   ngOnInit() {
+    this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
     this.initMap();
   }
-
-  ngAfterViewInit(): void {
+  ngOnDestroy(): void {
+    this.modeSub?.unsubscribe();
+  }
+ngAfterViewInit(): void {
     this.loadGeoJSON(false);
   }
 

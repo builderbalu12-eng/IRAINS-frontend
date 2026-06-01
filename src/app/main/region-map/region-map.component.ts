@@ -1,3 +1,4 @@
+import { skip } from 'rxjs';
 import {
   Component,
   ElementRef,
@@ -22,6 +23,7 @@ import { Constants } from "src/app/services/constants";
   styleUrls: ["./region-map.component.css"],
 })
 export class RegionMapComponent {
+  private modeSub?: any;
   regiondatacum: any[] = [];
   countrydatacum: any;
   countryActual: any;
@@ -336,10 +338,13 @@ export class RegionMapComponent {
   }
 
   ngOnInit() {
+    this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
     this.initMap();
   }
-
-  ngAfterViewInit(): void {
+  ngOnDestroy(): void {
+    this.modeSub?.unsubscribe();
+  }
+ngAfterViewInit(): void {
     this.loadGeoJSON();
   }
 

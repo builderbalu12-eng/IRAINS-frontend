@@ -1,3 +1,4 @@
+import { skip } from 'rxjs';
 import {
   Component,
   Input,
@@ -23,6 +24,7 @@ import { Constants } from "src/app/services/constants";
   styleUrls: ["./district-actual-map.component.css"],
 })
 export class DistrictActualMapComponent {
+  private modeSub?: any;
   districtdatacum: any[] = [];
   StartDate: any;
   EndDate: any;
@@ -569,10 +571,13 @@ export class DistrictActualMapComponent {
   // }
 
   ngOnInit() {
+    this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
     this.initMap();
   }
-
-  ngAfterViewInit(): void {
+  ngOnDestroy(): void {
+    this.modeSub?.unsubscribe();
+  }
+ngAfterViewInit(): void {
     this.loadGeoJSON();
   }
 

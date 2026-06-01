@@ -36,6 +36,14 @@
                 <button class="btn btn-sm btn-outline-secondary" (click)="loadTab(tab.key)">
                   <i class="bi bi-arrow-clockwise"></i>
                 </button>
+                <button class="btn btn-sm btn-outline-primary ms-1"
+                        (click)="downloadAllAsZip(tab.key)"
+                        [disabled]="downloadingZip[tab.key] || !files[tab.key]?.length"
+                        title="Download all files as ZIP (folder structure preserved)">
+                  <span *ngIf="downloadingZip[tab.key]" class="spinner-border spinner-border-sm me-1"></span>
+                  <i *ngIf="!downloadingZip[tab.key]" class="bi bi-file-zip me-1"></i>
+                  {{ downloadingZip[tab.key] ? 'Zipping…' : 'Download All' }}
+                </button>
               </div>
               <div class="card-body p-0">
                 <div *ngIf="loading[tab.key]" class="text-center py-5 text-muted">

@@ -50,7 +50,7 @@ export class StateDownloadStatistics {
   async updateanddownloadpdf(){
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.data.startDate === this.data.endDate
-      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      ? this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(this.data.endDate))
       : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
@@ -58,7 +58,7 @@ export class StateDownloadStatistics {
   async updateanddownloadpdfFromDataEntry(){
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.data.startDate === this.data.endDate
-      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      ? this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(this.data.endDate))
       : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
@@ -67,7 +67,7 @@ export class StateDownloadStatistics {
     this.isView = true
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.data.startDate === this.data.endDate
-      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      ? this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(this.data.endDate))
       : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
@@ -76,7 +76,7 @@ export class StateDownloadStatistics {
     this.isView = true
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.data.startDate === this.data.endDate
-      ? this.constants.getFullSeasonForDate(this.data.endDate)
+      ? this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(this.data.endDate))
       : this.constants.getCurrentMonthSeasonFromAndTodate(new Date());
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
@@ -84,35 +84,27 @@ export class StateDownloadStatistics {
 
   async updateanddownloadpdfCustom(fromDate : any, toDate : any){
     this.data  = { startDate: fromDate, endDate: toDate }
-    this.seasonPeriodDate = fromDate === toDate
-      ? this.constants.getFullSeasonForDate(toDate)
-      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
 
   async updateanddownloadpdfFromDataEntryCustom(fromDate : any, toDate : any){
     this.data  = { startDate: fromDate, endDate: toDate }
-    this.seasonPeriodDate = fromDate === toDate
-      ? this.constants.getFullSeasonForDate(toDate)
-      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 
   async updateandViewpdfCustom(fromDate : any, toDate : any){
     this.isView = true
     this.data  = { startDate: fromDate, endDate: toDate }
-    this.seasonPeriodDate = fromDate === toDate
-      ? this.constants.getFullSeasonForDate(toDate)
-      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateData(this.data, this.seasonPeriodDate)
   }
 
   async updateandViewpdfFromDataEntryCustom(fromDate : any, toDate : any){
     this.isView = true
     this.data  = { startDate: fromDate, endDate: toDate }
-    this.seasonPeriodDate = fromDate === toDate
-      ? this.constants.getFullSeasonForDate(toDate)
-      : this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate)
   }
 

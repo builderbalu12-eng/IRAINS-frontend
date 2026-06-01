@@ -1,3 +1,4 @@
+import { skip } from 'rxjs';
 import {
   Component,
   Input,
@@ -25,6 +26,7 @@ import { Constants } from "src/app/services/constants";
   styleUrls: ["./state-map.component.css"],
 })
 export class StateMapComponent implements AfterViewInit {
+  private modeSub?: any;
   statedatacum: any[] = [];
   isLoading: boolean = false;
   countrydatacum: any;
@@ -329,10 +331,13 @@ export class StateMapComponent implements AfterViewInit {
   }
 
   ngOnInit() {
+    this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
     this.initMap();
   }
-
-  ngAfterViewInit(): void {
+  ngOnDestroy(): void {
+    this.modeSub?.unsubscribe();
+  }
+ngAfterViewInit(): void {
     this.loadGeoJSON(false);
   }
 

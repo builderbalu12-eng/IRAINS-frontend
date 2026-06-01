@@ -1,3 +1,4 @@
+import { skip } from 'rxjs';
 import {
   Component,
   Input,
@@ -23,6 +24,7 @@ import { Constants } from "src/app/services/constants";
   styleUrls: ["./district-map.component.css"],
 })
 export class DistrictMapComponent implements AfterViewInit {
+  private modeSub?: any;
   districtdatacum: any[] = [];
   StartDate: any;
   EndDate: any;
@@ -123,6 +125,15 @@ export class DistrictMapComponent implements AfterViewInit {
   convertToIndianDateFormat = (dateString: string) =>
     dateString.split("-").reverse().join("-");
 
+  ngOnDestroy(): void {
+    this.modeSub?.unsubscribe();
+  }
+
+  ngOnInit(): void {
+    this.initMap()
+    this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
+  }
+
   async fetchBackend() {
     this.isBuffering = true;
     const currentDate = new Date();
@@ -135,6 +146,7 @@ export class DistrictMapComponent implements AfterViewInit {
       endDate: this.EndDate,
     };
     console.log("Fetching district data with dates:", data);
+    console.log("AWS mode enabled:", this.calcMode.isAwsEnabled);
     (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe({
       next: (res) => {
         this.districtdatacum = res.data || [];
@@ -368,9 +380,7 @@ export class DistrictMapComponent implements AfterViewInit {
     };
   }
 
-  ngOnInit() {
-    this.initMap();
-  }
+  
 
   // ngAfterViewInit(): void {
   // this.loadStateGeoJSON(); // Load state layer first

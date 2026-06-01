@@ -1,3 +1,4 @@
+import { skip } from 'rxjs';
 import {
   Component,
   ElementRef,
@@ -21,6 +22,7 @@ import { Constants } from "src/app/services/constants";
   styleUrls: ["./region-actual-map.component.css"],
 })
 export class RegionActualMapComponent {
+  private modeSub?: any;
   regiondatacum: any[] = [];
   countrydatacum: any;
   countryActual: any;
@@ -354,10 +356,13 @@ export class RegionActualMapComponent {
   }
 
   ngOnInit() {
+    this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
     this.initMap();
   }
-
-  ngAfterViewInit(): void {
+  ngOnDestroy(): void {
+    this.modeSub?.unsubscribe();
+  }
+ngAfterViewInit(): void {
     this.loadGeoJSON();
   }
 
