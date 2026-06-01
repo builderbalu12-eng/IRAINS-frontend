@@ -756,10 +756,12 @@ export class DataEntryComponent implements OnInit {
   
 
   sortDirection: { [key: string]: 'asc' | 'desc' } = {};
+  activeSortColumn: string = '';
 
   sortTable(column: string): void {
-    this.isSorting = true; // Show loader
-  
+    this.isSorting = true;
+    this.activeSortColumn = column;
+
     setTimeout(() => {
       const direction = this.sortDirection[column] === 'asc' ? 'desc' : 'asc';
       this.sortDirection[column] = direction;

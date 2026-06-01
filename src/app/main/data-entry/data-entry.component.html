@@ -266,18 +266,29 @@
               <th style="border: 1px solid black">S.NO</th>
               <th style="border: 1px solid black">
                 DISTRICT NAME
-                <button (click)="sortTable('district_name')" class="sort-button">⇅</button>
+                <button (click)="sortTable('district_name')" class="sort-button" [title]="sortDirection['district_name'] === 'asc' ? 'Sort Descending' : 'Sort Ascending'">
+                  {{ activeSortColumn === 'district_name' ? (sortDirection['district_name'] === 'asc' ? '▲' : '▼') : '⇅' }}
+                </button>
               </th>
               <th style="border: 1px solid black">
                 STATION ID
-                <button (click)="sortTable('station_code')" class="sort-button">⇅</button>
+                <button (click)="sortTable('station_code')" class="sort-button" [title]="sortDirection['station_code'] === 'asc' ? 'Sort Descending' : 'Sort Ascending'">
+                  {{ activeSortColumn === 'station_code' ? (sortDirection['station_code'] === 'asc' ? '▲' : '▼') : '⇅' }}
+                </button>
               </th>
               <th style="border: 1px solid black">
                 STATION NAME
-                <button (click)="sortTable('station_name')" class="sort-button">⇅</button>
+                <button (click)="sortTable('station_name')" class="sort-button" [title]="sortDirection['station_name'] === 'asc' ? 'Sort Descending' : 'Sort Ascending'">
+                  {{ activeSortColumn === 'station_name' ? (sortDirection['station_name'] === 'asc' ? '▲' : '▼') : '⇅' }}
+                </button>
               </th>
-              
-              <th style="border: 1px solid black">RAINFALL</th>
+
+              <th style="border: 1px solid black">
+                RAINFALL
+                <button (click)="sortTable('data')" class="sort-button" [title]="sortDirection['data'] === 'asc' ? 'Sort Descending' : 'Sort Ascending'">
+                  {{ activeSortColumn === 'data' ? (sortDirection['data'] === 'asc' ? '▲' : '▼') : '⇅' }}
+                </button>
+              </th>
 
               <!-- hidden below as of now -->
               <!-- <th style="border: 1px solid black">DATE</th>
