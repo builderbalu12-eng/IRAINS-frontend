@@ -651,10 +651,6 @@ ngAfterViewInit(): void {
               </div>
             </div>
             `;
-            layer.on('mouseover', () => {
-              layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip();
-            });
-            layer.on('mouseout', () => layer.closeTooltip());
 
             const label = L.marker([center.lat, center.lng], {
               icon: L.divIcon({
