@@ -17,6 +17,9 @@
           <a [href]="templateUrl" class="btn btn-outline-success btn-sm fw-semibold">
             <i class="fa fa-download me-1"></i> Sample Excel
           </a>
+          <button class="btn btn-warning btn-sm fw-semibold" (click)="openBulkModal()">
+            <i class="fa fa-refresh me-1"></i> Bulk Replace Normals
+          </button>
           <button class="btn btn-primary btn-sm fw-semibold" (click)="openAdd()">
             <i class="fa fa-plus-circle me-1"></i> Add District
           </button>
@@ -462,5 +465,40 @@
       </button>
     </div>
 
+  </div>
+</div>
+
+<!-- ── Bulk Replace Normals Modal ── -->
+<div *ngIf="showBulkModal" class="modal-backdrop-custom">
+  <div class="modal-box-custom">
+    <div class="modal-header-custom">
+      <h6 class="mb-0 fw-bold"><i class="fa fa-refresh me-2"></i>Bulk Replace District Normals</h6>
+      <button class="btn-close-custom" (click)="closeBulkModal()">&#x2715;</button>
+    </div>
+    <div class="modal-body-custom">
+      <p class="text-muted small mb-3">
+        Upload a combined Excel file with multiple districts. Existing normals for each district in the file will be <strong>deleted and replaced</strong>.
+      </p>
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">Select Excel File (.xlsx / .xls)</label>
+        <input type="file" class="form-control form-control-sm" accept=".xlsx,.xls" (change)="onBulkFileChange($event)" [disabled]="isBulkUploading" />
+        <div *ngIf="bulkFileError" class="text-danger small mt-1">{{ bulkFileError }}</div>
+        <div *ngIf="bulkFile" class="text-success small mt-1"><i class="fa fa-check me-1"></i>{{ bulkFile.name }}</div>
+      </div>
+      <div *ngIf="bulkUploadError" class="alert alert-danger py-2 small">{{ bulkUploadError }}</div>
+      <div *ngIf="bulkUploadSuccess" class="alert alert-success py-2 small">
+        <i class="fa fa-check-circle me-1"></i>{{ bulkUploadSuccess }}
+        <ul class="mb-0 mt-2" *ngIf="bulkDetails.length">
+          <li *ngFor="let d of bulkDetails">{{ d.district_name }} ({{ d.district_code }}) — {{ d.records }} records</li>
+        </ul>
+      </div>
+      <div class="d-flex gap-2 justify-content-end mt-3">
+        <button class="btn btn-sm btn-secondary" (click)="closeBulkModal()" [disabled]="isBulkUploading">Cancel</button>
+        <button class="btn btn-sm btn-warning fw-semibold" (click)="submitBulkReplace()" [disabled]="isBulkUploading || !bulkFile">
+          <span *ngIf="isBulkUploading"><i class="fa fa-spinner fa-spin me-1"></i> Replacing...</span>
+          <span *ngIf="!isBulkUploading"><i class="fa fa-refresh me-1"></i> Replace Normals</span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>

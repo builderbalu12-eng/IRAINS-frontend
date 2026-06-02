@@ -51,6 +51,15 @@ export class DistrictManagementComponent implements OnInit {
   saveError = '';
 
   // Edit normals modal
+  // Bulk replace normals
+  showBulkModal = false;
+  bulkFile: File | null = null;
+  bulkFileError = '';
+  isBulkUploading = false;
+  bulkUploadError = '';
+  bulkUploadSuccess = '';
+  bulkDetails: any[] = [];
+
   showEditNormalsModal = false;
   editNormalsDistrict: NormalDistrictDetail | null = null;
   editNormalsFile: File | null = null;
@@ -283,4 +292,64 @@ export class DistrictManagementComponent implements OnInit {
   }
 
   closeEditNormalsModal() { if (!this.isEditNormalsUploading) this.showEditNormalsModal = false; }
+
+  // ── Bulk Replace Normals ─────────────────────────────────────
+  openBulkModal() {
+    this.bulkFile = null;
+    this.bulkFileError = '';
+    this.bulkUploadError = '';
+    this.bulkUploadSuccess = '';
+    this.bulkDetails = [];
+    this.showBulkModal = true;
+  }
+
+  onBulkFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files?.length) {
+      const file = input.files[0];
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (ext !== 'xlsx' && ext !== 'xls') {
+        this.bulkFileError = 'Only .xlsx or .xls files are allowed.';
+        this.bulkFile = null;
+        return;
+      }
+      this.bulkFile = file;
+      this.bulkFileError = '';
+    }
+  }
+
+  submitBulkReplace() {
+    if (!this.bulkFile) { this.bulkFileError = 'Please select an Excel file.'; return; }
+    this.isBulkUploading = true;
+    this.bulkUploadError = '';
+    this.bulkUploadSuccess = '';
+    this.bulkDetails = [];
+    const formData = new FormData();
+    formData.append('file', this.bulkFile);
+    this.districtService.bulkReplaceDistrictNormals(formData).subscribe({
+      next: (res) => {
+        this.bulkUploadSuccess = res?.message || 'Bulk replace completed.';
+        this.bulkDetails = res?.details ?? [];
+        this.isBulkUploading = false;
+      },
+      error: (err) => {
+        const status = err?.status;
+        const serverMsg = err?.error?.error || err?.error?.message || '';
+        if (status === 0) {
+          this.bulkUploadError = 'Cannot reach server. Please check your connection.';
+        } else if (status === 404) {
+          this.bulkUploadError = `District not found in database: ${serverMsg}`;
+        } else if (status === 400) {
+          this.bulkUploadError = `File issue: ${serverMsg}`;
+        } else if (status === 500) {
+          this.bulkUploadError = `Server error: ${serverMsg}`;
+        } else {
+          this.bulkUploadError = serverMsg || 'Bulk replace failed. Please try again.';
+        }
+        this.isBulkUploading = false;
+      }
+    });
+  }
+
+  closeBulkModal() { if (!this.isBulkUploading) this.showBulkModal = false; }
 }

@@ -72,4 +72,8 @@ export class DistrictService {
   updateDistrictNormals(district_code: number, formData: FormData): Observable<any> {
     return this.http.put<any>(`${this.baseUrl}/api/v1/updateDistrictNormals/${district_code}`, formData);
   }
+
+  bulkReplaceDistrictNormals(formData: FormData): Observable<any> {
+    return this.http.put<any>(`${this.baseUrl}/api/v1/bulkReplaceDistrictNormals`, formData);
+  }
 }
