@@ -1,68 +1,138 @@
 <div class="cm-page">
 
-  <div class="cm-header">
-    <h2><i class="bi bi-toggle-on me-2"></i>Calculation Mode</h2>
-    <p class="cm-subtitle">
-      Control whether maps, statistics downloads, and API exports use
-      <strong>IMD stations only</strong> or <strong>IMD + AWS stations combined</strong>.
-    </p>
-  </div>
+  <!-- ── LEFT: toggle card ─────────────────────────── -->
+  <div class="cm-left">
 
-  <!-- Loading -->
-  <div *ngIf="loading" class="cm-loading">
-    <i class="bi bi-arrow-repeat spin me-2"></i> Loading current mode...
-  </div>
-
-  <!-- Main card -->
-  <div *ngIf="!loading" class="cm-card">
-
-    <!-- Current status badge -->
-    <div class="cm-status" [class.aws-active]="useAws" [class.imd-only]="!useAws">
-      <i class="bi" [ngClass]="useAws ? 'bi-check-circle-fill' : 'bi-info-circle-fill'"></i>
-      <span *ngIf="useAws">Active Mode: <strong>IMD + AWS</strong></span>
-      <span *ngIf="!useAws">Active Mode: <strong>IMD Only</strong></span>
+    <div class="cm-header">
+      <h2><i class="bi bi-toggle-on me-2"></i>Calculation Mode</h2>
+      <p class="cm-subtitle">
+        Control whether maps, statistics downloads, and API exports use
+        <strong>IMD stations only</strong> or <strong>IMD + AWS stations combined</strong>.
+      </p>
     </div>
 
-    <!-- Toggle row -->
-    <div class="cm-toggle-row">
-      <div class="cm-label-block">
-        <div class="cm-label">IMD Only</div>
-        <div class="cm-desc">Uses only traditional IMD weather stations.<br>Existing formula — unchanged.</div>
+    <div *ngIf="loading" class="cm-loading">
+      <i class="bi bi-arrow-repeat spin me-2"></i> Loading current mode...
+    </div>
+
+    <div *ngIf="!loading" class="cm-card">
+
+      <div class="cm-status" [class.aws-active]="useAws" [class.imd-only]="!useAws">
+        <i class="bi" [ngClass]="useAws ? 'bi-check-circle-fill' : 'bi-info-circle-fill'"></i>
+        <span *ngIf="useAws">Active Mode: <strong>IMD + AWS</strong></span>
+        <span *ngIf="!useAws">Active Mode: <strong>IMD Only</strong></span>
       </div>
 
-      <label class="cm-switch" [class.disabled]="saving">
-        <input type="checkbox" [(ngModel)]="useAws" (change)="onToggleChange()" [disabled]="saving">
-        <span class="cm-slider"></span>
-      </label>
+      <div class="cm-toggle-row">
+        <div class="cm-label-block">
+          <div class="cm-label">IMD Only</div>
+          <div class="cm-desc">Uses only traditional IMD weather stations.<br>Existing formula — unchanged.</div>
+        </div>
 
-      <div class="cm-label-block right">
-        <div class="cm-label">IMD + AWS</div>
-        <div class="cm-desc">Combines IMD stations with Automatic<br>Weather Stations for all calculations.</div>
+        <label class="cm-switch" [class.disabled]="saving">
+          <input type="checkbox" [(ngModel)]="useAws" (change)="onToggleChange()" [disabled]="saving">
+          <span class="cm-slider"></span>
+        </label>
+
+        <div class="cm-label-block right">
+          <div class="cm-label">IMD + AWS</div>
+          <div class="cm-desc">Combines IMD stations with Automatic<br>Weather Stations for all calculations.</div>
+        </div>
+      </div>
+
+      <div *ngIf="saving" class="cm-saving">
+        <i class="bi bi-arrow-repeat spin me-1"></i> Saving...
+      </div>
+
+      <div *ngIf="message" class="cm-message" [class.success]="messageType === 'success'" [class.error]="messageType === 'error'">
+        <i class="bi" [ngClass]="messageType === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+        {{ message }}
+      </div>
+
+      <div class="cm-impact">
+        <h5><i class="bi bi-info-circle me-1"></i>What this controls</h5>
+        <ul>
+          <li><i class="bi bi-map-fill"></i> All-Maps Actual &amp; Departure maps (District, State, SubDiv, Region)</li>
+          <li><i class="bi bi-grid-3x3-gap-fill"></i> Block Rainfall maps (Actual &amp; Departure)</li>
+          <li><i class="bi bi-file-earmark-spreadsheet-fill"></i> Statistics downloads (PDF &amp; Excel)</li>
+          <li><i class="bi bi-cloud-arrow-up-fill"></i> DRMS monthly FTP upload</li>
+          <li><i class="bi bi-plug-fill"></i> API export endpoints (District, State, SubDiv, Region, Country, Block)</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── RIGHT: station data panel ────────────────────────── -->
+  <div class="cm-right">
+
+    <div class="cm-right-header">
+      <h5>
+        <i class="bi bi-table me-2"></i>Station Data
+        <span *ngIf="!useAws && !stationsLoading" class="cm-badge" style="margin-left:8px;font-size:0.8rem;">
+          {{ imdStations.length }}/{{ imdTotal }}
+        </span>
+      </h5>
+      <div class="cm-header-actions">
+        <input type="date" class="cm-date-input" [value]="selectedDate" (change)="onDateChange($event)" />
+        <button class="cm-download-btn" (click)="downloadExcel()" [disabled]="stationsLoading || displayedRows.length === 0">
+          <i class="bi bi-download me-1"></i> Download
+        </button>
       </div>
     </div>
 
-    <!-- Saving indicator -->
-    <div *ngIf="saving" class="cm-saving">
-      <i class="bi bi-arrow-repeat spin me-1"></i> Saving...
+    <!-- Tabs — only shown in IMD + AWS mode -->
+    <div *ngIf="useAws" class="cm-tabs">
+      <button class="cm-tab" [class.active]="activeTab === 'imd'" (click)="activeTab = 'imd'">
+        <i class="bi bi-building me-1"></i>Data-entry Stations
+        <span class="cm-badge">{{ imdStations.length }}/{{ imdTotal }}</span>
+      </button>
+      <button class="cm-tab" [class.active]="activeTab === 'aws'" (click)="activeTab = 'aws'">
+        <i class="bi bi-broadcast me-1"></i>State AWS Stations
+        <span class="cm-badge aws">{{ awsStations.length }}/{{ awsTotal }}</span>
+      </button>
     </div>
 
-    <!-- Success / error message -->
-    <div *ngIf="message" class="cm-message" [class.success]="messageType === 'success'" [class.error]="messageType === 'error'">
-      <i class="bi" [ngClass]="messageType === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
-      {{ message }}
+    <!-- Loading -->
+    <div *ngIf="stationsLoading" class="cm-station-loading">
+      <i class="bi bi-arrow-repeat spin me-2"></i> Loading stations...
     </div>
 
-    <!-- Impact summary -->
-    <div class="cm-impact">
-      <h5><i class="bi bi-info-circle me-1"></i>What this controls</h5>
-      <ul>
-        <li><i class="bi bi-map-fill"></i> All-Maps Actual &amp; Departure maps (District, State, SubDiv, Region)</li>
-        <li><i class="bi bi-grid-3x3-gap-fill"></i> Block Rainfall maps (Actual &amp; Departure)</li>
-        <li><i class="bi bi-file-earmark-spreadsheet-fill"></i> Statistics downloads (PDF &amp; Excel)</li>
-        <li><i class="bi bi-cloud-arrow-up-fill"></i> DRMS monthly FTP upload</li>
-        <li><i class="bi bi-plug-fill"></i> API export endpoints (District, State, SubDiv, Region, Country, Block)</li>
-      </ul>
+    <!-- Table -->
+    <div *ngIf="!stationsLoading" class="cm-table-wrap">
+      <div *ngIf="displayedRows.length === 0" class="cm-empty">
+        <i class="bi bi-inbox" style="font-size:2rem;color:#ccc"></i>
+        <p>No data for {{ selectedDate }}</p>
+      </div>
+
+      <table *ngIf="displayedRows.length > 0" class="cm-table">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th (click)="sort('station_code')">Station Code <span class="sh">{{ sortIcon('station_code') }}</span></th>
+            <th (click)="sort('state_name')">State <span class="sh">{{ sortIcon('state_name') }}</span></th>
+            <th (click)="sort('district_name')">District <span class="sh">{{ sortIcon('district_name') }}</span></th>
+            <th (click)="sort('block_name')">Block <span class="sh">{{ sortIcon('block_name') }}</span></th>
+            <th (click)="sort('station_name')">Station Name <span class="sh">{{ sortIcon('station_name') }}</span></th>
+            <th (click)="sort('data')">Value (mm) <span class="sh">{{ sortIcon('data') }}</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of displayedRows; let i = index">
+            <td>{{ i + 1 }}</td>
+            <td>{{ row.station_code }}</td>
+            <td>{{ row.state_name }}</td>
+            <td>{{ row.district_name }}</td>
+            <td>{{ row.block_name || '—' }}</td>
+            <td>{{ row.station_name }}</td>
+            <td [class.val-zero]="row.data == 0" [class.val-pos]="row.data > 0">
+              {{ row.data != null ? row.data : '—' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
   </div>
+
 </div>
