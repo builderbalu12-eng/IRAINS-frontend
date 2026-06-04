@@ -17,6 +17,9 @@
           <a [href]="templateUrl" class="btn btn-outline-success btn-sm fw-semibold">
             <i class="fa fa-download me-1"></i> Sample Excel
           </a>
+          <button class="btn btn-success btn-sm fw-semibold" (click)="openBulkAddYearModal()">
+            <i class="fa fa-calendar-plus-o me-1"></i> Bulk Add Previous Year Normals
+          </button>
           <button class="btn btn-warning btn-sm fw-semibold" (click)="openBulkModal()">
             <i class="fa fa-refresh me-1"></i> Bulk Replace Normals
           </button>
@@ -80,8 +83,11 @@
               <td class="text-muted" style="font-size:12px">{{ d.subdiv_name }}</td>
               <td class="text-muted" style="font-size:12px">{{ d.state_name }}</td>
               <td class="text-center" (click)="$event.stopPropagation()">
-                <button class="btn btn-sm btn-outline-primary" (click)="openEdit(d)" title="Edit">
+                <button class="btn btn-sm btn-outline-primary me-1" (click)="openEdit(d)" title="Edit District">
                   <i class="fa fa-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-success" (click)="openAddYear(d)" title="Add Previous Year Normals">
+                  <i class="fa fa-calendar-plus-o"></i>
                 </button>
               </td>
             </tr>
@@ -325,6 +331,10 @@
             </span>
             <span class="divider-dot">•</span>
             <span class="text-muted">daily normal rainfall</span>
+            <span *ngIf="normalsYear" class="divider-dot">•</span>
+            <span *ngIf="normalsYear" class="badge bg-secondary fw-semibold" style="font-size:0.8rem;">
+              Year: {{ normalsYear }}
+            </span>
           </div>
           <div class="search-box" style="width:200px">
             <i class="fa fa-search search-icon"></i>
@@ -344,7 +354,7 @@
             </thead>
             <tbody>
               <tr *ngFor="let n of filteredNormals">
-                <td style="font-family:monospace">{{ n.date | date:'dd MMM' }}</td>
+                <td style="font-family:monospace">{{ n.date | date:'dd MMM yyyy' }}</td>
                 <td class="text-end fw-semibold">{{ n.rainfall_value | number:'1.2-2' }}</td>
                 <td class="text-end text-muted">{{ n.cumulative_rainfall_value | number:'1.2-2' }}</td>
               </tr>
@@ -390,27 +400,42 @@
 
       <div class="alert alert-warning py-2 small mb-3">
         <i class="fa fa-exclamation-triangle me-1"></i>
-        <strong>This will permanently replace all existing normals</strong> for this district.
-        Upload a complete Excel with all date columns for the full year.
-        Year is set automatically to the <strong>current year</strong> — no hardcoding.
+        <strong>Replaces normals for 1 district only</strong> — {{ editNormalsDistrict?.district_name }}.
+        Your Excel must have <strong>exactly 1 data row</strong>. Only the first row is read.
+      </div>
+
+      <!-- Year selector -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold small mb-1">Select Year to Replace</label>
+        <select class="form-select form-select-sm" [(ngModel)]="editNormalsYear" [disabled]="isEditNormalsUploading">
+          <option *ngFor="let y of editNormalsYearOptions" [value]="y">
+            {{ y }}{{ y % 4 === 0 ? ' (Leap — 366 days)' : ' (365 days)' }}{{ y === currentYear ? ' — Current Year' : '' }}
+          </option>
+        </select>
       </div>
 
       <div class="format-hint mb-3">
-        <div class="fw-bold mb-1" style="color:#92400e"><i class="fa fa-table me-1"></i> Excel Format</div>
-        <div class="col-info-grid">
-          <div class="col-info-item">
-            <span class="col-badge col-badge-date">MM-DD columns</span>
-            <span class="col-desc">Date columns <em>01-01</em> to <em>12-31</em> with cumulative normal rainfall (mm). Include <em>02-29</em> for leap year.</span>
-          </div>
-          <div class="col-info-item">
-            <span class="col-badge">district_name / code / area</span>
-            <span class="col-desc">Optional — ignored if present. District is identified by the URL code.</span>
-          </div>
-        </div>
+        <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">district_name / code / area</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">❌ Not needed — district identified from the row you clicked</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td>
+          </tr>
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td>
+          </tr>
+        </table>
         <div class="mt-2 small text-muted">
           <i class="fa fa-info-circle me-1"></i>
-          Seasons reset at Jan&nbsp;1, Mar&nbsp;1, Jun&nbsp;1, Oct&nbsp;1.
-          <a [href]="templateUrl" class="fw-semibold text-warning ms-1">Download Sample Excel</a>
+          Year is set automatically to current year.
+          <a [href]="districtService.downloadDistrictNormalTemplateForDistrict(editNormalsDistrict!.district_code)" class="fw-semibold text-warning ms-1">
+            <i class="fa fa-download me-1"></i>Download Template for {{ editNormalsDistrict?.district_name }}
+          </a>
         </div>
       </div>
 
@@ -468,37 +493,296 @@
   </div>
 </div>
 
-<!-- ── Bulk Replace Normals Modal ── -->
-<div *ngIf="showBulkModal" class="modal-backdrop-custom">
-  <div class="modal-box-custom">
-    <div class="modal-header-custom">
-      <h6 class="mb-0 fw-bold"><i class="fa fa-refresh me-2"></i>Bulk Replace District Normals</h6>
-      <button class="btn-close-custom" (click)="closeBulkModal()">&#x2715;</button>
-    </div>
-    <div class="modal-body-custom">
-      <p class="text-muted small mb-3">
-        Upload a combined Excel file with multiple districts. Existing normals for each district in the file will be <strong>deleted and replaced</strong>.
-      </p>
-      <div class="mb-3">
-        <label class="form-label fw-semibold small">Select Excel File (.xlsx / .xls)</label>
-        <input type="file" class="form-control form-control-sm" accept=".xlsx,.xls" (change)="onBulkFileChange($event)" [disabled]="isBulkUploading" />
-        <div *ngIf="bulkFileError" class="text-danger small mt-1">{{ bulkFileError }}</div>
-        <div *ngIf="bulkFile" class="text-success small mt-1"><i class="fa fa-check me-1"></i>{{ bulkFile.name }}</div>
+<!-- ── Bulk Add Year Normals Modal ── -->
+<div *ngIf="showBulkAddYearModal" class="modal-backdrop-custom" (click)="closeBulkAddYearModal()">
+  <div class="modal-panel-custom" (click)="$event.stopPropagation()">
+
+    <div class="modal-panel-header">
+      <div>
+        <h5 class="fw-bold mb-0"><i class="fa fa-calendar-plus-o me-2"></i>Bulk Add Previous Year Normals</h5>
+        <small class="text-white-50">Add normals for a previous year across multiple districts — skips if already exists</small>
       </div>
-      <div *ngIf="bulkUploadError" class="alert alert-danger py-2 small">{{ bulkUploadError }}</div>
-      <div *ngIf="bulkUploadSuccess" class="alert alert-success py-2 small">
-        <i class="fa fa-check-circle me-1"></i>{{ bulkUploadSuccess }}
-        <ul class="mb-0 mt-2" *ngIf="bulkDetails.length">
-          <li *ngFor="let d of bulkDetails">{{ d.district_name }} ({{ d.district_code }}) — {{ d.records }} records</li>
+      <button class="btn btn-sm btn-close-white-custom" (click)="closeBulkAddYearModal()" [disabled]="isBulkAddYearUploading">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-panel-body">
+
+      <div class="alert alert-info py-2 small mb-3">
+        <i class="fa fa-info-circle me-1"></i>
+        <strong>Non-destructive</strong> — districts that already have normals for the selected year are <strong>skipped</strong>, not overwritten. Use "Bulk Replace Normals" if you want to overwrite.
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold small mb-1">Select Year to Add</label>
+        <select class="form-select form-select-sm" [(ngModel)]="bulkAddYearSelected" [disabled]="isBulkAddYearUploading">
+          <option *ngFor="let y of yearOptions" [value]="y">
+            {{ y }}{{ y % 4 === 0 ? ' (Leap — 366 days)' : ' (365 days)' }}
+          </option>
+        </select>
+      </div>
+
+      <div class="drop-zone mb-3"
+           [class.drop-zone-ready]="bulkAddYearFile && !bulkAddYearFileError"
+           (click)="bulkAddYearInput.click()">
+        <i class="fa fa-cloud-upload fa-2x mb-2"
+           [class.text-success]="bulkAddYearFile && !bulkAddYearFileError"
+           [class.text-muted]="!bulkAddYearFile"></i>
+        <p class="mb-1 fw-semibold">
+          <span *ngIf="!bulkAddYearFile">Click to browse <strong>.xlsx / .xls</strong></span>
+          <span *ngIf="bulkAddYearFile" class="text-success"><i class="fa fa-check-circle me-1"></i>{{ bulkAddYearFile.name }}</span>
+        </p>
+        <small class="text-muted" *ngIf="!bulkAddYearFile">
+          Combined Excel · {{ bulkAddYearSelected }}
+          <span *ngIf="bulkAddYearSelected % 4 === 0" class="badge bg-info ms-1" style="font-size:10px">Leap — include 02-29</span>
+        </small>
+        <input #bulkAddYearInput type="file" accept=".xlsx,.xls" style="display:none"
+               (change)="onBulkAddYearFileChange($event)" [disabled]="isBulkAddYearUploading" />
+      </div>
+
+      <div *ngIf="bulkAddYearFileError" class="alert alert-danger py-2 small">
+        <i class="fa fa-exclamation-triangle me-1"></i>{{ bulkAddYearFileError }}
+      </div>
+      <div *ngIf="bulkAddYearError" class="alert alert-danger py-2 small">
+        <i class="fa fa-exclamation-triangle me-1"></i>{{ bulkAddYearError }}
+      </div>
+
+      <div *ngIf="bulkAddYearSuccess" class="alert alert-success py-2 small">
+        <i class="fa fa-check-circle me-1"></i><strong>{{ bulkAddYearSuccess }}</strong>
+        <ul class="mb-0 mt-2 ps-3" *ngIf="bulkAddYearInserted.length">
+          <li *ngFor="let d of bulkAddYearInserted" class="text-success">
+            ✅ {{ d.district_name }} ({{ d.district_code }}) — {{ d.records }} records added
+          </li>
+        </ul>
+        <ul class="mb-0 mt-1 ps-3" *ngIf="bulkAddYearSkipped.length">
+          <li *ngFor="let d of bulkAddYearSkipped" class="text-warning">
+            ⚠️ {{ d.district_name }} ({{ d.district_code }}) — {{ d.reason }}
+          </li>
         </ul>
       </div>
-      <div class="d-flex gap-2 justify-content-end mt-3">
-        <button class="btn btn-sm btn-secondary" (click)="closeBulkModal()" [disabled]="isBulkUploading">Cancel</button>
-        <button class="btn btn-sm btn-warning fw-semibold" (click)="submitBulkReplace()" [disabled]="isBulkUploading || !bulkFile">
-          <span *ngIf="isBulkUploading"><i class="fa fa-spinner fa-spin me-1"></i> Replacing...</span>
-          <span *ngIf="!isBulkUploading"><i class="fa fa-refresh me-1"></i> Replace Normals</span>
-        </button>
-      </div>
+
     </div>
+
+    <div class="modal-panel-footer">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeBulkAddYearModal()" [disabled]="isBulkAddYearUploading">Cancel</button>
+      <button class="btn btn-sm btn-success fw-semibold" (click)="submitBulkAddYear()" [disabled]="isBulkAddYearUploading || !bulkAddYearFile">
+        <span *ngIf="isBulkAddYearUploading"><i class="fa fa-spinner fa-spin me-1"></i> Adding...</span>
+        <span *ngIf="!isBulkAddYearUploading"><i class="fa fa-plus me-1"></i> Add {{ bulkAddYearSelected }} Normals</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Add Previous Year Normals Modal ── -->
+<div *ngIf="showAddYearModal" class="modal-backdrop-custom" (click)="closeAddYearModal()">
+  <div class="modal-panel-custom modal-panel-sm" (click)="$event.stopPropagation()">
+
+    <div class="modal-panel-header">
+      <div>
+        <h5 class="fw-bold mb-0"><i class="fa fa-calendar-plus-o me-2"></i>Add Previous Year Normals</h5>
+        <small class="text-white-50">{{ addYearDistrict?.district_name }} &nbsp;·&nbsp; Code: {{ addYearDistrict?.district_code }}</small>
+      </div>
+      <button class="btn btn-sm btn-close-white-custom" (click)="closeAddYearModal()" [disabled]="addYearUploading">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-panel-body">
+
+      <div class="alert alert-info py-2 small mb-3">
+        <i class="fa fa-info-circle me-1"></i>
+        <strong>This adds normals for 1 district only</strong> — {{ addYearDistrict?.district_name }}.
+        Your Excel must have <strong>exactly 1 data row</strong>. Only the first row is read.
+        If normals for the selected year already exist, upload will be <strong>rejected</strong>.
+      </div>
+
+      <!-- Year selector -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold small mb-1">Select Year</label>
+        <select class="form-select form-select-sm" [(ngModel)]="addYearSelected" [disabled]="addYearUploading">
+          <option *ngFor="let y of yearOptions" [value]="y">
+            {{ y }}{{ y % 4 === 0 ? ' (Leap — 366 days)' : ' (365 days)' }}
+          </option>
+        </select>
+      </div>
+
+      <div class="format-hint mb-3">
+        <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">district_name / code / area</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">❌ Not needed — district is <strong>{{ addYearDistrict?.district_name }}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td>
+          </tr>
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td>
+          </tr>
+        </table>
+        <div class="mt-2 small text-muted">
+          <i class="fa fa-info-circle me-1"></i>
+          Year is set to <strong>{{ addYearSelected }}</strong>.
+          <a [href]="districtService.downloadDistrictNormalTemplateForDistrict(addYearDistrict!.district_code)" class="fw-semibold text-warning ms-1">
+            <i class="fa fa-download me-1"></i>Download Template for {{ addYearDistrict?.district_name }}
+          </a>
+        </div>
+      </div>
+
+      <!-- File -->
+      <div class="drop-zone mb-3"
+           [class.drop-zone-ready]="addYearFile && !addYearFileError"
+           (click)="addYearInput.click()">
+        <i class="fa fa-cloud-upload fa-2x mb-2"
+           [class.text-success]="addYearFile && !addYearFileError"
+           [class.text-muted]="!addYearFile"></i>
+        <p class="mb-1 fw-semibold">
+          <span *ngIf="!addYearFile">Click to browse <strong>.xlsx / .xls</strong></span>
+          <span *ngIf="addYearFile" class="text-success"><i class="fa fa-check-circle me-1"></i>{{ addYearFile.name }}</span>
+        </p>
+        <small class="text-muted" *ngIf="!addYearFile">
+          Normals for {{ addYearSelected }}
+          <span *ngIf="addYearSelected % 4 === 0" class="badge bg-info ms-1" style="font-size:10px">Leap Year — include 02-29</span>
+        </small>
+        <input #addYearInput type="file" accept=".xlsx,.xls" style="display:none"
+               (change)="onAddYearFileChange($event)" [disabled]="addYearUploading" />
+      </div>
+
+      <div *ngIf="addYearFileError" class="alert alert-danger py-2 small">
+        <i class="fa fa-exclamation-triangle me-1"></i>{{ addYearFileError }}
+      </div>
+
+      <div *ngIf="addYearError" class="alert alert-danger py-2 small">
+        <i class="fa fa-exclamation-triangle me-1"></i>{{ addYearError }}
+      </div>
+
+      <div *ngIf="addYearSuccess" class="alert alert-success py-2 small">
+        <i class="fa fa-check-circle me-1"></i>{{ addYearSuccess }}
+      </div>
+
+    </div>
+
+    <div class="modal-panel-footer">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeAddYearModal()" [disabled]="addYearUploading">Cancel</button>
+      <button class="btn btn-sm btn-success fw-semibold" (click)="submitAddYear()" [disabled]="addYearUploading || !addYearFile">
+        <span *ngIf="addYearUploading"><i class="fa fa-spinner fa-spin me-1"></i> Adding...</span>
+        <span *ngIf="!addYearUploading"><i class="fa fa-plus me-1"></i> Add {{ addYearSelected }} Normals</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Bulk Replace Normals Modal ── -->
+<div *ngIf="showBulkModal" class="modal-backdrop-custom" (click)="closeBulkModal()">
+  <div class="modal-panel-custom" (click)="$event.stopPropagation()">
+
+    <div class="modal-panel-header">
+      <div>
+        <h5 class="fw-bold mb-0"><i class="fa fa-refresh me-2"></i>Bulk Replace District Normals</h5>
+        <small class="text-white-50">Replace normals for multiple districts in one upload</small>
+      </div>
+      <button class="btn btn-sm btn-close-white-custom" (click)="closeBulkModal()" [disabled]="isBulkUploading">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-panel-body">
+
+      <div class="alert alert-warning py-2 small mb-3">
+        <i class="fa fa-exclamation-triangle me-1"></i>
+        <strong>This will permanently replace existing normals</strong> for every district found in the file.
+        Districts not in the file are untouched.
+      </div>
+
+      <div class="format-hint mb-3">
+        <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">district_name</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">✅ Required — district name</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">district_code</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">✅ Required — e.g. <code>10205004</code></td>
+          </tr>
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">district_area</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">✅ Required — area in sq km</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td>
+          </tr>
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Year selector -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold small mb-1">Select Year</label>
+        <select class="form-select form-select-sm" [(ngModel)]="bulkYear" [disabled]="isBulkUploading">
+          <option *ngFor="let y of bulkYearOptions" [value]="y">
+            {{ y }}{{ y % 4 === 0 ? ' (Leap — 366 days)' : ' (365 days)' }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Drop Zone -->
+      <div class="drop-zone mb-3"
+           [class.drop-zone-active]="false"
+           [class.drop-zone-ready]="bulkFile && !bulkFileError"
+           (click)="bulkInput.click()">
+        <i class="fa fa-cloud-upload fa-2x mb-2"
+           [class.text-success]="bulkFile && !bulkFileError"
+           [class.text-muted]="!bulkFile"></i>
+        <p class="mb-1 fw-semibold">
+          <span *ngIf="!bulkFile">Click to browse <strong>.xlsx / .xls</strong> file</span>
+          <span *ngIf="bulkFile" class="text-success">
+            <i class="fa fa-check-circle me-1"></i>{{ bulkFile.name }}
+          </span>
+        </p>
+        <small class="text-muted" *ngIf="!bulkFile">
+          Combined Excel · {{ bulkYear }}
+          <span *ngIf="bulkYear % 4 === 0" class="badge bg-info ms-1" style="font-size:10px">Leap — include 02-29</span>
+        </small>
+        <input #bulkInput type="file" accept=".xlsx,.xls" style="display:none"
+               (change)="onBulkFileChange($event)" [disabled]="isBulkUploading" />
+      </div>
+
+      <div *ngIf="bulkFileError" class="alert alert-danger py-2 small">
+        <i class="fa fa-exclamation-triangle me-1"></i>{{ bulkFileError }}
+      </div>
+
+      <div *ngIf="bulkUploadError" class="alert alert-danger py-2 small">
+        <i class="fa fa-exclamation-triangle me-1"></i>{{ bulkUploadError }}
+      </div>
+
+      <div *ngIf="bulkUploadSuccess" class="alert alert-success py-2 small">
+        <i class="fa fa-check-circle me-1"></i><strong>{{ bulkUploadSuccess }}</strong>
+        <ul class="mb-0 mt-2 ps-3" *ngIf="bulkDetails.length">
+          <li *ngFor="let d of bulkDetails">
+            {{ d.district_name }} <span class="text-muted">({{ d.district_code }})</span> — {{ d.records }} records replaced
+          </li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="modal-panel-footer">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeBulkModal()" [disabled]="isBulkUploading">Cancel</button>
+      <button class="btn btn-sm btn-warning fw-semibold" (click)="submitBulkReplace()" [disabled]="isBulkUploading || !bulkFile">
+        <span *ngIf="isBulkUploading"><i class="fa fa-spinner fa-spin me-1"></i> Replacing...</span>
+        <span *ngIf="!isBulkUploading"><i class="fa fa-refresh me-1"></i> Replace Normals</span>
+      </button>
+    </div>
+
   </div>
 </div>

@@ -69,11 +69,25 @@ export class DistrictService {
     return `${this.baseUrl}/api/v1/downloadDistrictNormalTemplate`;
   }
 
-  updateDistrictNormals(district_code: number, formData: FormData): Observable<any> {
+  downloadDistrictNormalTemplateForDistrict(district_code: number): string {
+    return `${this.baseUrl}/api/v1/downloadDistrictNormalTemplate/${district_code}`;
+  }
+
+  updateDistrictNormals(district_code: number, formData: FormData, year: number): Observable<any> {
+    formData.append('year', year.toString());
     return this.http.put<any>(`${this.baseUrl}/api/v1/updateDistrictNormals/${district_code}`, formData);
   }
 
-  bulkReplaceDistrictNormals(formData: FormData): Observable<any> {
+  bulkReplaceDistrictNormals(formData: FormData, year: number): Observable<any> {
+    formData.append('year', year.toString());
     return this.http.put<any>(`${this.baseUrl}/api/v1/bulkReplaceDistrictNormals`, formData);
+  }
+
+  addYearDistrictNormals(district_code: number, formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/addYearDistrictNormals/${district_code}`, formData);
+  }
+
+  bulkAddYearDistrictNormals(formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/bulkAddYearDistrictNormals`, formData);
   }
 }

@@ -51,6 +51,74 @@ export class DistrictManagementComponent implements OnInit {
   saveError = '';
 
   // Edit normals modal
+  // Add year normals
+  showAddYearModal = false;
+  addYearDistrict: NormalDistrictDetail | null = null;
+  addYearFile: File | null = null;
+  addYearFileError = '';
+  addYearSelected: number = new Date().getFullYear() - 1;
+  addYearUploading = false;
+  addYearError = '';
+  addYearSuccess = '';
+  get yearOptions(): number[] {
+    const current = new Date().getFullYear();
+    return Array.from({ length: 10 }, (_, i) => current - i - 1);
+  }
+
+  openAddYear(d: NormalDistrictDetail) {
+    this.addYearDistrict = d;
+    this.addYearFile = null;
+    this.addYearFileError = '';
+    this.addYearError = '';
+    this.addYearSuccess = '';
+    this.addYearSelected = new Date().getFullYear() - 1;
+    this.showAddYearModal = true;
+  }
+
+  onAddYearFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    const file = input.files[0];
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'xlsx' && ext !== 'xls') {
+      this.addYearFileError = 'Only .xlsx or .xls files are allowed.';
+      this.addYearFile = null;
+      return;
+    }
+    this.addYearFile = file;
+    this.addYearFileError = '';
+  }
+
+  submitAddYear() {
+    if (!this.addYearFile || !this.addYearDistrict) return;
+    this.addYearUploading = true;
+    this.addYearError = '';
+    this.addYearSuccess = '';
+    const formData = new FormData();
+    formData.append('file', this.addYearFile);
+    formData.append('year', this.addYearSelected.toString());
+    this.districtService.addYearDistrictNormals(this.addYearDistrict.district_code, formData).subscribe({
+      next: (res) => {
+        this.addYearSuccess = res?.message || 'Normals added successfully.';
+        this.addYearUploading = false;
+      },
+      error: (err) => {
+        const status = err?.status;
+        const msg = err?.error?.error || '';
+        if (status === 409) {
+          this.addYearError = `⚠️ ${msg}`;
+        } else if (status === 404) {
+          this.addYearError = `District not found: ${msg}`;
+        } else {
+          this.addYearError = msg || 'Failed to add normals.';
+        }
+        this.addYearUploading = false;
+      }
+    });
+  }
+
+  closeAddYearModal() { if (!this.addYearUploading) this.showAddYearModal = false; }
+
   // Bulk replace normals
   showBulkModal = false;
   bulkFile: File | null = null;
@@ -59,6 +127,11 @@ export class DistrictManagementComponent implements OnInit {
   bulkUploadError = '';
   bulkUploadSuccess = '';
   bulkDetails: any[] = [];
+  bulkYear: number = new Date().getFullYear();
+  get bulkYearOptions(): number[] {
+    const current = new Date().getFullYear();
+    return Array.from({ length: 11 }, (_, i) => current - i);
+  }
 
   showEditNormalsModal = false;
   editNormalsDistrict: NormalDistrictDetail | null = null;
@@ -68,6 +141,11 @@ export class DistrictManagementComponent implements OnInit {
   editNormalsUploadError = '';
   editNormalsUploadSuccess = '';
   isEditNormalsDragOver = false;
+  editNormalsYear: number = new Date().getFullYear();
+  readonly currentYear = new Date().getFullYear();
+  get editNormalsYearOptions(): number[] {
+    return Array.from({ length: 11 }, (_, i) => this.currentYear - i);
+  }
 
   // Normals modal
   showNormalsModal = false;
@@ -79,7 +157,7 @@ export class DistrictManagementComponent implements OnInit {
 
   templateUrl = '';
 
-  constructor(private districtService: DistrictService, private fb: FormBuilder) {}
+  constructor(public districtService: DistrictService, private fb: FormBuilder) {}
 
   ngOnInit() {
     this.editForm = this.fb.group({
@@ -229,6 +307,11 @@ export class DistrictManagementComponent implements OnInit {
     return this.normals.filter(n => n.date?.includes(this.normalsSearch));
   }
 
+  get normalsYear(): string {
+    if (!this.normals.length) return '';
+    return new Date(this.normals[0].date).getFullYear().toString();
+  }
+
   closeNormalsModal() { this.showNormalsModal = false; }
 
   // ── Edit Normals modal ───────────────────────────────────────
@@ -238,6 +321,7 @@ export class DistrictManagementComponent implements OnInit {
     this.editNormalsFileError = '';
     this.editNormalsUploadError = '';
     this.editNormalsUploadSuccess = '';
+    this.editNormalsYear = new Date().getFullYear();
     this.showEditNormalsModal = true;
   }
 
@@ -275,7 +359,7 @@ export class DistrictManagementComponent implements OnInit {
     this.editNormalsUploadSuccess = '';
     const formData = new FormData();
     formData.append('file', this.editNormalsFile);
-    this.districtService.updateDistrictNormals(this.editNormalsDistrict.district_code, formData).subscribe({
+    this.districtService.updateDistrictNormals(this.editNormalsDistrict.district_code, formData, this.editNormalsYear).subscribe({
       next: (res) => {
         this.editNormalsUploadSuccess = res?.message || 'Normals updated successfully.';
         this.isEditNormalsUploading = false;
@@ -300,6 +384,7 @@ export class DistrictManagementComponent implements OnInit {
     this.bulkUploadError = '';
     this.bulkUploadSuccess = '';
     this.bulkDetails = [];
+    this.bulkYear = new Date().getFullYear();
     this.showBulkModal = true;
   }
 
@@ -326,7 +411,7 @@ export class DistrictManagementComponent implements OnInit {
     this.bulkDetails = [];
     const formData = new FormData();
     formData.append('file', this.bulkFile);
-    this.districtService.bulkReplaceDistrictNormals(formData).subscribe({
+    this.districtService.bulkReplaceDistrictNormals(formData, this.bulkYear).subscribe({
       next: (res) => {
         this.bulkUploadSuccess = res?.message || 'Bulk replace completed.';
         this.bulkDetails = res?.details ?? [];
@@ -352,4 +437,66 @@ export class DistrictManagementComponent implements OnInit {
   }
 
   closeBulkModal() { if (!this.isBulkUploading) this.showBulkModal = false; }
+
+  // Bulk Add Year Normals
+  showBulkAddYearModal = false;
+  bulkAddYearFile: File | null = null;
+  bulkAddYearFileError = '';
+  isBulkAddYearUploading = false;
+  bulkAddYearError = '';
+  bulkAddYearSuccess = '';
+  bulkAddYearSelected: number = new Date().getFullYear() - 1;
+  bulkAddYearInserted: any[] = [];
+  bulkAddYearSkipped: any[] = [];
+
+  openBulkAddYearModal() {
+    this.bulkAddYearFile = null;
+    this.bulkAddYearFileError = '';
+    this.bulkAddYearError = '';
+    this.bulkAddYearSuccess = '';
+    this.bulkAddYearInserted = [];
+    this.bulkAddYearSkipped = [];
+    this.bulkAddYearSelected = new Date().getFullYear() - 1;
+    this.showBulkAddYearModal = true;
+  }
+
+  onBulkAddYearFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    const file = input.files[0];
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'xlsx' && ext !== 'xls') {
+      this.bulkAddYearFileError = 'Only .xlsx or .xls files are allowed.';
+      this.bulkAddYearFile = null;
+      return;
+    }
+    this.bulkAddYearFile = file;
+    this.bulkAddYearFileError = '';
+  }
+
+  submitBulkAddYear() {
+    if (!this.bulkAddYearFile) return;
+    this.isBulkAddYearUploading = true;
+    this.bulkAddYearError = '';
+    this.bulkAddYearSuccess = '';
+    this.bulkAddYearInserted = [];
+    this.bulkAddYearSkipped = [];
+    const formData = new FormData();
+    formData.append('file', this.bulkAddYearFile);
+    formData.append('year', this.bulkAddYearSelected.toString());
+    this.districtService.bulkAddYearDistrictNormals(formData).subscribe({
+      next: (res) => {
+        this.bulkAddYearSuccess = res?.message || 'Done.';
+        this.bulkAddYearInserted = res?.inserted ?? [];
+        this.bulkAddYearSkipped  = res?.skipped  ?? [];
+        this.isBulkAddYearUploading = false;
+      },
+      error: (err) => {
+        this.bulkAddYearError = err?.error?.error || 'Bulk add failed.';
+        this.isBulkAddYearUploading = false;
+      }
+    });
+  }
+
+  closeBulkAddYearModal() { if (!this.isBulkAddYearUploading) this.showBulkAddYearModal = false; }
 }

@@ -51,4 +51,35 @@ export class StateService {
   fetchDisplayOrder(): Observable<any> {
     return this.http.get<any>(`${this.baseUrl}/api/v1/getStateDisplayOrder`);
   }
+
+  // ── State Normals Management ──────────────────────────────────────────────
+  getStateNormalList(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getStateNormalList`);
+  }
+
+  getStateNormals(state_code: number, year: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getStateNormals/${state_code}?year=${year}`);
+  }
+
+  downloadStateNormalTemplate(state_code: number): string {
+    return `${this.baseUrl}/api/v1/downloadStateNormalTemplate/${state_code}`;
+  }
+
+  replaceStateNormals(state_code: number, formData: FormData, year: number): Observable<any> {
+    formData.append('year', year.toString());
+    return this.http.put<any>(`${this.baseUrl}/api/v1/replaceStateNormals/${state_code}`, formData);
+  }
+
+  addStateYearNormals(state_code: number, formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/addStateYearNormals/${state_code}`, formData);
+  }
+
+  bulkReplaceStateNormals(formData: FormData, year: number): Observable<any> {
+    formData.append('year', year.toString());
+    return this.http.put<any>(`${this.baseUrl}/api/v1/bulkReplaceStateNormals`, formData);
+  }
+
+  bulkAddStateYearNormals(formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/bulkAddStateYearNormals`, formData);
+  }
 }

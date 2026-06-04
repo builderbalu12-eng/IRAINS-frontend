@@ -181,4 +181,48 @@ export class CalculationModeComponent implements OnInit {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
+
+  // ── Cron trigger buttons ──────────────────────────────────────────────────
+  runningAddDaily = false;
+  addDailyMsg = '';
+  addDailyErr = false;
+
+  runAddDailyStationData(): void {
+    this.runningAddDaily = true;
+    this.addDailyMsg = '';
+    this.http.get<any>(`${this.baseUrl}/api/v1/AddDailyStationData`).subscribe({
+      next: (res) => {
+        this.runningAddDaily = false;
+        this.addDailyMsg = res.message ?? 'Done — station_daily_data_updates → station_daily_data';
+        this.addDailyErr = false;
+      },
+      error: (err) => {
+        this.runningAddDaily = false;
+        this.addDailyMsg = err.error?.message ?? 'Failed';
+        this.addDailyErr = true;
+      }
+    });
+  }
+
+  runningDailyStore = false;
+  dailyStoreMsg = '';
+  dailyStoreErr = false;
+
+  runDailyStore(): void {
+    this.runningDailyStore = true;
+    this.dailyStoreMsg = '';
+    this.http.post<any>(`${this.baseUrl}/api/v1/aws-station/run-daily-store`, {}).subscribe({
+      next: (res) => {
+        this.runningDailyStore = false;
+        this.dailyStoreMsg = res.message ?? 'Done — aws_station_daily_data refreshed';
+        this.dailyStoreErr = false;
+        this.loadStations();
+      },
+      error: (err) => {
+        this.runningDailyStore = false;
+        this.dailyStoreMsg = err.error?.message ?? 'Failed';
+        this.dailyStoreErr = true;
+      }
+    });
+  }
 }

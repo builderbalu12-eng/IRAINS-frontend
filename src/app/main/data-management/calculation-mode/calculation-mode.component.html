@@ -91,6 +91,37 @@
         <i class="bi bi-broadcast me-1"></i>State AWS Stations
         <span class="cm-badge aws">{{ awsStations.length }}/{{ awsTotal }}</span>
       </button>
+
+      <!-- Run buttons -->
+      <div style="margin-left:auto;display:flex;align-items:center;gap:0.6rem;padding:0 0.8rem;">
+
+        <!-- IMD: AddDailyStationData -->
+        <ng-container *ngIf="activeTab === 'imd'">
+          <button class="cm-download-btn" style="background:#1a7a3a;"
+                  (click)="runAddDailyStationData()" [disabled]="runningAddDaily">
+            <span *ngIf="runningAddDaily" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!runningAddDaily" class="bi bi-play-fill me-1"></i>
+            {{ runningAddDaily ? 'Running…' : 'AddDailyStationData' }}
+          </button>
+          <span *ngIf="addDailyMsg" [style.color]="addDailyErr ? '#721c24' : '#155724'"
+                style="font-size:0.8rem;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                [title]="addDailyMsg">{{ addDailyMsg }}</span>
+        </ng-container>
+
+        <!-- AWS: runDailyStore -->
+        <ng-container *ngIf="activeTab === 'aws'">
+          <button class="cm-download-btn" style="background:#0a58ca;"
+                  (click)="runDailyStore()" [disabled]="runningDailyStore">
+            <span *ngIf="runningDailyStore" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!runningDailyStore" class="bi bi-play-fill me-1"></i>
+            {{ runningDailyStore ? 'Running…' : 'runDailyStore' }}
+          </button>
+          <span *ngIf="dailyStoreMsg" [style.color]="dailyStoreErr ? '#721c24' : '#155724'"
+                style="font-size:0.8rem;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                [title]="dailyStoreMsg">{{ dailyStoreMsg }}</span>
+        </ng-container>
+
+      </div>
     </div>
 
     <!-- Loading -->
