@@ -20,6 +20,7 @@ export class VerificationPageMcComponent {
   showIsNotUpdatesTable: boolean = false;
   showIsVerifiedTable: boolean = false;
   showIsNotVerifiedTable: boolean = false;
+  showTotalStationsTable: boolean = false;
   dataToDisplay: any[] = [];
   bottom_section: boolean = false;
   filteredMcs: any[] = [];
@@ -81,30 +82,28 @@ export class VerificationPageMcComponent {
     window.history.back();
   }
 
-  async backend(): Promise<void>{
-    try {
-      this.isLoading= true
-      const date = this.selectedDate
-      this.verificationhq.fetchStationDataForDataEntry(date).subscribe(async (response)=>
-        {   
-          console.log("fetched adata in backend", response.data)
+  backend(): Promise<void> {
+    this.isLoading = true;
+    const date = this.selectedDate;
+
+    return new Promise((resolve, reject) => {
+      this.verificationhq.fetchStationDataForDataEntry(date).subscribe(
+        (response) => {
           this.fetcheddata = response.data.filter((x: any) => {
-            if (!x.centre_type || !x.centre_name) {
-              console.warn("Skipping record with missing data:", x);
-              return false; // Skip entries where either centre_type or centre_name is missing
-            }
+            if (!x.centre_type || !x.centre_name) return false;
             return (x.centre_type.toUpperCase() + ' ' + x.centre_name.toUpperCase()) === this.currentMCorRMC.toUpperCase();
           });
-                    console.log('fetched data in backend', this.fetcheddata)
-          this.filterByDate()
-          this.isLoading = false
-          // await this.fetchDeviationStatus();
-
+          this.filterByDate();
+          this.isLoading = false;
+          resolve();
+        },
+        (err) => {
+          console.error('Error fetching data:', err);
+          this.isLoading = false;
+          reject(err);
         }
       );
-    } catch (err) {
-      console.error('Error fetching data:', err);
-    }
+    });
   }
 
 
@@ -213,24 +212,36 @@ export class VerificationPageMcComponent {
   }
 
 
-  async updateRainfallValueData(stationid:any, rainfall:any, serialNo:any){
-    this.isLoading = true; // Show the spinner
-    console.log(stationid, rainfall, typeof +stationid, typeof +rainfall)
-    const data = 
-      {
-        "station_code": +stationid,
-        "date": this.selectedDate,
-        "value":+rainfall
-      }
+  async updateRainfallValueData(stationid: any, rainfall: any, serialNo: any) {
+    this.isLoading = true;
+    const data = { "station_code": +stationid, "date": this.selectedDate, "value": +rainfall };
     try {
-      const res = await this.dataEntryService.updateRainfallValue(data).toPromise()
-      await this.backend();
+      await this.dataEntryService.updateRainfallValue(data).toPromise();
+
+      // Update fetcheddata in-place — no full page rebuild
+      const idx = this.fetcheddata.findIndex((s: any) => +s.station_code === +stationid);
+      if (idx !== -1) this.fetcheddata[idx].data = +rainfall;
+
+      // Refresh only the top summary counts
       this.filterByDate();
-      this.submit(this.typeSubmit);
+
+      // Update only the edited row's status in the bottom table
+      const row = this.dataToDisplay.find((s: any) => +s.stationid === +stationid);
+      if (row) {
+        row.rainfall = +rainfall;
+        const src = idx !== -1 ? this.fetcheddata[idx] : null;
+        if (+rainfall === -999.9) {
+          row.status = 'Not Updated';
+        } else if (src?.is_verified === 1) {
+          row.status = 'Verified';
+        } else {
+          row.status = 'Updated';
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
-      this.isLoading = false; // Hide the spinner
+      this.isLoading = false;
     }
   }
 
@@ -278,12 +289,11 @@ export class VerificationPageMcComponent {
     this.showIsNotUpdatesTable = type === 'isNotUpdated';
     this.showIsVerifiedTable = type === 'isVerified';
     this.showIsNotVerifiedTable = type === 'isNotVerified';
+    this.showTotalStationsTable = type === 'totalStations';
+
+    if (type === 'totalStations') this.onTotalStationsSubmit();
 
     this.bottom_section = true;
-    window.scrollTo({
-      top: 500,
-      behavior: 'smooth'
-    });
   }
 
   onIsUpdatedSubmit() {
@@ -392,6 +402,27 @@ export class VerificationPageMcComponent {
     }
   }
 
+
+  onTotalStationsSubmit() {
+    let index = 1;
+    for (let i = 0; i < this.fetcheddata.length; i++) {
+      const isUpdated = this.fetcheddata[i].data !== -999.9;
+      const isVerified = isUpdated && this.fetcheddata[i].is_verified === 1;
+      this.dataToDisplay.push({
+        SNo: index++,
+        district: this.fetcheddata[i].district_name,
+        stationname: this.fetcheddata[i].station_name,
+        stationid: this.fetcheddata[i].station_code,
+        rainfall: this.fetcheddata[i].data,
+        status: !isUpdated ? 'Not Updated' : isVerified ? 'Verified' : 'Updated'
+      });
+    }
+  }
+
+  resetRainfallInTotal(station: any) {
+    station.rainfall = -999.9;
+    this.updateRainfallValueData(station.stationid, -999.9, station.SNo);
+  }
 
   fetchDeviationStatus(): Promise<void> {
     this.isLoadingVerificatiion = true

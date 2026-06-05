@@ -22,6 +22,7 @@ export class VerificationPageHQComponent {
   showIsNotUpdatesTable: boolean = false;
   showIsVerifiedTable: boolean = false;
   showIsNotVerifiedTable: boolean = false;
+  showTotalStationsTable: boolean = false;
   todayDate: string;
   existingstationdata: any[] = [];
   bottom_section: boolean = false;
@@ -78,6 +79,16 @@ export class VerificationPageHQComponent {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  get grandTotal() {
+    return this.filteredMCorRMCSArray.reduce((acc, item) => ({
+      Total_Stations: acc.Total_Stations + item.data.Total_Stations,
+      isUpdated:      acc.isUpdated      + item.data.isUpdated,
+      isNotUpdated:   acc.isNotUpdated   + item.data.isNotUpdated,
+      isVerified:     acc.isVerified     + item.data.isVerified,
+      isNotVerified:  acc.isNotVerified  + item.data.isNotVerified,
+    }), { Total_Stations: 0, isUpdated: 0, isNotUpdated: 0, isVerified: 0, isNotVerified: 0 });
   }
 
   // === trackBy for *ngFor performance ===
@@ -172,13 +183,13 @@ export class VerificationPageHQComponent {
   }
 
   // === DAILY DATA LOGIC ===
-  async backend(): Promise<void> {
+  backend(): Promise<void> {
     this.filteredMCorRMCS = {};
     this.filteredStations = [];
     this.filteredMCorRMCSArray = [];
+    this.isLoading = true;
 
-    try {
-      this.isLoading = true;
+    return new Promise((resolve, reject) => {
       this.verificationhq.fetchStationDataForDataEntry(this.selectedDate).subscribe(
         (response) => {
           this.fetcheddata = response.data || [];
@@ -188,16 +199,15 @@ export class VerificationPageHQComponent {
             data: this.filteredMCorRMCS[key]
           }));
           this.isLoading = false;
+          resolve();
         },
         (err) => {
           console.error(err);
           this.isLoading = false;
+          reject(err);
         }
       );
-    } catch (err) {
-      console.error(err);
-      this.isLoading = false;
-    }
+    });
   }
 
   private buildMCSummary() {
@@ -240,6 +250,7 @@ export class VerificationPageHQComponent {
     this.showIsNotUpdatesTable = type === 'isNotUpdated';
     this.showIsVerifiedTable = type === 'isVerified';
     this.showIsNotVerifiedTable = type === 'isNotVerified';
+    this.showTotalStationsTable = type === 'totalStations';
 
     this.dataToDisplay = [];
 
@@ -247,9 +258,9 @@ export class VerificationPageHQComponent {
     if (type === 'isNotUpdated') this.onIsNotUpdatedSubmit(MCorRMCName);
     if (type === 'isVerified') this.onIsVerifiedSubmit(MCorRMCName);
     if (type === 'isNotVerified') this.onIsNotVerifiedSubmit(MCorRMCName);
+    if (type === 'totalStations') this.onTotalStationsSubmit(MCorRMCName);
 
     this.bottom_section = true;
-    window.scrollTo({ top: 1000, behavior: 'smooth' });
   }
 
   onIsUpdatedSubmit(MCorRMCName: string) {
@@ -330,6 +341,31 @@ export class VerificationPageHQComponent {
     }
   }
 
+  onTotalStationsSubmit(MCorRMCName: string) {
+    let index = 1;
+    for (let i = 0; i < this.fetcheddata.length; i++) {
+      const mc = this.fetcheddata[i]['centre_type'] + ' ' + this.fetcheddata[i]['centre_name'];
+      if (mc === MCorRMCName) {
+        const isUpdated = this.fetcheddata[i].data !== -999.9;
+        const isVerified = isUpdated && this.fetcheddata[i].is_verified === 1;
+        this.dataToDisplay.push({
+          SNo: index++,
+          statename: this.fetcheddata[i].state_name,
+          district: this.fetcheddata[i].district_name,
+          stationname: this.fetcheddata[i].station_name,
+          stationid: this.fetcheddata[i].station_code,
+          rainfall: this.fetcheddata[i].data,
+          status: !isUpdated ? 'Not Updated' : isVerified ? 'Verified' : 'Updated'
+        });
+      }
+    }
+  }
+
+  resetRainfallInTotal(station: any) {
+    station.rainfall = -999.9;
+    this.updateRainfallValueData(station.stationid, -999.9, station.SNo);
+  }
+
   // === SORTING ===
   sort(list: any[], key: string) {
     this.SortOrder = !this.SortOrder;
@@ -349,8 +385,31 @@ export class VerificationPageHQComponent {
     const data = { station_code: +stationid, date: this.selectedDate, value: +rainfall };
     try {
       await this.dataEntryService.updateRainfallValue(data).toPromise();
-      await this.backend();
-      this.submit(this.currentSubmitType, this.currentSubmitMCorRMCName);
+
+      // Update fetcheddata in-place — no full page rebuild
+      const idx = this.fetcheddata.findIndex((s: any) => +s.station_code === +stationid);
+      if (idx !== -1) this.fetcheddata[idx].data = +rainfall;
+
+      // Refresh only the top summary counts
+      this.filteredMCorRMCS = {};
+      this.buildMCSummary();
+      this.filteredMCorRMCSArray = Object.keys(this.filteredMCorRMCS).map(key => ({
+        name: key, data: this.filteredMCorRMCS[key]
+      }));
+
+      // Update only the edited row's status in the bottom table
+      const row = this.dataToDisplay.find((s: any) => +s.stationid === +stationid);
+      if (row) {
+        row.rainfall = +rainfall;
+        const src = idx !== -1 ? this.fetcheddata[idx] : null;
+        if (+rainfall === -999.9) {
+          row.status = 'Not Updated';
+        } else if (src?.is_verified === 1) {
+          row.status = 'Verified';
+        } else {
+          row.status = 'Updated';
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
