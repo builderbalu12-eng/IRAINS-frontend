@@ -26,6 +26,11 @@ export class CalculationModeComponent implements OnInit {
   activeTab: 'imd' | 'aws' = 'imd';
   selectedDate: string = this.todayStr();
 
+  // Country actual values
+  countryActualImd: number | null = null;
+  countryActualAws: number | null = null;
+  countryLoading = false;
+
   // Sort
   sortCol: string = '';
   sortDir: 'asc' | 'desc' = 'asc';
@@ -83,6 +88,12 @@ export class CalculationModeComponent implements OnInit {
     this.imdStations = [];
     this.awsStations = [];
     this.sortCol = '';
+    this.countryActualImd = null;
+    this.countryActualAws = null;
+    this.countryLoading = true;
+
+    const payload = { startDate: this.selectedDate, endDate: this.selectedDate };
+
     this.http.post<any>(`${this.baseUrl}/api/v1/fetchCalcModeStations`, { date: this.selectedDate }).subscribe({
       next: (res) => {
         this.imdStations = res.imd ?? [];
@@ -92,6 +103,25 @@ export class CalculationModeComponent implements OnInit {
         this.stationsLoading = false;
       },
       error: () => { this.stationsLoading = false; }
+    });
+
+    // Fetch IMD-only country actual
+    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryData`, payload).subscribe({
+      next: (res) => {
+        const d = res.data?.[0] ?? res.data;
+        this.countryActualImd = d?.actual_rainfall ?? null;
+        this.countryLoading = false;
+      },
+      error: () => { this.countryLoading = false; }
+    });
+
+    // Fetch IMD+AWS country actual
+    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryDataWithAWS`, payload).subscribe({
+      next: (res) => {
+        const d = res.data?.[0] ?? res.data;
+        this.countryActualAws = d?.actual_rainfall ?? null;
+      },
+      error: () => {}
     });
   }
 
@@ -142,7 +172,16 @@ export class CalculationModeComponent implements OnInit {
       }
     };
 
-    const buildSheet = (rows: any[]) => {
+    const infoStyle = {
+      font: { bold: true, color: { rgb: '002467' } },
+      fill: { fgColor: { rgb: 'EBF0FA' } },
+      alignment: { horizontal: 'left' as const }
+    };
+
+    const buildSheet = (rows: any[], countryActual: number | null, label: string, total: number) => {
+      // Row 1: Country actual summary
+      const summaryRow = [`${label} — Country Actual: ${countryActual !== null ? countryActual.toFixed(5) + ' mm' : 'N/A'}    Stations shown: ${rows.length} / ${total}`];
+
       const data = rows.map((r, i) => [
         i + 1,
         r.station_code  ?? '',
@@ -152,9 +191,18 @@ export class CalculationModeComponent implements OnInit {
         r.station_name  ?? '',
         r.data          ?? '',
       ]);
-      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+
+      // aoa: row0=summary, row1=headers, row2+=data
+      const ws = XLSX.utils.aoa_to_sheet([summaryRow, headers, ...data]);
+
+      // Style summary row (merged across all cols)
+      const summaryCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
+      if (ws[summaryCell]) ws[summaryCell].s = infoStyle;
+      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }];
+
+      // Style header row (now at row index 1)
       headers.forEach((_, i) => {
-        const cell = XLSX.utils.encode_cell({ r: 0, c: i });
+        const cell = XLSX.utils.encode_cell({ r: 1, c: i });
         if (ws[cell]) ws[cell].s = hdrStyle;
       });
       ws['!cols'] = colWidths;
@@ -163,15 +211,19 @@ export class CalculationModeComponent implements OnInit {
 
     const wb = XLSX.utils.book_new();
 
+    // Sheet name format: "Data-entry Stations (1250-6604)"  max 31 chars for Excel
+    const imdSheetName   = `IMD (${this.imdStations.length}-${this.imdTotal})`;
+    const awsSheetName   = `AWS (${this.awsStations.length}-${this.awsTotal})`;
+
     if (this.useAws) {
       // IMD + AWS mode — two sheets
-      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations), 'Data-entry Stations');
-      XLSX.utils.book_append_sheet(wb, buildSheet(this.awsStations), 'State AWS Stations');
+      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, this.countryActualImd, 'IMD Only',    this.imdTotal), imdSheetName);
+      XLSX.utils.book_append_sheet(wb, buildSheet(this.awsStations, this.countryActualAws, 'IMD + AWS',   this.awsTotal), awsSheetName);
       const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `IMD_AWS_Stations_${date}.xlsx`);
     } else {
       // IMD only — single sheet
-      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations), 'Data-entry Stations');
+      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, this.countryActualImd, 'IMD Only', this.imdTotal), imdSheetName);
       const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `DataEntry_Stations_${date}.xlsx`);
     }

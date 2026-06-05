@@ -135,6 +135,22 @@ export class DisplayOrderManagementComponent implements OnInit {
     moveItemInArray(this.flatDistricts, event.previousIndex, event.currentIndex);
   }
 
+  // Sort all districts within a group alphabetically by district_name
+  sortGroup(groupName: string): void {
+    const indices = this.flatDistricts
+      .map((r, i) => ({ r, i }))
+      .filter(x => x.r.parent_group_name === groupName)
+      .map(x => x.i);
+
+    const sorted = indices
+      .map(i => this.flatDistricts[i])
+      .sort((a, b) => a.district_name.localeCompare(b.district_name));
+
+    indices.forEach((idx, pos) => {
+      this.flatDistricts[idx] = sorted[pos];
+    });
+  }
+
   saveDistrictOrder(): void {
     this.districtSaving = true;
     const orders = this.flatDistricts.map((d, i) => ({

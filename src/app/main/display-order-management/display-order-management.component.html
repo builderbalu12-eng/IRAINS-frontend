@@ -46,8 +46,15 @@
               <div
                 *ngIf="i === 0 || flatDistricts[i-1].parent_group_name !== row.parent_group_name"
                 class="group-label"
+                style="display:flex;align-items:center;justify-content:space-between;"
               >
-                {{ row.parent_group_order }}. {{ row.parent_group_name }}
+                <span>{{ row.parent_group_order }}. {{ row.parent_group_name }}</span>
+                <button
+                  (click)="$event.stopPropagation(); sortGroup(row.parent_group_name)"
+                  title="Sort districts in this group A→Z"
+                  style="background:#002467;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:0.75rem;cursor:pointer;margin-left:8px;">
+                  A→Z
+                </button>
               </div>
 
               <div class="row-body">
