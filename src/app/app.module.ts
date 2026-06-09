@@ -199,6 +199,7 @@ import { DistrictManagementComponent } from './main/data-management/district-man
 import { StateManagementComponent } from './main/data-management/state-management/state-management.component';
 import { SubdivisionManagementComponent } from './main/data-management/subdivision-management/subdivision-management.component';
 import { RegionManagementComponent } from './main/data-management/region-management/region-management.component';
+import { CountryManagementComponent } from './main/data-management/country-management/country-management.component';
 import { PermissionsComponent } from './main/permissions/permissions.component';
 import { RbacComponent } from './main/permissions/rbac/rbac.component';
 import { NewRegisterComponent } from './main/permissions/new-register/new-register.component';
@@ -375,6 +376,7 @@ import { RouteManagementComponent } from './main/permissions/route-management/ro
     StateManagementComponent,
     SubdivisionManagementComponent,
     RegionManagementComponent,
+    CountryManagementComponent,
     PermissionsComponent,
     RbacComponent,
     NewRegisterComponent,

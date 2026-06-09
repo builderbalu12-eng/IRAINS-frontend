@@ -34,16 +34,24 @@ export class DataManagementComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      label: 'Spatial Boundaries',
+      label: 'Shape file/Map Boundaries',
       icon: 'bi bi-map-fill',
       expanded: true,
       children: [
-        { label: 'GeoJSON',        icon: 'bi bi-layers-fill',             route: '/data-management/geojson' },
-        { label: 'Region',         icon: 'bi bi-globe-americas',         route: '/data-management/region-management' },
-        { label: 'State',          icon: 'bi bi-flag-fill',              route: '/data-management/state-management' },
-        { label: 'Subdivision',    icon: 'bi bi-diagram-3-fill',         route: '/data-management/subdivision-management' },
-        { label: 'District',       icon: 'bi bi-pin-map-fill',           route: '/data-management/district-management' },
-        { label: 'Block',          icon: 'bi bi-grid-3x3-gap-fill',      route: '/data-management/block-management' },
+        { label: 'GeoJSON', icon: 'bi bi-layers-fill', route: '/data-management/geojson' },
+      ]
+    },
+    {
+      label: 'Normals',
+      icon: 'bi bi-cloud-rain-fill',
+      expanded: true,
+      children: [
+        { label: 'Country',     icon: 'bi bi-globe2',              route: '/data-management/country-management' },
+        { label: 'Region',      icon: 'bi bi-globe-americas',      route: '/data-management/region-management' },
+        { label: 'State',       icon: 'bi bi-flag-fill',           route: '/data-management/state-management' },
+        { label: 'Subdivision', icon: 'bi bi-diagram-3-fill',      route: '/data-management/subdivision-management' },
+        { label: 'District',    icon: 'bi bi-pin-map-fill',        route: '/data-management/district-management' },
+        { label: 'Block',       icon: 'bi bi-grid-3x3-gap-fill',   route: '/data-management/block-management' },
       ]
     },
     {

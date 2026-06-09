@@ -82,4 +82,8 @@ export class StateService {
   bulkAddStateYearNormals(formData: FormData): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/bulkAddStateYearNormals`, formData);
   }
+
+  getMissingStateNormals(year: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getMissingStateNormals?year=${year}`);
+  }
 }

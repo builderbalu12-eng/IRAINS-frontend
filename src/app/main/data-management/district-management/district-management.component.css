@@ -319,3 +319,17 @@
   .page-title { font-size: 1.1rem; }
   .table { font-size: 12px; }
 }
+
+/* ── Missing Normals Card ────────────────────────────────────────── */
+.missing-card { border-radius: 10px; overflow: hidden; font-size: 13px; }
+.missing-card-ok { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+.missing-card-warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+.missing-header { padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.missing-table-wrap { max-height: 280px; overflow-y: auto; border-top: 1px solid #fcd34d; background: #fff8e1; }
+.missing-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.missing-table thead { position: sticky; top: 0; background: #fde68a; }
+.missing-table th { padding: 6px 12px; text-align: left; font-weight: 600; color: #78350f; border-bottom: 1px solid #fcd34d; }
+.missing-table td { padding: 5px 12px; border-bottom: 1px solid #fef3c7; color: #92400e; }
+.missing-table tbody tr:hover { background: #fef9e7; }
+.missing-num { color: #b45309; font-weight: 600; width: 40px; }
+.missing-code { font-family: monospace; font-weight: 600; width: 120px; }

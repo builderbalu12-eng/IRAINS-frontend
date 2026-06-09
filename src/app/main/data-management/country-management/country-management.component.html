@@ -6,15 +6,15 @@
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h5 class="fw-bold mb-1 page-title">
-            <i class="fa fa-globe me-2"></i>Region Management
+            <i class="fa fa-globe me-2"></i>Country Management
           </h5>
           <small class="text-muted">
             <i class="fa fa-info-circle me-1"></i>
-            {{ regions.length }} regions loaded — click a row to view normal rainfall data
+            {{ countries.length }} countries loaded — click a row to view normal rainfall data
           </small>
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
-          <a [href]="regionService.downloadRegionNormalTemplate(0)" class="btn btn-outline-success btn-sm fw-semibold">
+          <a *ngIf="countries.length > 0" [href]="countryService.downloadCountryNormalTemplate(countries[0].country_name)" class="btn btn-outline-success btn-sm fw-semibold">
             <i class="fa fa-download me-1"></i> Sample Excel
           </a>
           <button class="btn btn-success btn-sm fw-semibold" (click)="openBulkAddYear()">
@@ -29,7 +29,7 @@
       <!-- Loader -->
       <div *ngIf="isLoading" class="text-center py-5 text-muted">
         <i class="fa fa-spinner fa-pulse fa-2x"></i>
-        <p class="mt-3">Loading regions...</p>
+        <p class="mt-3">Loading countries...</p>
       </div>
       <div *ngIf="loadError" class="alert alert-danger small">{{ loadError }}</div>
 
@@ -41,11 +41,11 @@
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <span *ngIf="missingLoading"><i class="fa fa-spinner fa-spin me-1"></i> Checking normals...</span>
             <span *ngIf="!missingLoading && missingEntities.length === 0">
-              <i class="fa fa-check-circle me-1"></i> All regions have normals for <strong>{{ missingYear }}</strong>
+              <i class="fa fa-check-circle me-1"></i> All countries have normals for <strong>{{ missingYear }}</strong>
             </span>
             <span *ngIf="!missingLoading && missingEntities.length > 0">
               <i class="fa fa-exclamation-triangle me-1"></i>
-              <strong>{{ missingEntities.length }}</strong> region(s) missing normals for <strong>{{ missingYear }}</strong>
+              <strong>{{ missingEntities.length }}</strong> country(ies) missing normals for <strong>{{ missingYear }}</strong>
             </span>
           </div>
           <div class="d-flex align-items-center gap-2 flex-nowrap" style="flex-shrink:0">
@@ -61,13 +61,12 @@
         <div *ngIf="missingExpanded && missingEntities.length > 0" class="missing-table-wrap">
           <table class="missing-table">
             <thead>
-              <tr><th>#</th><th>Region ID</th><th>Region Name</th></tr>
+              <tr><th>#</th><th>Country Name</th></tr>
             </thead>
             <tbody>
               <tr *ngFor="let e of missingEntities; let i = index">
                 <td class="missing-num">{{ i + 1 }}</td>
-                <td class="missing-code">{{ e.region_id }}</td>
-                <td>{{ e.region_name }}</td>
+                <td>{{ e.country_name }}</td>
               </tr>
             </tbody>
           </table>
@@ -78,11 +77,11 @@
       <div *ngIf="!isLoading && !loadError" class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <div class="search-box" style="width:280px">
           <i class="fa fa-search search-icon"></i>
-          <input type="text" class="form-control search-input" placeholder="Search region name or id..."
+          <input type="text" class="form-control search-input" placeholder="Search country name..."
                  [(ngModel)]="searchText" />
         </div>
         <span class="text-muted small fw-semibold">
-          <i class="fa fa-list me-1"></i>{{ filtered.length }} / {{ regions.length }} regions
+          <i class="fa fa-list me-1"></i>{{ filtered.length }} / {{ countries.length }} countries
         </span>
       </div>
 
@@ -91,24 +90,22 @@
         <table class="table table-sm table-hover table-bordered align-middle mb-0">
           <thead class="table-head">
             <tr>
-              <th style="width:120px">Region ID</th>
-              <th>Region Name</th>
+              <th>Country Name</th>
               <th style="width:120px" class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let r of filtered" style="cursor:pointer" (click)="openNormals(r)">
-              <td class="fw-semibold text-primary" style="font-family:monospace">{{ r.region_id }}</td>
-              <td class="fw-semibold">{{ r.region_name }}</td>
+            <tr *ngFor="let c of filtered" style="cursor:pointer" (click)="openNormals(c)">
+              <td class="fw-semibold">{{ c.country_name }}</td>
               <td class="text-center" (click)="$event.stopPropagation()">
-                <button class="btn btn-sm btn-outline-success" (click)="openAddYear(r)" title="Add Previous Year Normals">
+                <button class="btn btn-sm btn-outline-success" (click)="openAddYear(c)" title="Add Previous Year Normals">
                   <i class="fa fa-calendar-plus-o"></i>
                 </button>
               </td>
             </tr>
             <tr *ngIf="filtered.length === 0 && !isLoading">
-              <td colspan="3" class="text-center text-muted py-5">
-                <i class="fa fa-search me-2"></i>No regions found<span *ngIf="searchText"> matching "<strong>{{ searchText }}</strong>"</span>
+              <td colspan="2" class="text-center text-muted py-5">
+                <i class="fa fa-search me-2"></i>No countries found<span *ngIf="searchText"> matching "<strong>{{ searchText }}</strong>"</span>
               </td>
             </tr>
           </tbody>
@@ -126,8 +123,8 @@
 
     <div class="modal-panel-header">
       <div>
-        <h5 class="fw-bold mb-0"><i class="fa fa-bar-chart me-2"></i>{{ normalsEntity?.region_name }}</h5>
-        <small class="text-white-50">Region ID: {{ normalsEntity?.region_id }}</small>
+        <h5 class="fw-bold mb-0"><i class="fa fa-bar-chart me-2"></i>{{ normalsEntity?.country_name }}</h5>
+        <small class="text-white-50">Country normals</small>
       </div>
       <div class="d-flex gap-2 align-items-center">
         <button class="btn btn-sm btn-warning fw-semibold" (click)="openReplace(normalsEntity!)">
@@ -201,8 +198,8 @@
 
     <div class="modal-panel-header">
       <div>
-        <h5 class="fw-bold mb-0"><i class="fa fa-refresh me-2"></i>Replace Region Normals</h5>
-        <small class="text-white-50">{{ normalsEntity?.region_name }} &nbsp;·&nbsp; ID: {{ normalsEntity?.region_id }}</small>
+        <h5 class="fw-bold mb-0"><i class="fa fa-refresh me-2"></i>Replace Country Normals</h5>
+        <small class="text-white-50">{{ normalsEntity?.country_name }}</small>
       </div>
       <button class="btn btn-sm btn-close-white-custom" (click)="closeReplaceModal()" [disabled]="isReplaceUploading">
         <i class="fa fa-times"></i>
@@ -213,7 +210,7 @@
 
       <div class="alert alert-warning py-2 small mb-3">
         <i class="fa fa-exclamation-triangle me-1"></i>
-        <strong>Replaces normals for 1 region only</strong> — {{ normalsEntity?.region_name }}.
+        <strong>Replaces normals for 1 country only</strong> — {{ normalsEntity?.country_name }}.
         Your Excel must have <strong>exactly 1 data row</strong>. Only the first row is read.
       </div>
 
@@ -230,8 +227,8 @@
         <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;">
           <tr style="background:#fef3c7">
-            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">region_name / region_id</td>
-            <td style="padding:4px 8px;border:1px solid #fde68a">❌ Not needed — region is <strong>{{ normalsEntity?.region_name }}</strong></td>
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">country_name</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">❌ Not needed — country is <strong>{{ normalsEntity?.country_name }}</strong></td>
           </tr>
           <tr>
             <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td>
@@ -243,8 +240,8 @@
           </tr>
         </table>
         <div class="mt-2 small text-muted">
-          <a [href]="regionService.downloadRegionNormalTemplate(normalsEntity!.region_id)" class="fw-semibold text-warning">
-            <i class="fa fa-download me-1"></i>Download Template for {{ normalsEntity?.region_name }}
+          <a [href]="countryService.downloadCountryNormalTemplate(normalsEntity!.country_name)" class="fw-semibold text-warning">
+            <i class="fa fa-download me-1"></i>Download Template for {{ normalsEntity?.country_name }}
           </a>
         </div>
       </div>
@@ -286,7 +283,7 @@
     <div class="modal-panel-header">
       <div>
         <h5 class="fw-bold mb-0"><i class="fa fa-calendar-plus-o me-2"></i>Add Previous Year Normals</h5>
-        <small class="text-white-50">{{ normalsEntity?.region_name }} &nbsp;·&nbsp; ID: {{ normalsEntity?.region_id }}</small>
+        <small class="text-white-50">{{ normalsEntity?.country_name }}</small>
       </div>
       <button class="btn btn-sm btn-close-white-custom" (click)="closeAddYearModal()" [disabled]="isAddYearUploading">
         <i class="fa fa-times"></i>
@@ -297,7 +294,7 @@
 
       <div class="alert alert-info py-2 small mb-3">
         <i class="fa fa-info-circle me-1"></i>
-        <strong>This adds normals for 1 region only</strong> — {{ normalsEntity?.region_name }}.
+        <strong>This adds normals for 1 country only</strong> — {{ normalsEntity?.country_name }}.
         Your Excel must have <strong>exactly 1 data row</strong>. If normals for the selected year already exist, upload will be <strong>rejected</strong>.
       </div>
 
@@ -314,8 +311,8 @@
         <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;">
           <tr style="background:#fef3c7">
-            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">region_name / region_id</td>
-            <td style="padding:4px 8px;border:1px solid #fde68a">❌ Not needed — region is <strong>{{ normalsEntity?.region_name }}</strong></td>
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">country_name</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">❌ Not needed — country is <strong>{{ normalsEntity?.country_name }}</strong></td>
           </tr>
           <tr>
             <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td>
@@ -327,8 +324,8 @@
           </tr>
         </table>
         <div class="mt-2 small text-muted">
-          <a [href]="regionService.downloadRegionNormalTemplate(normalsEntity!.region_id)" class="fw-semibold text-warning">
-            <i class="fa fa-download me-1"></i>Download Template for {{ normalsEntity?.region_name }}
+          <a [href]="countryService.downloadCountryNormalTemplate(normalsEntity!.country_name)" class="fw-semibold text-warning">
+            <i class="fa fa-download me-1"></i>Download Template for {{ normalsEntity?.country_name }}
           </a>
         </div>
       </div>
@@ -370,7 +367,7 @@
     <div class="modal-panel-header">
       <div>
         <h5 class="fw-bold mb-0"><i class="fa fa-calendar-plus-o me-2"></i>Bulk Add Previous Year Normals</h5>
-        <small class="text-white-50">Add normals for a previous year across multiple regions — skips if already exists</small>
+        <small class="text-white-50">Add normals for a previous year across multiple countries — skips if already exists</small>
       </div>
       <button class="btn btn-sm btn-close-white-custom" (click)="closeBulkAddYearModal()" [disabled]="isBulkAddYearUploading">
         <i class="fa fa-times"></i>
@@ -381,7 +378,7 @@
 
       <div class="alert alert-info py-2 small mb-3">
         <i class="fa fa-info-circle me-1"></i>
-        <strong>Non-destructive</strong> — regions that already have normals for the selected year are <strong>skipped</strong>, not overwritten.
+        <strong>Non-destructive</strong> — countries that already have normals for the selected year are <strong>skipped</strong>, not overwritten.
       </div>
 
       <div class="mb-3">
@@ -396,10 +393,9 @@
       <div class="format-hint mb-3">
         <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;">
-          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">region_name</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
-          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">region_id</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
-          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td></tr>
-          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td><td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td></tr>
+          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">country_name</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
+          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td></tr>
+          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td><td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td></tr>
         </table>
       </div>
 
@@ -421,10 +417,10 @@
       <div *ngIf="bulkAddYearSuccess" class="alert alert-success py-2 small">
         <i class="fa fa-check-circle me-1"></i><strong>{{ bulkAddYearSuccess }}</strong>
         <ul class="mb-0 mt-2 ps-3" *ngIf="bulkAddYearInserted.length">
-          <li *ngFor="let d of bulkAddYearInserted" class="text-success">✅ {{ d.region_name }} (ID: {{ d.region_id }}) — {{ d.records }} records added</li>
+          <li *ngFor="let d of bulkAddYearInserted" class="text-success">✅ {{ d.country_name }} — {{ d.records }} records added</li>
         </ul>
         <ul class="mb-0 mt-1 ps-3" *ngIf="bulkAddYearSkipped.length">
-          <li *ngFor="let d of bulkAddYearSkipped" class="text-warning">⚠️ {{ d.region_name }} (ID: {{ d.region_id }}) — {{ d.reason }}</li>
+          <li *ngFor="let d of bulkAddYearSkipped" class="text-warning">⚠️ {{ d.country_name }} — {{ d.reason }}</li>
         </ul>
       </div>
 
@@ -447,8 +443,8 @@
 
     <div class="modal-panel-header">
       <div>
-        <h5 class="fw-bold mb-0"><i class="fa fa-refresh me-2"></i>Bulk Replace Region Normals</h5>
-        <small class="text-white-50">Replace normals for multiple regions in one upload</small>
+        <h5 class="fw-bold mb-0"><i class="fa fa-refresh me-2"></i>Bulk Replace Country Normals</h5>
+        <small class="text-white-50">Replace normals for multiple countries in one upload</small>
       </div>
       <button class="btn btn-sm btn-close-white-custom" (click)="closeBulkReplaceModal()" [disabled]="isBulkReplaceUploading">
         <i class="fa fa-times"></i>
@@ -459,7 +455,7 @@
 
       <div class="alert alert-warning py-2 small mb-3">
         <i class="fa fa-exclamation-triangle me-1"></i>
-        <strong>Permanently replaces existing normals</strong> for every region in the file for the selected year.
+        <strong>Permanently replaces existing normals</strong> for every country in the file for the selected year.
       </div>
 
       <div class="mb-3">
@@ -474,10 +470,9 @@
       <div class="format-hint mb-3">
         <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;">
-          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">region_name</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
-          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">region_id</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
-          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td></tr>
-          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td><td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td></tr>
+          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">country_name</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
+          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td></tr>
+          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td><td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td></tr>
         </table>
       </div>
 
@@ -499,7 +494,7 @@
       <div *ngIf="bulkReplaceSuccess" class="alert alert-success py-2 small">
         <i class="fa fa-check-circle me-1"></i><strong>{{ bulkReplaceSuccess }}</strong>
         <ul class="mb-0 mt-2 ps-3" *ngIf="bulkReplaceDetails.length">
-          <li *ngFor="let d of bulkReplaceDetails">{{ d.region_name }} (ID: {{ d.region_id }}) — {{ d.records }} records replaced</li>
+          <li *ngFor="let d of bulkReplaceDetails">{{ d.country_name }} — {{ d.records }} records replaced</li>
         </ul>
       </div>
 

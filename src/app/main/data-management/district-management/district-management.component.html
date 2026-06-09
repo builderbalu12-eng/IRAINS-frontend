@@ -23,9 +23,9 @@
           <button class="btn btn-warning btn-sm fw-semibold" (click)="openBulkModal()">
             <i class="fa fa-refresh me-1"></i> Bulk Replace Normals
           </button>
-          <button class="btn btn-primary btn-sm fw-semibold" (click)="openAdd()">
+          <!-- <button class="btn btn-primary btn-sm fw-semibold" (click)="openAdd()">
             <i class="fa fa-plus-circle me-1"></i> Add District
-          </button>
+          </button> -->
         </div>
       </div>
 
@@ -43,6 +43,47 @@
         <button class="btn btn-sm btn-outline-danger ms-auto" (click)="loadDistricts()">
           <i class="fa fa-refresh me-1"></i> Retry
         </button>
+      </div>
+
+      <!-- Missing Normals Warning -->
+      <div *ngIf="!isLoading && !loadError" class="missing-card mb-3"
+           [class.missing-card-ok]="missingEntities.length === 0 && !missingLoading"
+           [class.missing-card-warn]="missingEntities.length > 0">
+        <div class="missing-header">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span *ngIf="missingLoading"><i class="fa fa-spinner fa-spin me-1"></i> Checking normals...</span>
+            <span *ngIf="!missingLoading && missingEntities.length === 0">
+              <i class="fa fa-check-circle me-1"></i> All districts have normals for <strong>{{ missingYear }}</strong>
+            </span>
+            <span *ngIf="!missingLoading && missingEntities.length > 0">
+              <i class="fa fa-exclamation-triangle me-1"></i>
+              <strong>{{ missingEntities.length }}</strong> district(s) missing normals for <strong>{{ missingYear }}</strong>
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-nowrap" style="flex-shrink:0">
+            <label class="small fw-semibold mb-0 text-nowrap">Check year:</label>
+            <select #missingYrSel class="form-select form-select-sm" style="width:90px" (change)="missingYear = +missingYrSel.value; onMissingYearChange()" [attr.disabled]="missingLoading ? '' : null">
+              <option *ngFor="let y of missingYearOptions" [value]="y" [selected]="y === missingYear">{{ y }}</option>
+            </select>
+            <button *ngIf="missingEntities.length > 0" class="btn btn-sm btn-link p-0 fw-semibold" (click)="missingExpanded = !missingExpanded">
+              {{ missingExpanded ? 'Hide' : 'Show all' }} <i class="fa" [class.fa-chevron-down]="!missingExpanded" [class.fa-chevron-up]="missingExpanded"></i>
+            </button>
+          </div>
+        </div>
+        <div *ngIf="missingExpanded && missingEntities.length > 0" class="missing-table-wrap">
+          <table class="missing-table">
+            <thead>
+              <tr><th>#</th><th>District Code</th><th>District Name</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let e of missingEntities; let i = index">
+                <td class="missing-num">{{ i + 1 }}</td>
+                <td class="missing-code">{{ e.district_code }}</td>
+                <td>{{ e.district_name }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- ── Toolbar ── -->
@@ -407,8 +448,8 @@
       <!-- Year selector -->
       <div class="mb-3">
         <label class="form-label fw-semibold small mb-1">Select Year to Replace</label>
-        <select class="form-select form-select-sm" [(ngModel)]="editNormalsYear" [disabled]="isEditNormalsUploading">
-          <option *ngFor="let y of editNormalsYearOptions" [value]="y">
+        <select #editYrSel class="form-select form-select-sm" (change)="editNormalsYear = +editYrSel.value" [attr.disabled]="isEditNormalsUploading ? '' : null">
+          <option *ngFor="let y of editNormalsYearOptions" [value]="y" [selected]="y === editNormalsYear">
             {{ y }}{{ y % 4 === 0 ? ' (Leap — 366 days)' : ' (365 days)' }}{{ y === currentYear ? ' — Current Year' : '' }}
           </option>
         </select>
@@ -517,7 +558,7 @@
       <div class="mb-3">
         <label class="form-label fw-semibold small mb-1">Select Year to Add</label>
         <select class="form-select form-select-sm" [(ngModel)]="bulkAddYearSelected" [disabled]="isBulkAddYearUploading">
-          <option *ngFor="let y of yearOptions" [value]="y">
+          <option *ngFor="let y of yearOptions" [ngValue]="y">
             {{ y }}{{ y % 4 === 0 ? ' (Leap — 366 days)' : ' (365 days)' }}
           </option>
         </select>
@@ -602,7 +643,7 @@
       <div class="mb-3">
         <label class="form-label fw-semibold small mb-1">Select Year</label>
         <select class="form-select form-select-sm" [(ngModel)]="addYearSelected" [disabled]="addYearUploading">
-          <option *ngFor="let y of yearOptions" [value]="y">
+          <option *ngFor="let y of yearOptions" [ngValue]="y">
             {{ y }}{{ y % 4 === 0 ? ' (Leap — 366 days)' : ' (365 days)' }}
           </option>
         </select>
@@ -729,7 +770,7 @@
       <div class="mb-3">
         <label class="form-label fw-semibold small mb-1">Select Year</label>
         <select class="form-select form-select-sm" [(ngModel)]="bulkYear" [disabled]="isBulkUploading">
-          <option *ngFor="let y of bulkYearOptions" [value]="y">
+          <option *ngFor="let y of bulkYearOptions" [ngValue]="y">
             {{ y }}{{ y % 4 === 0 ? ' (Leap — 366 days)' : ' (365 days)' }}
           </option>
         </select>

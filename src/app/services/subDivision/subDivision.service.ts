@@ -86,4 +86,39 @@ export class SubdivisionService {
   fetchSubDivisionDistrictCount(data: any): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchSubDivisionDistrictCount`, data);
   }
+
+  // ── Subdivision Normals Management ──────────────────────────────────────────
+  getSubdivisionNormalList(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getSubdivisionNormalList`);
+  }
+
+  getSubdivisionNormals(sub_division_code: number, year: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getSubdivisionNormals/${sub_division_code}?year=${year}`);
+  }
+
+  downloadSubdivisionNormalTemplate(sub_division_code: number): string {
+    return `${this.baseUrl}/api/v1/downloadSubdivisionNormalTemplate/${sub_division_code}`;
+  }
+
+  replaceSubdivisionNormals(sub_division_code: number, formData: FormData, year: number): Observable<any> {
+    formData.append('year', year.toString());
+    return this.http.put<any>(`${this.baseUrl}/api/v1/replaceSubdivisionNormals/${sub_division_code}`, formData);
+  }
+
+  addSubdivisionYearNormals(sub_division_code: number, formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/addSubdivisionYearNormals/${sub_division_code}`, formData);
+  }
+
+  bulkReplaceSubdivisionNormals(formData: FormData, year: number): Observable<any> {
+    formData.append('year', year.toString());
+    return this.http.put<any>(`${this.baseUrl}/api/v1/bulkReplaceSubdivisionNormals`, formData);
+  }
+
+  bulkAddSubdivisionYearNormals(formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/bulkAddSubdivisionYearNormals`, formData);
+  }
+
+  getMissingSubdivisionNormals(year: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getMissingSubdivisionNormals?year=${year}`);
+  }
 }

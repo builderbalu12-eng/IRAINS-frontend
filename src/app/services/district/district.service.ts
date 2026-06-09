@@ -90,4 +90,8 @@ export class DistrictService {
   bulkAddYearDistrictNormals(formData: FormData): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/bulkAddYearDistrictNormals`, formData);
   }
+
+  getMissingDistrictNormals(year: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getMissingDistrictNormals?year=${year}`);
+  }
 }

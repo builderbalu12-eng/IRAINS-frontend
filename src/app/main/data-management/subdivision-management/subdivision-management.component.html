@@ -1,85 +1,515 @@
-<div class="page-wrap">
-  <div class="page-header mb-4 d-flex justify-content-between align-items-center">
-    <div>
-      <h4 class="mb-1"><i class="bi bi-diagram-3-fill me-2 text-primary"></i>Subdivision Management</h4>
-      <small class="text-muted">Manage subdivision records — {{ subdivisions.length }} total</small>
-    </div>
-    <button class="btn btn-primary" (click)="openAdd()">
-      <i class="bi bi-plus-circle me-1"></i>Add Subdivision
-    </button>
-  </div>
+<div class="dm-page-wrap">
+  <div class="dm-page-inner">
+    <div class="main-card shadow-lg rounded-4 bg-white p-4">
 
-  <div class="card shadow-sm">
-    <div class="card-header">
-      <input type="text" class="form-control form-control-sm w-auto d-inline-block"
-             placeholder="Search subdivisions..." [(ngModel)]="searchText" />
-      <span class="text-muted small ms-3">{{ filtered.length }} results</span>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-dark">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+          <h5 class="fw-bold mb-1 page-title">
+            <i class="fa fa-sitemap me-2"></i>Subdivision Management
+          </h5>
+          <small class="text-muted">
+            <i class="fa fa-info-circle me-1"></i>
+            {{ subdivisions.length }} subdivisions loaded — click a row to view normal rainfall data
+          </small>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <a [href]="subdivisionService.downloadSubdivisionNormalTemplate(0)" class="btn btn-outline-success btn-sm fw-semibold">
+            <i class="fa fa-download me-1"></i> Sample Excel
+          </a>
+          <button class="btn btn-success btn-sm fw-semibold" (click)="openBulkAddYear()">
+            <i class="fa fa-calendar-plus-o me-1"></i> Bulk Add Previous Year Normals
+          </button>
+          <button class="btn btn-warning btn-sm fw-semibold" (click)="openBulkReplace()">
+            <i class="fa fa-refresh me-1"></i> Bulk Replace Normals
+          </button>
+        </div>
+      </div>
+
+      <!-- Loader -->
+      <div *ngIf="isLoading" class="text-center py-5 text-muted">
+        <i class="fa fa-spinner fa-pulse fa-2x"></i>
+        <p class="mt-3">Loading subdivisions...</p>
+      </div>
+      <div *ngIf="loadError" class="alert alert-danger small">{{ loadError }}</div>
+
+      <!-- Missing Normals Warning -->
+      <div *ngIf="!isLoading && !loadError" class="missing-card mb-3"
+           [class.missing-card-ok]="missingEntities.length === 0 && !missingLoading"
+           [class.missing-card-warn]="missingEntities.length > 0">
+        <div class="missing-header">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span *ngIf="missingLoading"><i class="fa fa-spinner fa-spin me-1"></i> Checking normals...</span>
+            <span *ngIf="!missingLoading && missingEntities.length === 0">
+              <i class="fa fa-check-circle me-1"></i> All subdivisions have normals for <strong>{{ missingYear }}</strong>
+            </span>
+            <span *ngIf="!missingLoading && missingEntities.length > 0">
+              <i class="fa fa-exclamation-triangle me-1"></i>
+              <strong>{{ missingEntities.length }}</strong> subdivision(s) missing normals for <strong>{{ missingYear }}</strong>
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-nowrap" style="flex-shrink:0">
+            <label class="small fw-semibold mb-0 text-nowrap">Check year:</label>
+            <select #missingYrSel class="form-select form-select-sm" style="width:90px" (change)="missingYear = +missingYrSel.value; onMissingYearChange()" [attr.disabled]="missingLoading ? '' : null">
+              <option *ngFor="let y of viewYearOptions" [value]="y" [selected]="y === missingYear">{{ y }}</option>
+            </select>
+            <button *ngIf="missingEntities.length > 0" class="btn btn-sm btn-link p-0 fw-semibold" (click)="missingExpanded = !missingExpanded">
+              {{ missingExpanded ? 'Hide' : 'Show all' }} <i class="fa" [class.fa-chevron-down]="!missingExpanded" [class.fa-chevron-up]="missingExpanded"></i>
+            </button>
+          </div>
+        </div>
+        <div *ngIf="missingExpanded && missingEntities.length > 0" class="missing-table-wrap">
+          <table class="missing-table">
+            <thead>
+              <tr><th>#</th><th>Code</th><th>Subdivision Name</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let e of missingEntities; let i = index">
+                <td class="missing-num">{{ i + 1 }}</td>
+                <td class="missing-code">{{ e.sub_division_code }}</td>
+                <td>{{ e.sub_division_name }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Search + count -->
+      <div *ngIf="!isLoading && !loadError" class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <div class="search-box" style="width:280px">
+          <i class="fa fa-search search-icon"></i>
+          <input type="text" class="form-control search-input" placeholder="Search subdivision name or code..."
+                 [(ngModel)]="searchText" />
+        </div>
+        <span class="text-muted small fw-semibold">
+          <i class="fa fa-list me-1"></i>{{ filtered.length }} / {{ subdivisions.length }} subdivisions
+        </span>
+      </div>
+
+      <!-- Table -->
+      <div *ngIf="!isLoading && !loadError" class="table-scroll" style="max-height:calc(100vh - 280px)">
+        <table class="table table-sm table-hover table-bordered align-middle mb-0">
+          <thead class="table-head">
             <tr>
-              <th>Code</th><th>Subdivision Name</th><th>Region</th><th>Status</th><th class="text-end">Actions</th>
+              <th style="width:140px">Code</th>
+              <th>Subdivision Name</th>
+              <th style="width:120px" class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let sub of filtered">
-              <td><code>{{ sub.code }}</code></td>
-              <td class="fw-semibold">{{ sub.name }}</td>
-              <td class="text-muted">{{ sub.regionName }}</td>
-              <td><span class="badge" [ngClass]="sub.active ? 'bg-success' : 'bg-secondary'">{{ sub.active ? 'Active' : 'Inactive' }}</span></td>
-              <td class="text-end">
-                <button class="btn btn-sm btn-outline-primary me-1" (click)="openEdit(sub)"><i class="bi bi-pencil"></i></button>
-                <button class="btn btn-sm btn-outline-danger" (click)="delete(sub)"><i class="bi bi-trash"></i></button>
+            <tr *ngFor="let sd of filtered" style="cursor:pointer" (click)="openNormals(sd)">
+              <td class="fw-semibold text-primary" style="font-family:monospace">{{ sd.sub_division_code }}</td>
+              <td class="fw-semibold">{{ sd.sub_division_name }}</td>
+              <td class="text-center" (click)="$event.stopPropagation()">
+                <button class="btn btn-sm btn-outline-success" (click)="openAddYear(sd)" title="Add Previous Year Normals">
+                  <i class="fa fa-calendar-plus-o"></i>
+                </button>
               </td>
             </tr>
-            <tr *ngIf="filtered.length === 0">
-              <td colspan="5" class="text-center text-muted py-5"><i class="bi bi-search me-2"></i>No subdivisions found</td>
+            <tr *ngIf="filtered.length === 0 && !isLoading">
+              <td colspan="3" class="text-center text-muted py-5">
+                <i class="fa fa-search me-2"></i>No subdivisions found<span *ngIf="searchText"> matching "<strong>{{ searchText }}</strong>"</span>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
+
     </div>
   </div>
 </div>
 
-<!-- Modal -->
-<div class="modal-backdrop-custom" *ngIf="showModal" (click)="closeModal()">
-  <div class="modal-card" (click)="$event.stopPropagation()">
-    <div class="modal-card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>{{ isEditing ? 'Edit Subdivision' : 'Add Subdivision' }}</h5>
-      <button class="btn-close btn-close-white" (click)="closeModal()"></button>
+
+<!-- ══ Normals Popup ══════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop-custom" *ngIf="showNormalsModal" (click)="closeNormalsModal()">
+  <div class="modal-panel-custom modal-panel-lg" (click)="$event.stopPropagation()">
+
+    <div class="modal-panel-header">
+      <div>
+        <h5 class="fw-bold mb-0"><i class="fa fa-bar-chart me-2"></i>{{ normalsEntity?.sub_division_name }}</h5>
+        <small class="text-white-50">Code: {{ normalsEntity?.sub_division_code }}</small>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <button class="btn btn-sm btn-warning fw-semibold" (click)="openReplace(normalsEntity!)">
+          <i class="fa fa-pencil me-1"></i> Replace Normals
+        </button>
+        <button class="btn btn-sm btn-close-white-custom" (click)="closeNormalsModal()">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
     </div>
-    <div class="modal-card-body">
-      <form [formGroup]="form">
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label class="form-label fw-bold">Code <span class="text-danger">*</span></label>
-            <input class="form-control" formControlName="code" placeholder="e.g. SUB001" />
-          </div>
-          <div class="col-md-8">
-            <label class="form-label fw-bold">Subdivision Name <span class="text-danger">*</span></label>
-            <input class="form-control" formControlName="name" placeholder="Subdivision name" />
-          </div>
-          <div class="col-12">
-            <label class="form-label fw-bold">Region <span class="text-danger">*</span></label>
-            <input class="form-control" formControlName="regionName" placeholder="Region name" />
-          </div>
-          <div class="col-12">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" formControlName="active" id="activeCheck" />
-              <label class="form-check-label" for="activeCheck">Active</label>
-            </div>
+
+    <div class="modal-panel-body">
+
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="summary-bar">
+          <span class="text-primary fw-bold"><i class="fa fa-calendar me-1"></i>{{ normals.length }} records</span>
+          <span class="divider-dot">•</span>
+          <span class="text-muted">daily normal rainfall</span>
+          <span *ngIf="normalsYearLabel" class="divider-dot">•</span>
+          <span *ngIf="normalsYearLabel" class="badge bg-secondary fw-semibold" style="font-size:0.8rem">Year: {{ normalsYearLabel }}</span>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          <select class="form-select form-select-sm" style="width:auto" [(ngModel)]="normalsYear" (change)="onNormalsYearChange()">
+            <option *ngFor="let y of viewYearOptions" [ngValue]="y">{{ y }}</option>
+          </select>
+          <div class="search-box" style="width:180px">
+            <i class="fa fa-search search-icon"></i>
+            <input type="text" class="form-control search-input" placeholder="Filter by date..." [(ngModel)]="normalsSearch" />
           </div>
         </div>
-      </form>
+      </div>
+
+      <div *ngIf="normalsLoading" class="text-center py-4 text-muted">
+        <i class="fa fa-spinner fa-pulse fa-2x"></i><p class="mt-2">Loading normals...</p>
+      </div>
+      <div *ngIf="normalsError && !normalsLoading" class="alert alert-danger py-2 small">{{ normalsError }}</div>
+
+      <div *ngIf="!normalsLoading && !normalsError">
+        <div *ngIf="normals.length === 0" class="text-center text-muted py-5">
+          <i class="fa fa-inbox fa-2x mb-2" style="color:#ccc"></i>
+          <p>No normals found for {{ normalsYear }}</p>
+        </div>
+        <div *ngIf="normals.length > 0" class="table-scroll" style="max-height:420px">
+          <table class="table table-sm table-hover table-bordered align-middle mb-0">
+            <thead class="table-head">
+              <tr>
+                <th>Date</th>
+                <th class="text-end">Rainfall (mm)</th>
+                <th class="text-end">Cumulative (mm)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let n of filteredNormals">
+                <td style="font-family:monospace">{{ n.date | date:'dd MMM yyyy' }}</td>
+                <td class="text-end">{{ n.rainfall_value }}</td>
+                <td class="text-end">{{ n.cumulative_rainfall_value }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    <div class="modal-card-footer d-flex gap-2 justify-content-end">
-      <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
-      <button class="btn btn-primary px-4" [disabled]="form.invalid || isSaving" (click)="save()">
-        <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
-        {{ isSaving ? 'Saving...' : (isEditing ? 'Update' : 'Add Subdivision') }}
+
+  </div>
+</div>
+
+
+<!-- ══ Replace Normals Modal ══════════════════════════════════════════════════ -->
+<div class="modal-backdrop-custom" *ngIf="showReplaceModal" (click)="closeReplaceModal()">
+  <div class="modal-panel-custom" (click)="$event.stopPropagation()">
+
+    <div class="modal-panel-header">
+      <div>
+        <h5 class="fw-bold mb-0"><i class="fa fa-refresh me-2"></i>Replace Subdivision Normals</h5>
+        <small class="text-white-50">{{ normalsEntity?.sub_division_name }} &nbsp;·&nbsp; Code: {{ normalsEntity?.sub_division_code }}</small>
+      </div>
+      <button class="btn btn-sm btn-close-white-custom" (click)="closeReplaceModal()" [disabled]="isReplaceUploading">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-panel-body">
+
+      <div class="alert alert-warning py-2 small mb-3">
+        <i class="fa fa-exclamation-triangle me-1"></i>
+        <strong>Replaces normals for 1 subdivision only</strong> — {{ normalsEntity?.sub_division_name }}.
+        Your Excel must have <strong>exactly 1 data row</strong>. Only the first row is read.
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold small mb-1">Select Year to Replace</label>
+        <select class="form-select form-select-sm" [(ngModel)]="replaceYear" [disabled]="isReplaceUploading">
+          <option *ngFor="let y of replaceYearOptions" [ngValue]="y">
+            {{ y }}{{ isLeapYear(y) ? ' (Leap — 366 days)' : ' (365 days)' }}{{ y === currentYear ? ' — Current Year' : '' }}
+          </option>
+        </select>
+      </div>
+
+      <div class="format-hint mb-3">
+        <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">sub_division_name / sub_division_code</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">❌ Not needed — subdivision is <strong>{{ normalsEntity?.sub_division_name }}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td>
+          </tr>
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td>
+          </tr>
+        </table>
+        <div class="mt-2 small text-muted">
+          <a [href]="subdivisionService.downloadSubdivisionNormalTemplate(normalsEntity!.sub_division_code)" class="fw-semibold text-warning">
+            <i class="fa fa-download me-1"></i>Download Template for {{ normalsEntity?.sub_division_name }}
+          </a>
+        </div>
+      </div>
+
+      <div class="drop-zone mb-3" [class.drop-zone-ready]="replaceFile && !replaceFileError" (click)="replaceInput.click()">
+        <i class="fa fa-cloud-upload fa-2x mb-2" [class.text-success]="replaceFile" [class.text-muted]="!replaceFile"></i>
+        <p class="mb-1 fw-semibold">
+          <span *ngIf="!replaceFile">Click to browse <strong>.xlsx / .xls</strong></span>
+          <span *ngIf="replaceFile" class="text-success"><i class="fa fa-check-circle me-1"></i>{{ replaceFile.name }}</span>
+        </p>
+        <small class="text-muted" *ngIf="!replaceFile">
+          Normals for {{ replaceYear }}
+          <span *ngIf="isLeapYear(replaceYear)" class="badge bg-info ms-1" style="font-size:10px">Leap — include 02-29</span>
+        </small>
+        <input #replaceInput type="file" accept=".xlsx,.xls" style="display:none" (change)="onReplaceFileChange($event)" [disabled]="isReplaceUploading" />
+      </div>
+
+      <div *ngIf="replaceFileError" class="alert alert-danger py-2 small"><i class="fa fa-exclamation-triangle me-1"></i>{{ replaceFileError }}</div>
+      <div *ngIf="replaceError"     class="alert alert-danger py-2 small"><i class="fa fa-exclamation-triangle me-1"></i>{{ replaceError }}</div>
+      <div *ngIf="replaceSuccess"   class="alert alert-success py-2 small"><i class="fa fa-check-circle me-1"></i>{{ replaceSuccess }}</div>
+
+    </div>
+
+    <div class="modal-panel-footer">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeReplaceModal()" [disabled]="isReplaceUploading">Cancel</button>
+      <button class="btn btn-sm btn-warning fw-semibold" (click)="submitReplace()" [disabled]="isReplaceUploading || !replaceFile">
+        <span *ngIf="isReplaceUploading"><i class="fa fa-spinner fa-spin me-1"></i> Replacing...</span>
+        <span *ngIf="!isReplaceUploading"><i class="fa fa-refresh me-1"></i> Replace Normals</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ Add Previous Year Modal ════════════════════════════════════════════════ -->
+<div class="modal-backdrop-custom" *ngIf="showAddYearModal" (click)="closeAddYearModal()">
+  <div class="modal-panel-custom" (click)="$event.stopPropagation()">
+
+    <div class="modal-panel-header">
+      <div>
+        <h5 class="fw-bold mb-0"><i class="fa fa-calendar-plus-o me-2"></i>Add Previous Year Normals</h5>
+        <small class="text-white-50">{{ normalsEntity?.sub_division_name }} &nbsp;·&nbsp; Code: {{ normalsEntity?.sub_division_code }}</small>
+      </div>
+      <button class="btn btn-sm btn-close-white-custom" (click)="closeAddYearModal()" [disabled]="isAddYearUploading">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-panel-body">
+
+      <div class="alert alert-info py-2 small mb-3">
+        <i class="fa fa-info-circle me-1"></i>
+        <strong>This adds normals for 1 subdivision only</strong> — {{ normalsEntity?.sub_division_name }}.
+        Your Excel must have <strong>exactly 1 data row</strong>. If normals for the selected year already exist, upload will be <strong>rejected</strong>.
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold small mb-1">Select Year to Add</label>
+        <select class="form-select form-select-sm" [(ngModel)]="addYearSelected" [disabled]="isAddYearUploading">
+          <option *ngFor="let y of addYearOptions" [ngValue]="y">
+            {{ y }}{{ isLeapYear(y) ? ' (Leap — 366 days)' : ' (365 days)' }}
+          </option>
+        </select>
+      </div>
+
+      <div class="format-hint mb-3">
+        <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">sub_division_name / sub_division_code</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">❌ Not needed — subdivision is <strong>{{ normalsEntity?.sub_division_name }}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td>
+          </tr>
+          <tr style="background:#fef3c7">
+            <td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td>
+            <td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td>
+          </tr>
+        </table>
+        <div class="mt-2 small text-muted">
+          <a [href]="subdivisionService.downloadSubdivisionNormalTemplate(normalsEntity!.sub_division_code)" class="fw-semibold text-warning">
+            <i class="fa fa-download me-1"></i>Download Template for {{ normalsEntity?.sub_division_name }}
+          </a>
+        </div>
+      </div>
+
+      <div class="drop-zone mb-3" [class.drop-zone-ready]="addYearFile && !addYearFileError" (click)="addYearInput.click()">
+        <i class="fa fa-cloud-upload fa-2x mb-2" [class.text-success]="addYearFile" [class.text-muted]="!addYearFile"></i>
+        <p class="mb-1 fw-semibold">
+          <span *ngIf="!addYearFile">Click to browse <strong>.xlsx / .xls</strong></span>
+          <span *ngIf="addYearFile" class="text-success"><i class="fa fa-check-circle me-1"></i>{{ addYearFile.name }}</span>
+        </p>
+        <small class="text-muted" *ngIf="!addYearFile">
+          Normals for {{ addYearSelected }}
+          <span *ngIf="isLeapYear(addYearSelected)" class="badge bg-info ms-1" style="font-size:10px">Leap — include 02-29</span>
+        </small>
+        <input #addYearInput type="file" accept=".xlsx,.xls" style="display:none" (change)="onAddYearFileChange($event)" [disabled]="isAddYearUploading" />
+      </div>
+
+      <div *ngIf="addYearFileError" class="alert alert-danger py-2 small"><i class="fa fa-exclamation-triangle me-1"></i>{{ addYearFileError }}</div>
+      <div *ngIf="addYearError"     class="alert alert-danger py-2 small"><i class="fa fa-exclamation-triangle me-1"></i>{{ addYearError }}</div>
+      <div *ngIf="addYearSuccess"   class="alert alert-success py-2 small"><i class="fa fa-check-circle me-1"></i>{{ addYearSuccess }}</div>
+
+    </div>
+
+    <div class="modal-panel-footer">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeAddYearModal()" [disabled]="isAddYearUploading">Cancel</button>
+      <button class="btn btn-sm btn-success fw-semibold" (click)="submitAddYear()" [disabled]="isAddYearUploading || !addYearFile">
+        <span *ngIf="isAddYearUploading"><i class="fa fa-spinner fa-spin me-1"></i> Adding...</span>
+        <span *ngIf="!isAddYearUploading"><i class="fa fa-plus me-1"></i> Add {{ addYearSelected }} Normals</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ Bulk Add Previous Year Normals Modal ═══════════════════════════════════ -->
+<div class="modal-backdrop-custom" *ngIf="showBulkAddYearModal" (click)="closeBulkAddYearModal()">
+  <div class="modal-panel-custom" (click)="$event.stopPropagation()">
+
+    <div class="modal-panel-header">
+      <div>
+        <h5 class="fw-bold mb-0"><i class="fa fa-calendar-plus-o me-2"></i>Bulk Add Previous Year Normals</h5>
+        <small class="text-white-50">Add normals for a previous year across multiple subdivisions — skips if already exists</small>
+      </div>
+      <button class="btn btn-sm btn-close-white-custom" (click)="closeBulkAddYearModal()" [disabled]="isBulkAddYearUploading">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-panel-body">
+
+      <div class="alert alert-info py-2 small mb-3">
+        <i class="fa fa-info-circle me-1"></i>
+        <strong>Non-destructive</strong> — subdivisions that already have normals for the selected year are <strong>skipped</strong>, not overwritten.
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold small mb-1">Select Year to Add</label>
+        <select class="form-select form-select-sm" [(ngModel)]="bulkAddYearSelected" [disabled]="isBulkAddYearUploading">
+          <option *ngFor="let y of bulkAddYearOptions" [ngValue]="y">
+            {{ y }}{{ isLeapYear(y) ? ' (Leap — 366 days)' : ' (365 days)' }}
+          </option>
+        </select>
+      </div>
+
+      <div class="format-hint mb-3">
+        <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">sub_division_name</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
+          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">sub_division_code</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
+          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td></tr>
+          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td><td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td></tr>
+        </table>
+      </div>
+
+      <div class="drop-zone mb-3" [class.drop-zone-ready]="bulkAddYearFile && !bulkAddYearFileError" (click)="bulkAddYearInput.click()">
+        <i class="fa fa-cloud-upload fa-2x mb-2" [class.text-success]="bulkAddYearFile" [class.text-muted]="!bulkAddYearFile"></i>
+        <p class="mb-1 fw-semibold">
+          <span *ngIf="!bulkAddYearFile">Click to browse <strong>.xlsx / .xls</strong></span>
+          <span *ngIf="bulkAddYearFile" class="text-success"><i class="fa fa-check-circle me-1"></i>{{ bulkAddYearFile.name }}</span>
+        </p>
+        <small class="text-muted" *ngIf="!bulkAddYearFile">
+          Combined Excel · {{ bulkAddYearSelected }}
+          <span *ngIf="isLeapYear(bulkAddYearSelected)" class="badge bg-info ms-1" style="font-size:10px">Leap — include 02-29</span>
+        </small>
+        <input #bulkAddYearInput type="file" accept=".xlsx,.xls" style="display:none" (change)="onBulkAddYearFileChange($event)" [disabled]="isBulkAddYearUploading" />
+      </div>
+
+      <div *ngIf="bulkAddYearFileError" class="alert alert-danger py-2 small"><i class="fa fa-exclamation-triangle me-1"></i>{{ bulkAddYearFileError }}</div>
+      <div *ngIf="bulkAddYearError"     class="alert alert-danger py-2 small"><i class="fa fa-exclamation-triangle me-1"></i>{{ bulkAddYearError }}</div>
+      <div *ngIf="bulkAddYearSuccess" class="alert alert-success py-2 small">
+        <i class="fa fa-check-circle me-1"></i><strong>{{ bulkAddYearSuccess }}</strong>
+        <ul class="mb-0 mt-2 ps-3" *ngIf="bulkAddYearInserted.length">
+          <li *ngFor="let d of bulkAddYearInserted" class="text-success">✅ {{ d.sub_division_name }} ({{ d.sub_division_code }}) — {{ d.records }} records added</li>
+        </ul>
+        <ul class="mb-0 mt-1 ps-3" *ngIf="bulkAddYearSkipped.length">
+          <li *ngFor="let d of bulkAddYearSkipped" class="text-warning">⚠️ {{ d.sub_division_name }} ({{ d.sub_division_code }}) — {{ d.reason }}</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="modal-panel-footer">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeBulkAddYearModal()" [disabled]="isBulkAddYearUploading">Cancel</button>
+      <button class="btn btn-sm btn-success fw-semibold" (click)="submitBulkAddYear()" [disabled]="isBulkAddYearUploading || !bulkAddYearFile">
+        <span *ngIf="isBulkAddYearUploading"><i class="fa fa-spinner fa-spin me-1"></i> Adding...</span>
+        <span *ngIf="!isBulkAddYearUploading"><i class="fa fa-plus me-1"></i> Add {{ bulkAddYearSelected }} Normals</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ Bulk Replace Normals Modal ══════════════════════════════════════════════ -->
+<div class="modal-backdrop-custom" *ngIf="showBulkReplaceModal" (click)="closeBulkReplaceModal()">
+  <div class="modal-panel-custom" (click)="$event.stopPropagation()">
+
+    <div class="modal-panel-header">
+      <div>
+        <h5 class="fw-bold mb-0"><i class="fa fa-refresh me-2"></i>Bulk Replace Subdivision Normals</h5>
+        <small class="text-white-50">Replace normals for multiple subdivisions in one upload</small>
+      </div>
+      <button class="btn btn-sm btn-close-white-custom" (click)="closeBulkReplaceModal()" [disabled]="isBulkReplaceUploading">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-panel-body">
+
+      <div class="alert alert-warning py-2 small mb-3">
+        <i class="fa fa-exclamation-triangle me-1"></i>
+        <strong>Permanently replaces existing normals</strong> for every subdivision in the file for the selected year.
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold small mb-1">Select Year to Replace</label>
+        <select class="form-select form-select-sm" [(ngModel)]="bulkReplaceYear" [disabled]="isBulkReplaceUploading">
+          <option *ngFor="let y of bulkReplaceYearOptions" [ngValue]="y">
+            {{ y }}{{ isLeapYear(y) ? ' (Leap — 366 days)' : ' (365 days)' }}{{ y === currentYear ? ' — Current Year' : '' }}
+          </option>
+        </select>
+      </div>
+
+      <div class="format-hint mb-3">
+        <div class="fw-bold mb-2" style="color:#92400e"><i class="fa fa-table me-1"></i> Required Excel Columns</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">sub_division_name</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
+          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">sub_division_code</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Required</td></tr>
+          <tr style="background:#fef3c7"><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">01-01 → 12-31</td><td style="padding:4px 8px;border:1px solid #fde68a">✅ Cumulative normal rainfall (mm). Resets at Jan 1, Mar 1, Jun 1, Oct 1</td></tr>
+          <tr><td style="padding:4px 8px;border:1px solid #fde68a;font-weight:600">02-29</td><td style="padding:4px 8px;border:1px solid #fde68a">⚠️ Leap year only — place after 02-28 in February</td></tr>
+        </table>
+      </div>
+
+      <div class="drop-zone mb-3" [class.drop-zone-ready]="bulkReplaceFile && !bulkReplaceFileError" (click)="bulkReplaceInput.click()">
+        <i class="fa fa-cloud-upload fa-2x mb-2" [class.text-success]="bulkReplaceFile" [class.text-muted]="!bulkReplaceFile"></i>
+        <p class="mb-1 fw-semibold">
+          <span *ngIf="!bulkReplaceFile">Click to browse <strong>.xlsx / .xls</strong></span>
+          <span *ngIf="bulkReplaceFile" class="text-success"><i class="fa fa-check-circle me-1"></i>{{ bulkReplaceFile.name }}</span>
+        </p>
+        <small class="text-muted" *ngIf="!bulkReplaceFile">
+          Combined Excel · {{ bulkReplaceYear }}
+          <span *ngIf="isLeapYear(bulkReplaceYear)" class="badge bg-info ms-1" style="font-size:10px">Leap — include 02-29</span>
+        </small>
+        <input #bulkReplaceInput type="file" accept=".xlsx,.xls" style="display:none" (change)="onBulkReplaceFileChange($event)" [disabled]="isBulkReplaceUploading" />
+      </div>
+
+      <div *ngIf="bulkReplaceFileError" class="alert alert-danger py-2 small"><i class="fa fa-exclamation-triangle me-1"></i>{{ bulkReplaceFileError }}</div>
+      <div *ngIf="bulkReplaceError"     class="alert alert-danger py-2 small"><i class="fa fa-exclamation-triangle me-1"></i>{{ bulkReplaceError }}</div>
+      <div *ngIf="bulkReplaceSuccess" class="alert alert-success py-2 small">
+        <i class="fa fa-check-circle me-1"></i><strong>{{ bulkReplaceSuccess }}</strong>
+        <ul class="mb-0 mt-2 ps-3" *ngIf="bulkReplaceDetails.length">
+          <li *ngFor="let d of bulkReplaceDetails">{{ d.sub_division_name }} ({{ d.sub_division_code }}) — {{ d.records }} records replaced</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="modal-panel-footer">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeBulkReplaceModal()" [disabled]="isBulkReplaceUploading">Cancel</button>
+      <button class="btn btn-sm btn-warning fw-semibold" (click)="submitBulkReplace()" [disabled]="isBulkReplaceUploading || !bulkReplaceFile">
+        <span *ngIf="isBulkReplaceUploading"><i class="fa fa-spinner fa-spin me-1"></i> Replacing...</span>
+        <span *ngIf="!isBulkReplaceUploading"><i class="fa fa-refresh me-1"></i> Replace Normals</span>
       </button>
     </div>
   </div>

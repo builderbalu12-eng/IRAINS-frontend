@@ -114,9 +114,15 @@ export class StateManagementComponent implements OnInit {
     return Array.from({ length: 10 }, (_, i) => this.currentYear - i - 1);
   }
 
+  // ── Missing Normals ──────────────────────────────────────────────────────────
+  missingEntities: any[] = [];
+  missingYear: number = this.currentYear;
+  missingLoading = false;
+  missingExpanded = false;
+
   constructor(public stateService: StateService) {}
 
-  ngOnInit(): void { this.loadStates(); }
+  ngOnInit(): void { this.loadStates(); this.loadMissingNormals(); }
 
   loadStates(): void {
     this.isLoading = true;
@@ -322,4 +328,15 @@ export class StateManagementComponent implements OnInit {
   closeBulkAddYearModal(): void { if (!this.isBulkAddYearUploading) this.showBulkAddYearModal = false; }
 
   isLeapYear(y: number): boolean { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+
+  loadMissingNormals(): void {
+    this.missingLoading = true;
+    this.missingExpanded = false;
+    this.stateService.getMissingStateNormals(this.missingYear).subscribe({
+      next: (res) => { this.missingEntities = res.data ?? []; this.missingLoading = false; },
+      error: () => { this.missingEntities = []; this.missingLoading = false; }
+    });
+  }
+
+  onMissingYearChange(): void { this.loadMissingNormals(); }
 }

@@ -1,10 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { SubdivisionService } from 'src/app/services/subDivision/subDivision.service';
+import { CountryService } from 'src/app/services/country/country.service';
 
-interface SubdivisionNormal {
-  sub_division_code: number;
-  sub_division_name: string;
-  sub_division_id: number;
+interface CountryNormal {
+  country_name: string;
 }
 
 interface NormalRecord {
@@ -14,30 +12,27 @@ interface NormalRecord {
 }
 
 @Component({
-  selector: 'app-subdivision-management',
-  templateUrl: './subdivision-management.component.html',
-  styleUrls: ['./subdivision-management.component.css']
+  selector: 'app-country-management',
+  templateUrl: './country-management.component.html',
+  styleUrls: ['./country-management.component.css']
 })
-export class SubdivisionManagementComponent implements OnInit {
+export class CountryManagementComponent implements OnInit {
 
   readonly currentYear = new Date().getFullYear();
 
-  subdivisions: SubdivisionNormal[] = [];
+  countries: CountryNormal[] = [];
   isLoading = false;
   loadError = '';
   searchText = '';
 
-  get filtered(): SubdivisionNormal[] {
+  get filtered(): CountryNormal[] {
     const s = this.searchText.toLowerCase();
-    if (!s) return this.subdivisions;
-    return this.subdivisions.filter(sd =>
-      sd.sub_division_name?.toLowerCase().includes(s) ||
-      sd.sub_division_code?.toString().includes(s)
-    );
+    if (!s) return this.countries;
+    return this.countries.filter(c => c.country_name?.toLowerCase().includes(s));
   }
 
   showNormalsModal = false;
-  normalsEntity: SubdivisionNormal | null = null;
+  normalsEntity: CountryNormal | null = null;
   normals: NormalRecord[] = [];
   normalsLoading = false;
   normalsError = '';
@@ -115,47 +110,47 @@ export class SubdivisionManagementComponent implements OnInit {
   missingLoading = false;
   missingExpanded = false;
 
-  constructor(public subdivisionService: SubdivisionService) {}
+  constructor(public countryService: CountryService) {}
 
-  ngOnInit(): void { this.loadSubdivisions(); this.loadMissingNormals(); }
+  ngOnInit(): void { this.loadCountries(); this.loadMissingNormals(); }
 
-  loadSubdivisions(): void {
+  loadCountries(): void {
     this.isLoading = true;
     this.loadError = '';
-    this.subdivisionService.getSubdivisionNormalList().subscribe({
-      next: (res) => { this.subdivisions = res.data ?? []; this.isLoading = false; },
-      error: () => { this.loadError = 'Failed to load subdivisions.'; this.isLoading = false; }
+    this.countryService.getCountryNormalList().subscribe({
+      next: (res) => { this.countries = res.data ?? []; this.isLoading = false; },
+      error: () => { this.loadError = 'Failed to load countries.'; this.isLoading = false; }
     });
   }
 
-  openNormals(sd: SubdivisionNormal): void {
-    this.normalsEntity = sd;
+  openNormals(c: CountryNormal): void {
+    this.normalsEntity = c;
     this.normalsYear   = this.currentYear;
     this.normals       = [];
     this.normalsError  = '';
     this.normalsSearch = '';
     this.showNormalsModal = true;
-    this.fetchNormals(sd.sub_division_code, this.normalsYear);
+    this.fetchNormals(c.country_name, this.normalsYear);
   }
 
-  fetchNormals(sub_division_code: number, year: number): void {
+  fetchNormals(country_name: string, year: number): void {
     this.normalsLoading = true;
     this.normalsError   = '';
     this.normals        = [];
-    this.subdivisionService.getSubdivisionNormals(sub_division_code, year).subscribe({
+    this.countryService.getCountryNormals(country_name, year).subscribe({
       next: (res) => { this.normals = res.data ?? []; this.normalsLoading = false; },
       error: () => { this.normalsError = 'Failed to load normals.'; this.normalsLoading = false; }
     });
   }
 
   onNormalsYearChange(): void {
-    if (this.normalsEntity) this.fetchNormals(this.normalsEntity.sub_division_code, this.normalsYear);
+    if (this.normalsEntity) this.fetchNormals(this.normalsEntity.country_name, this.normalsYear);
   }
 
   closeNormalsModal(): void { this.showNormalsModal = false; }
 
-  openReplace(sd: SubdivisionNormal): void {
-    this.normalsEntity    = sd;
+  openReplace(c: CountryNormal): void {
+    this.normalsEntity    = c;
     this.replaceFile      = null;
     this.replaceFileError = '';
     this.replaceError     = '';
@@ -179,7 +174,7 @@ export class SubdivisionManagementComponent implements OnInit {
     this.replaceSuccess = '';
     const fd = new FormData();
     fd.append('file', this.replaceFile);
-    this.subdivisionService.replaceSubdivisionNormals(this.normalsEntity.sub_division_code, fd, this.replaceYear).subscribe({
+    this.countryService.replaceCountryNormals(this.normalsEntity.country_name, fd, this.replaceYear).subscribe({
       next: (res) => { this.replaceSuccess = res?.message || 'Replaced.'; this.isReplaceUploading = false; },
       error: (err) => {
         const s = err?.status;
@@ -192,8 +187,8 @@ export class SubdivisionManagementComponent implements OnInit {
 
   closeReplaceModal(): void { if (!this.isReplaceUploading) this.showReplaceModal = false; }
 
-  openAddYear(sd: SubdivisionNormal): void {
-    this.normalsEntity    = sd;
+  openAddYear(c: CountryNormal): void {
+    this.normalsEntity    = c;
     this.addYearFile      = null;
     this.addYearFileError = '';
     this.addYearError     = '';
@@ -218,7 +213,7 @@ export class SubdivisionManagementComponent implements OnInit {
     const fd = new FormData();
     fd.append('file', this.addYearFile);
     fd.append('year', this.addYearSelected.toString());
-    this.subdivisionService.addSubdivisionYearNormals(this.normalsEntity.sub_division_code, fd).subscribe({
+    this.countryService.addCountryYearNormals(this.normalsEntity.country_name, fd).subscribe({
       next: (res) => { this.addYearSuccess = res?.message || 'Added.'; this.isAddYearUploading = false; },
       error: (err) => {
         const s = err?.status;
@@ -257,7 +252,7 @@ export class SubdivisionManagementComponent implements OnInit {
     this.bulkReplaceDetails = [];
     const fd = new FormData();
     fd.append('file', this.bulkReplaceFile);
-    this.subdivisionService.bulkReplaceSubdivisionNormals(fd, this.bulkReplaceYear).subscribe({
+    this.countryService.bulkReplaceCountryNormals(fd, this.bulkReplaceYear).subscribe({
       next: (res) => {
         this.bulkReplaceSuccess = res?.message || 'Done.';
         this.bulkReplaceDetails = res?.details ?? [];
@@ -301,7 +296,7 @@ export class SubdivisionManagementComponent implements OnInit {
     const fd = new FormData();
     fd.append('file', this.bulkAddYearFile);
     fd.append('year', this.bulkAddYearSelected.toString());
-    this.subdivisionService.bulkAddSubdivisionYearNormals(fd).subscribe({
+    this.countryService.bulkAddCountryYearNormals(fd).subscribe({
       next: (res) => {
         this.bulkAddYearSuccess  = res?.message || 'Done.';
         this.bulkAddYearInserted = res?.inserted ?? [];
@@ -315,14 +310,14 @@ export class SubdivisionManagementComponent implements OnInit {
     });
   }
 
-  closeBulkAddYearModal(): void { if (!this.isBulkAddYearUploading) this.showBulkAddYearModal = false; }
+    closeBulkAddYearModal(): void { if (!this.isBulkAddYearUploading) this.showBulkAddYearModal = false; }
 
   isLeapYear(y: number): boolean { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
 
   loadMissingNormals(): void {
     this.missingLoading = true;
     this.missingExpanded = false;
-    this.subdivisionService.getMissingSubdivisionNormals(this.missingYear).subscribe({
+    this.countryService.getMissingCountryNormals(this.missingYear).subscribe({
       next: (res) => { this.missingEntities = res.data ?? []; this.missingLoading = false; },
       error: () => { this.missingEntities = []; this.missingLoading = false; }
     });

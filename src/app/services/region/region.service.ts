@@ -46,4 +46,39 @@ export class RegionService {
   fetchRegionCoverageCount(data: any): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRegionCoverageCount`, data);
   }
+
+  // ── Region Normals Management ──────────────────────────────────────────────
+  getRegionNormalList(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getRegionNormalList`);
+  }
+
+  getRegionNormals(region_id: number, year: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getRegionNormals/${region_id}?year=${year}`);
+  }
+
+  downloadRegionNormalTemplate(region_id: number): string {
+    return `${this.baseUrl}/api/v1/downloadRegionNormalTemplate/${region_id}`;
+  }
+
+  replaceRegionNormals(region_id: number, formData: FormData, year: number): Observable<any> {
+    formData.append('year', year.toString());
+    return this.http.put<any>(`${this.baseUrl}/api/v1/replaceRegionNormals/${region_id}`, formData);
+  }
+
+  addRegionYearNormals(region_id: number, formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/addRegionYearNormals/${region_id}`, formData);
+  }
+
+  bulkReplaceRegionNormals(formData: FormData, year: number): Observable<any> {
+    formData.append('year', year.toString());
+    return this.http.put<any>(`${this.baseUrl}/api/v1/bulkReplaceRegionNormals`, formData);
+  }
+
+  bulkAddRegionYearNormals(formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/bulkAddRegionYearNormals`, formData);
+  }
+
+  getMissingRegionNormals(year: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/v1/getMissingRegionNormals?year=${year}`);
+  }
 }

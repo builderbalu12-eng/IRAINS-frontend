@@ -157,6 +157,15 @@ export class DistrictManagementComponent implements OnInit {
 
   templateUrl = '';
 
+  // ── Missing Normals ──────────────────────────────────────────────────────────
+  missingEntities: any[] = [];
+  missingYear: number = this.currentYear;
+  get missingYearOptions(): number[] {
+    return Array.from({ length: 11 }, (_, i) => this.currentYear - i);
+  }
+  missingLoading = false;
+  missingExpanded = false;
+
   constructor(public districtService: DistrictService, private fb: FormBuilder) {}
 
   ngOnInit() {
@@ -169,6 +178,7 @@ export class DistrictManagementComponent implements OnInit {
     });
     this.templateUrl = this.districtService.downloadDistrictNormalTemplate();
     this.loadDistricts();
+    this.loadMissingNormals();
   }
 
   loadDistricts() {
@@ -499,4 +509,15 @@ export class DistrictManagementComponent implements OnInit {
   }
 
   closeBulkAddYearModal() { if (!this.isBulkAddYearUploading) this.showBulkAddYearModal = false; }
+
+  loadMissingNormals(): void {
+    this.missingLoading = true;
+    this.missingExpanded = false;
+    this.districtService.getMissingDistrictNormals(this.missingYear).subscribe({
+      next: (res) => { this.missingEntities = res.data ?? []; this.missingLoading = false; },
+      error: () => { this.missingEntities = []; this.missingLoading = false; }
+    });
+  }
+
+  onMissingYearChange(): void { this.loadMissingNormals(); }
 }
