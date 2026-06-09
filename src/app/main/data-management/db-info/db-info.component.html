@@ -1,0 +1,174 @@
+<div class="dm-page-wrap">
+  <div class="dm-page-inner">
+    <div class="main-card shadow-lg rounded-4 bg-white p-4">
+
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h5 class="fw-bold mb-1 page-title">
+            <i class="fa fa-database me-2"></i>Database Info
+          </h5>
+          <small class="text-muted">
+            <i class="fa fa-info-circle me-1"></i>
+            Live stats — table sizes, row counts, disk usage
+          </small>
+        </div>
+        <button class="btn btn-outline-primary btn-sm fw-semibold" (click)="load()" [disabled]="loading">
+          <i class="fa fa-refresh me-1" [class.fa-spin]="loading"></i> Refresh
+        </button>
+      </div>
+
+      <!-- Loader -->
+      <div *ngIf="loading" class="text-center py-5 text-muted">
+        <i class="fa fa-spinner fa-pulse fa-2x mb-2"></i>
+        <p class="mt-2">Loading database info...</p>
+      </div>
+
+      <!-- Error -->
+      <div *ngIf="error && !loading" class="alert alert-danger">
+        <i class="fa fa-exclamation-triangle me-1"></i>{{ error }}
+        <button class="btn btn-sm btn-outline-danger ms-2" (click)="load()">Retry</button>
+      </div>
+
+      <ng-container *ngIf="!loading && !error">
+
+        <!-- ── Overview cards ── -->
+        <div class="row g-3 mb-4">
+
+          <!-- DB name + size -->
+          <div class="col-md-4">
+            <div class="info-card">
+              <div class="info-card-icon bg-primary-soft">
+                <i class="fa fa-database text-primary"></i>
+              </div>
+              <div>
+                <div class="info-card-label">Database</div>
+                <div class="info-card-value">{{ db?.db_name }}</div>
+                <div class="info-card-sub">Size: <strong>{{ db?.db_size }}</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Disk usage -->
+          <div class="col-md-4" *ngIf="disk">
+            <div class="info-card">
+              <div class="info-card-icon bg-warning-soft">
+                <i class="fa fa-hdd-o text-warning"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="info-card-label">Disk Space</div>
+                <div class="info-card-value">{{ disk.free }} free</div>
+                <div class="info-card-sub">
+                  Used {{ disk.used }} of {{ disk.total }} &nbsp;·&nbsp; <strong>{{ disk.pct_used }}</strong>
+                </div>
+                <div class="progress mt-2" style="height:6px">
+                  <div class="progress-bar"
+                    [class.bg-danger]="diskUsedPct() > 85"
+                    [class.bg-warning]="diskUsedPct() > 60 && diskUsedPct() <= 85"
+                    [class.bg-success]="diskUsedPct() <= 60"
+                    [style.width.%]="diskUsedPct()">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PostgreSQL version -->
+          <div class="col-md-4">
+            <div class="info-card">
+              <div class="info-card-icon bg-success-soft">
+                <i class="fa fa-server text-success"></i>
+              </div>
+              <div>
+                <div class="info-card-label">PostgreSQL</div>
+                <div class="info-card-value">{{ pgVersionShort() }}</div>
+                <div class="info-card-sub">{{ pgVersionFull() }}</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── Other databases ── -->
+        <div class="mb-4" *ngIf="allDbs.length > 1">
+          <h6 class="section-heading"><i class="fa fa-list me-1"></i> All Databases on Server</h6>
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <span *ngFor="let d of allDbs"
+              class="db-pill"
+              [class.db-pill-active]="d.name === db?.db_name">
+              <i class="fa fa-database me-1"></i>{{ d.name }}
+              <span class="db-pill-size">{{ d.size }}</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- ── Tables ── -->
+        <h6 class="section-heading"><i class="fa fa-table me-1"></i> Tables ({{ tables.length }} total)</h6>
+
+        <div class="d-flex justify-content-between align-items-center my-2 flex-wrap gap-2">
+          <div class="search-box">
+            <i class="fa fa-search search-icon"></i>
+            <input type="text" class="form-control search-input"
+              placeholder="Search table name..."
+              [(ngModel)]="searchText" />
+          </div>
+          <span class="text-muted small">
+            <i class="fa fa-filter me-1"></i>{{ filtered.length }} / {{ tables.length }} tables shown
+          </span>
+        </div>
+
+        <div class="table-scroll" style="max-height: calc(100vh - 420px)">
+          <table class="table table-sm table-hover table-bordered align-middle mb-0">
+            <thead class="table-head">
+              <tr>
+                <th class="sortable" (click)="sort('table_name')">
+                  Table Name
+                  <i class="fa sort-icon"
+                    [class.fa-sort-asc]="sortCol==='table_name' && sortDir==='asc'"
+                    [class.fa-sort-desc]="sortCol==='table_name' && sortDir==='desc'"
+                    [class.fa-sort]="sortCol!=='table_name'"></i>
+                </th>
+                <th class="sortable text-end" (click)="sort('approx_rows')">
+                  Rows
+                  <i class="fa sort-icon"
+                    [class.fa-sort-asc]="sortCol==='approx_rows' && sortDir==='asc'"
+                    [class.fa-sort-desc]="sortCol==='approx_rows' && sortDir==='desc'"
+                    [class.fa-sort]="sortCol!=='approx_rows'"></i>
+                </th>
+                <th class="sortable text-end" (click)="sort('total_bytes')">
+                  Total Size
+                  <i class="fa sort-icon"
+                    [class.fa-sort-asc]="sortCol==='total_bytes' && sortDir==='asc'"
+                    [class.fa-sort-desc]="sortCol==='total_bytes' && sortDir==='desc'"
+                    [class.fa-sort]="sortCol!=='total_bytes'"></i>
+                </th>
+                <th class="text-end">Data</th>
+                <th class="text-end">Indexes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let t of filtered">
+                <td class="fw-semibold table-name-cell">
+                  <i class="fa fa-table me-1 text-muted"></i>{{ t.table_name }}
+                </td>
+                <td class="text-end font-mono">{{ t.approx_rows | number }}</td>
+                <td class="text-end">
+                  <span class="size-badge">{{ t.total_size }}</span>
+                </td>
+                <td class="text-end text-muted small">{{ t.data_size }}</td>
+                <td class="text-end text-muted small">{{ t.index_size }}</td>
+              </tr>
+              <tr *ngIf="filtered.length === 0">
+                <td colspan="5" class="text-center text-muted py-4">
+                  <i class="fa fa-search me-1"></i>
+                  No tables found<span *ngIf="searchText"> matching "<strong>{{ searchText }}</strong>"</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </ng-container>
+    </div>
+  </div>
+</div>

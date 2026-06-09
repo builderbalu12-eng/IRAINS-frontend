@@ -55,6 +55,20 @@ export class DataManagementComponent implements OnInit, OnDestroy {
       ]
     },
     {
+      label: 'Master File',
+      icon: 'bi bi-folder-fill',
+      expanded: true,
+      children: []
+    },
+    {
+      label: 'Infographics',
+      icon: 'bi bi-info-circle-fill',
+      expanded: true,
+      children: [
+        { label: 'Database Info', icon: 'bi bi-database-fill', route: '/data-management/db-info' },
+      ]
+    },
+    {
       label: 'Stations',
       icon: 'bi bi-geo-alt-fill',
       expanded: true,
