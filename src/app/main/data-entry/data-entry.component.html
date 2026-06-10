@@ -41,6 +41,30 @@
 </div>
 
 <div class="mt-3 mb-0 p-3 bg-light rounded">
+  <!-- View mode toggle -->
+  <div class="row mb-2">
+    <div class="col-auto">
+      <div class="btn-group" role="group">
+        <button
+          type="button"
+          class="btn"
+          [ngClass]="viewMode === 'daily' ? 'btn-primary' : 'btn-outline-primary'"
+          (click)="switchToDaily()"
+        >
+          Daily
+        </button>
+        <button
+          type="button"
+          class="btn"
+          [ngClass]="viewMode === 'range' ? 'btn-primary' : 'btn-outline-primary'"
+          (click)="switchToRange()"
+        >
+          Range
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="row row-cols-1 row-cols-md-2 row-cols-lg-6">
     <!-- Region -->
     <div *ngIf="currentUserType == 'hq'" class="col mb-2">
@@ -117,8 +141,8 @@
       ></p-multiSelect>
     </div>
 
-    <!-- Date -->
-    <div class="col mb-2">
+    <!-- Date (Daily mode only) -->
+    <div class="col mb-2" *ngIf="viewMode === 'daily'">
       <input
         type="date"
         class="form-control"
@@ -128,14 +152,34 @@
       />
     </div>
 
-    <!-- Submit Button -->
-    <div class="col mb-2 mx-auto">
+    <!-- Submit Button (Daily mode only) -->
+    <div class="col mb-2 mx-auto" *ngIf="viewMode === 'daily'">
       <button
         class="btn btn-success w-50"
         type="button"
         (click)="fetchStationData(enteredDate)"
       >
         Submit
+      </button>
+    </div>
+
+    <!-- Month picker (Range mode only) -->
+    <div class="col mb-2" *ngIf="viewMode === 'range'">
+      <input
+        type="month"
+        class="form-control"
+        [(ngModel)]="selectedMonth"
+        [max]="maxMonth"
+      />
+    </div>
+    <div class="col mb-2 mx-auto" *ngIf="viewMode === 'range'">
+      <label class="form-label mb-0 d-block">&nbsp;</label>
+      <button
+        class="btn btn-primary w-50"
+        type="button"
+        (click)="fetchRangeStationData()"
+      >
+        View Month
       </button>
     </div>
   </div>
@@ -252,7 +296,7 @@
       </div>
       <br />
       <!-- <form> -->
-      <div class="overflow-x-scroll">
+      <div class="overflow-x-scroll" *ngIf="viewMode === 'daily'">
         <table
           style="
             margin: auto;
@@ -454,7 +498,93 @@
                   Delete
                 </button>
               </td>
-  
+
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Date range view + edit table (one column per date) -->
+      <div class="overflow-x-scroll" *ngIf="viewMode === 'range'">
+        <table
+          style="
+            margin: auto;
+            border-collapse: collapse;
+            width: 90%;
+            border: 1px solid black;
+          "
+        >
+          <thead>
+            <tr>
+              <th style="border: 1px solid black">S.NO</th>
+              <th style="border: 1px solid black">
+                DISTRICT NAME
+                <button (click)="sortRangeTable('district_name')" class="sort-button" [title]="rangeSortDirection['district_name'] === 'asc' ? 'Sort Descending' : 'Sort Ascending'">
+                  {{ rangeActiveSortColumn === 'district_name' ? (rangeSortDirection['district_name'] === 'asc' ? '▲' : '▼') : '⇅' }}
+                </button>
+              </th>
+              <th style="border: 1px solid black">
+                STATION ID
+                <button (click)="sortRangeTable('station_code')" class="sort-button" [title]="rangeSortDirection['station_code'] === 'asc' ? 'Sort Descending' : 'Sort Ascending'">
+                  {{ rangeActiveSortColumn === 'station_code' ? (rangeSortDirection['station_code'] === 'asc' ? '▲' : '▼') : '⇅' }}
+                </button>
+              </th>
+              <th style="border: 1px solid black">
+                STATION NAME
+                <button (click)="sortRangeTable('station_name')" class="sort-button" [title]="rangeSortDirection['station_name'] === 'asc' ? 'Sort Descending' : 'Sort Ascending'">
+                  {{ rangeActiveSortColumn === 'station_name' ? (rangeSortDirection['station_name'] === 'asc' ? '▲' : '▼') : '⇅' }}
+                </button>
+              </th>
+              <th
+                style="border: 1px solid black; min-width: 90px"
+                *ngFor="let date of dateColumns"
+              >
+                {{ date }}
+                <span *ngIf="!isDateEditable(date)" title="Read-only: editing allowed only for the last 30 days from To Date">🔒</span>
+              </th>
+            </tr>
+          </thead>
+          <div *ngIf="isLoading">Loading ...</div>
+          <tbody *ngIf="pivotedData && pivotedData.length > 0">
+            <tr *ngFor="let station of pivotedData; let i = index">
+              <td style="border: 1px solid black">{{ i + 1 }}</td>
+              <td style="border: 1px solid black">{{ station.district_name }}</td>
+              <td style="border: 1px solid black">{{ station.station_code }}</td>
+              <td style="border: 1px solid black">{{ station.station_name }}</td>
+              <td style="border: 1px solid black; position: relative" *ngFor="let date of dateColumns">
+                <input
+                  type="text"
+                  name="rangeRainfall"
+                  oninput="this.value = this.value.replace(/[^0-9.-]/g, '').replace(/(\..*)\..+/g, '$1');"
+                  [(ngModel)]="station.values[date]"
+                  [disabled]="!isDateEditable(date)"
+                  style="border: none; width: 70px; padding-right: 22px"
+                  step="0.1"
+                  (blur)="updateRangeRainfallValue(station.station_code, date, station.values[date])"
+                />
+                <span
+                  *ngIf="isDateEditable(date)"
+                  (click)="resetRangeRainfallValue(station, date)"
+                  style="
+                    position: absolute;
+                    right: 2px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    cursor: pointer;
+                    border: 1px solid #ccc;
+                    border-radius: 50%;
+                    width: 18px;
+                    height: 18px;
+                    text-align: center;
+                    line-height: 18px;
+                    font-size: 11px;
+                    background-color: #f5f5f5;
+                  "
+                  title="Reset to -999.9"
+                >
+                  ⟳
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>

@@ -836,6 +836,19 @@ export class StateDownloadStatistics {
       period[k].area = Math.round(period[k].area);
     }
 
+    // Adjust largest category so total sums to exactly 100
+    const dayTotal = cats.reduce((s, k) => s + day[k].area, 0);
+    if (dayTotal !== 0 && dayTotal !== 100) {
+      const largest = cats.reduce((a, b) => day[a].area >= day[b].area ? a : b);
+      day[largest].area += 100 - dayTotal;
+    }
+
+    const periodTotal = cats.reduce((s, k) => s + period[k].area, 0);
+    if (periodTotal !== 0 && periodTotal !== 100) {
+      const largest = cats.reduce((a, b) => period[a].area >= period[b].area ? a : b);
+      period[largest].area += 100 - periodTotal;
+    }
+
     return { day, period };
   }
 
@@ -939,13 +952,32 @@ export class StateDownloadStatistics {
     dataRows.push(totalRow);
 
     const grandTotal = totals.Total || 1;
-    const pct = (n: number) => `${Math.round((n / grandTotal) * 100)}%`;
+
+    // Round each category's % independently, then adjust the largest so the
+    // total sums to exactly 100 (avoids 99%/101% from independent rounding).
+    const pctCats: Array<{ key: string; value: number; pct: number }> = [
+      { key: 'LE', value: totals.LE, pct: 0 },
+      { key: 'E',  value: totals.E,  pct: 0 },
+      { key: 'N',  value: totals.N,  pct: 0 },
+      { key: 'D',  value: totals.D,  pct: 0 },
+      { key: 'LD', value: totals.LD, pct: 0 },
+      { key: 'NRND', value: totals.NR + totals.ND, pct: 0 },
+    ];
+    for (const c of pctCats) {
+      c.pct = Math.round((c.value / grandTotal) * 100);
+    }
+    const pctTotal = pctCats.reduce((s, c) => s + c.pct, 0);
+    if (pctTotal !== 0 && pctTotal !== 100) {
+      const largest = pctCats.reduce((a, b) => b.pct >= a.pct ? b : a);
+      largest.pct += 100 - pctTotal;
+    }
+    const pctByKey = Object.fromEntries(pctCats.map(c => [c.key, `${c.pct}%`]));
 
     const catRow1: any[] = [fCell('CATEGORYWISE DISTRIBUTION'), ...Array(9).fill(blankCell)];
     const catRow2: any[] = [
       fCell('OF DISTRICTS OUT OF THE'), blankCell,
-      cell(pct(totals.LE)), cell(pct(totals.E)), cell(pct(totals.N)), cell(pct(totals.D)),
-      cell(pct(totals.LD)), cell(pct(totals.NR + totals.ND)), blankCell, blankCell,
+      cell(pctByKey['LE']), cell(pctByKey['E']), cell(pctByKey['N']), cell(pctByKey['D']),
+      cell(pctByKey['LD']), cell(pctByKey['NRND']), blankCell, blankCell,
     ];
     const catRow3: any[] = [fCell(String(totals.Total - totals.ND)), fCell('WHOLE DATA RECEIVED'), ...Array(8).fill(blankCell)];
 

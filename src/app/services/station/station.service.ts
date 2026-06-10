@@ -47,6 +47,18 @@ export class FetchStationDataService {
     return this.http.post<any>(url, body);
   }
 
+  fetchStationDataEntryRange(fromDate: string, toDate: string): Observable<any> {
+
+    let url = `${this.baseUrl}/api/v1/fetchStationDataEntryRange`;
+
+    const body = {
+      fromDate: fromDate,
+      toDate: toDate
+    };
+
+    return this.http.post<any>(url, body);
+  }
+
 
   // -----------------------------------------------------------------------------------------
 

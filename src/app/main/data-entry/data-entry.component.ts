@@ -151,6 +151,14 @@ export class DataEntryComponent implements OnInit {
 
   enteredDate: any;
 
+  // Month view + edit (last 30 days from today are editable)
+  viewMode: 'daily' | 'range' = 'daily';
+  selectedMonth: string = '';
+  maxMonth: string = '';
+  rangeToDate: string = '';
+  dateColumns: string[] = [];
+  pivotedData: any[] = [];
+
   isEditing: boolean = false;
   currentItem: any = null; // To hold the item currently being edited
   successMessage: string | null = null; // Add this line to declare the success message variable
@@ -233,6 +241,8 @@ export class DataEntryComponent implements OnInit {
     }
 
     this.maxDate = this.formatDate(new Date());
+    this.maxMonth = this.maxDate.slice(0, 7);
+    this.selectedMonth = this.maxMonth;
     if (this.loggedInUserObject.data[0].mcorhq == "mc") {
       const todayDate = new Date();
       todayDate.setDate(todayDate.getDate() - 60);
@@ -793,7 +803,44 @@ export class DataEntryComponent implements OnInit {
       this.isSorting = false; // Hide loader after sorting
     }, 100); // Brief delay to let UI show spinner
   }
-  
+
+  rangeSortDirection: { [key: string]: 'asc' | 'desc' } = {};
+  rangeActiveSortColumn: string = '';
+
+  sortRangeTable(column: string): void {
+    this.isSorting = true;
+    this.rangeActiveSortColumn = column;
+
+    setTimeout(() => {
+      const direction = this.rangeSortDirection[column] === 'asc' ? 'desc' : 'asc';
+      this.rangeSortDirection[column] = direction;
+
+      this.pivotedData.sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+
+        if (valA == null) valA = '';
+        if (valB == null) valB = '';
+
+        if (!isNaN(Number(valA)) && !isNaN(Number(valB)) && valA !== '' && valB !== '') {
+          return direction === 'asc'
+            ? Number(valA) - Number(valB)
+            : Number(valB) - Number(valA);
+        }
+
+        valA = valA.toString().toLowerCase();
+        valB = valB.toString().toLowerCase();
+
+        if (valA < valB) return direction === 'asc' ? -1 : 1;
+        if (valA > valB) return direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      this.isSorting = false;
+    }, 100);
+  }
+
+
 
 
   private formatDate(date: Date): string {
@@ -847,6 +894,43 @@ export class DataEntryComponent implements OnInit {
     });
 
     console.log("data display", data);
+    return data;
+  }
+
+
+  sampleFileRange() {
+    let data: any[] = [];
+
+    const formattedDates = this.dateColumns.map((date) => {
+      const [y, m, d] = date.split('-').map(Number);
+      let formatted = new Date(y, m - 1, d)
+        .toLocaleString("en-US", {
+          day: "2-digit",
+          month: "short",
+          year: "2-digit",
+        })
+        .replace(",", "");
+
+      const dateParts = formatted.split(" "); // ["Sep", "12", "24"]
+      return `${dateParts[1]}_${dateParts[0]}_${dateParts[2]}`;
+    });
+
+    this.pivotedData.forEach((x) => {
+      let station: any = {
+        district_name: x.district_name,
+        station_name: x.station_name,
+        centre_type: x.centre_type + " " + x.centre_name,
+        station_id: x.station_code,
+      };
+
+      this.dateColumns.forEach((date, idx) => {
+        station[formattedDates[idx]] = x.values[date];
+      });
+
+      data.push(station);
+    });
+
+    console.log("data display range", data);
     return data;
   }
 
@@ -907,7 +991,11 @@ export class DataEntryComponent implements OnInit {
 }
 
   exportAsXLSX(): void {
-    this.exportAsExcelFile(this.sampleFile(), "export-to-excel");
+    if (this.viewMode === 'range') {
+      this.exportAsExcelFile(this.sampleFileRange(), "export-to-excel-range");
+    } else {
+      this.exportAsExcelFile(this.sampleFile(), "export-to-excel");
+    }
     // this.exportAsExcelFile(this.filteredStations, 'export-to-excel');
   }
 
@@ -1282,6 +1370,18 @@ export class DataEntryComponent implements OnInit {
   // );
   // }
 
+  switchToDaily(): void {
+    this.viewMode = 'daily';
+    this.filterStationData();
+  }
+
+  switchToRange(): void {
+    this.viewMode = 'range';
+    if (this.pivotedData.length === 0) {
+      this.fetchRangeStationData();
+    }
+  }
+
   async fetchStationData(date: any): Promise<void> {
     this.isLoading = true
     try {
@@ -1297,6 +1397,119 @@ export class DataEntryComponent implements OnInit {
     } finally {
       this.isLoading = false
     }
+  }
+
+  // ── Month view + edit (only last 30 days from today are editable) ──
+
+  private getMonthRange(month: string): { fromDate: string; toDate: string } {
+    const [year, mon] = month.split('-').map(Number);
+    const firstDay = new Date(year, mon - 1, 1);
+    const lastDay = new Date(year, mon, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const toDate = lastDay > today ? today : lastDay;
+
+    return {
+      fromDate: this.formatDate(firstDay),
+      toDate: this.formatDate(toDate)
+    };
+  }
+
+  async fetchRangeStationData(): Promise<void> {
+    if (!this.selectedMonth) {
+      alert("Please select a month");
+      return;
+    }
+
+    const { fromDate, toDate } = this.getMonthRange(this.selectedMonth);
+    this.rangeToDate = toDate;
+
+    this.isLoading = true;
+    try {
+      const response: any = await this.stationService
+        .fetchStationDataEntryRange(fromDate, toDate)
+        .toPromise();
+
+      this.buildPivotedData(response?.data || []);
+      this.viewMode = 'range';
+    } catch (error) {
+      console.error("Error fetching range data:", error);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  private buildPivotedData(rows: any[]): void {
+    const dateSet = new Set<string>();
+    const stationsMap = new Map<any, any>();
+
+    rows.forEach((row: any) => {
+      dateSet.add(row.collection_date);
+
+      if (!stationsMap.has(row.station_code)) {
+        stationsMap.set(row.station_code, {
+          region_code: row.region_code,
+          region_name: row.region_name,
+          state_code: row.state_code,
+          state_name: row.state_name,
+          district_code: row.district_code,
+          district_name: row.district_name,
+          station_code: row.station_code,
+          station_name: row.station_name,
+          station_type: row.station_type,
+          centre_type: row.centre_type,
+          centre_name: row.centre_name,
+          is_new_station: row.is_new_station,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          activationdate: row.activationdate,
+          values: {}
+        });
+      }
+
+      stationsMap.get(row.station_code).values[row.collection_date] = row.data;
+    });
+
+    this.dateColumns = Array.from(dateSet).sort();
+
+    let stations = Array.from(stationsMap.values());
+
+    if (this.currentUserType == "mc") {
+      stations = stations.filter((station: any) =>
+        station.centre_name?.toUpperCase() === this.currentUserName.toUpperCase()
+      );
+    }
+
+    stations.sort((a: any, b: any) =>
+      (a.station_name || "").localeCompare(b.station_name || "")
+    );
+
+    this.pivotedData = stations;
+    this.updateTableData(this.pivotedData);
+  }
+
+  isDateEditable(date: string): boolean {
+    if (!this.rangeToDate) return false;
+
+    const toDate = new Date(this.rangeToDate);
+    const minEditableDate = new Date(toDate);
+    minEditableDate.setDate(minEditableDate.getDate() - 29); // last 30 days incl. To Date
+
+    const d = new Date(date);
+    return d >= minEditableDate && d <= toDate;
+  }
+
+  updateRangeRainfallValue(stationCode: any, date: string, value: any): void {
+    const formattedRainfallValue = parseFloat(value).toFixed(1);
+
+    const data = {
+      date: date,
+      station_code: +stationCode,
+      value: +formattedRainfallValue,
+    };
+
+    this.dataEntryService.updateRainfallValue(data).subscribe();
   }
 
   onDateChange(event: any): void {
@@ -1828,5 +2041,10 @@ export class DataEntryComponent implements OnInit {
     this.updateRainfallValueData(stationCode, element.value); // Ensure it updates the bound data
     this.showMessage(element)
   }
-  
+
+  resetRangeRainfallValue(station: any, date: string): void {
+    station.values[date] = "-999.9";
+    this.updateRangeRainfallValue(station.station_code, date, station.values[date]);
+  }
+
 }
