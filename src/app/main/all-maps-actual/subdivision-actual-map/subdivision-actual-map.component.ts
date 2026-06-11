@@ -160,7 +160,7 @@ export class SubdivisionActualMapComponent {
 
     });
 
-    this.countryService.fetchDataFtp(data).subscribe((res) => {
+    (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res: any) => {
       this.countrydatacum = res.data;
       this.countryActual = this.constants.trimToOneDecimals(
         this.countrydatacum[0].actual_rainfall

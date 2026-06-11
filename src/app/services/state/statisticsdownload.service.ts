@@ -593,6 +593,7 @@ export class StateDownloadStatistics {
       }
     });
 
+    doc.addPage();
     this.addCategoryTable(doc);
 
     const columns2 = ['', 'LEGEND', ''];
@@ -1056,7 +1057,7 @@ export class StateDownloadStatistics {
       `${periodS[cat].area}%`,
     ]);
 
-    const startY = (doc as any).lastAutoTable.finalY + 10;
+    const startY = 20;
 
     autoTable(doc, {
       head: [titleRow, header1, header2],
