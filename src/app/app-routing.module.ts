@@ -125,6 +125,7 @@ import { SubdivisionManagementComponent } from './main/data-management/subdivisi
 import { RegionManagementComponent } from './main/data-management/region-management/region-management.component';
 import { CountryManagementComponent } from './main/data-management/country-management/country-management.component';
 import { DbInfoComponent } from './main/data-management/db-info/db-info.component';
+import { SchedulerManagementComponent } from './main/data-management/scheduler-management/scheduler-management.component';
 import { PermissionsComponent } from './main/permissions/permissions.component';
 import { RbacComponent } from './main/permissions/rbac/rbac.component';
 import { NewRegisterComponent } from './main/permissions/new-register/new-register.component';
@@ -180,6 +181,7 @@ export const routes: Routes = [
     { path: 'region-management',     component: RegionManagementComponent },
     { path: 'country-management',    component: CountryManagementComponent },
     { path: 'db-info',               component: DbInfoComponent },
+    { path: 'scheduler-management',  component: SchedulerManagementComponent },
     { path: 'rbac',             component: RbacComponent },
     { path: 'new-register',     component: NewRegisterComponent },
     { path: 'role-management',  component: RoleManagementComponent },

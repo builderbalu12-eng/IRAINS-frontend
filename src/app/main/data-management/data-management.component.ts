@@ -77,6 +77,14 @@ export class DataManagementComponent implements OnInit, OnDestroy {
       ]
     },
     {
+      label: 'Automation',
+      icon: 'bi bi-clock-history',
+      expanded: true,
+      children: [
+        { label: 'Schedulers', icon: 'bi bi-clock-history', route: '/data-management/scheduler-management' },
+      ]
+    },
+    {
       label: 'Permissions',
       icon: 'bi bi-shield-lock-fill',
       expanded: true,
