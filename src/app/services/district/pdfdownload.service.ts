@@ -7,6 +7,10 @@ import autoTable, { Column } from 'jspdf-autotable';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
+import { DistrictService } from './district.service';
+import { StateService } from '../state/state.service';
+import { SubdivisionService } from '../subDivision/subDivision.service';
 
 
 @Injectable({
@@ -32,7 +36,14 @@ export class DownloadPdf {
   data: any;
   seasonPeriodDate: any;
 
-  constructor(private http: HttpClient, private constants: Constants) {
+  constructor(
+    private http: HttpClient,
+    private constants: Constants,
+    private calcMode: CalculationsModeService,
+    private districtService: DistrictService,
+    private stateService: StateService,
+    private subdivisionService: SubdivisionService
+  ) {
   }
 
   convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
@@ -170,33 +181,33 @@ export class DownloadPdf {
         this.fetchDistrictDisplayOrder().pipe(
           concatMap(displayOrder => {
             this.districtDisplayOrder = Array.isArray(displayOrder) ? displayOrder : (displayOrder.data ?? []);
-            return this.fetchDistrictDataFromDataEntry(data);
+            return (this.calcMode.isAwsEnabled ? this.districtService.fetchDataWithAWS(data) : this.districtService.fetchData(data));
           }),
           concatMap(districtData => {
             this.districtdepCurrdate = districtData.data;
             console.log('indownloading---->', this.districtdepCurrdate);
-            return this.fetchStateDataFromDataEntry(data);
+            return (this.calcMode.isAwsEnabled ? this.stateService.fetchDataWithAWS(data) : this.stateService.fetchData(data));
           }),
           concatMap(stateData => {
             this.statedepCurrdate = stateData.data;
             console.log('indownloading---->', this.statedepCurrdate);
-            return this.fetchSubdivDataFromDataEntry(data);
+            return (this.calcMode.isAwsEnabled ? this.subdivisionService.fetchDataWithAWS(data) : this.subdivisionService.fetchData(data));
           }),
           concatMap(subdiv => {
             this.subdivdepCurrdate = subdiv.data;
             console.log('indownloading---->', this.subdivdepCurrdate);
-            return this.fetchDistrictDataFromDataEntry(seasonPeriodDate); // or any observable to complete the chain
+            return (this.calcMode.isAwsEnabled ? this.districtService.fetchDataWithAWS(seasonPeriodDate) : this.districtService.fetchData(seasonPeriodDate)); // or any observable to complete the chain
           }),
           concatMap(seasondistrictData => {
             this.districtdepSeasondate = seasondistrictData.data;
             console.log('indownloading---->', this.districtdepSeasondate);
-            return this.fetchStateDataFromDataEntry(seasonPeriodDate);
-          }),    
+            return (this.calcMode.isAwsEnabled ? this.stateService.fetchDataWithAWS(seasonPeriodDate) : this.stateService.fetchData(seasonPeriodDate));
+          }),
           concatMap(seasonstateData => {
             this.statedepSeasondate = seasonstateData.data;
             console.log('indownloading---->', this.statedepSeasondate, this.subdivdepSeasondate);
-            return this.fetchSubdivDataFromDataEntry(seasonPeriodDate);
-          }),    
+            return (this.calcMode.isAwsEnabled ? this.subdivisionService.fetchDataWithAWS(seasonPeriodDate) : this.subdivisionService.fetchData(seasonPeriodDate));
+          }),
           concatMap(seasonstateData => {
             this.subdivdepSeasondate = seasonstateData.data;
             console.log('indownloading---->', this.subdivdepSeasondate);
@@ -208,21 +219,6 @@ export class DownloadPdf {
     } catch (error) {
       console.error('Error fetching data:', error);
     }
-  }
-
-  fetchDistrictDataFromDataEntry(data: any): Observable<any> {
-    const url = `${this.baseUrl}/api/v1/fetchDistrictData`;
-    return this.http.post<any>(url, data);
-  }
-
-  fetchStateDataFromDataEntry(data: any): Observable<any> {
-    const url = `${this.baseUrl}/api/v1/fetchStateData`;
-    return this.http.post<any>(url, data);
-  }
-
-  fetchSubdivDataFromDataEntry(data: any): Observable<any> {
-    const url = `${this.baseUrl}/api/v1/fetchSubDivisionData`;
-    return this.http.post<any>(url, data);
   }
 
   fetchDistrictData(data: any): Observable<any> {
