@@ -268,6 +268,43 @@ input:checked + .cm-slider:before { transform: translateX(32px); }
 
 .val-zero { color: #888; }
 .val-pos  { color: #155724; font-weight: 600; }
+.val-null { color: #ccc; }
+
+/* Date pivot column headers */
+.date-col-header {
+  text-align: center;
+  min-width: 140px;
+  padding: 0.4rem 0.6rem !important;
+  cursor: default !important;
+  vertical-align: top;
+}
+.date-col-date    { font-size: 0.82rem; font-weight: 700; }
+.date-col-meta    { font-size: 0.74rem; font-weight: 600; opacity: 0.85; margin-top: 2px; }
+.date-col-country { font-size: 0.72rem; opacity: 0.9; margin-top: 2px; white-space: nowrap; }
+
+/* From/To date controls */
+.cm-date-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+.cm-apply-btn {
+  background: #1a7a3a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+.cm-apply-btn:hover:not(:disabled) { background: #145e2c; }
+.cm-apply-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .cm-download-btn {
   background: #002467;

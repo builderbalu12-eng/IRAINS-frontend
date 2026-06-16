@@ -5,6 +5,22 @@ import { environment } from 'src/environment/environment';
 import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
 
+interface DateColumn {
+  date: string;
+  count: number;
+  total: number;
+  countryActual: number | null;
+}
+
+interface PivotRow {
+  station_code: string;
+  station_name: string;
+  state_name: string;
+  district_name: string;
+  block_name: string;
+  values: { [date: string]: number | null };
+}
+
 @Component({
   selector: 'app-calculation-mode',
   templateUrl: './calculation-mode.component.html',
@@ -17,19 +33,18 @@ export class CalculationModeComponent implements OnInit {
   message: string  = '';
   messageType: 'success' | 'error' = 'success';
 
-  // Station data
-  stationsLoading = false;
-  imdStations: any[] = [];
-  awsStations: any[] = [];
-  imdTotal: number = 0;
-  awsTotal: number = 0;
-  activeTab: 'imd' | 'aws' = 'imd';
-  selectedDate: string = this.todayStr();
+  // Date range
+  fromDate: string = this.todayStr();
+  toDate: string   = this.todayStr();
 
-  // Country actual values
-  countryActualImd: number | null = null;
-  countryActualAws: number | null = null;
-  countryLoading = false;
+  // Pivot data
+  stationsLoading = false;
+  dates: string[] = [];
+  imdColumns: DateColumn[] = [];
+  awsColumns: DateColumn[] = [];
+  imdStations: PivotRow[] = [];
+  awsStations: PivotRow[] = [];
+  activeTab: 'imd' | 'aws' = 'imd';
 
   // Sort
   sortCol: string = '';
@@ -78,64 +93,60 @@ export class CalculationModeComponent implements OnInit {
     });
   }
 
-  onDateChange(event: any): void {
-    this.selectedDate = event.target.value;
-    this.loadStations();
+  applyDates(): void {
+    if (this.fromDate && this.toDate && this.toDate >= this.fromDate) {
+      this.loadStations();
+    }
   }
 
   loadStations(): void {
     this.stationsLoading = true;
+    this.dates       = [];
+    this.imdColumns  = [];
+    this.awsColumns  = [];
     this.imdStations = [];
     this.awsStations = [];
-    this.sortCol = '';
-    this.countryActualImd = null;
-    this.countryActualAws = null;
-    this.countryLoading = true;
+    this.sortCol     = '';
 
-    const payload = { startDate: this.selectedDate, endDate: this.selectedDate };
-
-    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCalcModeStations`, { date: this.selectedDate }).subscribe({
+    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCalcModeStationsPivot`, {
+      startDate: this.fromDate,
+      endDate:   this.toDate,
+    }).subscribe({
       next: (res) => {
-        this.imdStations = res.imd ?? [];
-        this.awsStations = res.aws ?? [];
-        this.imdTotal    = res.imdTotal ?? 0;
-        this.awsTotal    = res.awsTotal ?? 0;
+        this.dates = res.dates ?? [];
+
+        // Build date column metadata for IMD and AWS
+        this.imdColumns = this.dates.map(d => ({
+          date:         d,
+          count:        res.imd?.perDate?.[d]?.count        ?? 0,
+          total:        res.imd?.perDate?.[d]?.total        ?? 0,
+          countryActual: res.imd?.perDate?.[d]?.countryActual ?? null,
+        }));
+        this.awsColumns = this.dates.map(d => ({
+          date:         d,
+          count:        res.aws?.perDate?.[d]?.count        ?? 0,
+          total:        res.aws?.perDate?.[d]?.total        ?? 0,
+          countryActual: res.aws?.perDate?.[d]?.countryActual ?? null,
+        }));
+
+        this.imdStations = res.imd?.stations ?? [];
+        this.awsStations = res.aws?.stations ?? [];
         this.stationsLoading = false;
       },
       error: () => { this.stationsLoading = false; }
     });
-
-    // Fetch IMD-only country actual
-    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryData`, payload).subscribe({
-      next: (res) => {
-        const d = res.data?.[0] ?? res.data;
-        this.countryActualImd = d?.actual_rainfall ?? null;
-        this.countryLoading = false;
-      },
-      error: () => { this.countryLoading = false; }
-    });
-
-    // Fetch IMD+AWS country actual
-    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryDataWithAWS`, payload).subscribe({
-      next: (res) => {
-        const d = res.data?.[0] ?? res.data;
-        this.countryActualAws = d?.actual_rainfall ?? null;
-      },
-      error: () => {}
-    });
   }
 
-  get displayedRows(): any[] {
+  get activeCols(): DateColumn[] {
+    return this.activeTab === 'imd' ? this.imdColumns : this.awsColumns;
+  }
+
+  get displayedRows(): PivotRow[] {
     const rows = this.activeTab === 'imd' ? this.imdStations : this.awsStations;
     if (!this.sortCol) return rows;
-    return [...rows].sort((a, b) => {
-      let va = a[this.sortCol] ?? '';
-      let vb = b[this.sortCol] ?? '';
-      if (!isNaN(Number(va)) && !isNaN(Number(vb))) {
-        return this.sortDir === 'asc' ? Number(va) - Number(vb) : Number(vb) - Number(va);
-      }
-      va = String(va).toLowerCase();
-      vb = String(vb).toLowerCase();
+    return [...rows].sort((a: any, b: any) => {
+      const va = String(a[this.sortCol] ?? '').toLowerCase();
+      const vb = String(b[this.sortCol] ?? '').toLowerCase();
       const cmp = va < vb ? -1 : va > vb ? 1 : 0;
       return this.sortDir === 'asc' ? cmp : -cmp;
     });
@@ -155,77 +166,68 @@ export class CalculationModeComponent implements OnInit {
     return this.sortDir === 'asc' ? '▲' : '▼';
   }
 
-  downloadExcel(): void {
-    const date = this.selectedDate.replace(/-/g, '');
-    const headers = ['S.No', 'Station Code', 'State', 'District', 'Block', 'Station Name', 'Value (mm)'];
-    const colWidths = [{ wch: 6 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 12 }];
+  formatDateDisplay(dateStr: string): string {
+    const [y, m, d] = dateStr.split('-');
+    return `${d}-${m}-${y}`;
+  }
 
+  downloadExcel(): void {
+    const fileLabel = `${this.fromDate.replace(/-/g,'')}_${this.toDate.replace(/-/g,'')}`;
+    const fixed     = ['S.No', 'Station Code', 'State', 'District', 'Block', 'Station Name'];
     const hdrStyle = {
       font: { bold: true, color: { rgb: 'FFFFFF' } },
       fill: { fgColor: { rgb: '002467' } },
       alignment: { horizontal: 'center' as const },
       border: {
-        top:    { style: 'thin', color: { rgb: '000000' } },
-        bottom: { style: 'thin', color: { rgb: '000000' } },
-        left:   { style: 'thin', color: { rgb: '000000' } },
-        right:  { style: 'thin', color: { rgb: '000000' } },
+        top: { style: 'thin', color: { rgb: '000000' } }, bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } }, right: { style: 'thin', color: { rgb: '000000' } },
       }
     };
-
     const infoStyle = {
       font: { bold: true, color: { rgb: '002467' } },
       fill: { fgColor: { rgb: 'EBF0FA' } },
-      alignment: { horizontal: 'left' as const }
+      alignment: { horizontal: 'center' as const }
     };
 
-    const buildSheet = (rows: any[], countryActual: number | null, label: string, total: number) => {
-      // Row 1: Country actual summary
-      const summaryRow = [`${label} — Country Actual: ${countryActual !== null ? countryActual.toFixed(5) + ' mm' : 'N/A'}    Stations shown: ${rows.length} / ${total}`];
-
+    const buildSheet = (rows: PivotRow[], cols: DateColumn[], isAws: boolean) => {
+      const label   = isAws ? 'Country IMD+AWS' : 'Country IMD';
+      const headers = [...fixed, ...cols.map(c => this.formatDateDisplay(c.date))];
+      const metaRow = [
+        '', '', '', '', '', '',
+        ...cols.map(c => `${c.count}/${c.total} | ${label}: ${c.countryActual !== null ? c.countryActual.toFixed(5) + ' mm' : 'N/A'}`)
+      ];
       const data = rows.map((r, i) => [
-        i + 1,
-        r.station_code  ?? '',
-        r.state_name    ?? '',
-        r.district_name ?? '',
-        r.block_name    ?? '',
-        r.station_name  ?? '',
-        r.data          ?? '',
+        i + 1, r.station_code ?? '', r.state_name ?? '', r.district_name ?? '', r.block_name ?? '', r.station_name ?? '',
+        ...cols.map(c => r.values[c.date] ?? '')
       ]);
 
-      // aoa: row0=summary, row1=headers, row2+=data
-      const ws = XLSX.utils.aoa_to_sheet([summaryRow, headers, ...data]);
+      const ws = XLSX.utils.aoa_to_sheet([metaRow, headers, ...data]);
 
-      // Style summary row (merged across all cols)
-      const summaryCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
-      if (ws[summaryCell]) ws[summaryCell].s = infoStyle;
-      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }];
-
-      // Style header row (now at row index 1)
-      headers.forEach((_, i) => {
-        const cell = XLSX.utils.encode_cell({ r: 1, c: i });
+      cols.forEach((_, ci) => {
+        const cell = XLSX.utils.encode_cell({ r: 0, c: fixed.length + ci });
+        if (ws[cell]) ws[cell].s = infoStyle;
+      });
+      headers.forEach((_, ci) => {
+        const cell = XLSX.utils.encode_cell({ r: 1, c: ci });
         if (ws[cell]) ws[cell].s = hdrStyle;
       });
-      ws['!cols'] = colWidths;
+      ws['!cols'] = [
+        { wch: 6 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 26 },
+        ...cols.map(() => ({ wch: 16 }))
+      ];
       return ws;
     };
 
     const wb = XLSX.utils.book_new();
-
-    // Sheet name format: "Data-entry Stations (1250-6604)"  max 31 chars for Excel
-    const imdSheetName   = `IMD (${this.imdStations.length}-${this.imdTotal})`;
-    const awsSheetName   = `AWS (${this.awsStations.length}-${this.awsTotal})`;
-
     if (this.useAws) {
-      // IMD + AWS mode — two sheets
-      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, this.countryActualImd, 'IMD Only',    this.imdTotal), imdSheetName);
-      XLSX.utils.book_append_sheet(wb, buildSheet(this.awsStations, this.countryActualAws, 'IMD + AWS',   this.awsTotal), awsSheetName);
+      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, this.imdColumns, false), `IMD (${this.imdStations.length})`);
+      XLSX.utils.book_append_sheet(wb, buildSheet(this.awsStations, this.awsColumns, true),  `AWS (${this.awsStations.length})`);
       const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `IMD_AWS_Stations_${date}.xlsx`);
+      FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `IMD_AWS_Stations_${fileLabel}.xlsx`);
     } else {
-      // IMD only — single sheet
-      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, this.countryActualImd, 'IMD Only', this.imdTotal), imdSheetName);
+      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, this.imdColumns, false), `IMD (${this.imdStations.length})`);
       const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `DataEntry_Stations_${date}.xlsx`);
+      FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `DataEntry_Stations_${fileLabel}.xlsx`);
     }
   }
 

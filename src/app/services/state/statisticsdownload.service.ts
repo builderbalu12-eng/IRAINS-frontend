@@ -603,7 +603,7 @@ export class StateDownloadStatistics {
       ['Excess (E)', '>= 20% and <= 59%', { content: '', styles: { fillColor: '#32c0f8' } }],
       ['Normal (N)', '>= -19% and <= +19%', { content: '', styles: { fillColor: '#00cd5b' } }],
       ['Deficient (D)', '>= -59% and <= -20%', { content: '', styles: { fillColor: '#ff2700' } }],
-      ['Large Deficient\n(LD or L.Deficient)', '>= -99% and <= -60%', { content: '', styles: { fillColor: '#ffff20' } }],
+      ['Large Deficient\n(LD or L.Deficient)', '> -100% and <= -60%', { content: '', styles: { fillColor: '#ffff20' } }],
       ['No Rain(NR)', '= -100%', { content: '', styles: { fillColor: '#ffffff' } }],
       ['Not Available', 'ND', { content: '', styles: { fillColor: '#c0c0c0' } }],
       ['Note : ', { content: 'The rainfall values are rounded off up to one place of decimal.', colSpan: 2 }]
@@ -860,24 +860,26 @@ export class StateDownloadStatistics {
       stateNameMap.set(sc, s.state_name);
     }
 
-    const grouped = new Map<number, number[]>();
+    const grouped = new Map<number, (number | null)[]>();
     for (const d of this.districtDepCurrdate) {
       const sc = Number(d.state_code ?? d.new_state_code);
       if (!sc) continue;
       if (!grouped.has(sc)) grouped.set(sc, []);
-      grouped.get(sc)!.push(Number(d.departure));
+      grouped.get(sc)!.push(d.departure === null ? null : Number(d.departure));
     }
 
     return [...grouped.entries()].map(([sc, departures]) => {
       const counts = { LE: 0, E: 0, N: 0, D: 0, LD: 0, NR: 0, ND: 0, Total: 0 };
-      for (const dep of departures) {
-        if (dep >= 60) counts.LE++;
-        else if (dep >= 20) counts.E++;
-        else if (dep >= -19) counts.N++;
-        else if (dep >= -59) counts.D++;
-        else if (dep >= -99) counts.LD++;
-        else if (dep === -100) counts.NR++;
-        else counts.ND++;
+      for (const rawDep of departures) {
+        if (rawDep === null) { counts.ND++; continue; }
+        const dep = this.constants.trimToZeroDecimals(rawDep);
+        if (dep > 59)                        counts.LE++;
+        else if (dep > 19 && dep <= 59)      counts.E++;
+        else if (dep > -20 && dep <= 19)     counts.N++;
+        else if (dep > -60 && dep <= -20)    counts.D++;
+        else if (dep > -100 && dep <= -60)   counts.LD++;
+        else if (dep <= -100)                counts.NR++;
+        else                                 counts.ND++;
       }
       counts.Total = counts.LE + counts.E + counts.N + counts.D + counts.LD + counts.NR + counts.ND;
       return { state: stateNameMap.get(sc) ?? `State ${sc}`, state_code: sc, counts };

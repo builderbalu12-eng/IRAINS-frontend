@@ -5,6 +5,7 @@ import { DistrictService } from 'src/app/services/district/district.service';
 import { HttpClient } from '@angular/common/http';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { Constants } from 'src/app/services/constants';
 
 interface DepartureCounts {
     state: string;
@@ -45,7 +46,8 @@ export class DistributionDistrictStatesDailyComponent implements OnInit {
     constructor(
         private stateService: StateService,
         private districtService: DistrictService,
-        private http: HttpClient // Add HttpClient for API calls
+        private http: HttpClient,
+        private constants: Constants
     ) {}
 
     ngOnInit(): void {
@@ -225,39 +227,22 @@ export class DistributionDistrictStatesDailyComponent implements OnInit {
     
     countDepartureValues(statesData: { state_name: string; departure: number[] }[]): DepartureCounts[] {
         return statesData.map(({ state_name, departure }) => {
-            const counts = {
-                LE: 0,
-                E: 0,
-                N: 0,
-                D: 0,
-                LD: 0,
-                NR: 0,
-                ND: 0,
-                Total: 0 // Initialize total
-            };
+            const counts = { LE: 0, E: 0, N: 0, D: 0, LD: 0, NR: 0, ND: 0, Total: 0 };
 
-            departure.forEach(dep => {
-                if (dep >= 60) {
-                    counts.LE++;
-                } else if (dep >= 20 && dep <= 59) {
-                    counts.E++;
-                } else if (dep >= -19 && dep <= 19) {
-                    counts.N++;
-                } else if (dep >= -59 && dep <= -20) {
-                    counts.D++;
-                } else if (dep >= -99 && dep <= -60) {
-                    counts.LD++;
-                } else if (dep === -100) {
-                    counts.NR++;
-                } else {
-                    counts.ND++;
-                }
+            departure.forEach((rawDep: any) => {
+                if (rawDep === null || rawDep === undefined) { counts.ND++; return; }
+                const dep = this.constants.trimToZeroDecimals(Number(rawDep));
+                if (dep > 59)                        counts.LE++;
+                else if (dep > 19 && dep <= 59)      counts.E++;
+                else if (dep > -20 && dep <= 19)     counts.N++;
+                else if (dep > -60 && dep <= -20)    counts.D++;
+                else if (dep > -100 && dep <= -60)   counts.LD++;
+                else if (dep <= -100)                counts.NR++;
+                else                                 counts.ND++;
             });
 
-              // Calculate total
-        counts.Total = counts.LE + counts.E + counts.N + counts.D + counts.LD + counts.NR + counts.ND;
-
-        return { state: state_name, counts };
+            counts.Total = counts.LE + counts.E + counts.N + counts.D + counts.LD + counts.NR + counts.ND;
+            return { state: state_name, counts };
         });
     }
 
