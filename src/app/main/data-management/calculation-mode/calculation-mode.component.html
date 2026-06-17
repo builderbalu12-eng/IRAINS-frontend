@@ -67,19 +67,36 @@
   <div class="cm-right">
 
     <div class="cm-right-header">
-      <h5><i class="bi bi-table me-2"></i>Station Data</h5>
+      <h5>
+        <i class="bi bi-table me-2"></i>Station Data
+        <span *ngIf="!useAws && !stationsLoading" class="cm-badge" style="margin-left:8px;font-size:0.8rem;">
+          {{ imdStations.length }}/{{ imdTotal }}
+        </span>
+      </h5>
+
+      <!-- Country Actual value pill -->
+      <div style="display:flex;align-items:center;gap:0.8rem;flex:1;justify-content:center;">
+        <!-- IMD tab: IMD-only country actual (also shown when toggle is OFF) -->
+        <div *ngIf="activeTab === 'imd' || !useAws" class="cm-country-pill imd">
+          <i class="bi bi-globe me-1"></i>
+          <span>Country Actual (IMD):</span>
+          <strong *ngIf="countryActualImd !== null">{{ countryActualImd | number:'1.1-5' }} mm</strong>
+          <span *ngIf="countryActualImd === null && !countryLoading" class="text-muted">—</span>
+          <span *ngIf="countryLoading" class="spin" style="font-size:0.75rem;">↻</span>
+        </div>
+        <!-- AWS tab: IMD+AWS country actual -->
+        <div *ngIf="activeTab === 'aws'" class="cm-country-pill aws">
+          <i class="bi bi-globe me-1"></i>
+          <span>Country Actual (IMD+AWS):</span>
+          <strong *ngIf="countryActualAws !== null">{{ countryActualAws | number:'1.1-5' }} mm</strong>
+          <span *ngIf="countryActualAws === null && !countryLoading" class="text-muted">—</span>
+          <span *ngIf="countryLoading" class="spin" style="font-size:0.75rem;">↻</span>
+        </div>
+      </div>
 
       <div class="cm-header-actions">
-        <label class="cm-date-label">From</label>
-        <input type="date" class="cm-date-input" [(ngModel)]="fromDate" />
-        <label class="cm-date-label">To</label>
-        <input type="date" class="cm-date-input" [(ngModel)]="toDate" [min]="fromDate" />
-        <button class="cm-apply-btn" (click)="applyDates()"
-                [disabled]="stationsLoading || !fromDate || !toDate || toDate < fromDate">
-          <i class="bi bi-search me-1"></i> Fetch
-        </button>
-        <button class="cm-download-btn" (click)="downloadExcel()"
-                [disabled]="stationsLoading || displayedRows.length === 0">
+        <input type="date" class="cm-date-input" [value]="selectedDate" (change)="onDateChange($event)" />
+        <button class="cm-download-btn" (click)="downloadExcel()" [disabled]="stationsLoading || displayedRows.length === 0">
           <i class="bi bi-download me-1"></i> Download
         </button>
       </div>
@@ -89,14 +106,17 @@
     <div *ngIf="useAws" class="cm-tabs">
       <button class="cm-tab" [class.active]="activeTab === 'imd'" (click)="activeTab = 'imd'">
         <i class="bi bi-building me-1"></i>Data-entry Stations
-        <span class="cm-badge" *ngIf="fromDate === toDate">{{ imdStations.length }}</span>
+        <span class="cm-badge">{{ imdStations.length }}/{{ imdTotal }}</span>
       </button>
       <button class="cm-tab" [class.active]="activeTab === 'aws'" (click)="activeTab = 'aws'">
         <i class="bi bi-broadcast me-1"></i>State AWS Stations
-        <span class="cm-badge aws" *ngIf="fromDate === toDate">{{ awsStations.length }}</span>
+        <span class="cm-badge aws">{{ awsStations.length }}/{{ awsTotal }}</span>
       </button>
 
+      <!-- Run buttons -->
       <div style="margin-left:auto;display:flex;align-items:center;gap:0.6rem;padding:0 0.8rem;">
+
+        <!-- IMD: AddDailyStationData (shown when AWS tabs are visible, on IMD tab) -->
         <ng-container *ngIf="activeTab === 'imd'">
           <button class="cm-download-btn" style="background:#1a7a3a;"
                   (click)="runAddDailyStationData()" [disabled]="runningAddDaily">
@@ -109,6 +129,7 @@
                 [title]="addDailyMsg">{{ addDailyMsg }}</span>
         </ng-container>
 
+        <!-- AWS: runDailyStore -->
         <ng-container *ngIf="activeTab === 'aws'">
           <button class="cm-download-btn" style="background:#0a58ca;"
                   (click)="runDailyStore()" [disabled]="runningDailyStore">
@@ -120,10 +141,11 @@
                 style="font-size:0.8rem;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
                 [title]="dailyStoreMsg">{{ dailyStoreMsg }}</span>
         </ng-container>
+
       </div>
     </div>
 
-    <!-- AddDailyStationData button when toggle is OFF -->
+    <!-- AddDailyStationData button when toggle is OFF (no tabs shown) -->
     <div *ngIf="!useAws" style="display:flex;align-items:center;gap:0.6rem;padding:0.5rem 1rem;border-bottom:1px solid #dee2e6;background:#f8f9fa;">
       <button class="cm-download-btn" style="background:#1a7a3a;"
               (click)="runAddDailyStationData()" [disabled]="runningAddDaily">
@@ -144,35 +166,19 @@
     <div *ngIf="!stationsLoading" class="cm-table-wrap">
       <div *ngIf="displayedRows.length === 0" class="cm-empty">
         <i class="bi bi-inbox" style="font-size:2rem;color:#ccc"></i>
-        <p>No data for {{ fromDate }} – {{ toDate }}</p>
+        <p>No data for {{ selectedDate }}</p>
       </div>
 
       <table *ngIf="displayedRows.length > 0" class="cm-table">
         <thead>
           <tr>
             <th>S.No</th>
-            <th (click)="sort('station_code')">Code <span class="sh">{{ sortIcon('station_code') }}</span></th>
+            <th (click)="sort('station_code')">Station Code <span class="sh">{{ sortIcon('station_code') }}</span></th>
             <th (click)="sort('state_name')">State <span class="sh">{{ sortIcon('state_name') }}</span></th>
             <th (click)="sort('district_name')">District <span class="sh">{{ sortIcon('district_name') }}</span></th>
             <th (click)="sort('block_name')">Block <span class="sh">{{ sortIcon('block_name') }}</span></th>
             <th (click)="sort('station_name')">Station Name <span class="sh">{{ sortIcon('station_name') }}</span></th>
-            <!-- One column per date -->
-            <th *ngFor="let col of activeCols" class="date-col-header">
-              <div class="date-col-date">{{ formatDateDisplay(col.date) }}</div>
-              <div class="date-col-meta">{{ col.count }} / {{ col.total }}</div>
-              <div class="date-col-country">
-                <ng-container *ngIf="activeTab === 'imd'">
-                  Country IMD :
-                  <strong *ngIf="col.countryActual !== null">{{ col.countryActual | number:'1.1-2' }} mm</strong>
-                  <span *ngIf="col.countryActual === null">—</span>
-                </ng-container>
-                <ng-container *ngIf="activeTab === 'aws'">
-                  Country IMD + AWS :
-                  <strong *ngIf="col.countryActual !== null">{{ col.countryActual | number:'1.1-2' }} mm</strong>
-                  <span *ngIf="col.countryActual === null">—</span>
-                </ng-container>
-              </div>
-            </th>
+            <th (click)="sort('data')">Value (mm) <span class="sh">{{ sortIcon('data') }}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -183,11 +189,8 @@
             <td>{{ row.district_name }}</td>
             <td>{{ row.block_name || '—' }}</td>
             <td>{{ row.station_name }}</td>
-            <td *ngFor="let col of activeCols"
-                [class.val-zero]="row.values[col.date] === 0"
-                [class.val-pos]="row.values[col.date] != null && row.values[col.date]! > 0"
-                [class.val-null]="row.values[col.date] == null">
-              {{ row.values[col.date] != null ? row.values[col.date] : '—' }}
+            <td [class.val-zero]="row.data == 0" [class.val-pos]="row.data > 0">
+              {{ row.data != null ? row.data : '—' }}
             </td>
           </tr>
         </tbody>
