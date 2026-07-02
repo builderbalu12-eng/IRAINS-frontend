@@ -122,8 +122,8 @@ export class AllAWSDataService {
     ];
   }
 
-  fetchStateAwsUnifiedFile(body: any): Observable<any> {
-    return this.post('/api/v1/state-aws/fetchFilteredStationUnifiedFile', body);
+  fetchGovtAwsUnifiedFile(startDate: any, endDate: any, districtCodes: any[]): Observable<any> {
+    return this.post('/api/v1/aws-station/fetchFilteredStationUnifiedFile', { startDate, endDate, districtCodes });
   }
 
   private post(path: string, body: any): Observable<any> {

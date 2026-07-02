@@ -35,58 +35,40 @@ export class YearlyStationStatisticsPageComponent {
   DailyWiseStationcolumns: any;
   DailyWiseStationRows: any;
 
-  stateAwsColumns: any;
-  stateAwsRows: any[] = [];
-  stateAwsDisplayRows: any[] = [];
-  stateAwsIsLoading: boolean = false;
+  govtAwsColumns: any;
+  govtAwsRows: any;
+  govtAwsIsLoading: boolean = false;
+  govtAwsEnteredFromDate: string = '';
+  govtAwsEnteredEndDate: string = '';
 
   // Statistics (in-page map+charts)
   showImdStatistics = false;
-  showAwsStatistics = false;
+  showGovtAwsStatistics = false;
   private imdStatsMap: any = null;
-  private awsStatsMap: any = null;
+  private govtAwsStatsMap: any = null;
 
   // IMD Charts
-  showImdModal = false;
   imdMonsoonChart!: Chart;
   imdAvailabilityChart!: Chart;
   imdTop10Chart!: Chart;
   imdStateChart!: Chart;
 
-  // State AWS Charts
-  showAwsModal = false;
-  awsMonsoonChart!: Chart;
-  awsAvailabilityChart!: Chart;
-  awsTop10Chart!: Chart;
-  awsStateChart!: Chart;
-  awsSourceChart!: Chart;
+  // State Govt AWS Charts
+  govtAwsMonsoonChart!: Chart;
+  govtAwsAvailabilityChart!: Chart;
+  govtAwsTop10Chart!: Chart;
+  govtAwsStateChart!: Chart;
 
-  // Leaflet map instances (inside Visualise modal)
-  private imdLeafletMap: any = null;
-  private awsLeafletMap: any = null;
-  // Standalone Map modal
-  showImdMapModal = false;
-  showAwsMapModal = false;
-  private imdStandaloneMap: any = null;
-  private awsStandaloneMap: any = null;
+  // State Govt AWS Statistics tables
+  govtAwsMonsoonTable: { category: string; count: number; pct: number }[] = [];
+  govtAwsAvailabilityTable: { status: string; count: number; pct: number }[] = [];
+  govtAwsTop10Table: { rank: number; stationName: string; total: number }[] = [];
+
   private indiaStateGeojson: any = null;
   private indiaCountryGeojson: any = null;
 
   private readonly imdFixedCols = ['state_name','district_name','block_name','block_code','station_name','station_id','latitude','longitude'];
-  private readonly awsFixedCols  = ['source','state_name','district_name','block_name','block_code','station_name','station_id','latitude','longitude'];
 
-  awsFromDate: string = '';
-  awsToDate: string = '';
-
-  awsSourceList: string[] = [];
-  awsStateList: string[] = [];
-  awsDistrictList: string[] = [];
-  awsBlockList: string[] = [];
-
-  awsFilterSource: string = '';
-  awsFilterState: string = '';
-  awsFilterDistrict: string = '';
-  awsFilterBlock: string = '';
   districtCodeList: any[] = [];
   selectMode(arg0: string) {
     this.selectedOption = arg0;
@@ -135,10 +117,10 @@ export class YearlyStationStatisticsPageComponent {
   // loggedInUser: any;
   regions: any[] = []; // Array to hold region data fetched from API
   selectedRegion: any;
-  centersMC: any[] = [];
+  private allCentersMC: any[] = [];
   centersMC1: any[] = [];
   selectedMC: any;
-  centersRMC: any[] = [];
+  private allCentersRMC: any[] = [];
   selectedRMC: any;
   centersRMC1: any[] = [];
   states: any[] = [];
@@ -259,8 +241,8 @@ export class YearlyStationStatisticsPageComponent {
     console.log("currentUserType", this.currentUserType);
 
     const today = this.getCurrentDateFormatted();
-    this.awsFromDate = today;
-    this.awsToDate = today;
+    this.govtAwsEnteredFromDate = today;
+    this.govtAwsEnteredEndDate = today;
     this.enteredFromDate = today;
     this.enteredEndDate = today;
 
@@ -660,40 +642,26 @@ export class YearlyStationStatisticsPageComponent {
     if (this.selectedRegion && this.selectedRegion.length > 0) {
       console.log("selectedRegion",this.selectedRegion);
 
-      console.log(this.centersMC);
-
-      const filteredCenters = this.centersMC[0]?.filter((center: any) =>
+      this.centersMC1 = this.allCentersMC.filter((center: any) =>
         this.selectedRegion.includes(center.region_code)
       );
-
-      console.log('Filtered centers:', filteredCenters);
-
-      this.centersMC.push(filteredCenters);
-      // console.log('centersMC', this.centersMC);
-
-      let lenOfCenterMC = this.centersMC.length;
-      // console.log('lenOfCenterMC', lenOfCenterMC)
-      this.centersMC1 = this.centersMC[lenOfCenterMC - 1];
       console.log("this.centersMC1", this.centersMC1);
 
       // <- RMC ->
-      const filteredCentersRMC = this.centersRMC[0]?.filter((center: any) =>
+      this.centersRMC1 = this.allCentersRMC.filter((center: any) =>
         this.selectedRegion.includes(center.region_code)
       );
-      console.log("filteredCentersRMC", filteredCentersRMC);
-
-      this.centersRMC.push(filteredCentersRMC);
-
-      let lenOfCenterRMC = this.centersRMC.length;
-      this.centersRMC1 = this.centersRMC[lenOfCenterRMC - 1];
       console.log("centersRMC1", this.centersRMC1);
 
       // Get district codes for all districts under the selected state_code(s)
-      this.districtCodeList = this.districts[0].data
-      .filter((district: any) =>
-        this.selectedRegion.some((region: any) => region === district.region_code)
-      )
-      .map((district: any) => district.district_code);
+      // (districts may not have loaded yet — getAllDistricts() re-runs this once they do)
+      if (this.districts[0]?.data) {
+        this.districtCodeList = this.districts[0].data
+        .filter((district: any) =>
+          this.selectedRegion.some((region: any) => region === district.region_code)
+        )
+        .map((district: any) => district.district_code);
+      }
     }
 
     console.log('region districts', this.districts, this.selectedRegion,this.districtCodeList)
@@ -948,8 +916,12 @@ export class YearlyStationStatisticsPageComponent {
     this.centerService.fetchData("MC").subscribe(
       (response) => {
         console.log("getAllMCData", response);
-        this.centersMC.push(response.data);
-        console.log("this.centersMC", this.centersMC);
+        this.allCentersMC = response.data;
+        // Regions may have already auto-selected and run onRegionChange()
+        // before this MC data arrived — recompute centersMC1 now.
+        if (this.selectedRegion && this.selectedRegion.length > 0) {
+          this.onRegionChange();
+        }
       },
       (error) => {
         console.error("Error fetching center details:", error);
@@ -962,8 +934,12 @@ export class YearlyStationStatisticsPageComponent {
     this.centerService.fetchData("RMC").subscribe(
       (response) => {
         console.log("getAllRMCData", response);
-        this.centersRMC.push(response.data);
-        console.log("this.centersRMC", this.centersRMC);
+        this.allCentersRMC = response.data;
+        // Regions may have already auto-selected and run onRegionChange()
+        // before this RMC data arrived — recompute centersRMC1 now.
+        if (this.selectedRegion && this.selectedRegion.length > 0) {
+          this.onRegionChange();
+        }
       },
       (error) => {
         console.error("Error fetching center details:", error);
@@ -1023,8 +999,8 @@ export class YearlyStationStatisticsPageComponent {
     data.forEach((entry: any) => {
       const date = new Date(entry.collection_date).toISOString().split("T")[0];
 
-      if (!stationMap[entry.station_name]) {
-        stationMap[entry.station_name] = {
+      if (!stationMap[entry.station_id]) {
+        stationMap[entry.station_id] = {
           state_name: entry.state_name,
           district_name: entry.district_name,
           block_name: entry.block_name,
@@ -1035,11 +1011,11 @@ export class YearlyStationStatisticsPageComponent {
           longitude: parseFloat(entry.longitude).toFixed(4)
         };
         uniqueDates.forEach((d: any) => {
-          stationMap[entry.station_name][d] = null;
+          stationMap[entry.station_id][d] = null;
         });
       }
 
-      stationMap[entry.station_name][date] = entry.data;
+      stationMap[entry.station_id][date] = entry.data;
     });
 
     return {
@@ -1120,145 +1096,28 @@ async fetchUnifiedFileFromBackend() {
   }
 }
 
-openImdModal(): void {
-  if (this.imdLeafletMap) { try { this.imdLeafletMap.remove(); } catch(e) {} this.imdLeafletMap = null; }
-  this.showImdModal = false;
-  this.cdr.detectChanges();
-  this.buildImdCharts();
-  this.showImdModal = true;
-  this.cdr.detectChanges();
-  setTimeout(() => this.initImdMap(), 150);
-}
-
-
-openImdMapModal(): void {
-  if (this.imdStandaloneMap) { try { this.imdStandaloneMap.remove(); } catch(e) {} this.imdStandaloneMap = null; }
-  this.showImdMapModal = false;
-  this.cdr.detectChanges();
-  this.showImdMapModal = true;
-  this.cdr.detectChanges();
-  setTimeout(async () => {
-    const dateCols = this.getDateCols(this.DailyWiseStationcolumns, false);
-    this.imdStandaloneMap = await this.initStationMap('imd-standalone-map', this.DailyWiseStationRows, dateCols);
-  }, 150);
-}
-
-openAwsMapModal(): void {
-  if (this.awsStandaloneMap) { try { this.awsStandaloneMap.remove(); } catch(e) {} this.awsStandaloneMap = null; }
-  this.showAwsMapModal = false;
-  this.cdr.detectChanges();
-  this.showAwsMapModal = true;
-  this.cdr.detectChanges();
-  setTimeout(async () => {
-    const dateCols = this.getDateCols(this.stateAwsColumns, true);
-    this.awsStandaloneMap = await this.initStationMap('aws-standalone-map', this.stateAwsDisplayRows, dateCols);
-  }, 150);
-}
-
 onTabChange(tab: string): void {
   this.selectedTab = tab;
-  if (tab === 'StateAWS' && this.stateAwsRows.length === 0) {
-    this.fetchStateAwsData();
+  if (tab === 'StateGovtAWS' && (!this.govtAwsRows || this.govtAwsRows.length === 0)) {
+    this.fetchGovtAwsStationData();
   }
 }
 
-groupByDatesStateAws(data: any): any {
-  const uniqueDates = Array.from(
-    new Set(
-      data.map((entry: any) => new Date(entry.collection_date).toISOString().split("T")[0])
-    )
-  );
-  uniqueDates.sort();
-
-  const stationMap: any = {};
-
-  data.forEach((entry: any) => {
-    const date = new Date(entry.collection_date).toISOString().split("T")[0];
-    const key = `${entry.source}_${entry.station_id}`;
-
-    if (!stationMap[key]) {
-      stationMap[key] = {
-        source: entry.source,
-        state_name: entry.state_name,
-        district_name: entry.district_name,
-        block_name: entry.block_name,
-        block_code: entry.block_code,
-        station_name: entry.station_name,
-        station_id: entry.station_id,
-        latitude: parseFloat(entry.latitude).toFixed(4),
-        longitude: parseFloat(entry.longitude).toFixed(4),
-      };
-      uniqueDates.forEach((d: any) => { stationMap[key][d] = null; });
-    }
-    stationMap[key][date] = entry.data;
-  });
-
-  // Count non-null data values per source and sort sources by that count descending
-  const sourceDataCount: { [s: string]: number } = {};
-  Object.values(stationMap).forEach((row: any) => {
-    if (!sourceDataCount[row.source]) sourceDataCount[row.source] = 0;
-    (uniqueDates as string[]).forEach(d => {
-      if (row[d] !== null && row[d] !== undefined) sourceDataCount[row.source]++;
-    });
-  });
-
-  const sortedRows = Object.values(stationMap).sort((a: any, b: any) =>
-    (sourceDataCount[b.source] || 0) - (sourceDataCount[a.source] || 0)
-  );
-
-  return {
-    columns: ["source", "state_name", "district_name", "block_name", "block_code", "station_name", "station_id", "latitude", "longitude", ...uniqueDates],
-    rows: sortedRows,
-  };
-}
-
-applyStateAwsFilters(): void {
-  let rows = this.stateAwsRows;
-  if (this.awsFilterSource)   rows = rows.filter(r => r.source === this.awsFilterSource);
-  if (this.awsFilterState)    rows = rows.filter(r => r.state_name === this.awsFilterState);
-  if (this.awsFilterDistrict) rows = rows.filter(r => r.district_name === this.awsFilterDistrict);
-  if (this.awsFilterBlock)    rows = rows.filter(r => r.block_name === this.awsFilterBlock);
-  this.stateAwsDisplayRows = rows;
-}
-
-openAwsModal(): void {
-  if (this.awsLeafletMap) { try { this.awsLeafletMap.remove(); } catch(e) {} this.awsLeafletMap = null; }
-  this.showAwsModal = false;
-  this.cdr.detectChanges();
-  this.buildAwsCharts();
-  this.showAwsModal = true;
-  this.cdr.detectChanges();
-  setTimeout(() => this.initAwsMap(), 150);
-}
-
-async fetchStateAwsData(): Promise<void> {
-  this.stateAwsIsLoading = true;
+async fetchGovtAwsStationData(): Promise<void> {
+  this.govtAwsIsLoading = true;
 
   try {
     const response: any = await this.allAwsDataService
-      .fetchStateAwsUnifiedFile({ startDate: this.awsFromDate, endDate: this.awsToDate })
+      .fetchGovtAwsUnifiedFile(this.govtAwsEnteredFromDate, this.govtAwsEnteredEndDate, this.districtCodeList)
       .toPromise();
-    const result = this.groupByDatesStateAws(response?.data || []);
-    this.stateAwsColumns = result.columns;
-    this.stateAwsRows = result.rows;
-
-    // Populate filter dropdown lists from returned data
-    this.awsSourceList   = [...new Set(result.rows.map((r: any) => r.source).filter(Boolean))].sort() as string[];
-    this.awsStateList    = [...new Set(result.rows.map((r: any) => r.state_name).filter(Boolean))].sort() as string[];
-    this.awsDistrictList = [...new Set(result.rows.map((r: any) => r.district_name).filter(Boolean))].sort() as string[];
-    this.awsBlockList    = [...new Set(result.rows.map((r: any) => r.block_name).filter(Boolean))].sort() as string[];
-
-    // Reset filters and show all
-    this.awsFilterSource = '';
-    this.awsFilterState = '';
-    this.awsFilterDistrict = '';
-    this.awsFilterBlock = '';
-    this.stateAwsDisplayRows = result.rows;
+    const result = this.groupByDates(response?.data);
+    this.govtAwsColumns = result.columns;
+    this.govtAwsRows = result.rows;
     this.cdr.detectChanges();
   } catch (error) {
-    console.error("Error fetching state AWS data:", error);
+    console.error("Error fetching State Govt AWS data:", error);
   } finally {
-    this.stateAwsIsLoading = false;
+    this.govtAwsIsLoading = false;
     this.cdr.detectChanges();
   }
 }
@@ -1604,32 +1463,33 @@ onDownload() {
 
 
 
-onDownloadStateAws(): void {
-  if (!this.stateAwsColumns || !this.stateAwsDisplayRows || this.stateAwsDisplayRows.length === 0) return;
+onDownloadGovtAws(): void {
+  if (!this.govtAwsColumns || !this.govtAwsRows || this.govtAwsRows.length === 0) return;
 
-  const fromFormatted = this.formatDateToDDMMYYYY(this.awsFromDate);
-  const toFormatted = this.formatDateToDDMMYYYY(this.awsToDate);
+  const fromFormatted = this.formatDateToDDMMYYYY(this.govtAwsEnteredFromDate);
+  const toFormatted = this.formatDateToDDMMYYYY(this.govtAwsEnteredEndDate);
 
   const headerInfo = [
-    ['IMD Rainfall Information System - State AWS Daily Station Data'],
+    ['IRAINS - State Govt AWS Daily Station Data'],
     [''],
     [`Period: ${fromFormatted} to ${toFormatted}`],
     ['Generated on: ' + new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })],
     [''],
     ['IMPORTANT NOTES:'],
     ['• All rainfall values are in millimeters (mm)'],
-    ['• State AWS data may not be available for all stations across all dates'],
+    ['• "-999.9" indicates no data available or not entered data'],
+    ['• Data source: State Govt AWS network'],
     [''],
   ];
 
-  const formattedRows = this.stateAwsDisplayRows.map((row: any) =>
-    this.stateAwsColumns.map((col: string) => row[col])
+  const formattedRows = this.govtAwsRows.map((row: any) =>
+    this.govtAwsColumns.map((col: string) => row[col])
   );
 
-  const worksheetData = [...headerInfo, this.stateAwsColumns, ...formattedRows];
+  const worksheetData = [...headerInfo, this.govtAwsColumns, ...formattedRows];
   const worksheet: XLSX.WorkSheet = XLSX.utils.aoa_to_sheet(worksheetData);
 
-  const lastCol = Math.max(this.stateAwsColumns.length - 1, 4);
+  const lastCol = Math.max(this.govtAwsColumns.length - 1, 4);
   worksheet['!merges'] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: lastCol } },
     { s: { r: 2, c: 0 }, e: { r: 2, c: lastCol } },
@@ -1637,22 +1497,22 @@ onDownloadStateAws(): void {
     { s: { r: 5, c: 0 }, e: { r: 5, c: lastCol } },
     { s: { r: 6, c: 0 }, e: { r: 6, c: lastCol } },
     { s: { r: 7, c: 0 }, e: { r: 7, c: lastCol } },
+    { s: { r: 8, c: 0 }, e: { r: 8, c: lastCol } },
   ];
 
   const workbook: XLSX.WorkBook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'State AWS Data');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'State Govt AWS Data');
 
   const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
-  const filename = `IMD_StateAWS_${fromFormatted.replace(/-/g, '')}_to_${toFormatted.replace(/-/g, '')}.xlsx`;
+  const filename = `StateGovtAWS_Station_Data_${fromFormatted.replace(/-/g, '')}_to_${toFormatted.replace(/-/g, '')}.xlsx`;
   saveAs(blob, filename);
 }
 
 // ─── Chart helpers ────────────────────────────────────────────────────────────
 
-private getDateCols(columns: string[], isAws: boolean): string[] {
-  const fixed = isAws ? this.awsFixedCols : this.imdFixedCols;
-  return (columns || []).filter(c => !fixed.includes(c));
+private getDateCols(columns: string[]): string[] {
+  return (columns || []).filter(c => !this.imdFixedCols.includes(c));
 }
 
 private monsoonCategory(val: any): string {
@@ -1725,17 +1585,11 @@ private computeStateAvg(rows: any[], dateCols: string[]): { states: string[]; av
   return { states, avgs: states.map(s => map[s].length ? parseFloat((map[s].reduce((a,b)=>a+b,0)/map[s].length).toFixed(2)) : 0) };
 }
 
-private computeSourceCount(rows: any[]): { name: string; y: number }[] {
-  const map: Record<string, number> = {};
-  rows.forEach(r => { const src = r.source || 'Unknown'; map[src] = (map[src]||0)+1; });
-  return Object.entries(map).map(([name,y]) => ({ name, y })).sort((a,b) => b.y - a.y);
-}
-
 // ─── Chart builders ───────────────────────────────────────────────────────────
 
 buildImdCharts(): void {
   if (!this.DailyWiseStationRows?.length) return;
-  const dateCols = this.getDateCols(this.DailyWiseStationcolumns, false);
+  const dateCols = this.getDateCols(this.DailyWiseStationcolumns);
   if (!dateCols.length) return;
 
   const monsoonData    = this.computeMonsoon(this.DailyWiseStationRows, dateCols);
@@ -1794,25 +1648,35 @@ buildImdCharts(): void {
     exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
   });
 
-  this.showImdModal = false;
   this.cdr.detectChanges();
 }
 
-buildAwsCharts(): void {
-  if (!this.stateAwsDisplayRows?.length) return;
-  const dateCols = this.getDateCols(this.stateAwsColumns, true);
+buildGovtAwsStatsTables(): void {
+  if (!this.govtAwsRows?.length) return;
+  const dateCols = this.getDateCols(this.govtAwsColumns);
   if (!dateCols.length) return;
 
-  const monsoonData    = this.computeMonsoon(this.stateAwsDisplayRows, dateCols);
-  const availData      = this.computeAvailability(this.stateAwsDisplayRows, dateCols);
-  const { names, totals } = this.computeTop10(this.stateAwsDisplayRows, dateCols);
-  const { states, avgs: stateAvgs } = this.computeStateAvg(this.stateAwsDisplayRows, dateCols);
-  const sourceData = this.computeSourceCount(this.stateAwsDisplayRows);
+  const monsoonData = this.computeMonsoon(this.govtAwsRows, dateCols);
+  const availData   = this.computeAvailability(this.govtAwsRows, dateCols);
+  const { names, totals } = this.computeTop10(this.govtAwsRows, dateCols);
+  const { states, avgs: stateAvgs } = this.computeStateAvg(this.govtAwsRows, dateCols);
+
+  const monsoonTotal = monsoonData.reduce((s, d) => s + d.y, 0);
+  this.govtAwsMonsoonTable = monsoonData.map(d => ({
+    category: d.name, count: d.y, pct: monsoonTotal ? parseFloat((d.y / monsoonTotal * 100).toFixed(1)) : 0
+  }));
+
+  const availTotal = availData.reduce((s, d) => s + d.y, 0);
+  this.govtAwsAvailabilityTable = availData.map(d => ({
+    status: d.name, count: d.y, pct: availTotal ? parseFloat((d.y / availTotal * 100).toFixed(1)) : 0
+  }));
+
+  this.govtAwsTop10Table = names.map((name, i) => ({ rank: i + 1, stationName: name, total: totals[i] }));
 
   const pieLabels = { enabled: true, format: '<b>{point.name}</b><br/>{point.percentage:.1f}%', style: { fontSize: '11px' } };
   const pieLegend = { enabled: true, layout: 'horizontal' as const, align: 'center' as const, verticalAlign: 'bottom' as const, itemStyle: { fontSize: '10px', fontWeight: 'normal' } };
 
-  this.awsMonsoonChart = new Chart({
+  this.govtAwsMonsoonChart = new Chart({
     chart: { type: 'pie', height: 320, backgroundColor: '#f0f0f0' },
     title: { text: `Rainfall Received (${dateCols[dateCols.length-1]})`, style: { fontSize: '13px', fontWeight: '600' } },
     tooltip: { pointFormat: '<span style="color:{point.color}">●</span> {point.name}: <b>{point.y} stations ({point.percentage:.1f}%)</b>' },
@@ -1823,7 +1687,7 @@ buildAwsCharts(): void {
     exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
   });
 
-  this.awsAvailabilityChart = new Chart({
+  this.govtAwsAvailabilityChart = new Chart({
     chart: { type: 'pie', height: 320 },
     title: { text: 'Data Availability', style: { fontSize: '13px', fontWeight: '600' } },
     tooltip: { pointFormat: '<span style="color:{point.color}">●</span> {point.name}: <b>{point.y} ({point.percentage:.1f}%)</b>' },
@@ -1834,7 +1698,7 @@ buildAwsCharts(): void {
     exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
   });
 
-  this.awsTop10Chart = new Chart({
+  this.govtAwsTop10Chart = new Chart({
     chart: { type: 'bar', height: 320 },
     title: { text: 'Top 10 Stations by Total Rainfall', style: { fontSize: '13px', fontWeight: '600' } },
     xAxis: { categories: names, labels: { style: { fontSize: '10px' } } },
@@ -1847,7 +1711,7 @@ buildAwsCharts(): void {
     exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
   });
 
-  this.awsStateChart = new Chart({
+  this.govtAwsStateChart = new Chart({
     chart: { type: 'column', height: 320 },
     title: { text: 'State-wise Average Rainfall', style: { fontSize: '13px', fontWeight: '600' } },
     xAxis: { categories: states, labels: { rotation: -45, style: { fontSize: '10px' } } },
@@ -1860,18 +1724,6 @@ buildAwsCharts(): void {
     exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
   });
 
-  this.awsSourceChart = new Chart({
-    chart: { type: 'pie', height: 320 },
-    title: { text: 'Station Count by Source', style: { fontSize: '13px', fontWeight: '600' } },
-    tooltip: { pointFormat: '<span style="color:{point.color}">●</span> {point.name}: <b>{point.y} stations ({point.percentage:.1f}%)</b>' },
-    legend: { enabled: false },
-    plotOptions: { pie: { showInLegend: false, dataLabels: { enabled: true, format: '<b>{point.name}</b><br/>{point.percentage:.1f}%', style: { fontSize: '11px' } }, allowPointSelect: true, cursor: 'pointer', borderWidth: 0 } },
-    series: [{ type: 'pie', name: 'Stations', data: sourceData }],
-    credits: { enabled: false },
-    exporting: { enabled: true, buttons: { contextButton: { menuItems: ['viewFullscreen', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadSVG'] } } }
-  });
-
-  this.showAwsModal = false;
   this.cdr.detectChanges();
 }
 
@@ -1993,18 +1845,6 @@ private async initStationMap(mapId: string, rows: any[], dateCols: string[]): Pr
   return map;
 }
 
-private async initImdMap(): Promise<void> {
-  const dateCols = this.getDateCols(this.DailyWiseStationcolumns, false);
-  if (!dateCols.length) return;
-  this.imdLeafletMap = await this.initStationMap('imd-station-map', this.DailyWiseStationRows, dateCols);
-}
-
-private async initAwsMap(): Promise<void> {
-  const dateCols = this.getDateCols(this.stateAwsColumns, true);
-  if (!dateCols.length) return;
-  this.awsLeafletMap = await this.initStationMap('aws-station-map', this.stateAwsDisplayRows, dateCols);
-}
-
 // ─── Statistics: in-page map left + charts right ─────────────────────────────
 
 openImdStatistics(): void {
@@ -2013,7 +1853,7 @@ openImdStatistics(): void {
   this.cdr.detectChanges();
   setTimeout(async () => {
     if (this.imdStatsMap) { try { this.imdStatsMap.remove(); } catch(e){} this.imdStatsMap = null; }
-    const dateCols = this.getDateCols(this.DailyWiseStationcolumns, false);
+    const dateCols = this.getDateCols(this.DailyWiseStationcolumns);
     this.imdStatsMap = await this.initStationMap('imd-stats-map', this.DailyWiseStationRows, dateCols);
   }, 150);
 }
@@ -2023,20 +1863,20 @@ closeImdStatistics(): void {
   this.showImdStatistics = false;
 }
 
-openAwsStatistics(): void {
-  this.buildAwsCharts();
-  this.showAwsStatistics = true;
+openGovtAwsStatistics(): void {
+  this.buildGovtAwsStatsTables();
+  this.showGovtAwsStatistics = true;
   this.cdr.detectChanges();
   setTimeout(async () => {
-    if (this.awsStatsMap) { try { this.awsStatsMap.remove(); } catch(e){} this.awsStatsMap = null; }
-    const dateCols = this.getDateCols(this.stateAwsColumns, true);
-    this.awsStatsMap = await this.initStationMap('aws-stats-map', this.stateAwsDisplayRows, dateCols);
+    if (this.govtAwsStatsMap) { try { this.govtAwsStatsMap.remove(); } catch(e){} this.govtAwsStatsMap = null; }
+    const dateCols = this.getDateCols(this.govtAwsColumns);
+    this.govtAwsStatsMap = await this.initStationMap('govt-aws-stats-map', this.govtAwsRows, dateCols);
   }, 150);
 }
 
-closeAwsStatistics(): void {
-  if (this.awsStatsMap) { try { this.awsStatsMap.remove(); } catch(e){} this.awsStatsMap = null; }
-  this.showAwsStatistics = false;
+closeGovtAwsStatistics(): void {
+  if (this.govtAwsStatsMap) { try { this.govtAwsStatsMap.remove(); } catch(e){} this.govtAwsStatsMap = null; }
+  this.showGovtAwsStatistics = false;
 }
 
 }

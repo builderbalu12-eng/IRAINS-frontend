@@ -3,7 +3,7 @@
 <!-- Tabs -->
 <div class="d-flex border-bottom px-3 mt-3">
   <button class="tab-btn me-2" [class.active-tab]="selectedTab === 'IMD'" (click)="onTabChange('IMD')">IMD</button>
-  <button class="tab-btn" [class.active-tab]="selectedTab === 'StateAWS'" (click)="onTabChange('StateAWS')">State AWS</button>
+  <button class="tab-btn" [class.active-tab]="selectedTab === 'StateGovtAWS'" (click)="onTabChange('StateGovtAWS')">State Govt AWS</button>
 </div>
 
 <!-- IMD Tab -->
@@ -184,128 +184,216 @@
 </ng-container>
 <!-- END IMD Tab -->
 
-<!-- State AWS Tab -->
-<ng-container *ngIf="selectedTab === 'StateAWS'">
+<!-- State Govt AWS Tab -->
+<ng-container *ngIf="selectedTab === 'StateGovtAWS'">
 
-  <!-- Filters (always shown on top) -->
-  <div class="mt-3 mb-0 p-3 bg-white border rounded">
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-2">
-      <div class="col">
-        <label class="form-label fw-semibold">Source</label>
-        <select class="form-select" [(ngModel)]="awsFilterSource" (change)="applyStateAwsFilters()">
-          <option value="">All Sources</option>
-          <option *ngFor="let s of awsSourceList" [value]="s">{{ s }}</option>
-        </select>
-      </div>
-      <div class="col">
-        <label class="form-label fw-semibold">State</label>
-        <select class="form-select" [(ngModel)]="awsFilterState" (change)="applyStateAwsFilters()">
-          <option value="">All States</option>
-          <option *ngFor="let s of awsStateList" [value]="s">{{ s }}</option>
-        </select>
-      </div>
-      <div class="col">
-        <label class="form-label fw-semibold">District</label>
-        <select class="form-select" [(ngModel)]="awsFilterDistrict" (change)="applyStateAwsFilters()">
-          <option value="">All Districts</option>
-          <option *ngFor="let d of awsDistrictList" [value]="d">{{ d }}</option>
-        </select>
-      </div>
-      <div class="col">
-        <label class="form-label fw-semibold">Block</label>
-        <select class="form-select" [(ngModel)]="awsFilterBlock" (change)="applyStateAwsFilters()">
-          <option value="">All Blocks</option>
-          <option *ngFor="let b of awsBlockList" [value]="b">{{ b }}</option>
-        </select>
+<div class="mt-3 mb-0 p-3 bg-light rounded">
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-6 d-flex justify-content-center">
+    <!-- Region -->
+    <div *ngIf="currentUserType == 'hq' || currentUserType == 'sp'" class="col mb-2">
+      <p-multiSelect
+      [(ngModel)]="selectedRegion"
+      [options]="regions"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Select Regions"
+      (onChange)="onRegionChange()"
+      [showToggleAll]="false"
+     ></p-multiSelect>
+    </div>
+    <div *ngIf="currentUserType == 'mc' || currentUserType == 'rmc'" class="col mb-2 mt-2">
+      <div class="col mb-2 fw-bolder fs-5">
+        {{ this.regionName }}
       </div>
     </div>
-  </div>
 
-  <!-- Date Range -->
-  <div class="mt-2 mb-0 p-3 bg-light rounded">
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 d-flex justify-content-center">
+    <!-- MC -->
+    <div *ngIf="currentUserType == 'hq' || currentUserType == 'sp'; else showUserNameGovtAws" class="col mb-2">
+        <p-multiSelect
+        [(ngModel)]="selectedMC"
+        [options]="centersMC1"
+        optionLabel="centre_name"
+        placeholder="Select MCs"
+        (ngModelChange)="onMcChange($event)"
+        [disabled]="mcDisabled"
+        [showToggleAll]="false"
+        ></p-multiSelect>
+      </div>
+      <ng-template #showUserNameGovtAws>
+        <div class="col mb-2 mt-2 px-3 fw-bolder fs-5">
+          {{ this.currentUserName }}
+        </div>
+      </ng-template>
+
+    <!-- RMC -->
+    <div *ngIf="currentUserType == 'hq' || currentUserType == 'sp'" class="col mb-2">
+      <p-multiSelect
+      [(ngModel)]="selectedRMC"
+      [options]="centersRMC1"
+      optionLabel="centre_name"
+      placeholder="Select RMCs"
+      (ngModelChange)="onRMcChange($event)"
+      [disabled]="rmcDisabled"
+      [showToggleAll]="false"
+      ></p-multiSelect>
+    </div>
+
+
+    <!-- States -->
+    <div class="col mb-2">
+      <p-multiSelect
+             [(ngModel)]="selectedState"
+             [options]="filterStates"
+             optionLabel="state_name"
+             placeholder="Select States"
+             (onChange)="onStateChange($event)"
+             [showToggleAll]="false"
+      ></p-multiSelect>
+    </div>
+
+    <!-- District -->
+    <div class="col mb-2">
+      <p-multiSelect
+           [options]="filterDistrict"
+           optionLabel="district_name"
+           placeholder="Select Districts"
+           (onChange)="onDistrictChange($event)"
+           [showToggleAll]="false"
+           ></p-multiSelect>
+    </div>
+
+  </div>
+</div>
+
+
+<div class="mt-3 mb-0 p-3 bg-light rounded">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-6 d-flex justify-content-center">
+      <!-- From Date -->
+
+    <div class="col mb-2">
+        <label for="govtAwsFromDate" class="form-label">From Date</label>
+        <input id="govtAwsFromDate" type="date" class="form-control" [(ngModel)]="govtAwsEnteredFromDate">
+      </div>
+
+      <!-- To Date -->
       <div class="col mb-2">
-        <label for="awsFromDate" class="form-label">From Date</label>
-        <input id="awsFromDate" type="date" class="form-control" [(ngModel)]="awsFromDate">
-      </div>
-      <div class="col mb-2">
-        <label for="awsToDate" class="form-label">To Date</label>
-        <input id="awsToDate" type="date" class="form-control" [(ngModel)]="awsToDate">
+        <label for="govtAwsToDate" class="form-label">To Date</label>
+        <input id="govtAwsToDate" type="date" class="form-control" [(ngModel)]="govtAwsEnteredEndDate">
       </div>
     </div>
-    <div class="d-flex justify-content-center gap-3 mt-3">
-      <button class="btn btn-success px-4" type="button" (click)="fetchStateAwsData()">Submit</button>
-      <button class="btn btn-primary px-4" type="button" (click)="onDownloadStateAws()" [disabled]="!stateAwsDisplayRows || stateAwsDisplayRows.length === 0">Download</button>
+
+
+    <!-- Submit + Download -->
+    <div class="row mt-3">
+      <div class="d-flex justify-content-center gap-3">
+        <button class="btn btn-success px-4" type="button" (click)="fetchGovtAwsStationData()">Submit</button>
+        <button class="btn btn-primary px-4" type="button" (click)="onDownloadGovtAws()" [disabled]="!govtAwsRows?.length">Download</button>
+      </div>
     </div>
+
+</div>
+
+<div class="container-fluid px-3 pt-2">
+
+  <!-- Statistics button -->
+  <div class="d-flex justify-content-end mb-2" *ngIf="govtAwsRows?.length && !showGovtAwsStatistics">
+    <button class="btn btn-outline-primary btn-sm px-4" (click)="openGovtAwsStatistics()">&#x1F4CA; Statistics</button>
   </div>
 
-  <!-- Gentle note -->
-  <div class="alert alert-info mx-3 mt-2 py-2 px-3" style="font-size: 13px;">
-    <strong>Note:</strong> State AWS data may not be available for all stations across all dates. Missing values are shown as <strong>-</strong>.
-  </div>
-
-  <div class="loading-overlay" *ngIf="stateAwsIsLoading">
+  <div class="loading-overlay" *ngIf="govtAwsIsLoading">
     <div class="loading-spinner"></div>
     <span>Loading...</span>
   </div>
 
-  <div class="container-fluid px-3 pt-2">
-
-    <!-- Statistics button -->
-    <div class="d-flex justify-content-end mb-2" *ngIf="!showAwsStatistics">
-      <button class="btn btn-outline-primary btn-sm px-4" (click)="openAwsStatistics()" [disabled]="!stateAwsDisplayRows.length">&#x1F4CA; Statistics</button>
+  <!-- Table (hidden while Statistics is open) -->
+  <div *ngIf="!showGovtAwsStatistics" class="data-table-wrapper">
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th *ngFor="let col of govtAwsColumns">{{ col | titlecase }}</th>
+          </tr>
+        </thead>
+        <tbody *ngIf="govtAwsRows && govtAwsRows.length > 0">
+          <tr *ngFor="let row of govtAwsRows; let i = index" [class.even-row]="i % 2 === 0">
+            <td *ngFor="let col of govtAwsColumns" [class.numeric]="isNumeric(row[col])">
+              {{ formatCellValue(row[col]) }}
+            </td>
+          </tr>
+        </tbody>
+        <tbody *ngIf="!govtAwsIsLoading && (!govtAwsRows || govtAwsRows.length === 0)">
+          <tr>
+            <td [attr.colspan]="govtAwsColumns?.length" class="no-data">
+              Select the appropriate options and Submit
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
+  </div>
 
-    <!-- Table (hidden while Statistics is open) -->
-    <div *ngIf="!showAwsStatistics" class="data-table-wrapper">
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th *ngFor="let col of stateAwsColumns">{{ col | titlecase }}</th>
-            </tr>
-          </thead>
-          <tbody *ngIf="stateAwsDisplayRows && stateAwsDisplayRows.length > 0">
-            <tr *ngFor="let row of stateAwsDisplayRows; let i = index" [class.even-row]="i % 2 === 0">
-              <td *ngFor="let col of stateAwsColumns" [class.numeric]="isNumeric(row[col])">
-                {{ formatCellValue(row[col]) }}
-              </td>
-            </tr>
-          </tbody>
-          <tbody *ngIf="!stateAwsIsLoading && (!stateAwsDisplayRows || stateAwsDisplayRows.length === 0)">
-            <tr>
-              <td [attr.colspan]="stateAwsColumns?.length" class="no-data">
-                Select date range and Submit
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+  <!-- Statistics: satellite map LEFT + charts RIGHT (in-page, no modal) -->
+  <div *ngIf="showGovtAwsStatistics" class="statistics-split-layout">
+    <div class="stats-map-panel">
+      <div id="govt-aws-stats-map" style="position:absolute;inset:0;"></div>
     </div>
-
-    <!-- Statistics: satellite map LEFT + charts RIGHT (in-page, no modal) -->
-    <div *ngIf="showAwsStatistics" class="statistics-split-layout">
-      <div class="stats-map-panel">
-        <div id="aws-stats-map" style="position:absolute;inset:0;"></div>
+    <div class="stats-charts-panel">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="fw-bold" style="font-size:15px;color:#1F4E79;">Analytics — State Govt AWS Station Data</span>
+        <button class="btn btn-outline-secondary btn-sm" (click)="closeGovtAwsStatistics()">&#8592; Back to Table</button>
       </div>
-      <div class="stats-charts-panel">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <span class="fw-bold" style="font-size:15px;color:#1F4E79;">Analytics — State AWS Station Data</span>
-          <button class="btn btn-outline-secondary btn-sm" (click)="closeAwsStatistics()">&#8592; Back to Table</button>
+      <div class="chart-grid-2">
+        <div class="chart-card"><div [chart]="govtAwsMonsoonChart"></div></div>
+        <div class="chart-card"><div [chart]="govtAwsAvailabilityChart"></div></div>
+      </div>
+      <div class="chart-grid-2 mt-3">
+        <div class="chart-card"><div [chart]="govtAwsTop10Chart"></div></div>
+        <div class="chart-card"><div [chart]="govtAwsStateChart"></div></div>
+      </div>
+      <div class="chart-grid-3 mt-3">
+        <div class="chart-card">
+          <div class="map-card-title">Rainfall Received</div>
+          <table class="stats-table">
+            <thead><tr><th>Category</th><th>Stations</th><th>%</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let r of govtAwsMonsoonTable">
+                <td>{{ r.category }}</td>
+                <td>{{ r.count }}</td>
+                <td>{{ r.pct }}%</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div class="chart-grid-1">
-          <div class="chart-card"><div [chart]="awsSourceChart"></div></div>
+        <div class="chart-card">
+          <div class="map-card-title">Data Availability</div>
+          <table class="stats-table">
+            <thead><tr><th>Status</th><th>Records</th><th>%</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let r of govtAwsAvailabilityTable">
+                <td>{{ r.status }}</td>
+                <td>{{ r.count }}</td>
+                <td>{{ r.pct }}%</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div class="chart-grid-1 mt-3">
-          <div class="chart-card"><div [chart]="awsMonsoonChart"></div></div>
-        </div>
-        <div class="chart-grid-2 mt-3">
-          <div class="chart-card"><div [chart]="awsTop10Chart"></div></div>
-          <div class="chart-card"><div [chart]="awsStateChart"></div></div>
+        <div class="chart-card">
+          <div class="map-card-title">Top 10 Stations by Total Rainfall</div>
+          <table class="stats-table">
+            <thead><tr><th>#</th><th>Station</th><th>Total (mm)</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let r of govtAwsTop10Table">
+                <td>{{ r.rank }}</td>
+                <td>{{ r.stationName }}</td>
+                <td>{{ r.total }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
+</div>
 
 </ng-container>
-<!-- END State AWS Tab -->
+<!-- END State Govt AWS Tab -->
