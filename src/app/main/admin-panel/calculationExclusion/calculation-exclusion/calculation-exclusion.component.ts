@@ -45,6 +45,7 @@ export class CalculationExclusionComponent implements OnInit {
   uploadedRows: { [tab: string]: EntityRow[] } = { district: [], block: [], station: [] };
   uploadError: string = '';
   uploadNotFoundNames: string[] = [];
+  toggleError: string = '';
   // Excel Upload
   showUploadPanel: boolean = false;
   excelFileName: string = '';
@@ -340,6 +341,8 @@ export class CalculationExclusionComponent implements OnInit {
       error: (err: any) => {
         console.error('Toggle failed:', err);
         row.isLoading = false;
+        this.toggleError = err?.error?.message || `Toggle failed (HTTP ${err?.status})`;
+        setTimeout(() => this.toggleError = '', 5000);
       }
     });
   }
@@ -742,24 +745,22 @@ downloadTemplate(tab: string): void {
     const header = ['entity_type', 'entity_code', 'entity_name', 'from_date', 'to_date', 'action'];
 
     const rows: any[][] = [];
-    const tabKeys = ['district', 'block', 'station'];
+    const entityType = this.currentEntityType(this.activeTab);
 
-    tabKeys.forEach(type => {
-      (this.data[type] || []).forEach((row: EntityRow) => {
-        rows.push([
-          type,
-          row.code,
-          row.name,
-          this.fromDate,
-          this.toDate || this.fromDate,
-          row.isExcluded ? 'exclude' : 'include'
-        ]);
-      });
+    (this.currentData(this.activeTab) || []).forEach((row: EntityRow) => {
+      rows.push([
+        entityType,
+        row.code,
+        row.name,
+        this.fromDate,
+        this.toDate || this.fromDate,
+        row.isExcluded ? 'exclude' : 'include'
+      ]);
     });
 
     const sheetData = rows.length > 0
       ? [header, ...rows]
-      : [header, ['district', '', '', this.fromDate, this.toDate || this.fromDate, 'exclude']];
+      : [header, [entityType, '', '', this.fromDate, this.toDate || this.fromDate, 'exclude']];
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
@@ -781,7 +782,7 @@ downloadTemplate(tab: string): void {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Exclusions');
-    XLSX.writeFile(wb, `exclusion_${this.fromDate}_to_${this.toDate || this.fromDate}.xlsx`);
+    XLSX.writeFile(wb, `exclusion_${entityType}_${this.fromDate}_to_${this.toDate || this.fromDate}.xlsx`);
   }
 
   // ── Seasonal Tab ─────────────────────────────────────────────────────────

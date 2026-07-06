@@ -183,6 +183,13 @@
         </div>
       </div>
 
+      <!-- Toggle error alert -->
+      <div *ngIf="toggleError" class="alert alert-danger py-2 mb-2 d-flex align-items-center gap-2" style="font-size:13px;">
+        <i class="fa fa-exclamation-circle"></i>
+        <span>{{ toggleError }}</span>
+        <button type="button" class="btn-close ms-auto" style="font-size:10px;" (click)="toggleError = ''"></button>
+      </div>
+
       <!-- ── Source Selector ── -->
       <div class="d-flex gap-2 mb-3">
         <button
