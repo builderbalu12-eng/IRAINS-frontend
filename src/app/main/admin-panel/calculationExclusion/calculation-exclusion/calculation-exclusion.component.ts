@@ -57,9 +57,17 @@ export class CalculationExclusionComponent implements OnInit {
 
   tabs = [
     { key: 'district', label: 'District' },
-    { key: 'block', label: 'Block' },
-    { key: 'station', label: 'Station' },
+    { key: 'block',    label: 'Block' },
+    { key: 'station',  label: 'Station' },
   ];
+
+  activeSource: 'imd' | 'aws' = 'imd';
+
+  awsData: { [tab: string]: EntityRow[] } = {
+    district: [],
+    block: [],
+    station: []
+  };
 
   data: { [tab: string]: EntityRow[] } = {
     district: [],
@@ -142,6 +150,23 @@ export class CalculationExclusionComponent implements OnInit {
     this.loadAllEntities();
   }
 
+  currentData(tab: string): EntityRow[] {
+    return this.activeSource === 'imd' ? this.data[tab] : this.awsData[tab];
+  }
+
+  currentEntityType(tab: string): string {
+    return this.activeSource === 'imd' ? tab : `aws_${tab}`;
+  }
+
+  setActiveSource(source: 'imd' | 'aws'): void {
+    this.activeSource = source;
+  }
+
+  tabLabel(tab: { key: string; label: string }): string {
+    if (this.activeSource === 'aws' && tab.key === 'station') return 'AWS Station';
+    return tab.label;
+  }
+
   formatDate(date: Date): string {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -177,12 +202,13 @@ export class CalculationExclusionComponent implements OnInit {
       districts: this.exclusionService.getAllDistricts(),
       blocks: this.exclusionService.getAllBlocks(),
       stations: this.exclusionService.getAllStations(),
+      awsStations: this.exclusionService.getAllAwsStations(),
       exclusions: this.exclusionService.getExclusions({
         from_date: this.fromDate,
         to_date: this.toDate
       }),
     }).subscribe({
-      next: ({ states, districts, blocks, stations, exclusions }) => {
+      next: ({ states, districts, blocks, stations, awsStations, exclusions }) => {
         this.excludedSet.clear();
         (exclusions?.exclusions || []).forEach((e: any) => {
           this.excludedSet.add(`${e.entity_type}_${e.entity_code}`);
@@ -218,6 +244,31 @@ export class CalculationExclusionComponent implements OnInit {
           isLoading: false
         }));
 
+        // AWS source data — district/block same entities, different entity_type keys
+        this.awsData['district'] = (districts?.data || []).map((d: any) => ({
+          code: d.district_code,
+          name: d.district_name,
+          extra: d.state_name || stateMap.get(Number(d.state_code ?? d.new_state_code)) || '',
+          isExcluded: this.excludedSet.has(`aws_district_${d.district_code}`),
+          isLoading: false
+        }));
+
+        this.awsData['block'] = (blocks?.data || []).map((b: any) => ({
+          code: b.block_code,
+          name: b.block_name,
+          extra: b.district_name,
+          isExcluded: this.excludedSet.has(`aws_block_${b.block_code}`),
+          isLoading: false
+        }));
+
+        this.awsData['station'] = (awsStations?.data || []).map((s: any) => ({
+          code: s.station_code,
+          name: s.station_name,
+          extra: s.block_name || s.district_code || '',
+          isExcluded: this.excludedSet.has(`aws_station_${s.station_code}`),
+          isLoading: false
+        }));
+
         this.isLoading = false;
       },
       error: (err: any) => {
@@ -248,6 +299,12 @@ export class CalculationExclusionComponent implements OnInit {
           });
         }
 
+        for (const tab of Object.keys(this.awsData)) {
+          this.awsData[tab].forEach((row: EntityRow) => {
+            row.isExcluded = this.excludedSet.has(`aws_${tab}_${row.code}`);
+          });
+        }
+
         this.isLoading = false;
       },
       error: (err: any) => {
@@ -259,9 +316,10 @@ export class CalculationExclusionComponent implements OnInit {
 
   onToggle(tab: string, row: EntityRow): void {
     row.isLoading = true;
+    const entityType = this.currentEntityType(tab);
 
     this.exclusionService.toggleExclusion({
-      entity_type: tab,
+      entity_type: entityType,
       entity_code: row.code,
       entity_name: row.name,
       from_date: this.fromDate,
@@ -272,7 +330,7 @@ export class CalculationExclusionComponent implements OnInit {
         row.isExcluded = nowExcluded;
         row.isLoading = false;
 
-        const key = `${tab}_${row.code}`;
+        const key = `${entityType}_${row.code}`;
         if (nowExcluded) {
           this.excludedSet.add(key);
         } else {
@@ -290,8 +348,9 @@ export class CalculationExclusionComponent implements OnInit {
     const visible = this.filteredData(tab);
     if (!visible.length) return;
 
+    const entityType = this.currentEntityType(tab);
     const entities = visible.map(r => ({
-      entity_type: tab,
+      entity_type: entityType,
       entity_code: r.code,
       entity_name: r.name
     }));
@@ -308,7 +367,7 @@ export class CalculationExclusionComponent implements OnInit {
         visible.forEach(r => {
           r.isExcluded = action === 'exclude';
 
-          const key = `${tab}_${r.code}`;
+          const key = `${entityType}_${r.code}`;
           if (action === 'exclude') {
             this.excludedSet.add(key);
           } else {
@@ -337,7 +396,7 @@ export class CalculationExclusionComponent implements OnInit {
     const search = (this.searchText[tab] || '').toLowerCase().trim();
     const cf = this.colFilter[tab] || { name: '', extra: '', code: '', status: '' };
 
-    let rows = this.data[tab].filter(r => {
+    let rows = this.currentData(tab).filter(r => {
       if (search && !r.name.toLowerCase().includes(search) && !r.extra.toLowerCase().includes(search)) return false;
       if (cf.name   && !r.name.toLowerCase().includes(cf.name.toLowerCase()))   return false;
       if (cf.extra  && !r.extra.toLowerCase().includes(cf.extra.toLowerCase()))  return false;
@@ -369,11 +428,11 @@ export class CalculationExclusionComponent implements OnInit {
   }
 
   excludedCount(tab: string): number {
-    return this.data[tab].filter(r => r.isExcluded).length;
+    return this.currentData(tab).filter(r => r.isExcluded).length;
   }
 
   totalCount(tab: string): number {
-    return this.data[tab].length;
+    return this.currentData(tab).length;
   }
 
 
@@ -383,7 +442,8 @@ export class CalculationExclusionComponent implements OnInit {
     state: 'Region',
     district: 'State',
     block: 'District',
-    station: 'Block'
+    station: 'Block',
+    aws_station: 'Block'
   };
   return labels[tab] || 'Parent';
 }
@@ -498,8 +558,9 @@ onUploadedBulkAction(tab: string, action: 'include' | 'exclude'): void {
   const rows = this.uploadedRows[tab];
   if (!rows?.length) return;
 
+  const entityType = this.currentEntityType(tab);
   const entities = rows.map(r => ({
-    entity_type: tab,
+    entity_type: entityType,
     entity_code: r.code,
     entity_name: r.name
   }));
@@ -515,7 +576,7 @@ onUploadedBulkAction(tab: string, action: 'include' | 'exclude'): void {
     next: () => {
       rows.forEach(r => {
         r.isExcluded = action === 'exclude';
-        const key = `${tab}_${r.code}`;
+        const key = `${entityType}_${r.code}`;
         if (action === 'exclude') this.excludedSet.add(key);
         else this.excludedSet.delete(key);
       });
@@ -539,8 +600,9 @@ clearUpload(tab: string): void {
 downloadTemplate(tab: string): void {
   const from = this.fromDate;
   const to   = this.toDate || this.fromDate;
-  const rows = this.data[tab].map(r => ({
-    entity_type: tab,
+  const entityType = this.currentEntityType(tab);
+  const rows = this.currentData(tab).map(r => ({
+    entity_type: entityType,
     entity_code: r.code,
     entity_name: r.name,
     from_date:   from,
@@ -586,7 +648,7 @@ downloadTemplate(tab: string): void {
       const wb = XLSX.read(e.target.result, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
-      const validTypes = ['district', 'block', 'station'];
+      const validTypes = ['district', 'block', 'station', 'aws_district', 'aws_block', 'aws_station'];
       const validActions = ['exclude', 'include'];
 
       rows.forEach((row: any, idx: number) => {

@@ -42,6 +42,11 @@ export class CalculationExclusionService {
     return this.http.get<any>(url);
   }
 
+  getAllAwsStations(): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/getAwsStationsForExclusion`;
+    return this.http.get<any>(url);
+  }
+
   // ── Exclusion APIs ──────────────────────────────────────────
   getExclusions(data: { from_date: string; to_date: string }): Observable<any> {
     const url = `${this.baseUrl}/api/v1/calculation-exclusion/get-exclusions`;

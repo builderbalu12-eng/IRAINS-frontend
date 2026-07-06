@@ -183,6 +183,24 @@
         </div>
       </div>
 
+      <!-- ── Source Selector ── -->
+      <div class="d-flex gap-2 mb-3">
+        <button
+          class="btn fw-semibold px-4"
+          [ngClass]="activeSource === 'imd' ? 'btn-primary' : 'btn-outline-secondary'"
+          (click)="setActiveSource('imd')"
+        >
+          <i class="fa fa-database me-1"></i> IMD
+        </button>
+        <button
+          class="btn fw-semibold px-4"
+          [ngClass]="activeSource === 'aws' ? 'btn-primary' : 'btn-outline-secondary'"
+          (click)="setActiveSource('aws')"
+        >
+          <i class="fa fa-cloud me-1"></i> State AWS
+        </button>
+      </div>
+
       <!-- ── Tabs ── -->
       <ul class="nav nav-tabs tab-bar mb-0">
         <li class="nav-item" *ngFor="let tab of tabs">
@@ -191,7 +209,7 @@
             [class.active]="activeTab === tab.key"
             (click)="setActiveTab(tab.key)"
           >
-            {{ tab.label }}
+            {{ tabLabel(tab) }}
             <span
               class="tab-badge ms-2"
               [class.badge-has-excluded]="excludedCount(tab.key) > 0"
@@ -258,32 +276,6 @@
                   <i class="fa fa-ban me-1"></i> Exclude All
                 </button>
 
-                <span class="toolbar-divider">|</span>
-
-                <!-- Excel Upload -->
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  [id]="'upload-' + tab.key"
-                  class="d-none"
-                  (change)="onExcelUpload($event, tab.key)"
-                />
-                <button
-                  class="btn btn-sm btn-upload"
-                  (click)="triggerFileInput(tab.key)"
-                  [disabled]="isLoading"
-                  title="Upload Excel with entity_code column"
-                >
-                  <i class="fa fa-upload me-1"></i> Upload Excel
-                </button>
-                <button
-                  class="btn btn-sm btn-outline-secondary"
-                  style="border-radius:20px; font-size:12px;"
-                  (click)="downloadTemplate(tab.key)"
-                  title="Download template with all {{ tab.label }} codes"
-                >
-                  <i class="fa fa-download me-1"></i> Template
-                </button>
               </div>
             </div>
 
