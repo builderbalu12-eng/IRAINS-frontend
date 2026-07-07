@@ -488,6 +488,7 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
           this.updateMap();
         }
         async fetchBackend() {
+          this.isLoading = true;
           let selectedMode: any = localStorage.getItem("selectedMode");
           this.selectedMode = JSON.parse(selectedMode);
           console.log('this.selected mOde', this.selectedMode)
@@ -525,8 +526,11 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
               this.fetchAllAWSData();
               this.StartDate = this.convertToIndianDateFormat(this.StartDate);
               this.EndDate = this.convertToIndianDateFormat(this.EndDate);
+            }, (error) => {
+              console.error("Error fetching block data:", error);
+              this.isLoading = false;
             });
-          
+
             // Fetch country-level data (as before)
             (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(dateforfetchdata) : this.countryService.fetchData(dateforfetchdata)).subscribe((res) => {
               this.countrydatacum = res.data;
@@ -558,8 +562,11 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
               this.fetchAllAWSData();
               this.StartDate = this.convertToIndianDateFormat(this.StartDate);
               this.EndDate = this.convertToIndianDateFormat(this.EndDate);
+            }, (error) => {
+              console.error("Error fetching block data:", error);
+              this.isLoading = false;
             });
-          
+
             // Fetch country-level data
             (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(dateforfetchdata) : this.countryService.fetchData(dateforfetchdata)).subscribe((res) => {
               this.countrydatacum = res.data;
@@ -1196,6 +1203,11 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
         private loadGeoJSON(): void {
           this.http.get("assets/geojson/INDIA_BLOCK.json").subscribe((res: any) => {
               this.geoJsonData = res; // Store the full GeoJSON data
+              // Remove any previously coloured layer so a re-render doesn't stack
+              if (this.geoJsonLayer && this.map) {
+                this.map.removeLayer(this.geoJsonLayer);
+                this.geoJsonLayer = null;
+              }
               // this.updateMap()
               this.geoJsonLayer = L.geoJSON(res, {
                 style: (feature: any) => {
@@ -1271,8 +1283,8 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
                         <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
                         <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
                         <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
-                        <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
-                        <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                        <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? parseFloat(matchedData.station_details_rainfall_sum).toFixed(1) + ' mm' : 'NA'}</div>
+                        <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? parseFloat(matchedData.aws_station_rainfall_sum).toFixed(1) + ' mm' : 'NA'}</div>
                       </div>
                     </div>
                   `;
@@ -1280,6 +1292,12 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
                   layer.on('mouseout', () => layer.closeTooltip());
                 },
               }).addTo(this.map);
+
+              // Map is now fully coloured — hide the loading overlay
+              this.isLoading = false;
+            }, (error: any) => {
+              console.error("Error loading block GeoJSON:", error);
+              this.isLoading = false;
             });
   
   
@@ -1481,8 +1499,8 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
                       <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
                       <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
                       <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
-                      <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? matchedData.station_details_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
-                      <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? matchedData.aws_station_rainfall_sum.toFixed(1) + ' mm' : 'NA'}</div>
+                      <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? parseFloat(matchedData.station_details_rainfall_sum).toFixed(1) + ' mm' : 'NA'}</div>
+                      <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? parseFloat(matchedData.aws_station_rainfall_sum).toFixed(1) + ' mm' : 'NA'}</div>
                     </div>
                   </div>
                 `;

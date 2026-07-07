@@ -157,8 +157,8 @@ export class CalculationModeComponent implements OnInit {
 
   downloadExcel(): void {
     const date = this.selectedDate.replace(/-/g, '');
-    const headers = ['S.No', 'Station Code', 'State', 'District', 'Block', 'Station Name', 'Value (mm)'];
-    const colWidths = [{ wch: 6 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 12 }];
+    const headers = ['S.No', 'In/Ex', 'Station Code', 'State', 'District', 'Block', 'Station Name', 'Value (mm)'];
+    const colWidths = [{ wch: 6 }, { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 12 }];
 
     const hdrStyle = {
       font: { bold: true, color: { rgb: 'FFFFFF' } },
@@ -183,6 +183,7 @@ export class CalculationModeComponent implements OnInit {
 
       const data = rows.map((r, i) => [
         i + 1,
+        r.is_excluded ? 'Excluded' : 'Included',
         r.station_code  ?? '',
         r.state_name    ?? '',
         r.district_name ?? '',

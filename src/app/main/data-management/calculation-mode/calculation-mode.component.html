@@ -173,6 +173,7 @@
         <thead>
           <tr>
             <th>S.No</th>
+            <th (click)="sort('is_excluded')">In/Ex <span class="sh">{{ sortIcon('is_excluded') }}</span></th>
             <th (click)="sort('station_code')">Station Code <span class="sh">{{ sortIcon('station_code') }}</span></th>
             <th (click)="sort('state_name')">State <span class="sh">{{ sortIcon('state_name') }}</span></th>
             <th (click)="sort('district_name')">District <span class="sh">{{ sortIcon('district_name') }}</span></th>
@@ -182,8 +183,13 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let row of displayedRows; let i = index">
+          <tr *ngFor="let row of displayedRows; let i = index" [class.row-excluded]="row.is_excluded">
             <td>{{ i + 1 }}</td>
+            <td>
+              <span [class.excl-badge]="row.is_excluded" [class.incl-badge]="!row.is_excluded">
+                {{ row.is_excluded ? 'Excluded' : 'Included' }}
+              </span>
+            </td>
             <td>{{ row.station_code }}</td>
             <td>{{ row.state_name }}</td>
             <td>{{ row.district_name }}</td>
