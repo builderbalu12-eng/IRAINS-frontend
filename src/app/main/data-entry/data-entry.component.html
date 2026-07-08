@@ -29,6 +29,32 @@
   </div>
 </div>
 
+<div class="lock-overlay" *ngIf="showUploadResultPopup" (click)="showUploadResultPopup = false">
+  <div class="lock-card upload-result-card" (click)="$event.stopPropagation()">
+    <div class="lock-icon-ring" [class.upload-icon-ok]="uploadResultOk" [class.upload-icon-warn]="!uploadResultOk">
+      <i class="bi" [ngClass]="uploadResultOk ? 'bi-check-lg' : 'bi-exclamation-triangle-fill'"></i>
+    </div>
+    <h3>{{ uploadResultOk ? 'Upload Complete' : 'Upload Skipped' }}</h3>
+    <p>{{ uploadResultMessage }}</p>
+
+    <div class="upload-date-group" *ngIf="uploadResultUploadedDates.length > 0">
+      <div class="upload-date-group-label"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+      <div class="upload-date-chips">
+        <span class="upload-date-chip ok" *ngFor="let d of uploadResultUploadedDates">{{ d }}</span>
+      </div>
+    </div>
+
+    <div class="upload-date-group" *ngIf="uploadResultSkippedDates.length > 0">
+      <div class="upload-date-group-label warn"><i class="bi bi-x-circle-fill"></i> Skipped (older than {{ restrictDays }} days)</div>
+      <div class="upload-date-chips">
+        <span class="upload-date-chip warn" *ngFor="let d of uploadResultSkippedDates">{{ d }}</span>
+      </div>
+    </div>
+
+    <button class="restrict-ok-btn" (click)="showUploadResultPopup = false">OK</button>
+  </div>
+</div>
+
 <div id="loader" class="loader" *ngIf="isLoading">
   <div class="loading-message">
     <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading...
@@ -553,7 +579,7 @@
                 *ngFor="let date of dateColumns"
               >
                 {{ date }}
-                <span *ngIf="!isDateEditable(date)" title="Read-only: editing allowed only for the last 30 days from To Date">🔒</span>
+                <span *ngIf="!isDateEditable(date)" [title]="restrictDays != null ? ('Read-only: editing allowed only for the last ' + restrictDays + ' days') : 'Read-only: editing allowed only for the last 30 days from To Date'">🔒</span>
               </th>
             </tr>
           </thead>
@@ -568,6 +594,7 @@
                 <input
                   type="text"
                   name="rangeRainfall"
+                  class="range-cell-input"
                   oninput="this.value = this.value.replace(/[^0-9.-]/g, '').replace(/(\..*)\..+/g, '$1');"
                   [(ngModel)]="station.values[date]"
                   [disabled]="!isDateEditable(date)"

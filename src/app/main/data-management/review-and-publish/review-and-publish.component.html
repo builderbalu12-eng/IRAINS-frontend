@@ -1,5 +1,5 @@
 <div class="rp-page">
-  <div class="rp-card-wrap">
+  <div class="rp-left-col">
 
     <div class="rp-header">
       <h2><i class="bi bi-lock-fill me-2"></i>Review &amp; Publish</h2>
@@ -47,5 +47,119 @@
       </div>
 
     </div>
+
+    <!-- ── Per-role settings (MC / HQ) ─────────────────────────── -->
+    <div class="rp-role-header">
+      <h3><i class="bi bi-sliders me-2"></i>Per-Role Settings</h3>
+      <p class="rp-subtitle">
+        Past-date Excel upload limit and today's-data publish status, set separately for MC and HQ.
+      </p>
+    </div>
+
+    <div class="rp-role-grid">
+      <div class="rp-role-card" *ngFor="let rs of roleSchedules">
+        <div class="rp-role-title">{{ rs.label }}</div>
+
+        <div *ngIf="rs.loading" class="rp-loading small">
+          <i class="bi bi-arrow-repeat spin me-2"></i> Loading...
+        </div>
+
+        <ng-container *ngIf="!rs.loading">
+          <div class="rp-field">
+            <label>Restrict excel upload to past</label>
+            <div class="rp-days-input-row">
+              <input type="number" min="0" class="rp-days-input" [(ngModel)]="rs.restrictDays" placeholder="No limit">
+              <span class="rp-days-suffix">days</span>
+              <button class="rp-save-btn" [disabled]="rs.saving" (click)="saveRestrictDays(rs)">Save</button>
+            </div>
+            <div class="rp-desc">Leave blank for no restriction.</div>
+          </div>
+
+          <div class="rp-field">
+            <label>Publish today's data</label>
+            <div class="rp-publish-row">
+              <label class="rp-switch small" [class.disabled]="rs.saving">
+                <input type="checkbox" [(ngModel)]="rs.publish" (change)="onPublishToggle(rs)" [disabled]="rs.saving">
+                <span class="rp-slider publish"></span>
+              </label>
+              <span class="rp-publish-label">{{ rs.publish ? 'Published' : 'Held back' }}</span>
+            </div>
+            <div class="rp-desc">Controls whether today shows on /all-maps &amp; other products for {{ rs.label }} users.</div>
+          </div>
+
+          <div *ngIf="rs.message" class="rp-message small" [class.success]="rs.messageType === 'success'" [class.error]="rs.messageType === 'error'">
+            <i class="bi" [ngClass]="rs.messageType === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+            {{ rs.message }}
+          </div>
+        </ng-container>
+      </div>
+    </div>
+
   </div>
+
+  <!-- ── Right: highest rainfall by date ─────────────────────── -->
+  <div class="rp-right-col">
+    <div class="rp-card rp-rainfall-card">
+
+      <div class="rp-header">
+        <h3><i class="bi bi-cloud-rain-fill me-2"></i>Highest Rainfall by Date in Data Entry</h3>
+        <p class="rp-subtitle">
+          Top stations by rainfall for each of the last {{ effectiveTopRainfallDays() }} days (the larger of MC/HQ's restrict-days).
+        </p>
+      </div>
+
+      <div class="rp-topn-row">
+        <label>Show top</label>
+        <input type="number" min="1" max="500" class="rp-days-input" [(ngModel)]="topN">
+        <span class="rp-days-suffix">stations</span>
+        <button class="rp-save-btn" [disabled]="loadingTopRainfall" (click)="loadTopRainfall()">Refresh</button>
+      </div>
+
+      <div *ngIf="loadingTopRainfall" class="rp-loading">
+        <i class="bi bi-arrow-repeat spin me-2"></i> Loading rainfall data...
+      </div>
+
+      <ng-container *ngIf="!loadingTopRainfall">
+        <div class="rp-date-tabs" *ngIf="topRainfallDates.length > 0">
+          <button
+            *ngFor="let d of topRainfallDates"
+            class="rp-date-tab"
+            [class.active]="d === selectedTopRainfallDate"
+            (click)="selectedTopRainfallDate = d"
+          >{{ d }}</button>
+        </div>
+
+        <div class="rp-rainfall-table-wrap" *ngIf="topRainfallDates.length > 0">
+          <table class="rp-rainfall-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Station</th>
+                <th>Centre</th>
+                <th>District</th>
+                <th>State</th>
+                <th>Rainfall (mm)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let s of selectedDateStations; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td>{{ s.station_name }}</td>
+                <td>{{ s.centre_name }}</td>
+                <td>{{ s.district_name }}</td>
+                <td>{{ s.state_name }}</td>
+                <td class="rp-rainfall-value">{{ s.rainfall }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div *ngIf="topRainfallDates.length === 0" class="rp-loading">
+          No rainfall data found for this window.
+        </div>
+      </ng-container>
+
+    </div>
+  </div>
+
 </div>

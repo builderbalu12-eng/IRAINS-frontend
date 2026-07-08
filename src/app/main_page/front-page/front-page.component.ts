@@ -4,6 +4,7 @@ import { HttpClient } from "@angular/common/http";
 import "jspdf-autotable";
 import { Router } from "@angular/router";
 import { DataService } from "src/app/data.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 import * as L from "leaflet";
 import "leaflet.fullscreen";
 
@@ -48,7 +49,8 @@ export class FrontPageComponent implements OnInit {
   constructor(
     private router: Router,
     private http: HttpClient,
-    private dataService: DataService
+    private dataService: DataService,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
     this.selectDataMode("Departure");
     // this.setDateMonth();
@@ -56,11 +58,25 @@ export class FrontPageComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const currentDate = new Date();
-    this.today = currentDate.toISOString().split("T")[0];
+    const applyDate = (d: Date) => {
+      const iso = d.toISOString().split("T")[0];
+      this.today = iso;
+      this.fromDate = iso as any;
+      this.toDate = iso as any;
+    };
 
-    this.fromDate = this.today;
-    this.toDate = this.today;
+    const loggedInUser: any = localStorage.getItem("isAuthorised");
+    const loggedInUserObject = loggedInUser ? JSON.parse(loggedInUser) : null;
+    const role = loggedInUserObject?.data?.[0]?.mcorhq;
+
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => applyDate(effectiveDate),
+        error: () => applyDate(new Date())
+      });
+    } else {
+      applyDate(new Date());
+    }
   }
 
   ngAfterViewInit(): void {

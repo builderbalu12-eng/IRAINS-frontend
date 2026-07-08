@@ -123,7 +123,8 @@
     <div class="col-1">
       <input type="date" class="form-control"
              [ngModel]="selectedDate | date: 'yyyy-MM-dd'"
-             (ngModelChange)="selectedDate = $event">
+             (ngModelChange)="selectedDate = $event"
+             [min]="minDate">
     </div>
     <div class="col-1 mt-2">
       <button class="btn btn-success" type="button" (click)="backend()">Submit</button>

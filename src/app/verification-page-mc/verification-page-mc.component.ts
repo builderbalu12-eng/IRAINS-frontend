@@ -3,6 +3,7 @@ import { DataService } from '../data.service';
 import { DataEntryService } from '../services/dataEntry/dataEntry.service';
 import { VerificationHq } from '../services/verification/verificationHq.service';
 import { DataEntryLockService } from '../services/dataEntryLock.service';
+import { MapDataScheduleService } from '../services/mapDataSchedule.service';
 
 @Component({
   selector: 'app-verification-page',
@@ -39,6 +40,7 @@ export class VerificationPageMcComponent {
   isLoadingVerificatiion: any = false;
   isVerifactionButtonClicked: any = false;
   isDataEntryLocked: boolean = false;
+  minDate: string = '';
 
 
 
@@ -47,7 +49,8 @@ export class VerificationPageMcComponent {
     private dataService: DataService,
     private verificationhq : VerificationHq,
     private dataEntryService : DataEntryService,
-    private dataEntryLockService: DataEntryLockService
+    private dataEntryLockService: DataEntryLockService,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, '0');
@@ -74,6 +77,22 @@ export class VerificationPageMcComponent {
       next: (res) => { this.isDataEntryLocked = res.is_locked === 1; },
       error: () => { this.isDataEntryLocked = false; }
     });
+
+    const role = MCData.data[0].mcorhq;
+    if (role) {
+      this.mapDataScheduleService.getSchedule(role).subscribe({
+        next: (res) => {
+          if (res.restrict_days != null) {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - res.restrict_days);
+            this.minDate = this.formatDate(cutoff);
+          } else {
+            this.minDate = '';
+          }
+        },
+        error: () => { this.minDate = ''; }
+      });
+    }
     // this.fetchDataFromBackend();
     this.backend();
   }

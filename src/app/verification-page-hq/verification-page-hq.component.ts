@@ -3,6 +3,7 @@ import { DataService } from '../data.service';
 import { VerificationHq } from '../services/verification/verificationHq.service';
 import { DataEntryService } from '../services/dataEntry/dataEntry.service';
 import { DataEntryLockService } from '../services/dataEntryLock.service';
+import { MapDataScheduleService } from '../services/mapDataSchedule.service';
 import * as XLSX from 'xlsx';
 import * as FileSaver from 'file-saver';
 
@@ -34,11 +35,13 @@ export class VerificationPageHQComponent {
   fetcheddata: any;
   loggedInUser: any;
   currentUserType: any;
+  currentUserRole: any;
   devationStatus: any;
   isVerificationLoading: boolean = false;
   isVerifiactionButtonClicked: boolean = false;
   EXCEL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
   isDataEntryLocked: boolean = false;
+  minDate: string = '';
 
   // === TABS & CUMULATIVE ===
   activeTab: 'daily' | 'cumulative' = 'daily';
@@ -59,7 +62,8 @@ export class VerificationPageHQComponent {
     private dataService: DataService,
     private verificationhq: VerificationHq,
     private dataEntryService: DataEntryService,
-    private dataEntryLockService: DataEntryLockService
+    private dataEntryLockService: DataEntryLockService,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, '0');
@@ -70,6 +74,7 @@ export class VerificationPageHQComponent {
     this.loggedInUser = localStorage.getItem("isAuthorised");
     const obj = JSON.parse(this.loggedInUser);
     this.currentUserType = obj.data[0].userid;
+    this.currentUserRole = obj.data[0].mcorhq;
   }
 
   ngOnInit(): void {
@@ -78,6 +83,22 @@ export class VerificationPageHQComponent {
       next: (res) => { this.isDataEntryLocked = res.is_locked === 1; },
       error: () => { this.isDataEntryLocked = false; }
     });
+
+    // Daily-mode date picker only — cumulative/range mode is unrestricted.
+    if (this.currentUserRole) {
+      this.mapDataScheduleService.getSchedule(this.currentUserRole).subscribe({
+        next: (res) => {
+          if (res.restrict_days != null) {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - res.restrict_days);
+            this.minDate = this.formatDate(cutoff);
+          } else {
+            this.minDate = '';
+          }
+        },
+        error: () => { this.minDate = ''; }
+      });
+    }
   }
 
   // === UTILITIES ===

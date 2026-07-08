@@ -11,6 +11,7 @@ import * as FileSaver from "file-saver";
 import { FetchStationDataService } from "src/app/services/station/station.service";
 import { DataEntryService } from "src/app/services/dataEntry/dataEntry.service";
 import { DataEntryLockService } from "src/app/services/dataEntryLock.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 import * as e from "express";
 
 interface Region {
@@ -111,6 +112,12 @@ export class DataEntryComponent implements OnInit {
   };
   minDate: string = "";
   isDataEntryLocked: boolean = false;
+  restrictDays: number | null = null;
+  showUploadResultPopup: boolean = false;
+  uploadResultOk: boolean = true;
+  uploadResultMessage: string = '';
+  uploadResultUploadedDates: string[] = [];
+  uploadResultSkippedDates: string[] = [];
   loggedInUserObject: any;
   emailGroups: any[] = [];
   emails: any[] = [];
@@ -183,6 +190,7 @@ export class DataEntryComponent implements OnInit {
     private stationService: FetchStationDataService,
     private dataEntryService: DataEntryService,
     private dataEntryLockService: DataEntryLockService,
+    private mapDataScheduleService: MapDataScheduleService,
     private snackBar: MatSnackBar
   ) {
     let loggedInUser: any = localStorage.getItem("isAuthorised");
@@ -246,12 +254,6 @@ export class DataEntryComponent implements OnInit {
     this.maxDate = this.formatDate(new Date());
     this.maxMonth = this.maxDate.slice(0, 7);
     this.selectedMonth = this.maxMonth;
-    if (this.loggedInUserObject.data[0].mcorhq == "mc") {
-      const todayDate = new Date();
-      todayDate.setDate(todayDate.getDate() - 60);
-      this.minDate = this.formatDate(todayDate);
-
-    }
 
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, "0");
@@ -299,6 +301,20 @@ export class DataEntryComponent implements OnInit {
     this.currentUserType = obj.data[0].mcorhq;
     console.log("currentUserType", this.currentUserType);
     // this.isInputDisabled = this.stationService.isAfterElevenAM();
+
+    this.mapDataScheduleService.getSchedule(this.currentUserType).subscribe({
+      next: (res) => {
+        this.restrictDays = res.restrict_days;
+        if (this.restrictDays != null) {
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - this.restrictDays);
+          this.minDate = this.formatDate(cutoff);
+        } else {
+          this.minDate = "";
+        }
+      },
+      error: () => { this.restrictDays = null; }
+    });
 
     this.fetchRegionData();
     this.getAllMCData();
@@ -697,28 +713,92 @@ export class DataEntryComponent implements OnInit {
   }
 
 
+  private openUploadResultPopup(ok: boolean, message: string, uploaded: string[] = [], skipped: string[] = []): void {
+    this.uploadResultOk = ok;
+    this.uploadResultMessage = message;
+    this.uploadResultUploadedDates = uploaded;
+    this.uploadResultSkippedDates = skipped;
+    this.showUploadResultPopup = true;
+  }
+
+  private readonly excelMonthAbbrevs = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  /** Parses a "dd_Mon_yy" excel column header (e.g. "12_Sep_24") into a Date, or null if not a date column. */
+  private parseExcelDateColumn(key: string): Date | null {
+    const parts = key.split('_');
+    if (parts.length !== 3) return null;
+    const [ddStr, monStr, yyStr] = parts;
+    const dd = parseInt(ddStr, 10);
+    const monIdx = this.excelMonthAbbrevs.indexOf(monStr);
+    const yy = parseInt(yyStr, 10);
+    if (isNaN(dd) || monIdx === -1 || isNaN(yy) || yyStr.length !== 2) return null;
+    const d = new Date(2000 + yy, monIdx, dd);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
   async uploadRainFallFile() {
     if (this.selectedFile) {
       console.log(this.selectedFile);
-  
+
       this.isUploading = true; // start loader
       try {
         const fileReader = new FileReader();
-  
+
         fileReader.onload = async (e: any) => {
           try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: "array" });
-  
+
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
-  
+
             const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {
               defval: null,
             });
-  
+
             const skipColumns = ["station_name", "centre_type", "station_id"];
-  
+
+            // Dates within restrictDays get uploaded as usual; anything older
+            // is dropped from the upload (not blocked) and reported to the user.
+            let uploadedDateCols: string[] = [];
+            let skippedDateCols: string[] = [];
+
+            if (jsonData.length > 0) {
+              const dateCols = Object.keys(jsonData[0]).filter(
+                (k) => !skipColumns.includes(k) && this.parseExcelDateColumn(k) !== null
+              );
+
+              if (this.restrictDays != null) {
+                const cutoff = new Date();
+                cutoff.setHours(0, 0, 0, 0);
+                cutoff.setDate(cutoff.getDate() - this.restrictDays);
+
+                dateCols.forEach((k) => {
+                  const d = this.parseExcelDateColumn(k)!;
+                  (d < cutoff ? skippedDateCols : uploadedDateCols).push(k);
+                });
+
+                if (skippedDateCols.length > 0) {
+                  jsonData.forEach((row: any) => skippedDateCols.forEach((k) => delete row[k]));
+                }
+              } else {
+                uploadedDateCols = dateCols;
+              }
+            }
+
+            if (uploadedDateCols.length === 0 && skippedDateCols.length > 0) {
+              this.openUploadResultPopup(
+                false,
+                `Nothing uploaded — every date in this file is older than the ${this.restrictDays}-day limit.`,
+                [],
+                skippedDateCols
+              );
+              this.clearRainfallFileInput();
+              this.isUploading = false;
+              return;
+            }
+
             const processedData = jsonData.map((row: any) => {
               for (const key in row) {
                 if (
@@ -749,7 +829,9 @@ export class DataEntryComponent implements OnInit {
               .toPromise();
   
             await this.fetchStationData(this.enteredDate);
-            alert("File uploaded successfully");
+
+            this.openUploadResultPopup(true, "File uploaded successfully.", uploadedDateCols, skippedDateCols);
+
             this.clearFileInput();
             this.filterStationData();
           } catch (error) {
@@ -1417,6 +1499,8 @@ export class DataEntryComponent implements OnInit {
 
     const toDate = lastDay > today ? today : lastDay;
 
+    // Full month is still fetched/displayed — isDateEditable() locks the
+    // out-of-restrictDays columns instead of hiding them.
     return {
       fromDate: this.formatDate(firstDay),
       toDate: this.formatDate(toDate)
@@ -1501,7 +1585,11 @@ export class DataEntryComponent implements OnInit {
 
     const toDate = new Date(this.rangeToDate);
     const minEditableDate = new Date(toDate);
-    minEditableDate.setDate(minEditableDate.getDate() - 29); // last 30 days incl. To Date
+    if (this.restrictDays != null) {
+      minEditableDate.setDate(minEditableDate.getDate() - (this.restrictDays - 1)); // restrictDays window incl. To Date
+    } else {
+      minEditableDate.setDate(minEditableDate.getDate() - 29); // no role restriction — fall back to last 30 days incl. To Date
+    }
 
     const d = new Date(date);
     return d >= minEditableDate && d <= toDate;

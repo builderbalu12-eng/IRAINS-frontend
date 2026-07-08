@@ -17,6 +17,7 @@ import { DownloadPdf } from "src/app/services/district/pdfdownload.service";
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 
 @Component({
   selector: "app-district-actual-map",
@@ -129,33 +130,44 @@ export class DistrictActualMapComponent {
     private district: DistrictService,
     private downloadPdf$: DownloadPdf,
     private countryService: CountryService,
-    private constants: Constants
+    private constants: Constants,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
-    // var currentDate = new Date();
-    // var dd = String(currentDate.getDate());
-    // var mon = String(currentDate.getMonth());
-    // var year = String(currentDate.getFullYear());
-    // this.formatteddate = `${dd.padStart(2, '0')}-${mon.padStart(2, '0')}-${year}`;
+    // Effective latest date: today if this role's data is published,
+    // otherwise yesterday (today's data held back until published).
+    const initWithEffectiveDate = (effectiveDate: Date) => {
+      const dd = String(effectiveDate.getDate()).padStart(2, "0");
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+      const year = String(effectiveDate.getFullYear());
+      this.formatteddate = `${dd}-${mon}-${year}`;
 
-    const currentDate = new Date();
-    const dd = String(currentDate.getDate()).padStart(2, "0");
-    const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-    const year = String(currentDate.getFullYear());
-    this.formatteddate = `${dd}-${mon}-${year}`;
+      this.dataService.fromAndToDate$.subscribe((value) => {
+        if (value) {
+          let fromAndToDates = JSON.parse(value);
+          this.StartDate = fromAndToDates.fromDate;
+          this.EndDate = fromAndToDates.toDate;
+          // console.log(this.previousWeekWeeklyStartDate, this.previousWeekWeeklyEndDate);
+        } else {
+          this.StartDate = `${year}-${mon}-${dd}`;
+          this.EndDate = `${year}-${mon}-${dd}`;
+        }
+        this.calculateInitialZoom();
+        this.fetchBackend();
+      });
+    };
 
-    this.dataService.fromAndToDate$.subscribe((value) => {
-      if (value) {
-        let fromAndToDates = JSON.parse(value);
-        this.StartDate = fromAndToDates.fromDate;
-        this.EndDate = fromAndToDates.toDate;
-        // console.log(this.previousWeekWeeklyStartDate, this.previousWeekWeeklyEndDate);
-      } else {
-        this.StartDate = `${year}-${mon}-${dd}`;
-        this.EndDate = `${year}-${mon}-${dd}`;
-      }
-      this.calculateInitialZoom();
-      this.fetchBackend();
-    });
+    const loggedInUser: any = localStorage.getItem("isAuthorised");
+    const loggedInUserObject = loggedInUser ? JSON.parse(loggedInUser) : null;
+    const role = loggedInUserObject?.data?.[0]?.mcorhq;
+
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+        error: () => initWithEffectiveDate(new Date())
+      });
+    } else {
+      initWithEffectiveDate(new Date());
+    }
   }
 
   convertToIndianDateFormat = (dateString: string) =>
