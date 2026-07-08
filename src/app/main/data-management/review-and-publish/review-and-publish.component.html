@@ -1,0 +1,51 @@
+<div class="rp-page">
+  <div class="rp-card-wrap">
+
+    <div class="rp-header">
+      <h2><i class="bi bi-lock-fill me-2"></i>Review &amp; Publish</h2>
+      <p class="rp-subtitle">
+        Lock data entry to freeze submissions while you review the day's data.
+      </p>
+    </div>
+
+    <div *ngIf="loading" class="rp-loading">
+      <i class="bi bi-arrow-repeat spin me-2"></i> Loading current status...
+    </div>
+
+    <div *ngIf="!loading" class="rp-card">
+
+      <div class="rp-status" [class.locked]="isLocked" [class.unlocked]="!isLocked">
+        <i class="bi" [ngClass]="isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'"></i>
+        <span *ngIf="isLocked">Data Entry is <strong>Locked</strong></span>
+        <span *ngIf="!isLocked">Data Entry is <strong>Unlocked</strong></span>
+      </div>
+
+      <div class="rp-toggle-row">
+        <div class="rp-label-block">
+          <div class="rp-label">Unlocked</div>
+          <div class="rp-desc">Users can submit &amp; edit<br>data as usual.</div>
+        </div>
+
+        <label class="rp-switch" [class.disabled]="saving">
+          <input type="checkbox" [(ngModel)]="isLocked" (change)="onToggleChange()" [disabled]="saving">
+          <span class="rp-slider"></span>
+        </label>
+
+        <div class="rp-label-block right">
+          <div class="rp-label">Locked</div>
+          <div class="rp-desc">Data-entry page shows a popup<br>and blocks submissions.</div>
+        </div>
+      </div>
+
+      <div *ngIf="saving" class="rp-saving">
+        <i class="bi bi-arrow-repeat spin me-1"></i> Saving...
+      </div>
+
+      <div *ngIf="message" class="rp-message" [class.success]="messageType === 'success'" [class.error]="messageType === 'error'">
+        <i class="bi" [ngClass]="messageType === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+        {{ message }}
+      </div>
+
+    </div>
+  </div>
+</div>

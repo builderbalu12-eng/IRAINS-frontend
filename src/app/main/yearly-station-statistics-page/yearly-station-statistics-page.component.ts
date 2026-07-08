@@ -1007,8 +1007,8 @@ export class YearlyStationStatisticsPageComponent {
           block_code: entry.block_code,
           station_name: entry.station_name,
           station_id: entry.station_id,
-          latitude: parseFloat(entry.latitude).toFixed(4),
-          longitude: parseFloat(entry.longitude).toFixed(4)
+          latitude: Number(parseFloat(entry.latitude).toFixed(4)),
+          longitude: Number(parseFloat(entry.longitude).toFixed(4))
         };
         uniqueDates.forEach((d: any) => {
           stationMap[entry.station_id][d] = null;

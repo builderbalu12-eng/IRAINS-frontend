@@ -190,6 +190,7 @@ import { BlockActualOrgawsRainfallMapDailyMainPagePubicComponent } from './main/
 import { CalculationExclusionComponent } from './main/admin-panel/calculationExclusion/calculation-exclusion/calculation-exclusion.component';
 import { DisplayOrderManagementComponent } from './main/display-order-management/display-order-management.component';
 import { CalculationModeComponent } from './main/data-management/calculation-mode/calculation-mode.component';
+import { ReviewAndPublishComponent } from './main/data-management/review-and-publish/review-and-publish.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DataManagementComponent } from './main/data-management/data-management.component';
 import { GeojsonUploadComponent } from './main/data-management/geojson-upload/geojson-upload.component';
@@ -370,6 +371,7 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     CalculationExclusionComponent,
     DisplayOrderManagementComponent,
     CalculationModeComponent,
+    ReviewAndPublishComponent,
     DataManagementComponent,
     GeojsonUploadComponent,
     GeojsonManagementComponent,

@@ -1279,13 +1279,6 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
                       <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall} mm</div>
                       <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
                       <div style="font-size:12px;"><b>Departure:</b> ${rainfall}%</div>
-                      <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
-                        <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
-                        <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
-                        <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
-                        <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? parseFloat(matchedData.station_details_rainfall_sum).toFixed(1) + ' mm' : 'NA'}</div>
-                        <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? parseFloat(matchedData.aws_station_rainfall_sum).toFixed(1) + ' mm' : 'NA'}</div>
-                      </div>
                     </div>
                   `;
                   layer.on('mouseover', () => layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip());
@@ -1495,13 +1488,6 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
                     <div style="font-size:12px;margin-top:4px;"><b>Actual:</b> ${dailyrainfall} mm</div>
                     <div style="font-size:12px;"><b>Normal:</b> ${normalrainfall}</div>
                     <div style="font-size:12px;"><b>Departure:</b> ${rainfall}%</div>
-                    <div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;">
-                      <div style="font-size:11px;color:#555;"><b>IMD Stations:</b> ${matchedData?.station_details_count ?? 'NA'}</div>
-                      <div style="font-size:11px;color:#555;"><b>AWS Stations:</b> ${matchedData?.aws_station_count ?? 'NA'}</div>
-                      <div style="font-size:11px;color:#555;"><b>Total Stations:</b> ${matchedData?.total_station_count ?? 'NA'}</div>
-                      <div style="font-size:11px;color:#555;"><b>IMD Rainfall Sum:</b> ${matchedData?.station_details_rainfall_sum != null ? parseFloat(matchedData.station_details_rainfall_sum).toFixed(1) + ' mm' : 'NA'}</div>
-                      <div style="font-size:11px;color:#555;"><b>AWS Rainfall Sum:</b> ${matchedData?.aws_station_rainfall_sum != null ? parseFloat(matchedData.aws_station_rainfall_sum).toFixed(1) + ' mm' : 'NA'}</div>
-                    </div>
                   </div>
                 `;
                 layer.on('mouseover', () => layer.bindTooltip(popupContent, { sticky: true, opacity: 0.95 }).openTooltip());

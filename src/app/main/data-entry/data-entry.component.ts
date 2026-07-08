@@ -10,6 +10,7 @@ import * as XLSX from "xlsx";
 import * as FileSaver from "file-saver";
 import { FetchStationDataService } from "src/app/services/station/station.service";
 import { DataEntryService } from "src/app/services/dataEntry/dataEntry.service";
+import { DataEntryLockService } from "src/app/services/dataEntryLock.service";
 import * as e from "express";
 
 interface Region {
@@ -109,6 +110,7 @@ export class DataEntryComponent implements OnInit {
     activationDate: this.selectedDate,
   };
   minDate: string = "";
+  isDataEntryLocked: boolean = false;
   loggedInUserObject: any;
   emailGroups: any[] = [];
   emails: any[] = [];
@@ -180,6 +182,7 @@ export class DataEntryComponent implements OnInit {
     private fetchStationDataService: FetchStationDataService,
     private stationService: FetchStationDataService,
     private dataEntryService: DataEntryService,
+    private dataEntryLockService: DataEntryLockService,
     private snackBar: MatSnackBar
   ) {
     let loggedInUser: any = localStorage.getItem("isAuthorised");
@@ -286,6 +289,10 @@ export class DataEntryComponent implements OnInit {
 
   ngOnInit(): void {
     this.showDialog()
+    this.dataEntryLockService.loadLock().subscribe({
+      next: (res) => { this.isDataEntryLocked = res.is_locked === 1; },
+      error: () => { this.isDataEntryLocked = false; }
+    });
     this.enteredDate = new Date();
     this.loggedInUser = localStorage.getItem("isAuthorised");
     const obj = JSON.parse(this.loggedInUser);

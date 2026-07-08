@@ -4,6 +4,18 @@
 
 <app-header></app-header>
 <body>
+  <div class="lock-overlay" *ngIf="isDataEntryLocked">
+    <div class="lock-card">
+      <div class="lock-icon-ring">
+        <div class="lock-icon-pulse"></div>
+        <i class="bi bi-lock-fill"></i>
+      </div>
+      <h3>Data Entry Locked</h3>
+      <p>An admin has locked data entry while today's data is being reviewed.<br>Please check back shortly.</p>
+      <div class="lock-badge"><i class="bi bi-shield-check"></i> Locked for review</div>
+    </div>
+  </div>
+
   <div id="loader" class="loader" *ngIf="isLoading">
     <div class="loading-message">
       <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading...

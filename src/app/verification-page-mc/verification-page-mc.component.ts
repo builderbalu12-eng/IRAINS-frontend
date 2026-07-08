@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { DataService } from '../data.service';
 import { DataEntryService } from '../services/dataEntry/dataEntry.service';
 import { VerificationHq } from '../services/verification/verificationHq.service';
+import { DataEntryLockService } from '../services/dataEntryLock.service';
 
 @Component({
   selector: 'app-verification-page',
@@ -37,6 +38,7 @@ export class VerificationPageMcComponent {
   isVerifiactionButtonClicked: any = false;
   isLoadingVerificatiion: any = false;
   isVerifactionButtonClicked: any = false;
+  isDataEntryLocked: boolean = false;
 
 
 
@@ -44,7 +46,8 @@ export class VerificationPageMcComponent {
   constructor(
     private dataService: DataService,
     private verificationhq : VerificationHq,
-    private dataEntryService : DataEntryService
+    private dataEntryService : DataEntryService,
+    private dataEntryLockService: DataEntryLockService
   ) {
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, '0');
@@ -67,6 +70,10 @@ export class VerificationPageMcComponent {
       this.filteredRMcs.push({name: loginedMCName})
     }
     this.currentMCorRMC = this.currentMCorRMC.toUpperCase();
+    this.dataEntryLockService.loadLock().subscribe({
+      next: (res) => { this.isDataEntryLocked = res.is_locked === 1; },
+      error: () => { this.isDataEntryLocked = false; }
+    });
     // this.fetchDataFromBackend();
     this.backend();
   }

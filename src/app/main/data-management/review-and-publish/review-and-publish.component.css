@@ -1,0 +1,107 @@
+.rp-page {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.rp-card-wrap {
+  width: 100%;
+  max-width: 520px;
+}
+
+.rp-header h2 {
+  color: #002467;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+.rp-subtitle {
+  color: #555;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+.rp-loading {
+  color: #888;
+  padding: 1rem 0;
+}
+
+.rp-card {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.rp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1rem;
+  border-radius: 50px;
+  font-size: 0.9rem;
+  margin-bottom: 1.8rem;
+}
+.rp-status.locked   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.rp-status.unlocked { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+.rp-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.rp-label-block       { text-align: center; width: 150px; }
+.rp-label-block.right { text-align: center; }
+.rp-label { font-weight: 700; font-size: 1rem; color: #002467; }
+.rp-desc  { font-size: 0.78rem; color: #777; margin-top: 4px; line-height: 1.4; }
+
+.rp-switch {
+  position: relative;
+  display: inline-block;
+  width: 64px; height: 32px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.rp-switch.disabled { opacity: 0.6; cursor: not-allowed; }
+.rp-switch input    { opacity: 0; width: 0; height: 0; }
+
+.rp-slider {
+  position: absolute;
+  inset: 0;
+  background: #adb5bd;
+  border-radius: 32px;
+  transition: 0.3s;
+}
+.rp-slider:before {
+  content: "";
+  position: absolute;
+  height: 24px; width: 24px;
+  left: 4px; bottom: 4px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+input:checked + .rp-slider        { background: #b02a37; }
+input:checked + .rp-slider:before { transform: translateX(32px); }
+
+.rp-saving {
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.rp-message {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.rp-message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.rp-message.error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }

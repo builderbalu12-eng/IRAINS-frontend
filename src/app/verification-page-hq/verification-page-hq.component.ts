@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { DataService } from '../data.service';
 import { VerificationHq } from '../services/verification/verificationHq.service';
 import { DataEntryService } from '../services/dataEntry/dataEntry.service';
+import { DataEntryLockService } from '../services/dataEntryLock.service';
 import * as XLSX from 'xlsx';
 import * as FileSaver from 'file-saver';
 
@@ -37,6 +38,7 @@ export class VerificationPageHQComponent {
   isVerificationLoading: boolean = false;
   isVerifiactionButtonClicked: boolean = false;
   EXCEL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
+  isDataEntryLocked: boolean = false;
 
   // === TABS & CUMULATIVE ===
   activeTab: 'daily' | 'cumulative' = 'daily';
@@ -56,7 +58,8 @@ export class VerificationPageHQComponent {
   constructor(
     private dataService: DataService,
     private verificationhq: VerificationHq,
-    private dataEntryService: DataEntryService
+    private dataEntryService: DataEntryService,
+    private dataEntryLockService: DataEntryLockService
   ) {
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, '0');
@@ -71,6 +74,10 @@ export class VerificationPageHQComponent {
 
   ngOnInit(): void {
     this.loadDailyData();
+    this.dataEntryLockService.loadLock().subscribe({
+      next: (res) => { this.isDataEntryLocked = res.is_locked === 1; },
+      error: () => { this.isDataEntryLocked = false; }
+    });
   }
 
   // === UTILITIES ===
