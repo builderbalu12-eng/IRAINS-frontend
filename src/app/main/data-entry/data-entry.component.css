@@ -260,6 +260,14 @@ th {
   line-height: 1.5;
   margin: 0 0 1.4rem;
 }
+.lock-card p a {
+  color: #b02a37;
+  font-weight: 600;
+  text-decoration: none;
+}
+.lock-card p a:hover {
+  text-decoration: underline;
+}
 
 .lock-badge {
   display: inline-flex;
