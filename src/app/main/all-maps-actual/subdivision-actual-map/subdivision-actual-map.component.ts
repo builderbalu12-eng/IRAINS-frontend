@@ -114,6 +114,12 @@ export class SubdivisionActualMapComponent {
     private constants: Constants,
     private mapDataScheduleService: MapDataScheduleService
   ) {
+    // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+    // this.initialZoom immediately with no later correction, so it can't wait
+    // on the async date fetch below or the map builds at the hardcoded
+    // fallback zoom instead of the real window-size-based one.
+    this.calculateInitialZoom();
+
     // Effective latest date: today if this role's data is published,
     // otherwise yesterday (today's data held back until published).
     const initWithEffectiveDate = (effectiveDate: Date) => {
@@ -132,7 +138,6 @@ export class SubdivisionActualMapComponent {
           this.StartDate = `${year}-${mon}-${dd}`;
           this.EndDate = `${year}-${mon}-${dd}`;
         }
-        this.calculateInitialZoom();
         this.fetchBackend();
       });
     };

@@ -59,7 +59,10 @@ export class FrontPageComponent implements OnInit {
 
   ngOnInit(): void {
     const applyDate = (d: Date) => {
-      const iso = d.toISOString().split("T")[0];
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      const iso = `${yyyy}-${mm}-${dd}`;
       this.today = iso;
       this.fromDate = iso as any;
       this.toDate = iso as any;

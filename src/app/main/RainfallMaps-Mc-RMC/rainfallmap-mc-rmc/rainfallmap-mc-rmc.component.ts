@@ -20,6 +20,7 @@ import { Router, NavigationEnd } from "@angular/router";
 import { filter } from "rxjs/operators";
 import { Constants } from "src/app/services/constants";
 import { McWiseStateStatistics } from "src/app/services/state/mcWiseStateStatistics.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 
 @Component({
   selector: "app-rainfallmap-mc-rmc",
@@ -41,8 +42,8 @@ export class RainfallmapMcRmcComponent {
   today: any;
   allStateCodesinSelectedSet: any = new Set();
 
-  fromDate: any = this.formatDate(new Date());
-  toDate: any = this.formatDate(new Date());
+  fromDate: any;
+  toDate: any;
   allStatesLocatedinCurrentMc: any = [];
   selectedState: any;
   isLoadingStates: any = false;
@@ -113,15 +114,9 @@ export class RainfallmapMcRmcComponent {
     private downloadPdf$: McWiseStateStatistics,
     private mcRMCService: MCRMCsServiceState,
     private router: Router, // Inject Router,
-    private constants : Constants
+    private constants : Constants,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
-    // Current date formatting
-    const currentDate = new Date();
-    const dd = String(currentDate.getDate()).padStart(2, "0");
-    const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-    const year = String(currentDate.getFullYear());
-    this.formatteddate = `${dd}-${mon}-${year}`;
-
     let selectedMode: any = localStorage.getItem("selectedMode");
     this.selectedMode = JSON.parse(selectedMode);
     console.log('this.selected mOde', this.selectedMode)
@@ -138,21 +133,47 @@ export class RainfallmapMcRmcComponent {
         this.checkUrl(); // Call the method to check URL
       });
 
-    // Date subscription logic
-    this.dataService.fromAndToDate$.subscribe((value) => {
-      if (value) {
-        let fromAndToDates = JSON.parse(value);
-        this.StartDate = fromAndToDates.fromDate;
-        this.EndDate = fromAndToDates.toDate;
-        // console.log('inside if', this.StartDate, this.EndDate);
-      } else {
-        this.StartDate = `${year}-${mon}-${dd}`;
-        this.EndDate = `${year}-${mon}-${dd}`;
-        // console.log('inside else', this.StartDate, this.EndDate);
-      }
-      this.calculateInitialZoom();
-      this.fetchBackend();
-    });
+    // Zoom must stay synchronous here (unrelated to the date fetch below) —
+    // ngOnInit's onWindowResizer() recalculates it with the correct MC-specific
+    // factor right after, and that ordering (generic here, then specific in
+    // ngOnInit) is what makes the map render at the right zoom on first load.
+    this.calculateInitialZoom();
+
+    // Effective latest date: today if this role's data is published,
+    // otherwise yesterday (today's data held back until published).
+    const initWithEffectiveDate = (effectiveDate: Date) => {
+      const dd = String(effectiveDate.getDate()).padStart(2, "0");
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+      const year = String(effectiveDate.getFullYear());
+      this.formatteddate = `${dd}-${mon}-${year}`;
+      this.today = `${year}-${mon}-${dd}`;
+      this.fromDate = `${year}-${mon}-${dd}`;
+      this.toDate = `${year}-${mon}-${dd}`;
+
+      this.dataService.fromAndToDate$.subscribe((value) => {
+        if (value) {
+          let fromAndToDates = JSON.parse(value);
+          this.StartDate = fromAndToDates.fromDate;
+          this.EndDate = fromAndToDates.toDate;
+          // console.log('inside if', this.StartDate, this.EndDate);
+        } else {
+          this.StartDate = `${year}-${mon}-${dd}`;
+          this.EndDate = `${year}-${mon}-${dd}`;
+          // console.log('inside else', this.StartDate, this.EndDate);
+        }
+        this.fetchBackend();
+      });
+    };
+
+    const role = this.loggedInUserObject?.data?.[0]?.mcorhq;
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+        error: () => initWithEffectiveDate(new Date())
+      });
+    } else {
+      initWithEffectiveDate(new Date());
+    }
   }
 
   private checkUrl() {
