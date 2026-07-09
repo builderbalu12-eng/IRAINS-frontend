@@ -95,6 +95,43 @@
       </div>
     </div>
 
+    <!-- ── Per-role settings (Public / SP) — separate section ────── -->
+    <div class="rp-role-header">
+      <h3><i class="bi bi-people-fill me-2"></i>Public &amp; SP Settings</h3>
+      <p class="rp-subtitle">
+        Same controls as MC/HQ, kept separate since Public and SP are view-only logins (no data-entry excel uploads).
+      </p>
+    </div>
+
+    <div class="rp-role-grid">
+      <div class="rp-role-card" *ngFor="let rs of publicSpSchedules">
+        <div class="rp-role-title">{{ rs.label }}</div>
+
+        <div *ngIf="rs.loading" class="rp-loading small">
+          <i class="bi bi-arrow-repeat spin me-2"></i> Loading...
+        </div>
+
+        <ng-container *ngIf="!rs.loading">
+          <div class="rp-field">
+            <label>Publish today's data</label>
+            <div class="rp-publish-row">
+              <label class="rp-switch small" [class.disabled]="rs.saving">
+                <input type="checkbox" [(ngModel)]="rs.publish" (change)="onPublishToggle(rs)" [disabled]="rs.saving">
+                <span class="rp-slider publish"></span>
+              </label>
+              <span class="rp-publish-label">{{ rs.publish ? 'Published' : 'Held back' }}</span>
+            </div>
+            <div class="rp-desc">Controls whether today shows on /all-maps &amp; other products for {{ rs.label }} users.</div>
+          </div>
+
+          <div *ngIf="rs.message" class="rp-message small" [class.success]="rs.messageType === 'success'" [class.error]="rs.messageType === 'error'">
+            <i class="bi" [ngClass]="rs.messageType === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+            {{ rs.message }}
+          </div>
+        </ng-container>
+      </div>
+    </div>
+
   </div>
 
   <!-- ── Right: highest rainfall by date ─────────────────────── -->

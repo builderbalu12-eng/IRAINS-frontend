@@ -31,6 +31,12 @@ export class ReviewAndPublishComponent implements OnInit {
     { role: 'hq', label: 'HQ', restrictDays: null, publish: false, loading: true, saving: false, message: '', messageType: 'success' },
   ];
 
+  // ── Public & SP — separate section, same login table has 4 mcorhq_type values ──
+  publicSpSchedules: RoleSchedule[] = [
+    { role: 'public', label: 'Public', restrictDays: null, publish: false, loading: true, saving: false, message: '', messageType: 'success' },
+    { role: 'sp', label: 'SP', restrictDays: null, publish: false, loading: true, saving: false, message: '', messageType: 'success' },
+  ];
+
   // ── Highest rainfall by date (right panel) ──────────────────────────────
   topN: number = 100;
   loadingTopRainfall: boolean = false;
@@ -67,6 +73,17 @@ export class ReviewAndPublishComponent implements OnInit {
           rs.loading = false;
           this.maybeLoadTopRainfall();
         }
+      });
+    });
+
+    this.publicSpSchedules.forEach(rs => {
+      this.scheduleService.getSchedule(rs.role).subscribe({
+        next: (res) => {
+          rs.restrictDays = res.restrict_days;
+          rs.publish = res.publish === 1;
+          rs.loading = false;
+        },
+        error: () => { rs.loading = false; }
       });
     });
   }
