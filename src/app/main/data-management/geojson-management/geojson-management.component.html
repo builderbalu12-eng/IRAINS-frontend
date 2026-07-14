@@ -1,5 +1,13 @@
 <div class="page-wrap">
 
+  <app-officer-identification-modal
+    [visible]="showEmpModal"
+    [routePath]="pageRoute"
+    spatialPage="geojson"
+    pageLabel="GeoJSON Management"
+    (identified)="onOfficerIdentified($event)">
+  </app-officer-identification-modal>
+
   <!-- Header -->
   <div class="page-header mb-4">
     <h4 class="mb-1"><i class="bi bi-layers-fill me-2 text-primary"></i>GeoJSON Management</h4>

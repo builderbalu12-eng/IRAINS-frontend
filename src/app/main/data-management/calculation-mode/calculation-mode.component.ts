@@ -1,6 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Subscription } from 'rxjs';
 import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
+import { AdminActivityLogService, AdminActivityUser } from 'src/app/services/admin-activity-log.service';
+import { AdminRealtimeService } from 'src/app/services/admin-realtime.service';
+import { backendRoutePath } from 'src/app/config/admin-realtime.config';
 import { environment } from 'src/environment/environment';
 import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
@@ -10,12 +15,18 @@ import * as FileSaver from 'file-saver';
   templateUrl: './calculation-mode.component.html',
   styleUrls: ['./calculation-mode.component.css']
 })
-export class CalculationModeComponent implements OnInit {
+export class CalculationModeComponent implements OnInit, OnDestroy {
   useAws: boolean = true;
   loading: boolean = false;
   saving:  boolean = false;
   message: string  = '';
   messageType: 'success' | 'error' = 'success';
+
+  // Employee identification modal
+  showEmpModal = false;
+  empSubmitting = false;
+  empFormError = '';
+  empIdentificationForm: FormGroup;
 
   // Station data
   stationsLoading = false;
@@ -36,29 +47,116 @@ export class CalculationModeComponent implements OnInit {
   sortDir: 'asc' | 'desc' = 'asc';
 
   private baseUrl = environment.baseUrl;
+  private activityUser: AdminActivityUser | null = null;
+  private readonly pageRoute = '/data-management/calculation-mode';
+  /** Prevents programmatic checkbox revert from firing a second POST */
+  private suppressToggleChange = false;
+  private realtimeSub?: Subscription;
 
   constructor(
     private calcMode: CalculationsModeService,
     private http: HttpClient,
-  ) {}
+    private activityLog: AdminActivityLogService,
+    private adminRealtime: AdminRealtimeService,
+    private fb: FormBuilder,
+  ) {
+    this.empIdentificationForm = this.fb.group({
+      emp_name: ['', Validators.required],
+      emp_designation: ['', Validators.required],
+      emp_phone_number: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
+      remark: ['', Validators.required],
+    });
+  }
 
   ngOnInit(): void {
-    this.loading = true;
-    this.calcMode.loadMode().subscribe({
-      next: (res) => {
-        this.useAws = res.use_aws === 1;
-        this.loading = false;
-        this.loadStations();
+    this.activityUser = null;
+    this.prefillEmployeeForm();
+    this.showEmpModal = true;
+
+    const calcRoute = backendRoutePath(this.pageRoute);
+    this.realtimeSub = this.adminRealtime.pageStateChanged$.subscribe(event => {
+      if (event.route_path !== calcRoute || event.state_type !== 'calculation_mode') return;
+      const useAws = Number(event.data?.['use_aws']);
+      if (useAws === 0 || useAws === 1) {
+        this.suppressToggleChange = true;
+        this.useAws = useAws === 1;
+        this.suppressToggleChange = false;
+      }
+      if (event.data?.['updated_at']) {
+        this.calcMode.applyModeState({
+          use_aws: useAws,
+          updated_at: String(event.data['updated_at']),
+        });
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.realtimeSub?.unsubscribe();
+  }
+
+  private prefillEmployeeForm(): void {
+    const stored = this.activityLog.getStoredUser(this.pageRoute);
+    if (!stored) return;
+    this.empIdentificationForm.patchValue({
+      emp_name: stored.emp_name,
+      emp_designation: stored.emp_designation,
+      emp_phone_number: stored.emp_phone_number,
+      remark: stored.remark ?? '',
+    });
+  }
+
+  submitEmployeeForm(): void {
+    if (this.empSubmitting) return;
+
+    this.empFormError = '';
+
+    if (this.empIdentificationForm.invalid) {
+      this.empIdentificationForm.markAllAsTouched();
+      this.empFormError = 'Please fill in all required fields correctly.';
+      return;
+    }
+
+    this.empSubmitting = true;
+
+    const { emp_name, emp_designation, emp_phone_number, remark } = this.empIdentificationForm.getRawValue();
+    this.activityUser = this.activityLog.buildUserFromForm({
+      emp_name: emp_name.trim(),
+      emp_designation: emp_designation.trim(),
+      emp_phone_number: String(emp_phone_number).replace(/\D/g, ''),
+      remark: remark.trim(),
+    });
+
+    this.calcMode.recordOfficerAccess(this.activityLog.toApiPayload(this.activityUser)).subscribe({
+      next: () => {
+        this.empSubmitting = false;
+        this.activityLog.storeUser(this.activityUser!, this.pageRoute);
+        this.adminRealtime.onOfficerIdentified(this.pageRoute, this.activityUser!);
+        this.showEmpModal = false;
+        this.initPage();
       },
-      error: () => { this.loading = false; }
+      error: () => {
+        this.empSubmitting = false;
+        this.empFormError = 'Failed to save your details. Please try again.';
+      },
     });
   }
 
   onToggleChange(): void {
+    if (this.suppressToggleChange || this.saving) return;
+
+    if (!this.activityUser) {
+      this.showEmpModal = true;
+      this.empFormError = 'Please enter your officer details before changing calculation mode.';
+      this.revertToggle();
+      return;
+    }
+
     this.saving = true;
     this.message = '';
     const newVal = this.useAws ? 1 : 0;
-    this.calcMode.setMode(newVal).subscribe({
+    const remark = this.activityUser.remark ?? 'Calculation mode toggle';
+    this.calcMode.setMode(newVal, this.activityLog.toApiPayload(this.activityUser), remark).subscribe({
       next: (res) => {
         this.saving = false;
         this.messageType = 'success';
@@ -69,11 +167,25 @@ export class CalculationModeComponent implements OnInit {
         this.activeTab = 'imd';
         this.loadStations();
       },
-      error: () => {
+      error: (err) => {
         this.saving = false;
+        const body = err?.error;
+        if (err?.status === 409 && body) {
+          this.messageType = 'error';
+          const who = body.last_changed_by?.emp_name ?? 'Another officer';
+          this.message = `${who} already changed the mode.`;
+          this.suppressToggleChange = true;
+          this.useAws = body.use_aws === 1;
+          this.suppressToggleChange = false;
+          if (body.use_aws !== undefined) {
+            this.calcMode.applyModeState(body);
+          }
+          setTimeout(() => this.message = '', 6000);
+          return;
+        }
         this.messageType = 'error';
         this.message = 'Failed to update mode. Please try again.';
-        this.useAws = !this.useAws;
+        this.revertToggle();
       }
     });
   }
@@ -105,7 +217,6 @@ export class CalculationModeComponent implements OnInit {
       error: () => { this.stationsLoading = false; }
     });
 
-    // Fetch IMD-only country actual
     this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryData`, payload).subscribe({
       next: (res) => {
         const d = res.data?.[0] ?? res.data;
@@ -115,7 +226,6 @@ export class CalculationModeComponent implements OnInit {
       error: () => { this.countryLoading = false; }
     });
 
-    // Fetch IMD+AWS country actual
     this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryDataWithAWS`, payload).subscribe({
       next: (res) => {
         const d = res.data?.[0] ?? res.data;
@@ -223,12 +333,32 @@ export class CalculationModeComponent implements OnInit {
     }
   }
 
+  private initPage(): void {
+    this.loading = true;
+    this.calcMode.loadMode().subscribe({
+      next: (res) => {
+        this.suppressToggleChange = true;
+        this.useAws = res.use_aws === 1;
+        this.suppressToggleChange = false;
+        this.loading = false;
+        this.loadStations();
+      },
+      error: () => { this.loading = false; }
+    });
+  }
+
+  /** Undo checkbox change without triggering onToggleChange → setMode */
+  private revertToggle(): void {
+    this.suppressToggleChange = true;
+    this.useAws = !this.useAws;
+    setTimeout(() => { this.suppressToggleChange = false; });
+  }
+
   private todayStr(): string {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
-  // ── Cron trigger buttons ──────────────────────────────────────────────────
   runningAddDaily = false;
   addDailyMsg = '';
   addDailyErr = false;

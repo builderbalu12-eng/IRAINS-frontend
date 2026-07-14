@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { SubdivisionService } from 'src/app/services/subDivision/subDivision.service';
+import { AdminActivityLogService, AdminActivityUser, NormalsPage } from 'src/app/services/admin-activity-log.service';
 
 interface SubdivisionNormal {
   sub_division_code: number;
@@ -115,9 +116,44 @@ export class SubdivisionManagementComponent implements OnInit {
   missingLoading = false;
   missingExpanded = false;
 
-  constructor(public subdivisionService: SubdivisionService) {}
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/subdivision-management';
+  readonly normalsPageKey: NormalsPage = 'subdivision';
+  readonly pageLabel = 'Subdivision Management';
 
-  ngOnInit(): void { this.loadSubdivisions(); this.loadMissingNormals(); }
+  constructor(
+    public subdivisionService: SubdivisionService,
+    private activityLog: AdminActivityLogService,
+  ) {}
+
+  ngOnInit(): void {
+    // list loads after officer identification
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
+    this.loadSubdivisions();
+    this.loadMissingNormals();
+  }
+
+  private ensureIdentified(): boolean {
+    if (this.activityUser) return true;
+    this.showEmpModal = true;
+    return false;
+  }
+
+  private log(actionType: string, extra: Record<string, unknown> = {}): void {
+    this.activityLog.logNormalsActivity(this.normalsPageKey, actionType, this.activityUser, {
+      remark: this.activityUser?.remark ?? '',
+      ...extra,
+    }).subscribe();
+  }
+
+  onDownloadTemplate(): void {
+    this.log('DOWNLOAD_TEMPLATE');
+  }
 
   loadSubdivisions(): void {
     this.isLoading = true;

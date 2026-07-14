@@ -1,4 +1,12 @@
 <div class="dom-page">
+  <app-officer-identification-modal
+    [visible]="showEmpModal"
+    [routePath]="pageRoute"
+    [displayOrderEntity]="modalEntityType"
+    [pageLabel]="modalPageLabel"
+    (identified)="onOfficerIdentified($event)">
+  </app-officer-identification-modal>
+
   <div class="dom-header">
     <h2>Display Order Management</h2>
   </div>

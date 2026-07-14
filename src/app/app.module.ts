@@ -148,6 +148,7 @@ import { DistrictActualMapDupComponent } from "./main/all-maps-actual-dup/distri
 import { SubdivisionActualMapDupComponent } from "./main/all-maps-actual-dup/subdivision-actual-map-dup/subdivision-actual-map-dup.component";
 import { RegionActualMapDupComponent } from "./main/all-maps-actual-dup/region-actual-map-dup/region-actual-map-dup.component";
 import { LogInfoDataActionsComponent } from "./main/log-info-data-actions/log-info-data-actions.component";
+import { LogInfoAdminActivityComponent } from "./main/log-info-admin-activity/log-info-admin-activity.component";
 import { DistrictActualMapComponent } from "./main/all-maps-actual/district-actual-map/district-actual-map.component";
 import { RegionActualMapComponent } from "./main/all-maps-actual/region-actual-map/region-actual-map.component";
 import { StateActualMapComponent } from "./main/all-maps-actual/state-actual-map/state-actual-map.component";
@@ -202,6 +203,11 @@ import { SubdivisionManagementComponent } from './main/data-management/subdivisi
 import { RegionManagementComponent } from './main/data-management/region-management/region-management.component';
 import { CountryManagementComponent } from './main/data-management/country-management/country-management.component';
 import { DbInfoComponent } from './main/data-management/db-info/db-info.component';
+import { OfficerIdentificationModalComponent } from './shared/officer-identification-modal/officer-identification-modal.component';
+import { AdminLiveUsersBarComponent } from './shared/admin-live-users-bar/admin-live-users-bar.component';
+import { OfficerIdentityCardComponent } from './shared/officer-identity-card/officer-identity-card.component';
+import { ActivityLogTimelineComponent } from './shared/activity-log-timeline/activity-log-timeline.component';
+import { AdminPageActivityPanelComponent } from './shared/admin-page-activity-panel/admin-page-activity-panel.component';
 import { PermissionsComponent } from './main/permissions/permissions.component';
 import { RbacComponent } from './main/permissions/rbac/rbac.component';
 import { NewRegisterComponent } from './main/permissions/new-register/new-register.component';
@@ -332,6 +338,7 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     SubdivisionActualMapDupComponent,
     RegionActualMapDupComponent,
     LogInfoDataActionsComponent,
+    LogInfoAdminActivityComponent,
     DistrictActualMapComponent,
     RegionActualMapComponent,
     StateActualMapComponent,
@@ -382,6 +389,11 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     RegionManagementComponent,
     CountryManagementComponent,
     DbInfoComponent,
+    OfficerIdentificationModalComponent,
+    AdminLiveUsersBarComponent,
+    OfficerIdentityCardComponent,
+    ActivityLogTimelineComponent,
+    AdminPageActivityPanelComponent,
     PermissionsComponent,
     RbacComponent,
     NewRegisterComponent,

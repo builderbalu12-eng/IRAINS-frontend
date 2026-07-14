@@ -1,4 +1,12 @@
 <div class="rp-page">
+  <app-officer-identification-modal
+    [visible]="showEmpModal"
+    [routePath]="pageRoute"
+    [reviewPublishPage]="true"
+    [pageLabel]="pageLabel"
+    (identified)="onOfficerIdentified($event)">
+  </app-officer-identification-modal>
+
   <div class="rp-left-col">
 
     <div class="rp-header">

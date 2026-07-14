@@ -1,4 +1,12 @@
 <div class="dm-page-wrap">
+  <app-officer-identification-modal
+    [visible]="showEmpModal"
+    [routePath]="pageRoute"
+    [normalsPage]="normalsPageKey"
+    [pageLabel]="pageLabel"
+    (identified)="onOfficerIdentified($event)">
+  </app-officer-identification-modal>
+
   <div class="dm-page-inner">
     <div class="main-card shadow-lg rounded-4 bg-white p-4">
 
@@ -14,7 +22,7 @@
           </small>
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
-          <a [href]="stateService.downloadStateNormalTemplate(0)" class="btn btn-outline-success btn-sm fw-semibold">
+          <a [href]="stateService.downloadStateNormalTemplate(0)" class="btn btn-outline-success btn-sm fw-semibold" (click)="onDownloadTemplate()">
             <i class="fa fa-download me-1"></i> Sample Excel
           </a>
           <button class="btn btn-success btn-sm fw-semibold" (click)="openBulkAddYear()">

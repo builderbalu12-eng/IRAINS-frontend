@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { StateService } from 'src/app/services/state/state.service';
+import { AdminActivityLogService, AdminActivityUser, NormalsPage } from 'src/app/services/admin-activity-log.service';
 
 interface StateNormal {
   state_code: number;
@@ -120,9 +121,44 @@ export class StateManagementComponent implements OnInit {
   missingLoading = false;
   missingExpanded = false;
 
-  constructor(public stateService: StateService) {}
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/state-management';
+  readonly normalsPageKey: NormalsPage = 'state';
+  readonly pageLabel = 'State Management';
 
-  ngOnInit(): void { this.loadStates(); this.loadMissingNormals(); }
+  constructor(
+    public stateService: StateService,
+    private activityLog: AdminActivityLogService,
+  ) {}
+
+  ngOnInit(): void {
+    // list loads after officer identification
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
+    this.loadStates();
+    this.loadMissingNormals();
+  }
+
+  private ensureIdentified(): boolean {
+    if (this.activityUser) return true;
+    this.showEmpModal = true;
+    return false;
+  }
+
+  private log(actionType: string, extra: Record<string, unknown> = {}): void {
+    this.activityLog.logNormalsActivity(this.normalsPageKey, actionType, this.activityUser, {
+      remark: this.activityUser?.remark ?? '',
+      ...extra,
+    }).subscribe();
+  }
+
+  onDownloadTemplate(): void {
+    this.log('DOWNLOAD_TEMPLATE');
+  }
 
   loadStates(): void {
     this.isLoading = true;
@@ -187,7 +223,15 @@ export class StateManagementComponent implements OnInit {
     const fd = new FormData();
     fd.append('file', this.replaceFile);
     this.stateService.replaceStateNormals(this.normalsState.state_code, fd, this.replaceYear).subscribe({
-      next: (res) => { this.replaceSuccess = res?.message || 'Replaced.'; this.isReplaceUploading = false; },
+      next: (res) => {
+        this.replaceSuccess = res?.message || 'Replaced.';
+        this.isReplaceUploading = false;
+        this.log('REPLACE_NORMALS', {
+          state_code: this.normalsState!.state_code,
+          state_name: this.normalsState!.state_name,
+          year: this.replaceYear,
+        });
+      },
       error: (err) => {
         const s = err?.status;
         const m = err?.error?.error || '';
@@ -227,7 +271,15 @@ export class StateManagementComponent implements OnInit {
     fd.append('file', this.addYearFile);
     fd.append('year', this.addYearSelected.toString());
     this.stateService.addStateYearNormals(this.normalsState.state_code, fd).subscribe({
-      next: (res) => { this.addYearSuccess = res?.message || 'Added.'; this.isAddYearUploading = false; },
+      next: (res) => {
+        this.addYearSuccess = res?.message || 'Added.';
+        this.isAddYearUploading = false;
+        this.log('ADD_YEAR_NORMALS', {
+          state_code: this.normalsState!.state_code,
+          state_name: this.normalsState!.state_name,
+          year: this.addYearSelected,
+        });
+      },
       error: (err) => {
         const s = err?.status;
         const m = err?.error?.error || '';
@@ -271,6 +323,10 @@ export class StateManagementComponent implements OnInit {
         this.bulkReplaceSuccess = res?.message || 'Done.';
         this.bulkReplaceDetails = res?.details ?? [];
         this.isBulkReplaceUploading = false;
+        this.log('BULK_REPLACE_NORMALS', {
+          entity_count: res?.details?.length ?? res?.count,
+          year: this.bulkReplaceYear,
+        });
       },
       error: (err) => {
         this.bulkReplaceError = err?.error?.error || 'Bulk replace failed.';
@@ -317,6 +373,10 @@ export class StateManagementComponent implements OnInit {
         this.bulkAddYearInserted = res?.inserted ?? [];
         this.bulkAddYearSkipped  = res?.skipped  ?? [];
         this.isBulkAddYearUploading = false;
+        this.log('BULK_ADD_YEAR_NORMALS', {
+          entity_count: res?.inserted?.length,
+          year: this.bulkAddYearSelected,
+        });
       },
       error: (err) => {
         this.bulkAddYearError = err?.error?.error || 'Bulk add failed.';

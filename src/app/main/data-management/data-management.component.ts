@@ -1,6 +1,13 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { AdminRealtimeService } from 'src/app/services/admin-realtime.service';
+import {
+  ADMIN_ACTIVITY_PAGES,
+  backendRoutePath,
+  isRealtimeAdminPage,
+  normalizeAngularPath,
+} from 'src/app/config/admin-realtime.config';
 
 interface MenuItem {
   label: string;
@@ -56,6 +63,14 @@ export class DataManagementComponent implements OnInit, OnDestroy {
       ]
     },
     {
+      label: 'Activity Log',
+      icon: 'bi bi-journal-text',
+      expanded: false,
+      children: [
+        { label: 'Admin Activity Log', icon: 'bi bi-list-check', route: '/data-management/activity-log' },
+      ]
+    },
+    {
       label: 'Master File',
       icon: 'bi bi-folder-fill',
       expanded: true,
@@ -100,17 +115,45 @@ export class DataManagementComponent implements OnInit, OnDestroy {
 
   private routerSub: any;
 
-  constructor(private router: Router) {}
+  showLiveUsersBar = false;
+  activityRoutePath: string | null = null;
+  currentAngularPath = '';
+  activityPageTitle = 'This page';
+
+  constructor(
+    private router: Router,
+    private adminRealtime: AdminRealtimeService,
+  ) {}
 
   ngOnInit(): void {
+    this.adminRealtime.connect();
     this.currentRoute = this.router.url;
+    this.syncRealtime(this.currentRoute);
     this.routerSub = this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe(e => { this.currentRoute = e.urlAfterRedirects; this.autoExpand(); });
+      .subscribe(e => {
+        this.currentRoute = e.urlAfterRedirects;
+        this.syncRealtime(this.currentRoute);
+        this.autoExpand();
+      });
     this.autoExpand();
   }
 
-  ngOnDestroy(): void { this.routerSub?.unsubscribe(); }
+  ngOnDestroy(): void {
+    this.routerSub?.unsubscribe();
+    this.adminRealtime.teardown();
+  }
+
+  private syncRealtime(url: string): void {
+    const path = normalizeAngularPath(url);
+    this.currentAngularPath = path;
+    this.showLiveUsersBar = isRealtimeAdminPage(path);
+    this.activityRoutePath = backendRoutePath(path);
+    this.activityPageTitle =
+      ADMIN_ACTIVITY_PAGES.find((page) => page.route_path === this.activityRoutePath)?.page_name ??
+      'This page';
+    this.adminRealtime.onRouteChange(path);
+  }
 
   autoExpand(): void {
     for (const g of this.menuGroups) {

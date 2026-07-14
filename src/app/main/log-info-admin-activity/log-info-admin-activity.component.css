@@ -1,0 +1,124 @@
+.audit-page {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.14), transparent 24%),
+    #eef2ff;
+  padding: 24px;
+}
+
+.audit-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.audit-shell,
+.dm-page-wrap .main-card {
+  border-radius: 24px;
+}
+
+.audit-shell {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  box-shadow: 0 20px 50px rgba(79, 70, 229, 0.12);
+  padding: 24px;
+  backdrop-filter: blur(8px);
+}
+
+.dm-page-wrap {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f4f6fb;
+}
+
+.dm-page-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.audit-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #312e81 0%, #4f46e5 55%, #7c3aed 100%);
+  color: #fff;
+}
+
+.audit-hero.embedded {
+  background: linear-gradient(135deg, #1a1a2e 0%, #312e81 100%);
+}
+
+.audit-kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.audit-hero h2 {
+  margin: 6px 0 4px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.audit-hero.embedded h2 {
+  font-size: 22px;
+}
+
+.audit-subtitle {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 10px;
+}
+
+.stat-pill {
+  min-width: 88px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-align: center;
+}
+
+.stat-pill span {
+  display: block;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.stat-pill strong {
+  font-size: 20px;
+}
+
+.filter-panel {
+  padding: 18px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 18px;
+}
+
+.timeline-section {
+  padding: 4px 2px 0;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-control {
+  border-radius: 10px;
+}

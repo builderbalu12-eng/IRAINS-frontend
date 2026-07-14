@@ -1,0 +1,35 @@
+<button type="button" class="trail-fab" (click)="toggle()" [class.open]="open" title="Page activity trail">
+  <i class="bi" [ngClass]="open ? 'bi-x-lg' : 'bi-clock-history'"></i>
+  <span class="fab-label">{{ open ? 'Close' : 'Activity' }}</span>
+  <span class="fab-count" *ngIf="recentCount > 0 && !open">{{ recentCount > 9 ? '9+' : recentCount }}</span>
+</button>
+
+<aside class="trail-panel" [class.open]="open">
+  <div class="trail-header">
+    <div>
+      <p class="trail-kicker">Page Activity Trail</p>
+      <h5>{{ pageTitle }}</h5>
+      <small>Changes recorded only for this page</small>
+    </div>
+    <button type="button" class="btn-refresh" (click)="refresh()" title="Refresh">
+      <i class="bi bi-arrow-clockwise"></i>
+    </button>
+  </div>
+
+  <div class="trail-officer">
+    <app-officer-identity-card
+      [officer]="currentOfficer"
+      label="You are acting as"
+    ></app-officer-identity-card>
+  </div>
+
+  <div class="trail-body">
+    <app-activity-log-timeline
+      [logs]="logs"
+      [loading]="loading"
+      emptyMessage="No changes logged on this page yet. Actions you perform will appear here instantly."
+    ></app-activity-log-timeline>
+  </div>
+</aside>
+
+<div class="trail-backdrop" *ngIf="open" (click)="toggle()"></div>

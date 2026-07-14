@@ -1,0 +1,70 @@
+<div *ngIf="loading" class="timeline-loading">
+  <i class="bi bi-arrow-repeat spin"></i>
+  <span>Loading activity trail...</span>
+</div>
+
+<div class="timeline" *ngIf="!loading && logs.length > 0">
+  <article class="timeline-item" *ngFor="let row of logs; let last = last">
+    <div class="timeline-rail">
+      <div class="timeline-dot" [ngClass]="actionClass(row.action_type)"></div>
+      <div class="timeline-line" *ngIf="!last"></div>
+    </div>
+
+    <div class="timeline-card">
+      <div class="timeline-head">
+        <div class="officer-chip">
+          <span class="chip-avatar" [style.background]="avatarColor(row.emp_name)">
+            {{ initials(row.emp_name) }}
+          </span>
+          <div>
+            <div class="chip-name">{{ row.emp_name }}</div>
+            <div class="chip-role">{{ row.emp_designation || 'Officer' }}</div>
+          </div>
+        </div>
+        <div class="timeline-meta">
+          <span class="action-badge" [ngClass]="actionClass(row.action_type)">{{ row.action_type }}</span>
+          <span class="timeline-time">{{ formatWhen(row) }}</span>
+        </div>
+      </div>
+
+      <div class="entity-row" *ngIf="row.entity_name || row.entity_type">
+        <i class="bi bi-box-seam"></i>
+        <span>{{ row.entity_name || row.entity_type }}</span>
+        <span class="entity-type" *ngIf="row.entity_name && row.entity_type">{{ row.entity_type }}</span>
+      </div>
+
+      <div class="diff-panel" *ngIf="hasDiff(row)">
+        <div class="diff-field" *ngIf="row.changed_field">
+          <span>Changed field</span>
+          <strong>{{ row.changed_field }}</strong>
+        </div>
+        <div class="diff-grid">
+          <div class="diff-cell old">
+            <label>Old value</label>
+            <p>{{ formatValue(row.old_value) }}</p>
+          </div>
+          <div class="diff-arrow"><i class="bi bi-arrow-right"></i></div>
+          <div class="diff-cell new">
+            <label>New value</label>
+            <p>{{ formatValue(row.new_value) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row" *ngIf="row.entity_data">
+        <span class="detail-label">Details</span>
+        <p>{{ formatValue(row.entity_data) }}</p>
+      </div>
+
+      <div class="remark-row" *ngIf="row.remark">
+        <i class="bi bi-chat-left-quote"></i>
+        <span>{{ row.remark }}</span>
+      </div>
+    </div>
+  </article>
+</div>
+
+<div class="timeline-empty" *ngIf="!loading && logs.length === 0">
+  <i class="bi bi-clock-history"></i>
+  <p>{{ emptyMessage }}</p>
+</div>

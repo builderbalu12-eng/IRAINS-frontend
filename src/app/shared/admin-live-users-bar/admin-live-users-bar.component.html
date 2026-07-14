@@ -1,0 +1,20 @@
+<div class="live-users-bar" *ngIf="(liveUsers$ | async) as users">
+  <ng-container *ngIf="users.length > 0">
+    <span class="live-label">
+      <span class="live-dot" [class.offline]="!(connected$ | async)"></span>
+      Viewing now
+    </span>
+    <div class="avatar-stack">
+      <div
+        *ngFor="let user of users; let i = index"
+        class="avatar-chip"
+        [style.background]="avatarColor(user.emp_name)"
+        [style.z-index]="users.length - i"
+        [title]="tooltip(user)"
+      >
+        {{ initials(user) }}
+      </div>
+    </div>
+    <span class="live-count">{{ users.length }} {{ users.length === 1 ? 'person' : 'people' }}</span>
+  </ng-container>
+</div>

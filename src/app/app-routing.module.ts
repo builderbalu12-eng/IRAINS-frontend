@@ -95,6 +95,7 @@ import { SouthPeninsularaRegionActualComponent } from './main/rainfall-actual-ma
 import { AllStatesActualMapsComponent } from './main/rainfall-actual-maps/all-states-actual-maps/all-states-actual-maps.component';
 import { RealTimeUpdatedRainfallActualMapsComponent } from './main/rainfall-actual-maps/real-time-updated-rainfall-actual-maps/real-time-updated-rainfall-actual-maps.component';
 import { LogInfoDataActionsComponent } from './main/log-info-data-actions/log-info-data-actions.component';
+import { LogInfoAdminActivityComponent } from './main/log-info-admin-activity/log-info-admin-activity.component';
 import { GangaRiverBasinComponent } from './main/Basins/ganga-river-basin/ganga-river-basin.component';
 import { DistrictDailySpatialComponent } from './main/spatial-maps/district-daily-spatial/district-daily-spatial.component';
 import { ActualBlockRainfallMapComponent } from './main/rainfall-actual-maps/Actual/actual-block-rainfall-map/actual-block-rainfall-map.component';
@@ -188,6 +189,7 @@ export const routes: Routes = [
     { path: 'new-register',     component: NewRegisterComponent },
     { path: 'role-management',  component: RoleManagementComponent },
     { path: 'route-management', component: RouteManagementComponent },
+    { path: 'activity-log', component: LogInfoAdminActivityComponent, data: { embeddedInDataManagement: true } },
     { path: '', redirectTo: 'calculation-exclusion', pathMatch: 'full' }
   ]
  },
@@ -331,6 +333,7 @@ export const routes: Routes = [
     [
       { path: 'station-log', component: DeletedStationLogComponent },
       { path: 'reports-log', component: LogInfoForReportsComponent },
+      { path: 'admin-activity-log', component: LogInfoAdminActivityComponent },
       { path: '', redirectTo: 'station-log', pathMatch: 'full' },
       { path: 'action-log', component: LogInfoDataActionsComponent}
     ]

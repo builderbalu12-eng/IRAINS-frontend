@@ -158,14 +158,9 @@ export class FetchStationDataService {
     return this.http.post<any>(url, body);
   }
 
-  fetchActionData(startDate:any): Observable<any> {
-
-    let url = `${this.baseUrl}/api/v1/dataActions
-    `;
-    const body = {
-      startDate: startDate,
-    };
-
+  fetchActionData(startDate: string): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/dataActions`;
+    const body = { startDate };
     return this.http.post<any>(url, body);
   }
 

@@ -12,6 +12,18 @@
   min-height: 0;
 }
 
+.dm-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #f4f6f8;
+}
+
+.dm-page {
+  flex: 1;
+  min-height: 0;
+}
+
 /* ── Sidebar — default: WIDE ── */
 .dm-sidebar {
   width: 260px;

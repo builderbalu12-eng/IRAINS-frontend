@@ -3,7 +3,8 @@
   <div class="sidebar">
     <a [ngClass]="{'active': isSelected('station-log')}" (click)="selectMenuItem('station-log')" routerLink="station-log">Station Log</a>
     <a [ngClass]="{'active': isSelected('reports-log')}" (click)="selectMenuItem('reports-log')" routerLink="reports-log">Reports Log</a>
-    <a [ngClass]="{'active': isSelected('officers-action')}" (click)="selectMenuItem('action-log')" routerLink="action-log">Action Log</a>
+    <a [ngClass]="{'active': isSelected('admin-activity-log')}" (click)="selectMenuItem('admin-activity-log')" routerLink="admin-activity-log">Admin Activity Log</a>
+    <a [ngClass]="{'active': isSelected('action-log')}" (click)="selectMenuItem('action-log')" routerLink="action-log">Action Log</a>
   </div>
   
   <div class="content">

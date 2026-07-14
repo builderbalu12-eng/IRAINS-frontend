@@ -2,6 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DisplayOrderService } from '../../services/district/display-order.service';
+import {
+  AdminActivityLogService,
+  AdminActivityUser,
+  DisplayOrderEntityType,
+} from 'src/app/services/admin-activity-log.service';
 
 interface DistrictRow {
   display_order: number;
@@ -99,10 +104,15 @@ export class DisplayOrderManagementComponent implements OnInit {
   regionNameMap = new Map<number, string>();
 
   activeTab = 0;
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/display-order';
+  private readonly identifiedTabs = new Set<DisplayOrderEntityType>();
 
   constructor(
     private svc: DisplayOrderService,
-    private snack: MatSnackBar
+    private snack: MatSnackBar,
+    private activityLog: AdminActivityLogService,
   ) {}
 
   ngOnInit(): void {
@@ -110,6 +120,65 @@ export class DisplayOrderManagementComponent implements OnInit {
     this.loadStates();
     this.loadSubdivs();
     this.loadNormalDetails();
+  }
+
+  get modalEntityType(): DisplayOrderEntityType {
+    return this.entityTypeForTab(this.activeTab);
+  }
+
+  get modalPageLabel(): string {
+    const labels: Record<DisplayOrderEntityType, string> = {
+      district: 'District Display Order',
+      state: 'State Display Order',
+      subdivision: 'Subdivision Display Order',
+    };
+    return labels[this.modalEntityType];
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.identifiedTabs.add(this.modalEntityType);
+    this.showEmpModal = false;
+  }
+
+  private entityTypeForTab(tab: number): DisplayOrderEntityType {
+    if (tab === 1) return 'state';
+    if (tab === 2) return 'subdivision';
+    return 'district';
+  }
+
+  private ensureIdentified(): boolean {
+    const entity = this.entityTypeForTab(this.activeTab);
+    if (this.activityUser && this.identifiedTabs.has(entity)) return true;
+    this.showEmpModal = true;
+    return false;
+  }
+
+  private log(actionType: string, extra: Record<string, unknown> = {}): void {
+    this.activityLog.logDisplayOrderActivity(
+      this.entityTypeForTab(this.activeTab),
+      actionType,
+      this.activityUser,
+      extra,
+    ).subscribe();
+  }
+
+  private logReorder(
+    orders: { old_display_order: number; new_display_order: number }[],
+    entityType: DisplayOrderEntityType,
+  ): void {
+    const changed = orders.filter(o => o.old_display_order !== o.new_display_order);
+    if (!changed.length) return;
+    const entityLabel = entityType === 'subdivision' ? 'subdivision' : entityType;
+    this.activityLog.logDisplayOrderActivity(entityType, 'REORDER', this.activityUser, {
+      old_value: changed.map(o => `order ${o.old_display_order} → ${o.new_display_order}`).join(', '),
+      new_value: `reordered ${changed.length} ${entityLabel}${changed.length === 1 ? '' : 's'}`,
+      entity_data: `reordered ${entityLabel} display order`,
+    }).subscribe();
+  }
+
+  private displayOrderFromResponse(res: any): number | undefined {
+    return res?.display_order ?? res?.data?.display_order;
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -152,6 +221,7 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   saveDistrictOrder(): void {
+    if (!this.ensureIdentified()) return;
     this.districtSaving = true;
     const orders = this.flatDistricts.map((d, i) => ({
       old_display_order: d.display_order,
@@ -159,6 +229,7 @@ export class DisplayOrderManagementComponent implements OnInit {
     }));
     this.svc.updateDistrictDisplayOrders(orders).subscribe({
       next: () => {
+        this.logReorder(orders, 'district');
         this.flatDistricts.forEach((d, i) => d.display_order = i + 1);
         this.snack.open('District order saved', 'Close', { duration: 2000 });
         this.districtSaving = false;
@@ -171,9 +242,16 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   deleteDistrict(row: DistrictRow, idx: number): void {
+    if (!this.ensureIdentified()) return;
     if (!confirm(`Delete "${row.district_name}" from display order?`)) return;
     this.svc.deleteDistrictDisplayOrderEntry(row.display_order).subscribe({
       next: () => {
+        this.log('DELETE', {
+          display_order: row.display_order,
+          district_code: row.district_code,
+          district_name: row.district_name,
+          state_name: row.state_name,
+        });
         this.flatDistricts.splice(idx, 1);
         this.snack.open('Deleted', 'Close', { duration: 2000 });
       },
@@ -182,6 +260,7 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   openAddDialog(): void {
+    if (!this.ensureIdentified()) return;
     this.addForm = {
       parent_group_order: null, parent_group_name: '',
       subdiv_code: null, subdiv_name: '',
@@ -213,6 +292,7 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   submitAdd(): void {
+    if (!this.ensureIdentified()) return;
     if (!this.addForm.district_code) {
       this.snack.open('Select a district', 'Close', { duration: 2000 });
       return;
@@ -230,7 +310,13 @@ export class DisplayOrderManagementComponent implements OnInit {
       insert_after: this.addForm.insert_after ?? this.flatDistricts.length
     };
     this.svc.addDistrictDisplayOrderEntry(entry).subscribe({
-      next: () => {
+      next: (res) => {
+        this.log('ADD', {
+          display_order: this.displayOrderFromResponse(res),
+          district_code: entry.district_code,
+          district_name: entry.district_name,
+          state_name: entry.state_name,
+        });
         this.snack.open('Added. Reloading...', 'Close', { duration: 2000 });
         this.showAddDialog = false;
         this.loadDistricts();
@@ -258,6 +344,7 @@ export class DisplayOrderManagementComponent implements OnInit {
   // ── State add/delete helpers ───────────────────────────────────
 
   openAddStateDialog(): void {
+    if (!this.ensureIdentified()) return;
     this.addStateForm = { region_code: null, region_name: '', state_code: null, state_name: '', insert_after: null };
     this.stateSearchText = '';
     this.filteredStateRows = this.normalRows.slice(0, 50);
@@ -282,6 +369,7 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   submitAddState(): void {
+    if (!this.ensureIdentified()) return;
     if (!this.addStateForm.state_code) {
       this.snack.open('Select a state', 'Close', { duration: 2000 });
       return;
@@ -294,7 +382,13 @@ export class DisplayOrderManagementComponent implements OnInit {
       insert_after: this.addStateForm.insert_after ?? this.flatStates.length
     };
     this.svc.addStateDisplayOrderEntry(entry).subscribe({
-      next: () => {
+      next: (res) => {
+        this.log('ADD', {
+          display_order: this.displayOrderFromResponse(res),
+          state_code: entry.state_code,
+          state_name: entry.state_name,
+          region_name: entry.region_name,
+        });
         this.snack.open('Added. Reloading...', 'Close', { duration: 2000 });
         this.showAddStateDialog = false;
         this.loadStates();
@@ -304,9 +398,16 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   deleteState(row: StateRow, idx: number): void {
+    if (!this.ensureIdentified()) return;
     if (!confirm(`Delete "${row.state_name}" from state display order?`)) return;
     this.svc.deleteStateDisplayOrderEntry(row.display_order).subscribe({
       next: () => {
+        this.log('DELETE', {
+          display_order: row.display_order,
+          state_code: row.state_code,
+          state_name: row.state_name,
+          region_name: row.region_name,
+        });
         this.flatStates.splice(idx, 1);
         this.snack.open('Deleted', 'Close', { duration: 2000 });
       },
@@ -317,6 +418,7 @@ export class DisplayOrderManagementComponent implements OnInit {
   // ── Subdivision add/delete helpers ─────────────────────────────
 
   openAddSubdivDialog(): void {
+    if (!this.ensureIdentified()) return;
     this.addSubdivForm = { region_code: null, region_name: '', subdiv_code: null, subdivision_name: '', insert_after: null };
     this.subdivSearchText = '';
     // Build unique subdiv list from normalRows
@@ -348,6 +450,7 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   submitAddSubdiv(): void {
+    if (!this.ensureIdentified()) return;
     if (!this.addSubdivForm.subdiv_code) {
       this.snack.open('Select a subdivision', 'Close', { duration: 2000 });
       return;
@@ -360,7 +463,13 @@ export class DisplayOrderManagementComponent implements OnInit {
       insert_after: this.addSubdivForm.insert_after ?? this.flatSubdivs.length
     };
     this.svc.addSubdivisionDisplayOrderEntry(entry).subscribe({
-      next: () => {
+      next: (res) => {
+        this.log('ADD', {
+          display_order: this.displayOrderFromResponse(res),
+          subdiv_code: entry.subdiv_code,
+          subdivision_name: entry.subdivision_name,
+          region_name: entry.region_name,
+        });
         this.snack.open('Added. Reloading...', 'Close', { duration: 2000 });
         this.showAddSubdivDialog = false;
         this.loadSubdivs();
@@ -370,9 +479,16 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   deleteSubdiv(row: SubdivRow, idx: number): void {
+    if (!this.ensureIdentified()) return;
     if (!confirm(`Delete "${row.subdivision_name}" from subdivision display order?`)) return;
     this.svc.deleteSubdivisionDisplayOrderEntry(row.display_order).subscribe({
       next: () => {
+        this.log('DELETE', {
+          display_order: row.display_order,
+          subdiv_code: row.subdiv_code,
+          subdivision_name: row.subdivision_name,
+          region_name: row.region_name,
+        });
         this.flatSubdivs.splice(idx, 1);
         this.snack.open('Deleted', 'Close', { duration: 2000 });
       },
@@ -404,6 +520,7 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   saveStateOrder(): void {
+    if (!this.ensureIdentified()) return;
     this.stateSaving = true;
     const orders = this.flatStates.map((s, i) => ({
       old_display_order: s.display_order,
@@ -411,6 +528,7 @@ export class DisplayOrderManagementComponent implements OnInit {
     }));
     this.svc.updateStateDisplayOrders(orders).subscribe({
       next: () => {
+        this.logReorder(orders, 'state');
         this.flatStates.forEach((s, i) => s.display_order = i + 1);
         this.snack.open('State order saved', 'Close', { duration: 2000 });
         this.stateSaving = false;
@@ -446,6 +564,7 @@ export class DisplayOrderManagementComponent implements OnInit {
   }
 
   saveSubdivOrder(): void {
+    if (!this.ensureIdentified()) return;
     this.subdivSaving = true;
     const orders = this.flatSubdivs.map((s, i) => ({
       old_display_order: s.display_order,
@@ -453,6 +572,7 @@ export class DisplayOrderManagementComponent implements OnInit {
     }));
     this.svc.updateSubdivisionDisplayOrders(orders).subscribe({
       next: () => {
+        this.logReorder(orders, 'subdivision');
         this.flatSubdivs.forEach((s, i) => s.display_order = i + 1);
         this.snack.open('Subdivision order saved', 'Close', { duration: 2000 });
         this.subdivSaving = false;
@@ -466,5 +586,8 @@ export class DisplayOrderManagementComponent implements OnInit {
 
   onTabChange(index: number): void {
     this.activeTab = index;
+    if (!this.identifiedTabs.has(this.entityTypeForTab(index))) {
+      this.showEmpModal = true;
+    }
   }
 }

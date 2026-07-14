@@ -332,3 +332,53 @@ input:checked + .cm-slider:before { transform: translateX(32px); }
   .cm-page { flex-direction: column; }
   .cm-left { flex: none; width: 100%; }
 }
+
+/* Employee identification modal */
+.cm-emp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: auto;
+}
+
+.cm-emp-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 480px;
+  max-width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.cm-emp-modal input.form-control {
+  pointer-events: auto;
+}
+
+.cm-emp-modal textarea.form-control {
+  pointer-events: auto;
+  resize: vertical;
+  min-height: 72px;
+}
+
+.cm-emp-modal-header {
+  background: linear-gradient(135deg, #002467, #003a99);
+  color: #fff;
+  padding: 16px 20px;
+}
+
+.cm-emp-modal-body {
+  padding: 24px 20px;
+}
+
+.cm-emp-modal-desc {
+  color: #555;
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}

@@ -20,6 +20,7 @@
             type="button"
             class="btn btn-primary w-100"
             (click)="setFromAndToDate()"
+            [disabled]="loading"
           >
             Submit
           </button>
@@ -32,11 +33,13 @@
       <div class="dataentry">
         <div class="row">
           <div class="col-12">
-            <h3>STATIONS LOG</h3>
+            <h3>ACTION LOG</h3>
           </div>
         </div>
         <br />
-          <table style="width: 90%; margin: auto; border: 1px solid black; overflow: hidden;">
+        <div *ngIf="loading" class="py-3 text-muted">Loading action logs...</div>
+        <div *ngIf="error" class="alert alert-danger mx-4">{{ error }}</div>
+          <table *ngIf="!loading && !error" style="width: 90%; margin: auto; border: 1px solid black; overflow: hidden;">
             <thead>
               <tr>
                 <th style="border: 1px solid black">Officer Name</th>

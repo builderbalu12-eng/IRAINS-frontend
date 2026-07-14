@@ -45,8 +45,17 @@
     </nav>
 
     <!-- CONTENT -->
-    <div class="dm-content flex-grow-1 overflow-auto">
-      <router-outlet></router-outlet>
+    <div class="dm-content flex-grow-1">
+      <app-admin-live-users-bar *ngIf="showLiveUsersBar"></app-admin-live-users-bar>
+      <div class="dm-page overflow-auto">
+        <router-outlet></router-outlet>
+      </div>
+      <app-admin-page-activity-panel
+        *ngIf="activityRoutePath"
+        [backendRoutePath]="activityRoutePath"
+        [angularPath]="currentAngularPath"
+        [pageTitle]="activityPageTitle">
+      </app-admin-page-activity-panel>
     </div>
 
   </div>

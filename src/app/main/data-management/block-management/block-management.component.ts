@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { getBlockService } from 'src/app/services/block/getblock.service';
+import { AdminActivityLogService, AdminActivityUser, NormalsPage } from 'src/app/services/admin-activity-log.service';
 
 interface BlockNormal {
   block_code: number;
@@ -120,9 +121,44 @@ export class BlockManagementComponent implements OnInit {
   missingLoading = false;
   missingExpanded = false;
 
-  constructor(public blockService: getBlockService) {}
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/block-management';
+  readonly normalsPageKey: NormalsPage = 'block';
+  readonly pageLabel = 'Block Management';
 
-  ngOnInit(): void { this.loadBlocks(); this.loadMissingNormals(); }
+  constructor(
+    public blockService: getBlockService,
+    private activityLog: AdminActivityLogService,
+  ) {}
+
+  ngOnInit(): void {
+    // list loads after officer identification
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
+    this.loadBlocks();
+    this.loadMissingNormals();
+  }
+
+  private ensureIdentified(): boolean {
+    if (this.activityUser) return true;
+    this.showEmpModal = true;
+    return false;
+  }
+
+  private log(actionType: string, extra: Record<string, unknown> = {}): void {
+    this.activityLog.logNormalsActivity(this.normalsPageKey, actionType, this.activityUser, {
+      remark: this.activityUser?.remark ?? '',
+      ...extra,
+    }).subscribe();
+  }
+
+  onDownloadTemplate(): void {
+    this.log('DOWNLOAD_TEMPLATE');
+  }
 
   loadBlocks(): void {
     this.isLoading = true;
