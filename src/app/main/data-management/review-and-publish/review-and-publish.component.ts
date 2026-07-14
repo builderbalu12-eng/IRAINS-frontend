@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { DataEntryLockService } from 'src/app/services/dataEntryLock.service';
 import { MapDataScheduleService } from 'src/app/services/mapDataSchedule.service';
 import { TopRainfallStationsService } from 'src/app/services/topRainfallStations.service';
+import { AdminActivityLogService, AdminActivityUser } from 'src/app/services/admin-activity-log.service';
 
 interface RoleSchedule {
   role: string;
@@ -20,24 +21,28 @@ interface RoleSchedule {
   styleUrls: ['./review-and-publish.component.css']
 })
 export class ReviewAndPublishComponent implements OnInit {
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/review-and-publish';
+  readonly pageLabel = 'Review & Publish';
+
   isLocked: boolean = false;
   loading: boolean = false;
   saving: boolean = false;
   message: string = '';
   messageType: 'success' | 'error' = 'success';
+  private suppressLockToggle = false;
 
   roleSchedules: RoleSchedule[] = [
     { role: 'mc', label: 'MC', restrictDays: null, publish: false, loading: true, saving: false, message: '', messageType: 'success' },
     { role: 'hq', label: 'HQ', restrictDays: null, publish: false, loading: true, saving: false, message: '', messageType: 'success' },
   ];
 
-  // ── Public & SP — separate section, same login table has 4 mcorhq_type values ──
   publicSpSchedules: RoleSchedule[] = [
     { role: 'public', label: 'Public', restrictDays: null, publish: false, loading: true, saving: false, message: '', messageType: 'success' },
     { role: 'sp', label: 'SP', restrictDays: null, publish: false, loading: true, saving: false, message: '', messageType: 'success' },
   ];
 
-  // ── Highest rainfall by date (right panel) ──────────────────────────────
   topN: number = 100;
   loadingTopRainfall: boolean = false;
   topRainfallDates: string[] = [];
@@ -48,44 +53,24 @@ export class ReviewAndPublishComponent implements OnInit {
   constructor(
     private lockService: DataEntryLockService,
     private scheduleService: MapDataScheduleService,
-    private topRainfallService: TopRainfallStationsService
+    private topRainfallService: TopRainfallStationsService,
+    private activityLog: AdminActivityLogService,
   ) {}
 
   ngOnInit(): void {
-    this.loading = true;
-    this.lockService.loadLock().subscribe({
-      next: (res) => {
-        this.isLocked = res.is_locked === 1;
-        this.loading = false;
-      },
-      error: () => { this.loading = false; }
-    });
+    // Page data loads after officer identification (same as other data-management pages).
+  }
 
-    this.roleSchedules.forEach(rs => {
-      this.scheduleService.getSchedule(rs.role).subscribe({
-        next: (res) => {
-          rs.restrictDays = res.restrict_days;
-          rs.publish = res.publish === 1;
-          rs.loading = false;
-          this.maybeLoadTopRainfall();
-        },
-        error: () => {
-          rs.loading = false;
-          this.maybeLoadTopRainfall();
-        }
-      });
-    });
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
+    this.initPage();
+  }
 
-    this.publicSpSchedules.forEach(rs => {
-      this.scheduleService.getSchedule(rs.role).subscribe({
-        next: (res) => {
-          rs.restrictDays = res.restrict_days;
-          rs.publish = res.publish === 1;
-          rs.loading = false;
-        },
-        error: () => { rs.loading = false; }
-      });
-    });
+  private ensureIdentified(): boolean {
+    if (this.activityUser) return true;
+    this.showEmpModal = true;
+    return false;
   }
 
   /** Highest restrictDays across MC/HQ (falls back to a default window if both are unrestricted). */
@@ -131,6 +116,13 @@ export class ReviewAndPublishComponent implements OnInit {
   }
 
   onToggleChange(): void {
+    if (this.suppressLockToggle || this.saving) return;
+
+    if (!this.ensureIdentified()) {
+      this.revertLockToggle();
+      return;
+    }
+
     this.saving = true;
     this.message = '';
     const newVal = this.isLocked ? 1 : 0;
@@ -147,12 +139,14 @@ export class ReviewAndPublishComponent implements OnInit {
         this.saving = false;
         this.messageType = 'error';
         this.message = 'Failed to update lock status. Please try again.';
-        this.isLocked = !this.isLocked;
+        this.revertLockToggle();
       }
     });
   }
 
   saveRestrictDays(rs: RoleSchedule): void {
+    if (!this.ensureIdentified()) return;
+
     rs.saving = true;
     rs.message = '';
     this.scheduleService.setSchedule(rs.role, rs.restrictDays, rs.publish ? 1 : 0).subscribe({
@@ -171,15 +165,29 @@ export class ReviewAndPublishComponent implements OnInit {
   }
 
   onPublishToggle(rs: RoleSchedule): void {
+    if (!this.ensureIdentified()) {
+      rs.publish = !rs.publish;
+      return;
+    }
+
     rs.saving = true;
     rs.message = '';
-    this.scheduleService.setSchedule(rs.role, rs.restrictDays, rs.publish ? 1 : 0).subscribe({
+    const oldPublish = rs.publish ? 0 : 1;
+    const newPublish = rs.publish ? 1 : 0;
+    this.scheduleService.setSchedule(rs.role, rs.restrictDays, newPublish).subscribe({
       next: () => {
         rs.saving = false;
         rs.messageType = 'success';
         rs.message = rs.publish
           ? `Today's data is now published for ${rs.label}.`
           : `Today's data is now held back for ${rs.label} until published.`;
+        this.logActivity('PUBLISH', {
+          entity_type: 'role_publish',
+          entity_name: `${rs.label} today's data`,
+          changed_field: 'publish',
+          old_value: oldPublish === 1 ? 'published' : 'held back',
+          new_value: newPublish === 1 ? 'published' : 'held back',
+        });
         setTimeout(() => rs.message = '', 4000);
       },
       error: () => {
@@ -189,5 +197,56 @@ export class ReviewAndPublishComponent implements OnInit {
         rs.publish = !rs.publish;
       }
     });
+  }
+
+  private initPage(): void {
+    this.loading = true;
+    this.lockService.loadLock().subscribe({
+      next: (res) => {
+        this.isLocked = res.is_locked === 1;
+        this.loading = false;
+      },
+      error: () => { this.loading = false; }
+    });
+
+    this.roleSchedules.forEach(rs => {
+      this.scheduleService.getSchedule(rs.role).subscribe({
+        next: (res) => {
+          rs.restrictDays = res.restrict_days;
+          rs.publish = res.publish === 1;
+          rs.loading = false;
+          this.maybeLoadTopRainfall();
+        },
+        error: () => {
+          rs.loading = false;
+          this.maybeLoadTopRainfall();
+        }
+      });
+    });
+
+    this.publicSpSchedules.forEach(rs => {
+      this.scheduleService.getSchedule(rs.role).subscribe({
+        next: (res) => {
+          rs.restrictDays = res.restrict_days;
+          rs.publish = res.publish === 1;
+          rs.loading = false;
+        },
+        error: () => { rs.loading = false; }
+      });
+    });
+  }
+
+  private logActivity(actionType: string, extra: Record<string, unknown> = {}): void {
+    this.activityLog.logReviewPublishActivity(actionType, this.activityUser, {
+      remark: this.activityUser?.remark ?? '',
+      date: this.activityLog.formatDateForApi(new Date()),
+      ...extra,
+    }).subscribe();
+  }
+
+  private revertLockToggle(): void {
+    this.suppressLockToggle = true;
+    this.isLocked = !this.isLocked;
+    setTimeout(() => { this.suppressLockToggle = false; });
   }
 }

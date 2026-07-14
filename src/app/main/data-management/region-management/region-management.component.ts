@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { RegionService } from 'src/app/services/region/region.service';
+import { AdminActivityLogService, AdminActivityUser, NormalsPage } from 'src/app/services/admin-activity-log.service';
 
 interface RegionNormal {
   region_id: number;
@@ -114,9 +115,44 @@ export class RegionManagementComponent implements OnInit {
   missingLoading = false;
   missingExpanded = false;
 
-  constructor(public regionService: RegionService) {}
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/region-management';
+  readonly normalsPageKey: NormalsPage = 'region';
+  readonly pageLabel = 'Region Management';
 
-  ngOnInit(): void { this.loadRegions(); this.loadMissingNormals(); }
+  constructor(
+    public regionService: RegionService,
+    private activityLog: AdminActivityLogService,
+  ) {}
+
+  ngOnInit(): void {
+    // list loads after officer identification
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
+    this.loadRegions();
+    this.loadMissingNormals();
+  }
+
+  private ensureIdentified(): boolean {
+    if (this.activityUser) return true;
+    this.showEmpModal = true;
+    return false;
+  }
+
+  private log(actionType: string, extra: Record<string, unknown> = {}): void {
+    this.activityLog.logNormalsActivity(this.normalsPageKey, actionType, this.activityUser, {
+      remark: this.activityUser?.remark ?? '',
+      ...extra,
+    }).subscribe();
+  }
+
+  onDownloadTemplate(): void {
+    this.log('DOWNLOAD_TEMPLATE');
+  }
 
   loadRegions(): void {
     this.isLoading = true;

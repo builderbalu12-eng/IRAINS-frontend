@@ -6,42 +6,39 @@ import { FetchStationDataService } from 'src/app/services/station/station.servic
   templateUrl: './log-info-data-actions.component.html',
   styleUrls: ['./log-info-data-actions.component.css']
 })
-export class LogInfoDataActionsComponent implements OnInit{
-  setFromAndToDate() {
-    this.fetchActionData()
-  }
-
-  deletedStationLogs:any[] = [];
-
-  stationData: any;
-  today: any = new Date();
-  fromDate: any = new Date();
+export class LogInfoDataActionsComponent implements OnInit {
+  stationData: any[] = [];
+  today = new Date().toISOString().slice(0, 10);
+  fromDate = this.today;
+  loading = false;
+  error = '';
 
   constructor(
-    private fetchStationDataService: FetchStationDataService,    
-  ) {
-  }
-
+    private fetchStationDataService: FetchStationDataService,
+  ) {}
 
   ngOnInit(): void {
-    // this.dataService.getDeletedStationLog().subscribe(res => {
-    //   this.deletedStationLogs = res.filter((x:any) => x.type != "Report Uploaded");
-    // })
     this.fetchActionData();
   }
 
-  
+  setFromAndToDate(): void {
+    this.fetchActionData();
+  }
 
-  async fetchActionData(): Promise<void> {
-  
-    try {
-      const response: any = await this.fetchStationDataService.fetchActionData(this.fromDate).toPromise();
-      this.stationData = response?.data;  // Store the fetched data
-      console.log('Data fetched successfully:', this.stationData);
-
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
+  fetchActionData(): void {
+    this.loading = true;
+    this.error = '';
+    this.fetchStationDataService.fetchActionData(this.fromDate).subscribe({
+      next: (response) => {
+        this.stationData = response?.data ?? [];
+        this.loading = false;
+      },
+      error: () => {
+        this.error = 'Failed to load action logs. Please try again.';
+        this.stationData = [];
+        this.loading = false;
+      },
+    });
   }
 
   goBack() {

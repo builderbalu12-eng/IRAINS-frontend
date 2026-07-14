@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environment/environment';
+import { AdminActivityLogService, AdminActivityUser } from 'src/app/services/admin-activity-log.service';
 
 interface GeoUploadLog {
   filename: string;
@@ -55,11 +56,24 @@ export class GeojsonUploadComponent implements OnInit {
   ];
 
   logs: GeoUploadLog[] = [];
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/geojson-upload';
   private apiBase = environment.baseUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private activityLog: AdminActivityLogService) {}
 
   ngOnInit(): void {
+    // upload history loads after officer identification
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
+    this.loadUploadHistory();
+  }
+
+  private loadUploadHistory(): void {
     this.http.get<any>(`${this.apiBase}/api/v1/geojson/upload-history`).subscribe({
       next: (res) => {
         if (res?.history) {
@@ -74,6 +88,18 @@ export class GeojsonUploadComponent implements OnInit {
       },
       error: () => {}
     });
+  }
+
+  private logUpload(res: any, folder: string, fileName: string, featureCount: number): void {
+    const data = res?.data ?? res ?? {};
+    this.activityLog.logSpatialActivity('geojson', 'UPLOAD', this.activityUser, {
+      folder: data.folder ?? folder,
+      file_name: data.fileName ?? data.file_name ?? fileName,
+      feature_count: data.featureCount ?? data.feature_count ?? featureCount,
+      version: data.version,
+      old_version: data.old_version ?? data.oldVersion,
+      remark: this.activityUser?.remark ?? '',
+    }).subscribe();
   }
 
   // ── Auto-detect folder from filename ──────────────────────
@@ -151,6 +177,7 @@ export class GeojsonUploadComponent implements OnInit {
 
     this.http.post<any>(`${this.apiBase}/api/v1/geojson/upload`, fd).subscribe({
       next: (res) => {
+        this.logUpload(res, this.selectedLayer, this.selectedFile!.name, this.featureCount);
         this.logs.unshift({
           filename:   this.selectedFile!.name,
           layer:      this.selectedLayer,
@@ -251,6 +278,7 @@ export class GeojsonUploadComponent implements OnInit {
           next: (res) => {
             item.status = 'success';
             item.message = res.message ?? 'Uploaded';
+            this.logUpload(res, item.folder, item.file.name, item.features);
             this.logs.unshift({
               filename:   item.file.name,
               layer:      item.folder,

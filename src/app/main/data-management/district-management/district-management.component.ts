@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { DistrictService } from 'src/app/services/district/district.service';
+import { AdminActivityLogService, AdminActivityUser, NormalsPage } from 'src/app/services/admin-activity-log.service';
 
 interface NormalDistrictDetail {
   id: number;
@@ -166,7 +167,17 @@ export class DistrictManagementComponent implements OnInit {
   missingLoading = false;
   missingExpanded = false;
 
-  constructor(public districtService: DistrictService, private fb: FormBuilder) {}
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/district-management';
+  readonly normalsPageKey: NormalsPage = 'district';
+  readonly pageLabel = 'District Management';
+
+  constructor(
+    public districtService: DistrictService,
+    private fb: FormBuilder,
+    private activityLog: AdminActivityLogService,
+  ) {}
 
   ngOnInit() {
     this.editForm = this.fb.group({
@@ -177,8 +188,31 @@ export class DistrictManagementComponent implements OnInit {
       state_name:    [{ value: '', disabled: true }],
     });
     this.templateUrl = this.districtService.downloadDistrictNormalTemplate();
+    // list loads after officer identification
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
     this.loadDistricts();
     this.loadMissingNormals();
+  }
+
+  private ensureIdentified(): boolean {
+    if (this.activityUser) return true;
+    this.showEmpModal = true;
+    return false;
+  }
+
+  private log(actionType: string, extra: Record<string, unknown> = {}): void {
+    this.activityLog.logNormalsActivity(this.normalsPageKey, actionType, this.activityUser, {
+      remark: this.activityUser?.remark ?? '',
+      ...extra,
+    }).subscribe();
+  }
+
+  onDownloadTemplate(): void {
+    this.log('DOWNLOAD_TEMPLATE');
   }
 
   loadDistricts() {
@@ -251,6 +285,9 @@ export class DistrictManagementComponent implements OnInit {
       next: (res) => {
         this.uploadSuccess = res?.message || 'Districts added successfully.';
         this.isUploading = false;
+        this.log('ADD_DISTRICT', {
+          entity_count: res?.count ?? res?.details?.length ?? res?.added ?? undefined,
+        });
         this.loadDistricts();
       },
       error: (err) => {
@@ -287,6 +324,12 @@ export class DistrictManagementComponent implements OnInit {
       next: () => {
         this.isSaving = false;
         this.showEditModal = false;
+        this.log('UPDATE', {
+          district_code: this.editingDistrict!.district_code,
+          district_name: this.editForm.get('district_name')!.value,
+          old_value: this.editingDistrict!.district_name,
+          new_value: this.editForm.get('district_name')!.value,
+        });
         this.loadDistricts();
       },
       error: (err) => {
@@ -373,6 +416,10 @@ export class DistrictManagementComponent implements OnInit {
       next: (res) => {
         this.editNormalsUploadSuccess = res?.message || 'Normals updated successfully.';
         this.isEditNormalsUploading = false;
+        this.log('REPLACE_NORMALS', {
+          district_code: this.editNormalsDistrict!.district_code,
+          district_name: this.editNormalsDistrict!.district_name,
+        });
         // Reload normals if the normals modal is open for the same district
         if (this.showNormalsModal && this.normalsDistrict?.district_code === this.editNormalsDistrict!.district_code) {
           this.openNormals(this.editNormalsDistrict!);
@@ -426,6 +473,9 @@ export class DistrictManagementComponent implements OnInit {
         this.bulkUploadSuccess = res?.message || 'Bulk replace completed.';
         this.bulkDetails = res?.details ?? [];
         this.isBulkUploading = false;
+        this.log('BULK_REPLACE_NORMALS', {
+          entity_count: res?.details?.length ?? res?.count ?? this.bulkDetails.length,
+        });
       },
       error: (err) => {
         const status = err?.status;

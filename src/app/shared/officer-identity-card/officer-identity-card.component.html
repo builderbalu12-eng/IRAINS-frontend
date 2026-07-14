@@ -1,0 +1,27 @@
+<div class="officer-card" [class.compact]="compact" *ngIf="officer; else unknownOfficer">
+  <div class="officer-avatar" [style.background]="avatarGradient(officer.emp_name)">
+    <span>{{ initials(officer.emp_name) }}</span>
+    <i class="status-dot"></i>
+  </div>
+  <div class="officer-meta">
+    <span class="officer-label">{{ label }}</span>
+    <h6 class="officer-name">{{ officer.emp_name }}</h6>
+    <p class="officer-designation" *ngIf="officer.emp_designation">{{ officer.emp_designation }}</p>
+    <p class="officer-phone" *ngIf="!compact && officer.emp_phone_number">
+      <i class="bi bi-telephone-fill"></i> {{ officer.emp_phone_number }}
+    </p>
+  </div>
+</div>
+
+<ng-template #unknownOfficer>
+  <div class="officer-card unknown" [class.compact]="compact">
+    <div class="officer-avatar unknown-avatar">
+      <i class="bi bi-person-fill-question"></i>
+    </div>
+    <div class="officer-meta">
+      <span class="officer-label">Officer</span>
+      <h6 class="officer-name">Not identified yet</h6>
+      <p class="officer-designation">Complete officer identification to log actions.</p>
+    </div>
+  </div>
+</ng-template>

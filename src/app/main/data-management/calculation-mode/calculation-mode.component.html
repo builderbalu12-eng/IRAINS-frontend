@@ -1,3 +1,68 @@
+<!-- Employee identification modal — outside .cm-page so fixed positioning works -->
+<div class="cm-emp-modal-backdrop" *ngIf="showEmpModal">
+  <div class="cm-emp-modal" (click)="$event.stopPropagation()">
+    <div class="cm-emp-modal-header">
+      <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Officer Identification</h5>
+    </div>
+    <div class="cm-emp-modal-body">
+      <p class="cm-emp-modal-desc">
+        Please enter your details before accessing Calculation Mode. This information is recorded in the admin activity log.
+      </p>
+      <form [formGroup]="empIdentificationForm" (ngSubmit)="submitEmployeeForm()">
+        <fieldset [disabled]="empSubmitting">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Employee Name <span class="text-danger">*</span></label>
+          <input
+            type="text"
+            class="form-control"
+            formControlName="emp_name"
+            placeholder="Enter your full name"
+            autocomplete="name"
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Employee Designation <span class="text-danger">*</span></label>
+          <input
+            type="text"
+            class="form-control"
+            formControlName="emp_designation"
+            placeholder="e.g. Scientist, Meteorologist"
+            autocomplete="organization-title"
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Employee Phone Number <span class="text-danger">*</span></label>
+          <input
+            type="tel"
+            class="form-control"
+            formControlName="emp_phone_number"
+            placeholder="10-digit mobile number"
+            maxlength="10"
+            autocomplete="tel"
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Remarks <span class="text-danger">*</span></label>
+          <textarea
+            class="form-control"
+            formControlName="remark"
+            rows="3"
+            placeholder="Enter reason for accessing this page"
+          ></textarea>
+        </div>
+        </fieldset>
+        <div *ngIf="empFormError" class="alert alert-danger py-2 small mb-3">
+          <i class="bi bi-exclamation-triangle me-1"></i>{{ empFormError }}
+        </div>
+        <button type="submit" class="btn btn-primary w-100" [disabled]="empSubmitting">
+          <span *ngIf="empSubmitting" class="spinner-border spinner-border-sm me-1"></span>
+          {{ empSubmitting ? 'Saving...' : 'Continue' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="cm-page">
 
   <!-- ── LEFT: toggle card ─────────────────────────── -->
@@ -29,8 +94,8 @@
           <div class="cm-desc">Uses only traditional IMD weather stations.<br>Existing formula — unchanged.</div>
         </div>
 
-        <label class="cm-switch" [class.disabled]="saving">
-          <input type="checkbox" [(ngModel)]="useAws" (change)="onToggleChange()" [disabled]="saving">
+        <label class="cm-switch" [class.disabled]="saving || loading">
+          <input type="checkbox" name="useAwsToggle" [(ngModel)]="useAws" (change)="onToggleChange()" [disabled]="saving || loading">
           <span class="cm-slider"></span>
         </label>
 

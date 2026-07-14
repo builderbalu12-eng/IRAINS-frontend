@@ -1,0 +1,43 @@
+<div class="oid-modal-backdrop" *ngIf="visible">
+  <div class="oid-modal" (click)="$event.stopPropagation()">
+    <div class="oid-modal-header">
+      <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Officer Identification</h5>
+    </div>
+    <div class="oid-modal-body">
+      <p class="oid-modal-desc">
+        Please enter your details before accessing {{ pageLabel }}. This information is recorded in the admin activity log.
+      </p>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <fieldset [disabled]="submitting">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Employee Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" formControlName="emp_name"
+                   placeholder="Enter your full name" autocomplete="name" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Employee Designation <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" formControlName="emp_designation"
+                   placeholder="e.g. Scientist, Meteorologist" autocomplete="organization-title" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Employee Phone Number <span class="text-danger">*</span></label>
+            <input type="tel" class="form-control" formControlName="emp_phone_number"
+                   placeholder="10-digit mobile number" maxlength="10" autocomplete="tel" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Remarks <span class="text-danger">*</span></label>
+            <textarea class="form-control" formControlName="remark" rows="3"
+                      placeholder="Enter reason for accessing this page"></textarea>
+          </div>
+        </fieldset>
+        <div *ngIf="formError" class="alert alert-danger py-2 small mb-3">
+          <i class="bi bi-exclamation-triangle me-1"></i>{{ formError }}
+        </div>
+        <button type="submit" class="btn btn-primary w-100" [disabled]="submitting">
+          <span *ngIf="submitting" class="spinner-border spinner-border-sm me-1"></span>
+          {{ submitting ? 'Saving...' : 'Continue' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

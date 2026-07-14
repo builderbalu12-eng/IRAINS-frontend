@@ -1,0 +1,48 @@
+.oid-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: auto;
+}
+
+.oid-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 480px;
+  max-width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.oid-modal input.form-control,
+.oid-modal textarea.form-control {
+  pointer-events: auto;
+}
+
+.oid-modal textarea.form-control {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.oid-modal-header {
+  background: linear-gradient(135deg, #002467, #003a99);
+  color: #fff;
+  padding: 16px 20px;
+}
+
+.oid-modal-body {
+  padding: 24px 20px;
+}
+
+.oid-modal-desc {
+  color: #555;
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}

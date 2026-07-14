@@ -1,6 +1,9 @@
-import { Component, OnInit } from '@angular/core';
-import { forkJoin, Observable } from 'rxjs';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { forkJoin, Observable, Subscription } from 'rxjs';
 import { CalculationExclusionService } from 'src/app/services/admin-panel/calculationExclusion.service';
+import { AdminActivityLogService, AdminActivityUser } from 'src/app/services/admin-activity-log.service';
+import { AdminRealtimeService } from 'src/app/services/admin-realtime.service';
+import { backendRoutePath } from 'src/app/config/admin-realtime.config';
 import { DistrictService } from 'src/app/services/district/district.service';
 import { Constants } from 'src/app/services/constants';
 import * as XLSX from 'xlsx-js-style';
@@ -30,9 +33,10 @@ export interface SeasonalDistrict {
   templateUrl: './calculation-exclusion.component.html',
   styleUrls: ['./calculation-exclusion.component.css']
 })
-export class CalculationExclusionComponent implements OnInit {
+export class CalculationExclusionComponent implements OnInit, OnDestroy {
 
   isLoading: boolean = false;
+  isBulkLoading: boolean = false;
   today: string = '';
   fromDate: string = '';
   toDate: string = '';
@@ -134,10 +138,21 @@ export class CalculationExclusionComponent implements OnInit {
   modalSegments: { lineD: string; areaD: string }[] = [];
   modalHoverPoints: { x: number; y: number; date: string; value: number }[] = [];
 
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/calculation-exclusion';
+  readonly calculationPageKey = 'calcExclusion' as const;
+  readonly pageLabel = 'Calculation Exclusion';
+
+  private realtimeSub?: Subscription;
+  private readonly backendRoute = backendRoutePath('/data-management/calculation-exclusion');
+
   constructor(
     private exclusionService: CalculationExclusionService,
     private districtService: DistrictService,
-    private constants: Constants
+    private constants: Constants,
+    private activityLog: AdminActivityLogService,
+    private adminRealtime: AdminRealtimeService,
   ) {
     const now = new Date();
     this.today = this.formatDate(now);
@@ -148,6 +163,27 @@ export class CalculationExclusionComponent implements OnInit {
   
 
   ngOnInit(): void {
+    this.restoreOfficerIfStored();
+
+    this.realtimeSub = this.adminRealtime.activityLogged$.subscribe(activity => {
+      if (activity.route_path !== this.backendRoute) return;
+      const action = activity.action_type?.toUpperCase() ?? '';
+      if (['EXCLUDE', 'INCLUDE', 'TOGGLE', 'BULK_TOGGLE', 'BULK_EXCLUDE', 'BULK_INCLUDE'].includes(action)) {
+        this.syncExclusionStateFromServer(true);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.realtimeSub?.unsubscribe();
+  }
+
+  private restoreOfficerIfStored(): void {
+    const stored = this.activityLog.getStoredUser(this.pageRoute);
+    if (!stored?.emp_name) return;
+    this.activityUser = stored;
+    this.showEmpModal = false;
+    this.adminRealtime.onOfficerIdentified(this.pageRoute, stored);
     this.loadAllEntities();
   }
 
@@ -166,6 +202,31 @@ export class CalculationExclusionComponent implements OnInit {
   tabLabel(tab: { key: string; label: string }): string {
     if (this.activeSource === 'aws' && tab.key === 'station') return 'AWS Station';
     return tab.label;
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
+    this.loadAllEntities();
+  }
+
+  private ensureIdentified(event?: Event): boolean {
+    if (this.activityUser) return true;
+    this.revertCheckbox(event);
+    this.showEmpModal = true;
+    return false;
+  }
+
+  private revertCheckbox(event?: Event): void {
+    if (!event?.target) return;
+    const input = event.target as HTMLInputElement;
+    if (input.type === 'checkbox') {
+      input.checked = !input.checked;
+    }
+  }
+
+  private officerRemark(fallback: string): string {
+    return this.activityUser?.remark?.trim() || fallback;
   }
 
   formatDate(date: Date): string {
@@ -281,8 +342,11 @@ export class CalculationExclusionComponent implements OnInit {
 
   onDateSubmit(): void {
     if (!this.validateDates()) return;
+    this.syncExclusionStateFromServer();
+  }
 
-    this.isLoading = true;
+  private syncExclusionStateFromServer(silent = false): void {
+    if (!silent) this.isLoading = true;
 
     this.exclusionService.getExclusions({
       from_date: this.fromDate,
@@ -306,16 +370,17 @@ export class CalculationExclusionComponent implements OnInit {
           });
         }
 
-        this.isLoading = false;
+        if (!silent) this.isLoading = false;
       },
       error: (err: any) => {
         console.error('Error fetching exclusions:', err);
-        this.isLoading = false;
+        if (!silent) this.isLoading = false;
       }
     });
   }
 
-  onToggle(tab: string, row: EntityRow): void {
+  onToggle(tab: string, row: EntityRow, event: Event): void {
+    if (!this.ensureIdentified(event)) return;
     row.isLoading = true;
     const entityType = this.currentEntityType(tab);
 
@@ -325,7 +390,7 @@ export class CalculationExclusionComponent implements OnInit {
       entity_name: row.name,
       from_date: this.fromDate,
       to_date: this.toDate || this.fromDate
-    }).subscribe({
+    }, this.activityUser, this.officerRemark(`Toggle ${tab} exclusion`)).subscribe({
       next: (res: any) => {
         const nowExcluded = res.state === 'excluded';
         row.isExcluded = nowExcluded;
@@ -343,11 +408,13 @@ export class CalculationExclusionComponent implements OnInit {
         row.isLoading = false;
         this.toggleError = err?.error?.message || `Toggle failed (HTTP ${err?.status})`;
         setTimeout(() => this.toggleError = '', 5000);
+        this.revertCheckbox(event);
       }
     });
   }
 
   onBulkAction(tab: string, action: 'include' | 'exclude'): void {
+    if (!this.ensureIdentified()) return;
     const visible = this.filteredData(tab);
     if (!visible.length) return;
 
@@ -358,14 +425,14 @@ export class CalculationExclusionComponent implements OnInit {
       entity_name: r.name
     }));
 
-    this.isLoading = true;
+    this.isBulkLoading = true;
 
     this.exclusionService.bulkToggle({
       action,
       from_date: this.fromDate,
       to_date: this.toDate || this.fromDate,
       entities
-    }).subscribe({
+    }, this.activityUser, this.officerRemark(`Bulk ${action} ${tab}`)).subscribe({
       next: () => {
         visible.forEach(r => {
           r.isExcluded = action === 'exclude';
@@ -378,11 +445,11 @@ export class CalculationExclusionComponent implements OnInit {
           }
         });
 
-        this.isLoading = false;
+        this.isBulkLoading = false;
       },
       error: (err: any) => {
         console.error('Bulk action failed:', err);
-        this.isLoading = false;
+        this.isBulkLoading = false;
       }
     });
   }
@@ -558,6 +625,7 @@ onExcelUpload(event: Event, tab: string): void {
 }
 
 onUploadedBulkAction(tab: string, action: 'include' | 'exclude'): void {
+  if (!this.ensureIdentified()) return;
   const rows = this.uploadedRows[tab];
   if (!rows?.length) return;
 
@@ -568,14 +636,14 @@ onUploadedBulkAction(tab: string, action: 'include' | 'exclude'): void {
     entity_name: r.name
   }));
 
-  this.isLoading = true;
+  this.isBulkLoading = true;
 
   this.exclusionService.bulkToggle({
     action,
     from_date: this.fromDate,
     to_date: this.toDate || this.fromDate,
     entities
-  }).subscribe({
+  }, this.activityUser, this.officerRemark(`Upload bulk ${action} ${tab}`)).subscribe({
     next: () => {
       rows.forEach(r => {
         r.isExcluded = action === 'exclude';
@@ -585,11 +653,11 @@ onUploadedBulkAction(tab: string, action: 'include' | 'exclude'): void {
       });
       this.uploadedRows[tab] = [];
       this.uploadNotFoundNames = [];
-      this.isLoading = false;
+      this.isBulkLoading = false;
     },
     error: (err: any) => {
       console.error('Upload bulk action failed:', err);
-      this.isLoading = false;
+      this.isBulkLoading = false;
     }
   });
 }
@@ -688,6 +756,7 @@ downloadTemplate(tab: string): void {
   }
 
   confirmExcelUpload(): void {
+    if (!this.ensureIdentified()) return;
     const valid = this.excelRows.filter(r => !r._hasError);
     if (!valid.length) return;
 
@@ -717,7 +786,7 @@ downloadTemplate(tab: string): void {
             entity_code: r.entity_code,
             entity_name: r.entity_name
           }))
-        })
+        }, this.activityUser, this.officerRemark('Excel bulk exclusion update'))
       );
     });
 
@@ -983,7 +1052,8 @@ downloadTemplate(tab: string): void {
     this.loadSeasonalData();
   }
 
-  toggleSeasonalDistrict(d: SeasonalDistrict): void {
+  toggleSeasonalDistrict(d: SeasonalDistrict, event: Event): void {
+    if (!this.ensureIdentified(event)) return;
     d.isLoading = true;
     this.exclusionService.toggleExclusion({
       entity_type: 'district',
@@ -991,12 +1061,15 @@ downloadTemplate(tab: string): void {
       entity_name: d.name,
       from_date: this.seasonStartDate,
       to_date: this.seasonEndDate
-    }).subscribe({
+    }, this.activityUser, this.officerRemark('Toggle seasonal district exclusion')).subscribe({
       next: (res: any) => {
         d.isExcluded = res.state === 'excluded';
         d.isLoading = false;
       },
-      error: () => { d.isLoading = false; }
+      error: () => {
+        d.isLoading = false;
+        this.revertCheckbox(event);
+      }
     });
   }
 
@@ -1126,14 +1199,15 @@ downloadTemplate(tab: string): void {
 
   reloadMonthly(): void { this.monthlyLoaded = false; this.loadMonthlyData(); }
 
-  toggleMonthlyDistrict(d: SeasonalDistrict): void {
+  toggleMonthlyDistrict(d: SeasonalDistrict, event: Event): void {
+    if (!this.ensureIdentified(event)) return;
     d.isLoading = true;
     this.exclusionService.toggleExclusion({
       entity_type: 'district', entity_code: d.code, entity_name: d.name,
       from_date: this.monthlyStartDate, to_date: this.monthlyEndDate
-    }).subscribe({
+    }, this.activityUser, this.officerRemark('Toggle monthly district exclusion')).subscribe({
       next: (res: any) => { d.isExcluded = res.state === 'excluded'; d.isLoading = false; },
-      error: () => { d.isLoading = false; }
+      error: () => { d.isLoading = false; this.revertCheckbox(event); }
     });
   }
 
@@ -1198,14 +1272,15 @@ downloadTemplate(tab: string): void {
 
   reloadWeekly(): void { this.weeklyLoaded = false; this.loadWeeklyData(); }
 
-  toggleWeeklyDistrict(d: SeasonalDistrict): void {
+  toggleWeeklyDistrict(d: SeasonalDistrict, event: Event): void {
+    if (!this.ensureIdentified(event)) return;
     d.isLoading = true;
     this.exclusionService.toggleExclusion({
       entity_type: 'district', entity_code: d.code, entity_name: d.name,
       from_date: this.weeklyStartDate, to_date: this.weeklyEndDate
-    }).subscribe({
+    }, this.activityUser, this.officerRemark('Toggle weekly district exclusion')).subscribe({
       next: (res: any) => { d.isExcluded = res.state === 'excluded'; d.isLoading = false; },
-      error: () => { d.isLoading = false; }
+      error: () => { d.isLoading = false; this.revertCheckbox(event); }
     });
   }
 

@@ -1,4 +1,11 @@
 <div class="wholebody background-effect">
+  <app-officer-identification-modal
+    [visible]="showEmpModal"
+    [routePath]="pageRoute"
+    [calculationPage]="calculationPageKey"
+    [pageLabel]="pageLabel"
+    (identified)="onOfficerIdentified($event)">
+  </app-officer-identification-modal>
 
   <!-- ── Date Range Selector ── -->
   <div class="pt-3 pb-1">
@@ -271,14 +278,14 @@
                 <button
                   class="btn btn-sm btn-include"
                   (click)="onBulkAction(tab.key, 'include')"
-                  [disabled]="isLoading"
+                  [disabled]="isLoading || isBulkLoading"
                 >
                   <i class="fa fa-check-square me-1"></i> Include All
                 </button>
                 <button
                   class="btn btn-sm btn-exclude"
                   (click)="onBulkAction(tab.key, 'exclude')"
-                  [disabled]="isLoading"
+                  [disabled]="isLoading || isBulkLoading"
                 >
                   <i class="fa fa-ban me-1"></i> Exclude All
                 </button>
@@ -419,7 +426,7 @@
                         type="checkbox"
                         class="form-check-input custom-checkbox"
                         [checked]="!row.isExcluded"
-                        (change)="onToggle(tab.key, row)"
+                        (change)="onToggle(tab.key, row, $event)"
                       />
                     </td>
 
@@ -577,7 +584,7 @@
                            type="checkbox"
                            class="form-check-input custom-checkbox"
                            [checked]="!d.isExcluded"
-                           (change)="toggleSeasonalDistrict(d)" />
+                           (change)="toggleSeasonalDistrict(d, $event)" />
                   </td>
 
                   <!-- District name -->
@@ -669,7 +676,7 @@
                 <tr *ngFor="let d of filteredMonthlyDistricts()" style="height:80px;cursor:pointer" (click)="openDistrictModal(d)">
                   <td class="text-center" (click)="$event.stopPropagation()">
                     <i *ngIf="d.isLoading" class="fa fa-spinner fa-spin text-primary"></i>
-                    <input *ngIf="!d.isLoading" type="checkbox" class="form-check-input custom-checkbox" [checked]="!d.isExcluded" (change)="toggleMonthlyDistrict(d)" />
+                    <input *ngIf="!d.isLoading" type="checkbox" class="form-check-input custom-checkbox" [checked]="!d.isExcluded" (change)="toggleMonthlyDistrict(d, $event)" />
                   </td>
                   <td><strong style="font-size:13px">{{ d.name }}</strong></td>
                   <td class="text-muted" style="font-size:12px">{{ d.state || '—' }}</td>
@@ -729,7 +736,7 @@
                 <tr *ngFor="let d of filteredWeeklyDistricts()" style="height:80px;cursor:pointer" (click)="openDistrictModal(d)">
                   <td class="text-center" (click)="$event.stopPropagation()">
                     <i *ngIf="d.isLoading" class="fa fa-spinner fa-spin text-primary"></i>
-                    <input *ngIf="!d.isLoading" type="checkbox" class="form-check-input custom-checkbox" [checked]="!d.isExcluded" (change)="toggleWeeklyDistrict(d)" />
+                    <input *ngIf="!d.isLoading" type="checkbox" class="form-check-input custom-checkbox" [checked]="!d.isExcluded" (change)="toggleWeeklyDistrict(d, $event)" />
                   </td>
                   <td><strong style="font-size:13px">{{ d.name }}</strong></td>
                   <td class="text-muted" style="font-size:12px">{{ d.state || '—' }}</td>

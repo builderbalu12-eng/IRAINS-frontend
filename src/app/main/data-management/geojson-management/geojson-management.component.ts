@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environment/environment';
 import * as L from 'leaflet';
 import { FetchStationDataService } from 'src/app/services/station/station.service';
+import { AdminActivityLogService, AdminActivityUser } from 'src/app/services/admin-activity-log.service';
 import * as JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -149,9 +150,17 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
   showStations = false;
   private stationLayerMap = new Map<L.Map, L.LayerGroup>();
 
+  showEmpModal = true;
+  activityUser: AdminActivityUser | null = null;
+  readonly pageRoute = '/data-management/geojson';
+
   private apiBase = environment.baseUrl;
 
-  constructor(private http: HttpClient, private stationService: FetchStationDataService) {
+  constructor(
+    private http: HttpClient,
+    private stationService: FetchStationDataService,
+    private activityLog: AdminActivityLogService,
+  ) {
     this.tabs.forEach(t => {
       this.files[t.key]         = [];
       this.loading[t.key]       = false;
@@ -178,8 +187,25 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.loadTab('district');
     this.stationService.getAllStations().subscribe(data => { this.allStations = data; });
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
+    this.loadTab('district');
+  }
+
+  private logUpload(res: any, folder: string, fileName: string, featureCount?: number): void {
+    const data = res?.data ?? res ?? {};
+    this.activityLog.logSpatialActivity('geojson', 'UPLOAD', this.activityUser, {
+      folder: data.folder ?? folder,
+      file_name: data.fileName ?? data.file_name ?? fileName,
+      feature_count: data.featureCount ?? data.feature_count ?? featureCount,
+      version: data.version,
+      old_version: data.old_version ?? data.oldVersion,
+      remark: this.activityUser?.remark ?? '',
+    }).subscribe();
   }
 
   ngOnDestroy(): void {
@@ -506,7 +532,11 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
     fd.append('folder', file.folder);
     fd.append('file', blob, file.fileName);
     this.http.post<any>(`${this.apiBase}/api/v1/geojson/upload`, fd).subscribe({
-      next:  (res) => { file.status = 'success'; file.msg = res.message ?? 'Uploaded'; },
+      next:  (res) => {
+        file.status = 'success';
+        file.msg = res.message ?? 'Uploaded';
+        this.logUpload(res, file.folder, file.fileName, file.featureCount);
+      },
       error: (err) => { file.status = 'error';   file.msg = err.error?.message ?? 'Failed'; }
     });
   }
@@ -528,8 +558,12 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
     fd.append('folder', file.folder);
     fd.append('file', blob, file.fileName);
     this.http.post<any>(`${this.apiBase}/api/v1/geojson/upload`, fd).subscribe({
-      next:  (res) => { file.status = 'success'; file.msg = res.message ?? 'Uploaded';
-                        this.uploadSequential(files, idx + 1); },
+      next:  (res) => {
+        file.status = 'success';
+        file.msg = res.message ?? 'Uploaded';
+        this.logUpload(res, file.folder, file.fileName, file.featureCount);
+        this.uploadSequential(files, idx + 1);
+      },
       error: (err) => { file.status = 'error';   file.msg = err.error?.message ?? 'Failed';
                         this.uploadSequential(files, idx + 1); }
     });
@@ -965,6 +999,7 @@ export class GeojsonManagementComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.uploadMsg[key] = res.message ?? 'Uploaded successfully.';
         this.uploading[key] = false;
+        this.logUpload(res, cfg.folder, file.name, this.features[key]);
         this.clearFile(key);
         this.files[key] = [];
         this.loadTab(key);
