@@ -694,7 +694,6 @@ opacity: 0.6; /* Makes the text look faded */
 
 .data-table td.numeric {
   text-align: right;
-  font-family: 'Courier New', monospace;
 }
 
 .no-data {

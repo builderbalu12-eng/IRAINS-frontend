@@ -159,7 +159,7 @@ export const routes: Routes = [
  { path: 'block-rainfall-aws-actual', component: BlockRainfallMapDailyMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'spatial-table', component: SpatialTableComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'monsoon-activity', component: MonsoonActivityComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'river-basin', component: GangaRiverBasinComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ { path: 'river-basin', component: UnderprogressComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'calulate-exclusion', redirectTo: '/data-management/calculation-exclusion', pathMatch: 'full' },
  { path: 'display-order-management', redirectTo: '/data-management/display-order', pathMatch: 'full' },
 
