@@ -799,6 +799,29 @@ export class DataEntryComponent implements OnInit {
               return;
             }
 
+            // Negative values are not allowed, except the -999.9 "no data" sentinel.
+            const invalidNegativeCols = new Set<string>();
+            jsonData.forEach((row: any) => {
+              uploadedDateCols.forEach((k) => {
+                const raw = row[k];
+                if (raw === null || raw === "" || raw === undefined) return;
+                const num = typeof raw === "number" ? raw : parseFloat(raw);
+                if (!isNaN(num) && num < 0 && num !== -999.9) {
+                  invalidNegativeCols.add(k);
+                }
+              });
+            });
+
+            if (invalidNegativeCols.size > 0) {
+              this.openUploadResultPopup(
+                false,
+                `Negative values are not allowed, except -999.9 (used to indicate no data). Please check the values under: ${Array.from(invalidNegativeCols).join(", ")}.`
+              );
+              this.clearRainfallFileInput();
+              this.isUploading = false;
+              return;
+            }
+
             const processedData = jsonData.map((row: any) => {
               for (const key in row) {
                 if (

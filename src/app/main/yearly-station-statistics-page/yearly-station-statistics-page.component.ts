@@ -1019,7 +1019,7 @@ export class YearlyStationStatisticsPageComponent {
     });
 
     return {
-      columns: ["state_name", "district_name", "block_name", "block_code", "station_name", "station_id", "latitude", "longitude", ...uniqueDates],
+      columns: ["state_name", "district_name", "block_name", "station_name", "station_id", "latitude", "longitude", ...uniqueDates],
       rows: Object.values(stationMap),
     };
   }

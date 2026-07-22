@@ -598,6 +598,7 @@ opacity: 0.6; /* Makes the text look faded */
   overflow: hidden;
   position: relative;
   margin: 0 auto;
+  width: fit-content;
   max-width: 95%;
 }
 
@@ -639,7 +640,8 @@ opacity: 0.6; /* Makes the text look faded */
 }
 
 .data-table {
-  width: 100%;
+  width: auto;
+  table-layout: auto;
   border-collapse: collapse;
   font-size: 14px;
   line-height: 1.5;
