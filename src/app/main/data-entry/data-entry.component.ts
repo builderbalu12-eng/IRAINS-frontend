@@ -118,6 +118,14 @@ export class DataEntryComponent implements OnInit {
   uploadResultMessage: string = '';
   uploadResultUploadedDates: string[] = [];
   uploadResultSkippedDates: string[] = [];
+
+  // ── Pre-upload confirmation (highest rainfall per date) ─────────────────
+  private readonly rainfallSkipColumns = ["station_name", "centre_type", "station_id"];
+  showPreUploadConfirmPopup: boolean = false;
+  preUploadHighestByDate: { date: string; stationName: string; stationId: string; rainfall: number; hasData: boolean }[] = [];
+  private pendingUploadJsonData: any[] = [];
+  private pendingUploadedDateCols: string[] = [];
+  private pendingSkippedDateCols: string[] = [];
   loggedInUserObject: any;
   emailGroups: any[] = [];
   emails: any[] = [];
@@ -737,6 +745,28 @@ export class DataEntryComponent implements OnInit {
     return d;
   }
 
+  /** For each date column, finds the station with the highest rainfall value (excluding the -999.9 "no data" sentinel). */
+  private computeHighestRainfallByDate(
+    jsonData: any[],
+    dateCols: string[]
+  ): { date: string; stationName: string; stationId: string; rainfall: number; hasData: boolean }[] {
+    return dateCols.map((k) => {
+      let best: { stationName: string; stationId: string; rainfall: number } | null = null;
+      for (const row of jsonData) {
+        const raw = row[k];
+        if (raw === null || raw === "" || raw === undefined) continue;
+        const num = typeof raw === "number" ? raw : parseFloat(raw);
+        if (isNaN(num) || num === -999.9) continue;
+        if (!best || num > best.rainfall) {
+          best = { stationName: row.station_name, stationId: row.station_id, rainfall: num };
+        }
+      }
+      return best
+        ? { date: k, stationName: best.stationName, stationId: best.stationId, rainfall: best.rainfall, hasData: true }
+        : { date: k, stationName: '—', stationId: '—', rainfall: 0, hasData: false };
+    });
+  }
+
   async uploadRainFallFile() {
     if (this.selectedFile) {
       console.log(this.selectedFile);
@@ -757,7 +787,7 @@ export class DataEntryComponent implements OnInit {
               defval: null,
             });
 
-            const skipColumns = ["station_name", "centre_type", "station_id"];
+            const skipColumns = this.rainfallSkipColumns;
 
             // Dates within restrictDays get uploaded as usual; anything older
             // is dropped from the upload (not blocked) and reported to the user.
@@ -768,6 +798,21 @@ export class DataEntryComponent implements OnInit {
               const dateCols = Object.keys(jsonData[0]).filter(
                 (k) => !skipColumns.includes(k) && this.parseExcelDateColumn(k) !== null
               );
+
+              // Future dates can never have real rainfall data — reject the
+              // whole upload instead of silently dropping the column.
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const futureDateCols = dateCols.filter((k) => this.parseExcelDateColumn(k)! > today);
+              if (futureDateCols.length > 0) {
+                this.openUploadResultPopup(
+                  false,
+                  `Future dates are not allowed. Please remove or correct these column(s): ${futureDateCols.join(", ")}.`
+                );
+                this.clearRainfallFileInput();
+                this.isUploading = false;
+                return;
+              }
 
               if (this.restrictDays != null) {
                 const cutoff = new Date();
@@ -822,41 +867,13 @@ export class DataEntryComponent implements OnInit {
               return;
             }
 
-            const processedData = jsonData.map((row: any) => {
-              for (const key in row) {
-                if (
-                  (row[key] === null || row[key] === "") &&
-                  !skipColumns.includes(key)
-                ) {
-                  row[key] = -999.9;
-                }
-              }
-              return row;
-            });
-  
-            const newWorksheet = XLSX.utils.json_to_sheet(processedData);
-            const newWorkbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "ProcessedData");
-  
-            const csv = XLSX.write(newWorkbook, {
-              bookType: "csv",
-              type: "array",
-            });
-  
-            const processedFile = new File([csv], "processed_rainfall_data.csv", {
-              type: "text/csv",
-            });
-  
-            const response = await this.stationService
-              .uploadRainfallDataFile(processedFile)
-              .toPromise();
-  
-            await this.fetchStationData(this.enteredDate);
-
-            this.openUploadResultPopup(true, "File uploaded successfully.", uploadedDateCols, skippedDateCols);
-
-            this.clearFileInput();
-            this.filterStationData();
+            // Validation passed — show the highest-rainfall-per-date summary
+            // and wait for the user to confirm before actually uploading.
+            this.pendingUploadJsonData = jsonData;
+            this.pendingUploadedDateCols = uploadedDateCols;
+            this.pendingSkippedDateCols = skippedDateCols;
+            this.preUploadHighestByDate = this.computeHighestRainfallByDate(jsonData, uploadedDateCols);
+            this.showPreUploadConfirmPopup = true;
           } catch (error) {
             console.error("Error inside onload:", error);
             alert("Error uploading file: Please check the excel format and ensure no non-numeric characters in dates field");
@@ -864,7 +881,7 @@ export class DataEntryComponent implements OnInit {
             this.isUploading = false; // always stop loader
           }
         };
-  
+
         fileReader.readAsArrayBuffer(this.selectedFile);
       } catch (error) {
         console.error("Outer error:", error);
@@ -874,6 +891,73 @@ export class DataEntryComponent implements OnInit {
     } else {
       alert("Please choose a file:");
     }
+  }
+
+  /** Called from the pre-upload confirmation popup's "Confirm & Upload" button. */
+  async confirmAndUploadRainfall() {
+    this.showPreUploadConfirmPopup = false;
+    const jsonData = this.pendingUploadJsonData;
+    const uploadedDateCols = this.pendingUploadedDateCols;
+    const skippedDateCols = this.pendingSkippedDateCols;
+    const skipColumns = this.rainfallSkipColumns;
+
+    this.isUploading = true;
+    try {
+      const processedData = jsonData.map((row: any) => {
+        for (const key in row) {
+          if (
+            (row[key] === null || row[key] === "") &&
+            !skipColumns.includes(key)
+          ) {
+            row[key] = -999.9;
+          }
+        }
+        return row;
+      });
+
+      const newWorksheet = XLSX.utils.json_to_sheet(processedData);
+      const newWorkbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "ProcessedData");
+
+      const csv = XLSX.write(newWorkbook, {
+        bookType: "csv",
+        type: "array",
+      });
+
+      const processedFile = new File([csv], "processed_rainfall_data.csv", {
+        type: "text/csv",
+      });
+
+      const response = await this.stationService
+        .uploadRainfallDataFile(processedFile)
+        .toPromise();
+
+      await this.fetchStationData(this.enteredDate);
+
+      this.openUploadResultPopup(true, "File uploaded successfully.", uploadedDateCols, skippedDateCols);
+
+      this.clearFileInput();
+      this.filterStationData();
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Error uploading file: Please check the excel format and ensure no non-numeric characters in dates field");
+    } finally {
+      this.isUploading = false;
+      this.pendingUploadJsonData = [];
+      this.pendingUploadedDateCols = [];
+      this.pendingSkippedDateCols = [];
+      this.preUploadHighestByDate = [];
+    }
+  }
+
+  /** Called from the pre-upload confirmation popup's "Cancel" button. */
+  cancelPreUpload() {
+    this.showPreUploadConfirmPopup = false;
+    this.preUploadHighestByDate = [];
+    this.pendingUploadJsonData = [];
+    this.pendingUploadedDateCols = [];
+    this.pendingSkippedDateCols = [];
+    this.clearRainfallFileInput();
   }
   
 

@@ -365,6 +365,56 @@ th {
 .restrict-ok-btn:hover {
   background: #001a4d;
 }
+.restrict-ok-btn.cancel {
+  background: #fff;
+  color: #002467;
+  border: 1px solid #002467;
+}
+.restrict-ok-btn.cancel:hover {
+  background: #f1f3f9;
+}
+
+/* ── Pre-upload confirmation popup ───────────────────────────────────── */
+.rainfall-confirm-card {
+  max-width: 560px;
+}
+.rainfall-confirm-table-wrap {
+  max-height: 260px;
+  overflow-y: auto;
+  text-align: left;
+  margin-bottom: 1rem;
+}
+.rainfall-confirm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 0.4rem;
+}
+.rainfall-confirm-table th {
+  background: #f8f9fa;
+  color: #002467;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 2px solid #dee2e6;
+}
+.rainfall-confirm-table td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid #eef0f2;
+  color: #333;
+}
+.rainfall-confirm-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.upload-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+.upload-confirm-actions .restrict-ok-btn {
+  margin-top: 0;
+}
 
 /* Loading message box styling */
 .loading-message {
