@@ -155,7 +155,9 @@ export class BlockRainfallMapActualOrgawsMainPageComponent {
             };
       
             // Call the DownloadPdf service with filters
-            await this.downloadPdf$.updateanddownloadpdfCustom(this.fromDate, this.toDate, filters);
+            // Single date picker page — toDate is never bound to any control and
+            // stays stuck at page-load time, so use fromDate for both.
+            await this.downloadPdf$.updateanddownloadpdfCustom(this.fromDate, this.fromDate, filters);
             this.isLoading = false;
           } catch (error) {
             console.error("Error downloading map data:", error);

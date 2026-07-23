@@ -197,9 +197,13 @@ export class BlockRainfallMapDailyMainPageComponent implements AfterViewInit {
       };
 
       // Call the DownloadPdf service with filters
+      // This page only exposes a single date picker (fromDate) — toDate is
+      // never bound to any control and stays stuck at page-load time, so
+      // using it here produced a bogus "22-07-2026 to 23-07-2026" range
+      // instead of the single selected date.
       await this.downloadPdf$.updateanddownloadpdfCustom(
         this.fromDate,
-        this.toDate,
+        this.fromDate,
         filters
       );
       this.isLoading = false;
