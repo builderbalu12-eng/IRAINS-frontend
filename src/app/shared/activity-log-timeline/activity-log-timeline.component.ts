@@ -57,4 +57,13 @@ export class ActivityLogTimelineComponent {
     }
     return palette[Math.abs(hash) % palette.length];
   }
+
+  loginTypeLabel(type: string | null | undefined): string {
+    const value = (type || '').trim().toLowerCase();
+    if (value === 'hq') return 'HQ';
+    if (value === 'mc') return 'MC';
+    if (value === 'sp') return 'SP';
+    if (value === 'public') return 'Public';
+    return '';
+  }
 }

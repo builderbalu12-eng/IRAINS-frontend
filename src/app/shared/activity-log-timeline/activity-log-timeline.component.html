@@ -17,7 +17,12 @@
             {{ initials(row.emp_name) }}
           </span>
           <div>
-            <div class="chip-name">{{ row.emp_name }}</div>
+            <div class="chip-name">
+              {{ row.emp_name }}
+              <span class="login-type-badge" *ngIf="loginTypeLabel(row.mcorhq_type)" [attr.data-type]="row.mcorhq_type">
+                {{ loginTypeLabel(row.mcorhq_type) }}
+              </span>
+            </div>
             <div class="chip-role">{{ row.emp_designation || 'Officer' }}</div>
           </div>
         </div>

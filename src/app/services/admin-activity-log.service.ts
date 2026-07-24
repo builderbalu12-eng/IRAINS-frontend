@@ -103,6 +103,10 @@ export interface ActivityLogQuery {
   action_type?: string;
   entity_type?: string;
   login_id?: number | string;
+  /** Login role snapshot: hq | mc | sp | public */
+  mcorhq_type?: string;
+  /** Partial officer name match (ILIKE on backend) */
+  emp_name?: string;
   from_date?: string;
   to_date?: string;
   limit?: number;

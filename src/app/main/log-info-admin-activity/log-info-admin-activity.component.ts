@@ -22,11 +22,21 @@ import {
 })
 export class LogInfoAdminActivityComponent implements OnInit, OnDestroy {
   readonly moduleOptions = ['', 'Data Management', 'Spatial Boundaries'];
+  /** Filter by the shared login role (HQ / MC / SP). All officers under that role are included. */
+  readonly mcorhqOptions: { value: string; label: string }[] = [
+    { value: '', label: 'All login types' },
+    { value: 'hq', label: 'HQ' },
+    { value: 'mc', label: 'MC' },
+    { value: 'sp', label: 'SP' },
+    { value: 'public', label: 'Public' },
+  ];
   readonly embedded: boolean;
 
   moduleName = '';
   categoryName = '';
   routePath = '';
+  mcorhqType = '';
+  empName = '';
   fromDate = this.todayIso();
   toDate = this.todayIso();
   maxDate = this.todayIso();
@@ -96,14 +106,23 @@ export class LogInfoAdminActivityComponent implements OnInit, OnDestroy {
   }
 
   get filterSummary(): string {
+    const parts: string[] = [];
+    if (this.mcorhqType) {
+      const opt = this.mcorhqOptions.find((o) => o.value === this.mcorhqType);
+      parts.push(opt?.label ?? this.mcorhqType.toUpperCase());
+    }
+    if (this.empName.trim()) {
+      parts.push(`officer “${this.empName.trim()}”`);
+    }
     if (this.routePath) {
       const page = this.allPages.find((p) => p.route_path === this.routePath);
-      return page ? this.pageLabelFor(page) : '1 page';
+      parts.push(page ? this.pageLabelFor(page) : '1 page');
+    } else if (this.moduleName || this.categoryName) {
+      parts.push(`${this.pageOptions.length} page(s)`);
+    } else {
+      parts.push(`All ${this.allPages.length} pages`);
     }
-    if (this.moduleName || this.categoryName) {
-      return `${this.pageOptions.length} page(s)`;
-    }
-    return `All ${this.allPages.length} pages`;
+    return parts.join(' · ');
   }
 
   onModuleChange(): void {
@@ -173,6 +192,8 @@ export class LogInfoAdminActivityComponent implements OnInit, OnDestroy {
       module_name: this.moduleName || undefined,
       category_name: this.categoryName || undefined,
       route_path: this.routePath || undefined,
+      mcorhq_type: this.mcorhqType || undefined,
+      emp_name: this.empName.trim() || undefined,
       from_date: this.activityLog.formatDateForApi(this.fromDate),
       to_date: this.activityLog.formatDateForApi(this.toDate),
       limit: this.limit,

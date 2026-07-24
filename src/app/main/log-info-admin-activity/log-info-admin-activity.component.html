@@ -23,6 +23,22 @@
       <div class="filter-panel">
         <div class="row g-3 align-items-end">
           <div class="col-md-3">
+            <label class="form-label">Login type</label>
+            <select class="form-control" [(ngModel)]="mcorhqType">
+              <option *ngFor="let opt of mcorhqOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Officer name</label>
+            <input
+              type="text"
+              class="form-control"
+              [(ngModel)]="empName"
+              placeholder="All officers"
+              autocomplete="off"
+            />
+          </div>
+          <div class="col-md-3">
             <label class="form-label">Module</label>
             <select class="form-control" [(ngModel)]="moduleName" (ngModelChange)="onModuleChange()">
               <option *ngFor="let m of moduleOptions" [value]="m">{{ m || 'All modules' }}</option>

@@ -1,0 +1,137 @@
+<!-- Launcher -->
+<button
+  type="button"
+  class="varsha-fab"
+  [class.open]="open"
+  (click)="toggle()"
+  [attr.aria-expanded]="open"
+  aria-label="Open Varsha rainfall assistant"
+>
+  <span class="fab-orb" aria-hidden="true">
+    <span class="fab-ripple"></span>
+    <span class="fab-ripple delay"></span>
+    <i class="bi" [ngClass]="open ? 'bi-x-lg' : 'bi-cloud-rain-heavy'"></i>
+  </span>
+  <span class="fab-copy">
+    <span class="fab-kicker">iRAINS</span>
+    <span class="fab-title">{{ open ? 'Close' : 'Ask Varsha' }}</span>
+  </span>
+</button>
+
+<!-- Panel -->
+<aside class="varsha-panel" [class.open]="open" role="dialog" aria-label="Varsha rainfall assistant">
+  <header class="varsha-header">
+    <div class="rain-sky" aria-hidden="true">
+      <span
+        class="drop"
+        *ngFor="let d of rainDrops"
+        [style.left.%]="d.left"
+        [style.animation-delay.s]="d.delay"
+        [style.animation-duration.s]="d.duration"
+        [style.height.px]="d.height"
+      ></span>
+      <div class="mist"></div>
+    </div>
+
+    <div class="header-row">
+      <div class="identity">
+        <div class="avatar" aria-hidden="true">
+          <i class="bi bi-droplet-fill"></i>
+        </div>
+        <div>
+          <p class="kicker">Rainfall companion</p>
+          <h2>Varsha</h2>
+          <p class="status">
+            <span class="pulse"></span>
+            Live · {{ dataMode }}
+            <ng-container *ngIf="fromDate && toDate"> · {{ fromDate }} → {{ toDate }}</ng-container>
+          </p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="icon-btn" title="New chat" (click)="clearChat()">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <button type="button" class="icon-btn" title="Close" (click)="close()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quick chips (only when few messages) -->
+  <div class="quick-row" *ngIf="messages.length <= 2">
+    <button
+      type="button"
+      class="quick-chip"
+      *ngFor="let p of quickPrompts"
+      (click)="usePrompt(p.query)"
+    >
+      <i class="bi" [ngClass]="p.icon"></i>
+      {{ p.label }}
+    </button>
+  </div>
+
+  <div class="varsha-body">
+    <div
+      class="bubble"
+      *ngFor="let m of messages; trackBy: trackById"
+      [class.user]="m.role === 'user'"
+      [class.assistant]="m.role === 'assistant'"
+    >
+      <div class="bubble-meta" *ngIf="m.role === 'assistant'">
+        <i class="bi bi-droplet-half"></i> Varsha · {{ m.time }}
+      </div>
+      <div class="bubble-meta user-meta" *ngIf="m.role === 'user'">You · {{ m.time }}</div>
+
+      <div class="bubble-text" *ngIf="m.role === 'assistant'" [innerHTML]="m.text"></div>
+      <div class="bubble-text" *ngIf="m.role === 'user'">{{ m.text }}</div>
+
+      <div class="inline-suggestions" *ngIf="m.suggestions?.length">
+        <button
+          type="button"
+          class="suggest"
+          *ngFor="let s of m.suggestions"
+          (click)="usePrompt(s)"
+        >
+          {{ s }}
+        </button>
+      </div>
+    </div>
+
+    <div class="typing" *ngIf="isTyping">
+      <span class="typing-avatar"><i class="bi bi-droplet-fill"></i></span>
+      <span class="typing-dots">
+        <i></i><i></i><i></i>
+      </span>
+      <span class="typing-label">Varsha is gathering rainfall context…</span>
+    </div>
+
+    <div #messagesEnd></div>
+  </div>
+
+  <footer class="varsha-footer">
+    <div class="composer">
+      <textarea
+        #chatInput
+        rows="1"
+        [(ngModel)]="inputText"
+        (keydown)="onKeydown($event)"
+        placeholder="Ask about maps, legend, coverage…"
+        [disabled]="isTyping"
+      ></textarea>
+      <button
+        type="button"
+        class="send-btn"
+        (click)="send()"
+        [disabled]="!inputText.trim() || isTyping"
+        aria-label="Send message"
+      >
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+    <p class="footer-note">Guided for All Maps · IMD rainfall products</p>
+  </footer>
+</aside>
+
+<div class="varsha-backdrop" *ngIf="open" (click)="close()"></div>

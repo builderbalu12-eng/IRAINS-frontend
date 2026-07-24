@@ -208,6 +208,7 @@ import { AdminLiveUsersBarComponent } from './shared/admin-live-users-bar/admin-
 import { OfficerIdentityCardComponent } from './shared/officer-identity-card/officer-identity-card.component';
 import { ActivityLogTimelineComponent } from './shared/activity-log-timeline/activity-log-timeline.component';
 import { AdminPageActivityPanelComponent } from './shared/admin-page-activity-panel/admin-page-activity-panel.component';
+import { RainfallChatbotComponent } from './shared/rainfall-chatbot/rainfall-chatbot.component';
 import { PermissionsComponent } from './main/permissions/permissions.component';
 import { RbacComponent } from './main/permissions/rbac/rbac.component';
 import { NewRegisterComponent } from './main/permissions/new-register/new-register.component';
@@ -394,6 +395,7 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     OfficerIdentityCardComponent,
     ActivityLogTimelineComponent,
     AdminPageActivityPanelComponent,
+    RainfallChatbotComponent,
     PermissionsComponent,
     RbacComponent,
     NewRegisterComponent,
