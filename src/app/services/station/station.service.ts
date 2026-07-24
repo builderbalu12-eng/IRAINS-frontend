@@ -172,4 +172,24 @@ export class FetchStationDataService {
   getAllStations(): Observable<any[]> {
     return this.http.get<any[]>(`${this.baseUrl}/api/v1/getAllStations`);
   }
+
+  fetchRevisionLog(params: { days?: number; date?: string }): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionLog`, params);
+  }
+
+  fetchRevisionStationDetails(revisionDate: string, dataDate: string): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionStationDetails`, { revisionDate, dataDate });
+  }
+
+  fetchRevisionLogByCentre(params: { days?: number; date?: string }): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionLogByCentre`, params);
+  }
+
+  fetchCentreRevisionDetails(centreType: string, centreName: string, params: { days?: number; date?: string }): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchCentreRevisionDetails`, { centreType, centreName, ...params });
+  }
+
+  fetchRevisionEventsForDate(date: string): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionEventsForDate`, { date });
+  }
 }

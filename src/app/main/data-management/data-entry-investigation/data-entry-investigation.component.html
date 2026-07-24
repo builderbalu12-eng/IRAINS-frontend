@@ -1,0 +1,243 @@
+<div class="di-page">
+  <div class="di-header">
+    <h2><i class="bi bi-search me-2"></i>Data Entry Investigation</h2>
+    <p class="di-subtitle">Stations whose already-saved rainfall value was edited again after entry.</p>
+  </div>
+
+  <div class="di-tabs">
+    <button [class.active]="activeTab === 'daywise'" (click)="switchTab('daywise')">Day Wise</button>
+    <button [class.active]="activeTab === 'range'" (click)="switchTab('range')">Range</button>
+  </div>
+
+  <div class="di-controls" *ngIf="activeTab === 'range'">
+    <label>Look back</label>
+    <select [(ngModel)]="days" (ngModelChange)="loadLog()">
+      <option [ngValue]="7">7 days</option>
+      <option [ngValue]="14">14 days</option>
+      <option [ngValue]="30">30 days</option>
+      <option [ngValue]="60">60 days</option>
+      <option [ngValue]="90">90 days</option>
+      <option [ngValue]="130">130 days</option>
+    </select>
+    <button (click)="loadLog()" [disabled]="loading">Refresh</button>
+  </div>
+
+  <div *ngIf="activeTab === 'daywise'">
+    <div class="di-controls">
+      <label>Date</label>
+      <input type="date" [(ngModel)]="singleDate" (ngModelChange)="onDayWiseDateChange()">
+      <button (click)="onDayWiseDateChange()" [disabled]="loading">Refresh</button>
+    </div>
+
+    <div class="di-lock-status" [class.locked]="isLocked" [class.unlocked]="!isLocked">
+      <i class="bi" [ngClass]="isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'"></i>
+      <span *ngIf="isLocked">Data Entry is <strong>Locked</strong> right now</span>
+      <span *ngIf="!isLocked">Data Entry is <strong>Unlocked</strong> right now</span>
+    </div>
+
+    <div class="di-timeline-toolbar">
+      <button (click)="zoomOut()" [disabled]="zoomLevel <= 1" title="Zoom out"><i class="bi bi-dash-lg"></i></button>
+      <span class="di-zoom-level">{{ zoomLevel }}x</span>
+      <button (click)="zoomIn()" [disabled]="zoomLevel >= maxZoom" title="Zoom in"><i class="bi bi-plus-lg"></i></button>
+      <button class="di-zoom-reset" (click)="resetZoom()" *ngIf="zoomLevel > 1">Reset</button>
+      <span class="di-zoom-hint" *ngIf="zoomLevel > 1">Scroll sideways to move through the day</span>
+    </div>
+
+    <div class="di-timeline-scroll">
+      <div class="di-timeline-zoomable" [style.width.%]="zoomLevel * 100">
+        <div class="di-lock-timeline-wrap">
+          <div class="di-lock-timeline" [title]="'Green = unlocked, Red = locked, over the 24 hours of ' + singleDate">
+            <div *ngFor="let seg of lockTimelineSegments"
+                 class="di-lock-timeline-segment"
+                 [class.locked]="seg.isLocked"
+                 [style.left.%]="seg.startPct"
+                 [style.width.%]="seg.widthPct">
+            </div>
+          </div>
+          <i *ngFor="let dot of timelineDots"
+             class="bi bi-geo-alt-fill di-event-pin"
+             [class.backdated]="dot.backDated"
+             [style.left.%]="dot.leftPct"
+             (mouseenter)="onPinHover($event, dot)"
+             (mouseleave)="hoveredDot = null">
+          </i>
+        </div>
+        <div class="di-lock-timeline-labels">
+          <span *ngFor="let label of hourLabels; let i = index" [style.left.%]="(i / 24) * 100">{{ label }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="di-event-popup" *ngIf="hoveredDot" [style.left.px]="popupPos.left" [style.top.px]="popupPos.top">
+      {{ hoveredDot.tooltip }}
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="di-loading">Loading…</div>
+  <div *ngIf="message" class="di-message" [class.error]="messageType === 'error'">{{ message }}</div>
+
+  <ng-container *ngIf="!loading">
+    <div class="di-stat-row">
+      <div class="di-stat-tile warn">
+        <div class="di-stat-value">{{ backDatedCount }}</div>
+        <div class="di-stat-label">
+          Back-dated Edits
+          <i class="bi bi-info-circle di-info-icon" title="Edits made on a day after the date the value is for — e.g. editing yesterday's rainfall today. The case worth watching most closely."></i>
+        </div>
+      </div>
+      <div class="di-stat-tile">
+        <div class="di-stat-value">{{ sameDayCount }}</div>
+        <div class="di-stat-label">
+          Same-day Corrections
+          <i class="bi bi-info-circle di-info-icon" title="Edits made on the same day as the date the value is for — e.g. correcting today's entry a few minutes after typing it."></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="di-main-columns">
+      <div class="di-card">
+        <h3>
+          Revision Log
+          <i class="bi bi-info-circle di-info-icon" title="Each row groups edits by the day they happened AND the date whose value was changed. Hover a row to see the station names."></i>
+        </h3>
+        <div class="di-table-wrap">
+          <table class="di-table">
+            <thead>
+              <tr>
+                <th>
+                  Revision Date
+                  <i class="bi bi-info-circle di-info-icon" title="The day the edit actually happened — i.e. today, when someone went in and changed a value."></i>
+                </th>
+                <th>
+                  Data Date
+                  <i class="bi bi-info-circle di-info-icon" title="The date the rainfall value is for — the date whose number got changed."></i>
+                </th>
+                <th>Stations</th>
+                <th>
+                  Type
+                  <i class="bi bi-info-circle di-info-icon" title="Same-day correction: Data Date = Revision Date (tweaked shortly after entry). Back-dated edit: Data Date is earlier than Revision Date (an already-saved past value was changed)."></i>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngFor="let r of logRows">
+                <tr [class.back-dated]="r.backDated" [class.same-day]="!r.backDated" [title]="r.stationNames.join(', ')">
+                  <td>{{ r.revisionDate }}</td>
+                  <td>{{ r.dataDate }}</td>
+                  <td>
+                    <a href="javascript:void(0)" class="di-station-count-link" (click)="toggleStationDetails(r)">
+                      {{ r.stationCount }}
+                      <i class="bi" [ngClass]="r.expanded ? 'bi-caret-up-fill' : 'bi-caret-down-fill'"></i>
+                    </a>
+                  </td>
+                  <td>{{ r.backDated ? 'Back-dated edit' : 'Same-day correction' }}</td>
+                </tr>
+                <tr class="di-detail-row" *ngIf="r.expanded">
+                  <td colspan="4">
+                    <div *ngIf="r.loadingDetails" class="di-loading">Loading stations…</div>
+                    <div class="di-detail-scroll" *ngIf="!r.loadingDetails">
+                      <table class="di-table di-detail-table">
+                        <thead>
+                          <tr>
+                            <th>Station</th>
+                            <th>Centre Type</th>
+                            <th>Centre Name</th>
+                            <th>State</th>
+                            <th>District</th>
+                            <th>Value (mm)</th>
+                            <th>Data Date</th>
+                            <th>Updated At</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let d of r.details">
+                            <td>{{ d.stationName }}</td>
+                            <td>{{ d.centreType }}</td>
+                            <td>{{ d.centreName }}</td>
+                            <td>{{ d.stateName }}</td>
+                            <td>{{ d.districtName }}</td>
+                            <td>{{ d.value }}</td>
+                            <td>{{ d.dataDate }}</td>
+                            <td>{{ d.updatedAt | date: 'dd-MMM-yyyy HH:mm:ss' }}</td>
+                          </tr>
+                          <tr *ngIf="r.details && r.details.length === 0"><td colspan="8">No station details found.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
+              <tr *ngIf="logRows.length === 0"><td colspan="4">No revisions in this window.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="di-card di-mc-panel">
+        <h3>
+          MC / RMC-Wise Reupdates
+          <i class="bi bi-info-circle di-info-icon" title="Grouped by centre (MC/RMC), same grouping as the Verification HQ page. Click either count to see which stations and dates it covers."></i>
+        </h3>
+        <div *ngIf="loadingMcWise" class="di-loading">Loading…</div>
+        <div class="di-table-wrap" *ngIf="!loadingMcWise">
+          <table class="di-table">
+            <thead>
+              <tr><th>MC / RMC</th><th>Same Day</th><th>Backdate</th><th>Stations</th></tr>
+            </thead>
+            <tbody>
+              <ng-container *ngFor="let m of mcWiseRows">
+                <tr>
+                  <td>{{ m.centreType }} {{ m.centreName }}</td>
+                  <td>
+                    <a href="javascript:void(0)" class="di-station-count-link" (click)="toggleMcDetails(m, 'same-day')">
+                      {{ m.sameDayCount }}
+                      <i class="bi" [ngClass]="m.expandedFilter === 'same-day' ? 'bi-caret-up-fill' : 'bi-caret-down-fill'"></i>
+                    </a>
+                  </td>
+                  <td>
+                    <a href="javascript:void(0)" class="di-station-count-link" (click)="toggleMcDetails(m, 'back-dated')">
+                      {{ m.backDatedCount }}
+                      <i class="bi" [ngClass]="m.expandedFilter === 'back-dated' ? 'bi-caret-up-fill' : 'bi-caret-down-fill'"></i>
+                    </a>
+                  </td>
+                  <td>{{ m.stationCount }}</td>
+                </tr>
+                <tr class="di-detail-row" *ngIf="m.expandedFilter">
+                  <td colspan="4">
+                    <div *ngIf="m.loadingDetails" class="di-loading">Loading stations…</div>
+                    <div class="di-detail-scroll" *ngIf="!m.loadingDetails">
+                      <table class="di-table di-detail-table">
+                        <thead>
+                          <tr>
+                            <th>Station</th>
+                            <th>State</th>
+                            <th>District</th>
+                            <th>Value (mm)</th>
+                            <th>Data Date</th>
+                            <th>Updated At</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let d of getFilteredMcDetails(m)">
+                            <td>{{ d.stationName }}</td>
+                            <td>{{ d.stateName }}</td>
+                            <td>{{ d.districtName }}</td>
+                            <td>{{ d.value }}</td>
+                            <td>{{ d.dataDate }}</td>
+                            <td>{{ d.updatedAt | date: 'dd-MMM-yyyy HH:mm:ss' }}</td>
+                          </tr>
+                          <tr *ngIf="getFilteredMcDetails(m).length === 0"><td colspan="6">No station details found.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
+              <tr *ngIf="mcWiseRows.length === 0"><td colspan="4">No reupdates in this window.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

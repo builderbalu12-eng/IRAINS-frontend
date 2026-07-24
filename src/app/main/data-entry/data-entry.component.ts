@@ -959,7 +959,7 @@ export class DataEntryComponent implements OnInit {
     this.pendingSkippedDateCols = [];
     this.clearRainfallFileInput();
   }
-  
+
 
   sortDirection: { [key: string]: 'asc' | 'desc' } = {};
   activeSortColumn: string = '';

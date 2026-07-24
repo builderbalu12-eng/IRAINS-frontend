@@ -114,6 +114,7 @@ import { BlockActualRainfallMapDailyMainPagePubicComponent } from './main/block-
 import { CalculationExclusionComponent } from './main/admin-panel/calculationExclusion/calculation-exclusion/calculation-exclusion.component';
 import { CalculationModeComponent } from './main/data-management/calculation-mode/calculation-mode.component';
 import { ReviewAndPublishComponent } from './main/data-management/review-and-publish/review-and-publish.component';
+import { DataEntryInvestigationComponent } from './main/data-management/data-entry-investigation/data-entry-investigation.component';
 import { BlockRainfallMapDailyMainPageComponent } from './main/block-rainfall-main-page/block/block-rainfall-map-daily-main-page/block-rainfall-map-daily-main-page.component';
 import { DisplayOrderManagementComponent } from './main/display-order-management/display-order-management.component';
 import { DataManagementComponent } from './main/data-management/data-management.component';
@@ -173,6 +174,7 @@ export const routes: Routes = [
     { path: 'display-order',         component: DisplayOrderManagementComponent },
     { path: 'calculation-mode',      component: CalculationModeComponent },
     { path: 'review-and-publish',    component: ReviewAndPublishComponent },
+    { path: 'data-entry-investigation', component: DataEntryInvestigationComponent },
     { path: 'station-management',    component: StationManagementComponent },
     { path: 'geojson-upload',        component: GeojsonUploadComponent },
     { path: 'geojson',               component: GeojsonManagementComponent },
