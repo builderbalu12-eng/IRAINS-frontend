@@ -38,4 +38,9 @@ export class DataEntryLockService {
       })
     );
   }
+
+  /** Lock/unlock transitions for a single date, for the Day-Wise timeline bar */
+  getLockHistoryForDate(date: string): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/data-entry-lock-history`, { date });
+  }
 }

@@ -129,9 +129,11 @@ export class BlockActualRainfallMapDailyMainPagePubicComponent {
       };
 
       // Call the DownloadPdf service with filters
+      // Single date picker page — toDate is never bound to any control and
+      // stays stuck at page-load time, so use fromDate for both.
       await this.downloadPdf$.updateanddownloadpdfCustom(
         this.fromDate,
-        this.toDate,
+        this.fromDate,
         filters
       );
       this.isLoading = false;

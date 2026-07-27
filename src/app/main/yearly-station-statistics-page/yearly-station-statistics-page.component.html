@@ -138,11 +138,13 @@
       <table class="data-table">
         <thead>
           <tr>
+            <th>S.No</th>
             <th *ngFor="let col of DailyWiseStationcolumns">{{ col | titlecase }}</th>
           </tr>
         </thead>
         <tbody *ngIf="DailyWiseStationRows && DailyWiseStationRows.length > 0">
           <tr *ngFor="let row of DailyWiseStationRows; let i = index" [class.even-row]="i % 2 === 0">
+            <td>{{ i + 1 }}</td>
             <td *ngFor="let col of DailyWiseStationcolumns" [class.numeric]="isNumeric(row[col])">
               {{ formatCellValue(row[col]) }}
             </td>
@@ -150,7 +152,7 @@
         </tbody>
         <tbody *ngIf="!isLoading && (!DailyWiseStationRows || DailyWiseStationRows.length === 0)">
           <tr>
-            <td [attr.colspan]="DailyWiseStationcolumns?.length" class="no-data">
+            <td [attr.colspan]="(DailyWiseStationcolumns?.length || 0) + 1" class="no-data">
               Select the appropriate options and Submit
             </td>
           </tr>
@@ -311,11 +313,13 @@
       <table class="data-table">
         <thead>
           <tr>
+            <th>S.No</th>
             <th *ngFor="let col of govtAwsColumns">{{ col | titlecase }}</th>
           </tr>
         </thead>
         <tbody *ngIf="govtAwsRows && govtAwsRows.length > 0">
           <tr *ngFor="let row of govtAwsRows; let i = index" [class.even-row]="i % 2 === 0">
+            <td>{{ i + 1 }}</td>
             <td *ngFor="let col of govtAwsColumns" [class.numeric]="isNumeric(row[col])">
               {{ formatCellValue(row[col]) }}
             </td>
@@ -323,7 +327,7 @@
         </tbody>
         <tbody *ngIf="!govtAwsIsLoading && (!govtAwsRows || govtAwsRows.length === 0)">
           <tr>
-            <td [attr.colspan]="govtAwsColumns?.length" class="no-data">
+            <td [attr.colspan]="(govtAwsColumns?.length || 0) + 1" class="no-data">
               Select the appropriate options and Submit
             </td>
           </tr>

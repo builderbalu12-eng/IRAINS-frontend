@@ -55,6 +55,40 @@
   </div>
 </div>
 
+<div class="lock-overlay" *ngIf="showPreUploadConfirmPopup" (click)="cancelPreUpload()">
+  <div class="lock-card upload-result-card rainfall-confirm-card" (click)="$event.stopPropagation()">
+    <div class="lock-icon-ring upload-icon-warn">
+      <i class="bi bi-cloud-arrow-up-fill"></i>
+    </div>
+    <h3>Confirm Upload</h3>
+    <p>Highest rainfall recorded per date in this file — please review before uploading.</p>
+
+    <div class="rainfall-confirm-table-wrap">
+      <table class="rainfall-confirm-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Highest Rainfall</th>
+            <th>Station</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of preUploadHighestByDate">
+            <td>{{ r.date }}</td>
+            <td>{{ r.hasData ? (r.rainfall + ' mm') : 'No data' }}</td>
+            <td>{{ r.hasData ? (r.stationName + ' (' + r.stationId + ')') : '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="upload-confirm-actions">
+      <button class="restrict-ok-btn cancel" (click)="cancelPreUpload()">Cancel</button>
+      <button class="restrict-ok-btn" (click)="confirmAndUploadRainfall()">Confirm &amp; Upload</button>
+    </div>
+  </div>
+</div>
+
 <div id="loader" class="loader" *ngIf="isLoading">
   <div class="loading-message">
     <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading...

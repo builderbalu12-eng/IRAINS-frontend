@@ -1,18 +1,17 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { EMPTY, Observable, concatMap, lastValueFrom } from 'rxjs';
-import { environment } from 'src/environment/environment';
 import { Constants } from '../constants';
 import autoTable from 'jspdf-autotable';
 import { jsPDF } from 'jspdf';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
+import { BlockService } from './BlockService.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DownloadPdf {
-  private baseUrl: string = environment.baseUrl;
   isView: boolean = false;
 
   blockDataCurrdate: any[] = [];
@@ -21,7 +20,11 @@ export class DownloadPdf {
   data: any;
   seasonPeriodDate: any;
 
-  constructor(private http: HttpClient, private constants: Constants) {}
+  constructor(
+    private constants: Constants,
+    private calcMode: CalculationsModeService,
+    private blockService: BlockService
+  ) {}
 
   convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
 
@@ -146,42 +149,109 @@ export class DownloadPdf {
   }
 
   fetchBlockData(data: any): Observable<any> {
-    const url = `${this.baseUrl}/api/v1/fetchBlockData`;
     // Send only startDate and endDate, as API does not support filters
     const payload = {
       startDate: data.startDate,
       endDate: data.endDate
     };
-    return this.http.post<any>(url, payload);
+    return this.calcMode.isAwsEnabled
+      ? this.blockService.fetchDataWithAWS(payload)
+      : this.blockService.fetchData(payload);
   }
 
   fetchBlockDataFromDataEntry(data: any): Observable<any> {
-    const url = `${this.baseUrl}/api/v1/fetchBlockData`;
     // Send only startDate and endDate, as API does not support filters
     const payload = {
       startDate: data.startDate,
       endDate: data.endDate
     };
-    return this.http.post<any>(url, payload);
+    return this.calcMode.isAwsEnabled
+      ? this.blockService.fetchDataWithAWS(payload)
+      : this.blockService.fetchData(payload);
   }
 
-  exportAsExcelFile(json: any[], excelFileName: string, columns: any, columns1: any): void {
-    const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
-    const startCell = 'C1';
-    const endCell = 'F1';
-    const startCell1 = 'G1';
-    const endCell1 = 'J1';
+  exportAsExcelFile(
+    dataRows: any[][],
+    excelFileName: string,
+    dayStart: string,
+    dayEnd: string,
+    periodStart: string,
+    periodEnd: string
+  ): void {
+    const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
+    const blank = () => ({ v: '', t: 's', s: {} });
+    const mkBorder = (left = true, right = true, top = true, bottom = true) => ({
+      top:    top    ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      bottom: bottom ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      left:   left   ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      right:  right  ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+    });
+    const styledCell = (v: string, align: 'center' | 'left' = 'center', border = mkBorder()) => ({
+      v, t: 's', s: {
+        font: { bold: true, sz: 10, color: { rgb: '993300' } },
+        fill: { fgColor: { rgb: 'FFFFFF' } },
+        border,
+        alignment: { horizontal: align, vertical: 'middle' as const, wrapText: true },
+      }
+    });
 
-    worksheet['!merges'] = [
-      { s: XLSX.utils.decode_cell(startCell), e: XLSX.utils.decode_cell(endCell) },
-      { s: XLSX.utils.decode_cell(startCell1), e: XLSX.utils.decode_cell(endCell1) }
+    // Row 1: Title — dark brown, underlined, merged A1:J1
+    const row1 = [
+      { v: 'BLOCKWISE RAINFALL DISTRIBUTION', t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+      ...Array.from({ length: 9 }, () => blank()),
     ];
 
-    XLSX.utils.sheet_add_aoa(worksheet, [columns1], { origin: 'A1' });
-    XLSX.utils.sheet_add_aoa(worksheet, [columns], { origin: 'A2' });
-    XLSX.utils.sheet_add_json(worksheet, json, { origin: 'A3', skipHeader: true });
+    // Row 2: blank spacer
+    const row2 = Array.from({ length: 10 }, () => blank());
 
-    const workbook: XLSX.WorkBook = { Sheets: { 'data': worksheet }, SheetNames: ['data'] };
+    // Row 3: outer border only on DAY/PERIOD groups (no inner vertical lines)
+    const row3 = [
+      styledCell('S.No.'),
+      styledCell('STATE/DISTRICT/BLOCK', 'left'),
+      styledCell('DAY :',      'center', mkBorder(true,  false, true, true)),
+      styledCell(dayStart,     'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(dayEnd,       'center', mkBorder(false, true,  true, true)),
+      styledCell('PERIOD :',   'center', mkBorder(true,  false, true, true)),
+      styledCell(periodStart,  'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(periodEnd,    'center', mkBorder(false, true,  true, true)),
+    ];
+
+    // Row 4: full border on every cell
+    const row4 = [
+      blank(),
+      styledCell('STATE/DISTRICT/BLOCK (NAME)', 'left'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+    ];
+
+    // Row 5: full border on every cell
+    const row5 = [
+      blank(), blank(),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, [row1], { origin: 'A1' });
+    XLSX.utils.sheet_add_aoa(ws, [row2], { origin: 'A2' });
+    XLSX.utils.sheet_add_aoa(ws, [row3], { origin: 'A3' });
+    XLSX.utils.sheet_add_aoa(ws, [row4], { origin: 'A4' });
+    XLSX.utils.sheet_add_aoa(ws, [row5], { origin: 'A5' });
+    XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: 'A6' });
+
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },   // Title A1:J1
+      { s: { r: 2, c: 0 }, e: { r: 4, c: 0 } },   // S.No A3:A5
+      { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } },   // STATE/DISTRICT/BLOCK NAME B4:B5
+    ];
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 8 },
+      { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 },
+    ];
+    ws['!rows'] = [{ hpt: 25 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 15 }];
+
+    const workbook: XLSX.WorkBook = { Sheets: { data: ws }, SheetNames: ['data'] };
     const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     this.saveAsExcelFile(excelBuffer, excelFileName);
   }
@@ -209,23 +279,39 @@ export class DownloadPdf {
       }
     ];
 
-    const columns1forexcel = ['', '',
-      this.data.startDate === this.data.endDate ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}` : `DAY: ${this.convertToIndianDateFormat(this.data.startDate)} to ${this.convertToIndianDateFormat(this.data.endDate)}`,
-      '', '', '',
-      `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`
-    ];
-
     const columns = ['S.No', 'STATE/DISTRICT/BLOCK', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
 
     this.loadTheRows();
 
-    const newArr = this.rows.map((subArr) => {
-      return subArr.map((item: any) => {
-        return typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+    const thinBlack = {
+      top:    { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left:   { style: 'thin', color: { rgb: '000000' } },
+      right:  { style: 'thin', color: { rgb: '000000' } },
+    };
+
+    const newArr: any[][] = this.rows.map((subArr) => {
+      const firstFill = (subArr[0] as any)?.styles?.fillColor;
+      const isState    = Array.isArray(firstFill) && firstFill[0] === 238;  // [238,130,238]
+      const isDistrict = Array.isArray(firstFill) && firstFill[0] === 72;   // [72,209,204]
+      return subArr.map((item: any, colIdx: number) => {
+        let content = typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+        if ((colIdx === 4 || colIdx === 8) && content !== '' && content !== ' ' && content != null) {
+          content = `${content}%`;
+        }
+        const cellFill  = item?.styles?.fillColor;
+        const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
+        const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
+        if (isState) {
+          return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: 'FF00FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
+        }
+        if (isDistrict) {
+          return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: '0000FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
+        }
+        const fillHex = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
+        return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
       });
     });
-
-    const newcolumns1 = columns1forexcel;
 
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const marginLeft = 10;
@@ -286,16 +372,42 @@ export class DownloadPdf {
       },
     });
 
-    const filename = `DISTRIBUTION_BLOCK_INDIA_cd.pdf`;
+    const suffix = this.constants.getDateSuffix(this.data.startDate, this.data.endDate);
+    const filename = `DISTRIBUTION_BLOCK_INDIA_${suffix}.pdf`;
+
+    const isSingleDate = this.data.startDate === this.data.endDate;
+    let excelName: string;
+    if (isSingleDate) {
+      const [y, m, d] = this.data.startDate.split('-');
+      excelName = `BLOCKWISE_${d}${m}${y}`;
+    } else {
+      const s = new Date(this.data.startDate);
+      const e = new Date(this.data.endDate);
+      const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const MON    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const d1 = String(s.getDate()).padStart(2, '0');
+      const d2 = String(e.getDate()).padStart(2, '0');
+      if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+        excelName = `BLOCKWISE (${d1}-${d2}) ${MONTHS[s.getMonth()]} ${s.getFullYear()}`;
+      } else if (s.getFullYear() === e.getFullYear()) {
+        excelName = `BLOCKWISE (${d1}${MON[s.getMonth()]}-${d2}${MON[e.getMonth()]}) ${s.getFullYear()}`;
+      } else {
+        excelName = `BLOCKWISE (${d1}${MON[s.getMonth()]}${s.getFullYear()}-${d2}${MON[e.getMonth()]}${e.getFullYear()})`;
+      }
+    }
 
     if (this.isView) {
       const pdfBlob = doc.output('blob');
       const pdfUrl = URL.createObjectURL(pdfBlob);
       window.open(pdfUrl);
     } else {
+      const dayStart    = this.convertToIndianDateFormat(this.data.startDate);
+      const dayEnd      = this.convertToIndianDateFormat(this.data.endDate);
+      const periodStart = this.convertToIndianDateFormat(this.seasonPeriodDate.startDate);
+      const periodEnd   = this.convertToIndianDateFormat(this.seasonPeriodDate.endDate);
       setTimeout(() => {
         doc.save(filename);
-        this.exportAsExcelFile(newArr, `BLOCK_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_cd`, columns, newcolumns1);
+        this.exportAsExcelFile(newArr, excelName, dayStart, dayEnd, periodStart, periodEnd);
       }, 3000);
     }
   }
@@ -373,6 +485,12 @@ export class DownloadPdf {
       default:
         seasonStartDate = startDate;
         seasonEndDate = endDate;
+    }
+
+    // Cumulative season-to-date: PERIOD should run from the season's start
+    // up to the selected date, not all the way to the season's calendar end.
+    if (seasonEndDate > endDate) {
+      seasonEndDate = endDate;
     }
 
     return {

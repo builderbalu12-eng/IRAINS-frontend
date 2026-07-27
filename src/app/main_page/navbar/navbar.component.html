@@ -80,6 +80,12 @@
 
 <nav [ngClass]="{ open: isNavbarOpen }" class="top">
   <ul class="nav">
+    <li>
+      <a *ngIf="hasAccess('irains-dashboard')" routerLink="../irains-dashboard"
+        >IRAINS DASHBOARD</a
+      >
+    </li>
+
     <li *ngIf="hasAccess('state-map-mc-rmc')">
       <a class="main_nav">RAINFALL MAP MC and RMC</a>
       <ul>
@@ -576,14 +582,6 @@
     <!-- ------------------------------------- -->
 
     <li>
-      <a *ngIf="hasAccess('irains-dashboard')" routerLink="../irains-dashboard"
-        >IRAINS DASHBOARD</a
-      >
-    </li>
-
-
-
-    <li>
       <a *ngIf="hasAccess('rainfall-graphs')" routerLink="../rainfall-graphs"
         >RAINFALL GRAPHS</a
       >
@@ -1031,16 +1029,6 @@
       </a>
     </li>
 
-    <li *ngIf="hasAccess('log-info')">
-      <a
-        class="main_nav"
-        *ngIf="hasAccess('log-info')"
-        routerLink="../log-info"
-      >
-        LOG INFO
-      </a>
-    </li>
-
     <li>
       <a class="main_nav"  *ngIf="hasAccess('river-basin')" routerLink="../river-basin">RIVER BASINS</a>
       <!-- <ul>
@@ -1115,6 +1103,16 @@
           >
         </li>
       </ul> -->
+    </li>
+
+    <li *ngIf="hasAccess('log-info')">
+      <a
+        class="main_nav"
+        *ngIf="hasAccess('log-info')"
+        routerLink="../log-info"
+      >
+        LOG INFO
+      </a>
     </li>
 
     <li>
