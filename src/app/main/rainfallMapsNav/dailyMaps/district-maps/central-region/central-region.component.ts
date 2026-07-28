@@ -10,11 +10,13 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
 import { DistrictService } from "src/app/services/district/district.service";
 import { DownloadPdfRegionDistrict } from "src/app/services/district/regions/districtRegionsDownload.service";
 import jsPDF from "jspdf";
 // import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 
 @Component({
   selector: 'app-central-region',
@@ -47,9 +49,9 @@ export class CentralRegionComponent implements AfterViewInit{
         try {
           this.isLoading = true;
           if(this.selectedMode.selectedMode == 'Unified'){
-            await this.downloadPdf$.updateanddownloadpdfCustom("2", this.fromDate, this.fromDate);
+            await this.downloadPdf$.updateanddownloadpdfCustom("1", this.fromDate, this.fromDate);
           }else{
-            await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom("2", this.fromDate, this.fromDate);
+            await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom("1", this.fromDate, this.fromDate);
           }        
           this.isLoading = false;
         } catch (error) {
@@ -96,32 +98,64 @@ export class CentralRegionComponent implements AfterViewInit{
       constructor(
         private http: HttpClient,
         private dataService: DataService,
+        private calcMode: CalculationsModeService,
         private renderer: Renderer2,
         private elRef: ElementRef,
         private district: DistrictService,
         private downloadPdf$: DownloadPdfRegionDistrict,
         // private countryService: CountryService,
-        private constants: Constants
+        private constants: Constants,
+        private mapDataScheduleService: MapDataScheduleService
       ) {
-        const currentDate = new Date();
-        const dd = String(currentDate.getDate()).padStart(2, "0");
-        const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-        const year = String(currentDate.getFullYear());
-        this.formatteddate = `${dd}-${mon}-${year}`;
-    
-        this.dataService.fromAndToDate$.subscribe((value) => {
-          if (value) {
-            let fromAndToDates = JSON.parse(value);
-            this.StartDate = fromAndToDates.fromDate;
-            this.EndDate = fromAndToDates.toDate;
-          } else {
-            // If no value is emitted, use the current date as the default
-            this.StartDate = `${year}-${mon}-${dd}`;
-            this.EndDate = `${year}-${mon}-${dd}`;
-          }
-          this.calculateInitialZoom();
-          this.fetchBackend();
-        });
+        // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+        // this.initialZoom immediately with no later correction, so it can't wait
+        // on the async date fetch below or the map builds at the hardcoded
+        // fallback zoom instead of the real window-size-based one.
+        this.calculateInitialZoom();
+
+        // Effective latest date: today if this role's data is published,
+        // otherwise yesterday (today's data held back until published).
+        const initWithEffectiveDate = (effectiveDate: Date) => {
+          const dd = String(effectiveDate.getDate()).padStart(2, "0");
+          const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+          const year = String(effectiveDate.getFullYear());
+          this.formatteddate = `${dd}-${mon}-${year}`;
+
+          // Drives the date picker ([(ngModel)]="fromDate", [max]="today") and
+          // fetchBackend()'s request payload — both read fromDate/toDate, not
+          // StartDate/EndDate, so the picker must be seeded with the effective
+          // (possibly held-back) date here, not left at real today.
+          const isoEffectiveDate = `${year}-${mon}-${dd}`;
+          this.today = isoEffectiveDate;
+          this.fromDate = isoEffectiveDate;
+          this.toDate = isoEffectiveDate;
+
+          this.dataService.fromAndToDate$.subscribe((value) => {
+            if (value) {
+              let fromAndToDates = JSON.parse(value);
+              this.StartDate = fromAndToDates.fromDate;
+              this.EndDate = fromAndToDates.toDate;
+            } else {
+              // If no value is emitted, use the effective latest date as the default
+              this.StartDate = `${year}-${mon}-${dd}`;
+              this.EndDate = `${year}-${mon}-${dd}`;
+            }
+            this.fetchBackend();
+          });
+        };
+
+        const loggedInUser: any = localStorage.getItem("isAuthorised");
+        const loggedInUserObject = loggedInUser ? JSON.parse(loggedInUser) : null;
+        const role = loggedInUserObject?.data?.[0]?.mcorhq;
+
+        if (role) {
+          this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+            next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+            error: () => initWithEffectiveDate(new Date())
+          });
+        } else {
+          initWithEffectiveDate(new Date());
+        }
       }
     
       convertToIndianDateFormat = (dateString: string) =>
@@ -146,7 +180,7 @@ export class CentralRegionComponent implements AfterViewInit{
 
         console.log('fetchBackend', data);    
     
-        if(this.selectedMode.selectedMode){
+        if(this.selectedMode.selectedMode == 'Unified'){
           this.district.fetchDataFtp(data).subscribe((res) => {
             this.districtdatacum = res.data;
             console.log('districtdatacum', this.districtdatacum);
@@ -154,12 +188,12 @@ export class CentralRegionComponent implements AfterViewInit{
             this.StartDate = this.convertToIndianDateFormat(this.StartDate);
             this.EndDate = this.convertToIndianDateFormat(this.EndDate);
           });
-      
+
           // this.countryService.fetchDataFtp(data).subscribe((res) => {
         }
 
         else{
-          this.district.fetchData(data).subscribe((res) => {
+          (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe((res) => {
             this.districtdatacum = res.data;
             console.log('districtdatacum', this.districtdatacum);
             this.loadGeoJSON();
@@ -361,11 +395,6 @@ export class CentralRegionComponent implements AfterViewInit{
     
       ngOnInit() {
         this.initMap();
-    
-        const currentDate = new Date();
-        this.today = currentDate.toISOString().split("T")[0];
-        this.fromDate = this.today;
-        this.toDate = this.today;
       }
     
       ngAfterViewInit(): void {

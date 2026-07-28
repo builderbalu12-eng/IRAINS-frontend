@@ -6,7 +6,7 @@ import { environment } from 'src/environment/environment';
 import { Constants } from '../constants';
 import autoTable, { Column } from 'jspdf-autotable';
 import { jsPDF } from 'jspdf';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
 import { RegionService } from '../region/region.service';
 import { CountryService } from './country.service';
@@ -238,32 +238,91 @@ export class CountryDownloadStatistics {
     // );
   }
   
-  exportAsExcelFile(json: any[], excelFileName: string, columns: any, columns1: any): void {
-    const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
-    
-    const startCell = 'C1'; // Start cell for the first merge
-    const endCell = 'F1'; // End cell for the first merge
-    const startCell1 = 'G1'; // Start cell for the second merge
-    const endCell1 = 'J1'; // End cell for the second merge
+  exportAsExcelFile(
+    dataRows: any[][],
+    excelFileName: string,
+    dayStart: string,
+    dayEnd: string,
+    periodStart: string,
+    periodEnd: string
+  ): void {
+    const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
+    const blank = () => ({ v: '', t: 's', s: {} });
+    const mkBorder = (left = true, right = true, top = true, bottom = true) => ({
+      top:    top    ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      bottom: bottom ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      left:   left   ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      right:  right  ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+    });
+    const styledCell = (v: string, align: 'center' | 'left' = 'center', border = mkBorder()) => ({
+      v, t: 's', s: {
+        font: { bold: true, sz: 10, color: { rgb: '993300' } },
+        fill: { fgColor: { rgb: 'FFFFFF' } },
+        border,
+        alignment: { horizontal: align, vertical: 'middle' as const, wrapText: true },
+      }
+    });
 
-    // Merge the cells
-    worksheet['!merges'] = [
-        { s: XLSX.utils.decode_cell(startCell), e: XLSX.utils.decode_cell(endCell) },
-        { s: XLSX.utils.decode_cell(startCell1), e: XLSX.utils.decode_cell(endCell1) }
+    // Row 1: Title — dark brown, underlined, merged A1:J1
+    const row1 = [
+      { v: 'COUNTRY RAINFALL DISTRIBUTION', t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+      ...Array.from({ length: 9 }, () => blank()),
     ];
 
-    XLSX.utils.sheet_add_aoa(worksheet, [columns1], { origin: 'A1' });
+    // Row 2: blank spacer
+    const row2 = Array.from({ length: 10 }, () => blank());
 
-    XLSX.utils.sheet_add_aoa(worksheet, [columns], { origin: 'A2' });
+    // Row 3: outer border only on DAY/PERIOD groups (no inner vertical lines)
+    const row3 = [
+      styledCell('S.No.'),
+      styledCell('COUNTRY', 'left'),
+      styledCell('DAY :',      'center', mkBorder(true,  false, true, true)),
+      styledCell(dayStart,     'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(dayEnd,       'center', mkBorder(false, true,  true, true)),
+      styledCell('PERIOD :',   'center', mkBorder(true,  false, true, true)),
+      styledCell(periodStart,  'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(periodEnd,    'center', mkBorder(false, true,  true, true)),
+    ];
 
-    XLSX.utils.sheet_add_json(worksheet, json, { origin: 'A3', skipHeader: true });
+    // Row 4: full border on every cell
+    const row4 = [
+      blank(),
+      styledCell('COUNTRY NAME', 'left'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+    ];
 
-    const workbook: XLSX.WorkBook = { Sheets: { 'data': worksheet }, SheetNames: ['data'] };
-    
+    // Row 5: full border on every cell
+    const row5 = [
+      blank(), blank(),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, [row1], { origin: 'A1' });
+    XLSX.utils.sheet_add_aoa(ws, [row2], { origin: 'A2' });
+    XLSX.utils.sheet_add_aoa(ws, [row3], { origin: 'A3' });
+    XLSX.utils.sheet_add_aoa(ws, [row4], { origin: 'A4' });
+    XLSX.utils.sheet_add_aoa(ws, [row5], { origin: 'A5' });
+    XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: 'A6' });
+
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },   // Title A1:J1
+      { s: { r: 2, c: 0 }, e: { r: 4, c: 0 } },   // S.No A3:A5
+      { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } },   // COUNTRY NAME B4:B5
+    ];
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 8 },
+      { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 },
+    ];
+    ws['!rows'] = [{ hpt: 25 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 15 }];
+
+    const workbook: XLSX.WorkBook = { Sheets: { data: ws }, SheetNames: ['data'] };
     const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-
     this.saveAsExcelFile(excelBuffer, excelFileName);
-}
+  }
 
 
   saveAsExcelFile(buffer: any, fileName: string): void {
@@ -293,40 +352,38 @@ export class CountryDownloadStatistics {
       },
     ]
     
-    const columns1forexcel = ['', '',
-    {
-      content : this.data.startDate==this.data.endDate ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`:`DAY: ${this.convertToIndianDateFormat(this.data.startDate)} to ${this.convertToIndianDateFormat(this.data.endDate)}`, colSpan:4
-    }, '', '', '',    
-    {
-      content : `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`, colSpan:4
-    }]
-
     const columns = ['S.No', 'REGION', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
 
-        
     this.loadTheRows();
 
+    const thinBlack = {
+      top:    { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left:   { style: 'thin', color: { rgb: '000000' } },
+      right:  { style: 'thin', color: { rgb: '000000' } },
+    };
 
-    var newArr = this.rows.map((subArr) => {
-      return subArr.map((item:any) => {
-        console.log('itemmmmmm,', item)
-        if (typeof item === 'object' && item.hasOwnProperty('content')) {
-          return item.content;
+    var newArr: any[][] = this.rows.map((subArr) => {
+      return subArr.map((item: any, colIdx: number) => {
+        let content = typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+        if ((colIdx === 4 || colIdx === 8) && content !== '' && content !== ' ' && content != null) {
+          content = `${content}%`;
         }
-        return item;
+        const cellFill  = item?.styles?.fillColor;
+        const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
+        const fillHex   = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
+        const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
+        return {
+          v: String(content ?? ''), t: 's',
+          s: {
+            fill: { fgColor: { rgb: fillHex } },
+            border: thinBlack,
+            font: { bold: true, sz: 9, color: { rgb: '000000' } },
+            alignment: { horizontal: hAlign, vertical: 'middle' as const },
+          },
+        };
       });
     });
-
-    
-
-    var newcolumns1 = columns1forexcel.map((item) => {
-      if (typeof item === 'object' && item.hasOwnProperty('content')) {
-        return item.content;
-      }
-      return item;
-    });
-
-    console.log('amma boabi', newArr, columns, newcolumns1)
 
     let serialNumber = 1;
 
@@ -406,9 +463,13 @@ export class CountryDownloadStatistics {
       const pdfUrl = URL.createObjectURL(pdfBlob);
       window.open(pdfUrl);
     }else{
+      const dayStart    = this.convertToIndianDateFormat(this.data.startDate);
+      const dayEnd      = this.convertToIndianDateFormat(this.data.endDate);
+      const periodStart = this.convertToIndianDateFormat(this.seasonPeriodDate.startDate);
+      const periodEnd   = this.convertToIndianDateFormat(this.seasonPeriodDate.endDate);
       setTimeout(()=>{
         doc.save(filename);
-        this.exportAsExcelFile(newArr, `COUNTRY_RAINFALL_DISTRIBUTION_INDIA_cd`, columns, newcolumns1);
+        this.exportAsExcelFile(newArr, `COUNTRY_RAINFALL_DISTRIBUTION_INDIA_cd`, dayStart, dayEnd, periodStart, periodEnd);
       },3000)
     }
 

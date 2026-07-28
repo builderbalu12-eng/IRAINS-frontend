@@ -126,7 +126,6 @@ import { AboutSectionContactUsComponent } from "./main/About/about-section-conta
 import { AboutSectionHelpIndexComponent } from "./main/About/about-section-help-index/about-section-help-index.component";
 import { AboutSectionHydrometServicesComponent } from "./main/About/about-section-hydromet-services/about-section-hydromet-services.component";
 import { MatTableModule } from "@angular/material/table";
-import { LastYearsDistrictDataComponent } from "./main/last-years-district-data/last-years-district-data.component";
 import { RealTimeUpdatedRainfallMapComponent } from "./main/real-time-updated-rainfall-map/real-time-updated-rainfall-map.component";
 import { DistributionDistrictStatesDailyComponent } from "./main/distribution-district-states-daily/distribution-district-states-daily.component";
 import { RainfallmapMcRmcComponent } from "./main/RainfallMaps-Mc-RMC/rainfallmap-mc-rmc/rainfallmap-mc-rmc.component";
@@ -163,7 +162,6 @@ import { ActualBlockRainfallMapComponent } from "./main/rainfall-actual-maps/Act
 import { WeeklyDistrictSpatialComponent } from "./main/spatial-maps/weekly-district-spatial/weekly-district-spatial.component";
 import { CummulativeDistrictSpatialComponent } from "./main/spatial-maps/cummulative-district-spatial/cummulative-district-spatial.component";
 import { BlockRainfallMapDailyComponent } from "./main/rainfallMapsNav/dailyMaps/block-rainfall-map-daily/block-rainfall-map-daily.component";
-import { BlockActualRainfallMapIncAwsComponent } from "./main/rainfall-actual-maps/Actual/block-actual-rainfall-map-inc-aws/block-actual-rainfall-map-inc-aws.component";
 import { MatCardModule } from "@angular/material/card";
 import { BlockRainfallMainPageComponent } from "./main/block-rainfall-main-page/block-rainfall-main-page.component";
 import { BlockRainfallMapDailyMainPageComponent } from "./main/block-rainfall-main-page/block/block-rainfall-map-daily-main-page/block-rainfall-map-daily-main-page.component";
@@ -311,7 +309,6 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     AboutSectionContactUsComponent,
     AboutSectionHelpIndexComponent,
     AboutSectionHydrometServicesComponent,
-    LastYearsDistrictDataComponent,
     RealTimeUpdatedRainfallMapComponent,
     DistributionDistrictStatesDailyComponent,
     RainfallmapMcRmcComponent,
@@ -348,7 +345,6 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     WeeklyDistrictSpatialComponent,
     CummulativeDistrictSpatialComponent,
     BlockRainfallMapDailyComponent,
-    BlockActualRainfallMapIncAwsComponent,
     BlockRainfallMainPageComponent,
     BlockRainfallMapDailyMainPageComponent,
     BlockrainfallMapDailyActualMainPageComponent,

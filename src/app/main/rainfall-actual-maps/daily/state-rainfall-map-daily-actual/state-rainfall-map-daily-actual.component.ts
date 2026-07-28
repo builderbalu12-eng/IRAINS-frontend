@@ -10,6 +10,7 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
 import { StateService } from "src/app/services/state/state.service";
 import { StateDownloadStatistics } from "src/app/services/state/statisticsdownload.service";
 import { StateInfoService } from "src/app/services/state/stateInfromation.service";
@@ -17,6 +18,7 @@ import { state } from "@angular/animations";
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 
 @Component({
   selector: "app-state-rainfall-map-daily-actual",
@@ -67,6 +69,11 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
   // @Input() endDate: any;
   legendItems = [
     {
+      color: "#F5F5F5",
+      text: `Zero Rainfall <br>[0]`,
+      fontSize: "9.3px",
+    },
+    {
       color: "#abf200",
       text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
       fontSize: "9.3px",
@@ -114,33 +121,65 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     private stateService: StateService,
     private downloadStatistcs: StateDownloadStatistics,
     private stateinfo: StateInfoService,
     private countryService: CountryService,
-    private constants: Constants
+    private constants: Constants,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
-    const currentDate = new Date();
-    const dd = String(currentDate.getDate()).padStart(2, "0");
-    const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-    const year = String(currentDate.getFullYear());
-    this.formatteddate = `${dd}-${mon}-${year}`;
+    // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+    // this.initialZoom immediately with no later correction, so it can't wait
+    // on the async date fetch below or the map builds at the hardcoded
+    // fallback zoom instead of the real window-size-based one.
+    this.calculateInitialZoom();
 
-    this.dataService.fromAndToDate$.subscribe((value) => {
-      if (value) {
-        let fromAndToDates = JSON.parse(value);
-        this.StartDate = fromAndToDates.fromDate;
-        this.EndDate = fromAndToDates.toDate;
-      } else {
-        // If no value is emitted, use the current date as the default
-        this.StartDate = `${year}-${mon}-${dd}`;
-        this.EndDate = `${year}-${mon}-${dd}`;
-      }
-      this.calculateInitialZoom();
-      this.fetchBackend();
-    });
+    // Effective latest date: today if this role's data is published,
+    // otherwise yesterday (today's data held back until published).
+    const initWithEffectiveDate = (effectiveDate: Date) => {
+      const dd = String(effectiveDate.getDate()).padStart(2, "0");
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+      const year = String(effectiveDate.getFullYear());
+      this.formatteddate = `${dd}-${mon}-${year}`;
+
+      // Drives the date picker ([(ngModel)]="fromDate", [max]="today") and
+      // fetchBackend()'s request payload — both read fromDate/toDate, not
+      // StartDate/EndDate, so the picker must be seeded with the effective
+      // (possibly held-back) date here, not left at real today.
+      const isoEffectiveDate = `${year}-${mon}-${dd}`;
+      this.today = isoEffectiveDate;
+      this.fromDate = isoEffectiveDate;
+      this.toDate = isoEffectiveDate;
+
+      this.dataService.fromAndToDate$.subscribe((value) => {
+        if (value) {
+          let fromAndToDates = JSON.parse(value);
+          this.StartDate = fromAndToDates.fromDate;
+          this.EndDate = fromAndToDates.toDate;
+        } else {
+          // If no value is emitted, use the effective latest date as the default
+          this.StartDate = `${year}-${mon}-${dd}`;
+          this.EndDate = `${year}-${mon}-${dd}`;
+        }
+        this.fetchBackend();
+      });
+    };
+
+    const loggedInUser: any = localStorage.getItem("isAuthorised");
+    const loggedInUserObject = loggedInUser ? JSON.parse(loggedInUser) : null;
+    const role = loggedInUserObject?.data?.[0]?.mcorhq;
+
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+        error: () => initWithEffectiveDate(new Date())
+      });
+    } else {
+      initWithEffectiveDate(new Date());
+    }
   }
 
   convertToIndianDateFormat = (dateString: string) =>
@@ -189,14 +228,14 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
         );
       });
     } else {
-      this.stateService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.stateService.fetchDataWithAWS(data) : this.stateService.fetchData(data)).subscribe((res) => {
         this.statedatacum = res.data;
         this.loadGeoJSON(false);
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       });
 
-      this.countryService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
           this.countrydatacum[0].actual_rainfall
@@ -394,11 +433,6 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
 
   ngOnInit() {
     this.initMap();
-
-    const currentDate = new Date();
-    this.today = currentDate.toISOString().split("T")[0];
-    this.fromDate = this.today;
-    this.toDate = this.today;
   }
 
   ngAfterViewInit(): void {

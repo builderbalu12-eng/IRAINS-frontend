@@ -274,7 +274,8 @@ export class Constants {
 
   getSeasonDatesUptoCurrentDate(
     season: string,
-    year: number
+    year: number,
+    effectiveDate: Date = new Date()
   ): { start: Date; end: Date } {
     let start: Date, end: Date;
 
@@ -301,10 +302,8 @@ export class Constants {
         );
     }
 
-    const currentDate = new Date();
-
-    if (end > currentDate) {
-      end = currentDate;
+    if (end > effectiveDate) {
+      end = effectiveDate;
     }
 
     return { start, end };

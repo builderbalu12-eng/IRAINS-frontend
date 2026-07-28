@@ -13,6 +13,8 @@ import { CountryService } from "src/app/services/country/country.service";
 import { CountryDownloadStatistics } from "src/app/services/country/pdfStatisticsDownloadCountry.service";
 import jsPDF from "jspdf";
 import { Constants } from "src/app/services/constants";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 @Component({
   selector: 'app-country-rainfall-map-cummulative',
   templateUrl: './country-rainfall-map-cummulative.component.html',
@@ -90,14 +92,33 @@ export class CountryRainfallMapCummulativeComponent {
         private elRef: ElementRef,
         private countryService: CountryService,
         private countryDownloadStatistics: CountryDownloadStatistics,
-        private constants: Constants
+        private constants: Constants,
+        private calcMode: CalculationsModeService,
+        private mapDataScheduleService: MapDataScheduleService
       ) {
-        const currentDate = new Date();
-        const dd = String(currentDate.getDate()).padStart(2, "0");
-        const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-        const year = String(currentDate.getFullYear());
+        this.calculateInitialZoom();
+
+        const loggedInUser = JSON.parse(
+          localStorage.getItem("isAuthorised") || "{}"
+        );
+        const role = loggedInUser?.data?.[0]?.mcorhq;
+
+        this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe(
+          (effectiveDate) => this.initWithEffectiveDate(effectiveDate),
+          () => this.initWithEffectiveDate(new Date())
+        );
+      }
+
+      private initWithEffectiveDate(effectiveDate: Date) {
+        const dd = String(effectiveDate.getDate()).padStart(2, "0");
+        const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0");
+        const year = String(effectiveDate.getFullYear());
         this.formatteddate = `${dd}-${mon}-${year}`;
-    
+
+        this.today = this.formatDate(effectiveDate);
+        this.fromDate = this.formatDate(effectiveDate);
+        this.toDate = this.formatDate(effectiveDate);
+
         this.dataService.fromAndToDate$.subscribe((value) => {
           if (value) {
             let fromAndToDates = JSON.parse(value);
@@ -112,7 +133,6 @@ export class CountryRainfallMapCummulativeComponent {
             // console.log(this.EndDate);
           }
           this.generateWeeklyOptions();
-          this.calculateInitialZoom();
           this.fetchBackend();
         });
       }
@@ -153,28 +173,23 @@ export class CountryRainfallMapCummulativeComponent {
           if(this.selectedMode.selectedMode == 'Unified'){
             this.countryService.fetchDataFtp(data).subscribe((res) => {
               this.countrydatacum = res.data;
-        
+
               console.log("COUNTRY DATA", res.data);
               this.loadGeoJSON();
               this.StartDate = this.convertToIndianDateFormat(this.StartDate);
               this.EndDate = this.convertToIndianDateFormat(this.EndDate);
-            });
-        
-            this.countryService.fetchDataFtp(data).subscribe((res) => {
-              this.countrydatacum = res.data;
             });
           }else{
-            this.countryService.fetchData(data).subscribe((res) => {
+            (this.calcMode.isAwsEnabled
+              ? this.countryService.fetchDataWithAWS(data)
+              : this.countryService.fetchData(data)
+            ).subscribe((res) => {
               this.countrydatacum = res.data;
-        
+
               console.log("COUNTRY DATA", res.data);
               this.loadGeoJSON();
               this.StartDate = this.convertToIndianDateFormat(this.StartDate);
               this.EndDate = this.convertToIndianDateFormat(this.EndDate);
-            });
-        
-            this.countryService.fetchData(data).subscribe((res) => {
-              this.countrydatacum = res.data;
             });
           }
       }

@@ -18,6 +18,8 @@ import { state } from "@angular/animations";
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 @Component({
   selector: 'app-state-rainfall-map-cummulative',
   templateUrl: './state-rainfall-map-cummulative.component.html',
@@ -112,18 +114,35 @@ export class StateRainfallMapCummulativeComponent {
       private downloadStatistcs: StateDownloadStatistics,
       private stateinfo: StateInfoService,
       private countryService: CountryService,
-      private constants: Constants
+      private constants: Constants,
+      private calcMode: CalculationsModeService,
+      private mapDataScheduleService: MapDataScheduleService
     ) {
-      
+      this.calculateInitialZoom();
 
-      const currentDate = new Date();
-      const dd = String(currentDate.getDate()).padStart(2, "0");
-      const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-      const year = String(currentDate.getFullYear());
+      const loggedInUser = JSON.parse(
+        localStorage.getItem("isAuthorised") || "{}"
+      );
+      const role = loggedInUser?.data?.[0]?.mcorhq;
+
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe(
+        (effectiveDate) => this.initWithEffectiveDate(effectiveDate),
+        () => this.initWithEffectiveDate(new Date())
+      );
+    }
+
+    private initWithEffectiveDate(effectiveDate: Date) {
+      const dd = String(effectiveDate.getDate()).padStart(2, "0");
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0");
+      const year = String(effectiveDate.getFullYear());
       this.formatteddate = `${dd}-${mon}-${year}`;
 
+      this.today = this.formatDate(effectiveDate);
+      this.fromDate = this.formatDate(effectiveDate);
+      this.toDate = this.formatDate(effectiveDate);
+
       console.log('formatteddate', this.formatteddate);
-  
+
       this.dataService.fromAndToDate$.subscribe((value) => {
         if (value) {
           let fromAndToDates = JSON.parse(value);
@@ -134,7 +153,6 @@ export class StateRainfallMapCummulativeComponent {
           this.StartDate = `${year}-${mon}-${dd}`;
           this.EndDate = `${year}-${mon}-${dd}`;
         }
-        this.calculateInitialZoom();
         this.fetchBackend();
       });
     }
@@ -186,14 +204,20 @@ export class StateRainfallMapCummulativeComponent {
         });
   
       }else{
-        this.stateService.fetchData(data).subscribe((res) => {
+        (this.calcMode.isAwsEnabled
+          ? this.stateService.fetchDataWithAWS(data)
+          : this.stateService.fetchData(data)
+        ).subscribe((res) => {
           this.statedatacum = res.data;
           this.loadGeoJSON(false);
           this.StartDate = this.convertToIndianDateFormat(this.StartDate);
           this.EndDate = this.convertToIndianDateFormat(this.EndDate);
         });
-    
-        this.countryService.fetchData(data).subscribe((res) => {
+
+        (this.calcMode.isAwsEnabled
+          ? this.countryService.fetchDataWithAWS(data)
+          : this.countryService.fetchData(data)
+        ).subscribe((res) => {
           this.countrydatacum = res.data;
           this.countryActual = this.constants.trimToOneDecimals(
             this.countrydatacum[0].actual_rainfall
@@ -399,12 +423,6 @@ export class StateRainfallMapCummulativeComponent {
   
     ngOnInit() {
       this.initMap();
-  
-      const currentDate = new Date();
-      this.today = currentDate.toISOString().split("T")[0];
-      this.fromDate = this.today;
-      this.toDate = this.today;
-
     }
   
     ngAfterViewInit(): void {

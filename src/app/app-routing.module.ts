@@ -77,7 +77,6 @@ import { RainfallDeparturesSectionComponent } from './main/rainfall-departures-s
 import { NormalRainfallComponent } from './main/Normal-Rainfall-Map/normal-rainfall/normal-rainfall.component';
 import { RainfallCountrySeasonalGraphComponent } from './main/rainfall-graphs/rainfall-country-seasonal-graph/rainfall-country-seasonal-graph.component';
 import { AboutSectionComponent } from './main/About/about-section/about-section.component';
-import { LastYearsDistrictDataComponent } from './main/last-years-district-data/last-years-district-data.component';
 import { RealTimeUpdatedRainfallMapComponent } from './main/real-time-updated-rainfall-map/real-time-updated-rainfall-map.component';
 import { DistributionDistrictStatesDailyComponent } from './main/distribution-district-states-daily/distribution-district-states-daily.component';
 import { RainfallmapMcRmcComponent } from './main/RainfallMaps-Mc-RMC/rainfallmap-mc-rmc/rainfallmap-mc-rmc.component';
@@ -101,7 +100,6 @@ import { ActualBlockRainfallMapComponent } from './main/rainfall-actual-maps/Act
 import { WeeklyDistrictSpatialComponent } from './main/spatial-maps/weekly-district-spatial/weekly-district-spatial.component';
 import { CummulativeDistrictSpatialComponent } from './main/spatial-maps/cummulative-district-spatial/cummulative-district-spatial.component';
 import { BlockRainfallMapDailyComponent } from './main/rainfallMapsNav/dailyMaps/block-rainfall-map-daily/block-rainfall-map-daily.component';
-import { BlockActualRainfallMapIncAwsComponent } from './main/rainfall-actual-maps/Actual/block-actual-rainfall-map-inc-aws/block-actual-rainfall-map-inc-aws.component';
 import { BlockRainfallMainPageComponent } from './main/block-rainfall-main-page/block-rainfall-main-page.component';
 import { BlockrainfallMapDailyActualMainPageComponent } from './main/block-rainfall-main-page/block/blockrainfall-map-daily-actual-main-page/blockrainfall-map-daily-actual-main-page.component';
 import { DashboardComponent } from './main/irains-dashboard/dashboard/dashboard.component';
@@ -154,7 +152,6 @@ export const routes: Routes = [
  { path: 'actual-block-rainfall-map', component: ActualBlockRainfallMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'actual-block-rainfall', component: ActualBlockRainfallMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall-map-daily', component: BlockRainfallMapDailyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'block-rainfall-awsorg-map-daily', component: BlockActualRainfallMapIncAwsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall', component: BlockRainfallMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall-actual', component: BlockrainfallMapDailyActualMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
  { path: 'block-rainfall-aws-actual', component: BlockRainfallMapDailyMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
@@ -313,7 +310,6 @@ export const routes: Routes = [
   { path: 'verification-page', component: VerificationComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc'] } },
   { path: 'verification-page-mc', component: VerificationPageMcComponent, canActivate: [AuthGuard], data: { allowedUsers: ['mc'] } },
   { path: 'verification-page-hq', component: VerificationPageHQComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'sp'] } },
-  { path: 'last-five-year-data', component: LastYearsDistrictDataComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
   { path: 'station-statistics', component: StationStatisticsPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
   { path: 'realtime-station-data', component: RealtimeStationDataComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
   { path: 'user-manual', component: UserManualv2Component, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },

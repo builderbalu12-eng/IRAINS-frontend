@@ -10,6 +10,7 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
 import { StateService } from "src/app/services/state/state.service";
 import { StateDownloadStatistics } from "src/app/services/state/statisticsdownload.service";
 import { StateInfoService } from "src/app/services/state/stateInfromation.service";
@@ -17,6 +18,7 @@ import { state } from "@angular/animations";
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 @Component({
   selector: "app-state-rainfall-map-weekly",
   templateUrl: "./state-rainfall-map-weekly.component.html",
@@ -96,34 +98,60 @@ export class StateRainfallMapWeeklyComponent {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     private stateService: StateService,
     private downloadStatistcs: StateDownloadStatistics,
     private stateinfo: StateInfoService,
     private countryService: CountryService,
-    private constants: Constants
+    private constants: Constants,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
-    const currentDate = new Date();
-    const dd = String(currentDate.getDate()).padStart(2, "0");
-    const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-    const year = String(currentDate.getFullYear());
-    this.formatteddate = `${dd}-${mon}-${year}`;
+    // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+    // this.initialZoom immediately with no later correction, so it can't wait
+    // on the async date fetch below or the map builds at the hardcoded
+    // fallback zoom instead of the real window-size-based one.
+    this.calculateInitialZoom();
 
-    this.dataService.fromAndToDate$.subscribe((value) => {
-      if (value) {
-        let fromAndToDates = JSON.parse(value);
-        this.StartDate = fromAndToDates.fromDate;
-        this.EndDate = fromAndToDates.toDate;
-      } else {
-        // If no value is emitted, use the current date as the default
-        this.StartDate = `${year}-${mon}-${dd}`;
-        this.EndDate = `${year}-${mon}-${dd}`;
-      }
-      this.generateWeeklyOptions();
-      this.calculateInitialZoom();
-      this.fetchBackend();
-    });
+    // Effective latest date: today if this role's data is published,
+    // otherwise yesterday (today's data held back until published). For
+    // weekly maps this gates generateWeeklyOptions()'s last available week,
+    // not fromDate/today (those aren't bound to anything in the template —
+    // the actual picker is [(ngModel)]="selectedWeek").
+    const initWithEffectiveDate = (effectiveDate: Date) => {
+      const dd = String(effectiveDate.getDate()).padStart(2, "0");
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+      const year = String(effectiveDate.getFullYear());
+      this.formatteddate = `${dd}-${mon}-${year}`;
+
+      this.dataService.fromAndToDate$.subscribe((value) => {
+        if (value) {
+          let fromAndToDates = JSON.parse(value);
+          this.StartDate = fromAndToDates.fromDate;
+          this.EndDate = fromAndToDates.toDate;
+        } else {
+          // If no value is emitted, use the effective latest date as the default
+          this.StartDate = `${year}-${mon}-${dd}`;
+          this.EndDate = `${year}-${mon}-${dd}`;
+        }
+        this.generateWeeklyOptions(effectiveDate);
+        this.fetchBackend();
+      });
+    };
+
+    const loggedInUser: any = localStorage.getItem("isAuthorised");
+    const loggedInUserObject = loggedInUser ? JSON.parse(loggedInUser) : null;
+    const role = loggedInUserObject?.data?.[0]?.mcorhq;
+
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+        error: () => initWithEffectiveDate(new Date())
+      });
+    } else {
+      initWithEffectiveDate(new Date());
+    }
   }
 
   convertToIndianDateFormat = (dateString: string) =>
@@ -183,14 +211,14 @@ export class StateRainfallMapWeeklyComponent {
         );
       });
     } else {
-      this.stateService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.stateService.fetchDataWithAWS(data) : this.stateService.fetchData(data)).subscribe((res) => {
         this.statedatacum = res.data;
         this.loadGeoJSON(false);
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       });
 
-      this.countryService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
           this.countrydatacum[0].actual_rainfall
@@ -417,8 +445,9 @@ export class StateRainfallMapWeeklyComponent {
     this.dataService.setfromAndToDate(JSON.stringify(data));
   }
 
-  generateWeeklyOptions() {
+  generateWeeklyOptions(effectiveDate: Date = new Date()) {
     this.months = [];
+    const monthGroups: { [key: string]: any } = {};
     const monthNames = [
       "January",
       "February",
@@ -435,7 +464,7 @@ export class StateRainfallMapWeeklyComponent {
     ];
 
     const startDate = new Date(2025, 0, 1); // January 1, 2024
-    const endDate = new Date(); // December 31, 2024
+    const endDate = effectiveDate;
 
     let currentDate = startDate;
     while (currentDate <= endDate) {
@@ -443,13 +472,14 @@ export class StateRainfallMapWeeklyComponent {
         // Thursday
         let startOfWeek = new Date(currentDate);
         let endOfWeek = new Date(currentDate);
-        let todayofWeek = new Date();
+        let todayofWeek = effectiveDate;
         endOfWeek.setDate(endOfWeek.getDate() + 6);
         if (endOfWeek > todayofWeek) {
           endOfWeek = todayofWeek;
         }
 
         let monthIndex = startOfWeek.getMonth();
+        let yearOfWeek = startOfWeek.getFullYear();
         let weekRange = `${this.formatDate(startOfWeek)} - ${this.formatDate(
           endOfWeek
         )}`;
@@ -457,13 +487,17 @@ export class StateRainfallMapWeeklyComponent {
           startOfWeek
         )} - ${this.formatDateForDisplay(endOfWeek)}`;
 
-        if (!this.months[monthIndex]) {
-          this.months[monthIndex] = { name: monthNames[monthIndex], weeks: [] };
+        const groupKey = `${yearOfWeek}-${monthIndex}`;
+        let group = monthGroups[groupKey];
+        if (!group) {
+          group = { name: `${monthNames[monthIndex]} ${yearOfWeek}`, weeks: [] };
+          monthGroups[groupKey] = group;
+          this.months.push(group);
         }
 
-        let weekNumber = this.months[monthIndex].weeks.length + 1;
+        let weekNumber = group.weeks.length + 1;
         let weekLabel = `Week ${weekNumber}`;
-        this.months[monthIndex].weeks.push({
+        group.weeks.push({
           label: weekLabel,
           range: weekRange,
           displayRange: weekRangeForDisplay,

@@ -15,6 +15,8 @@ import { DownloadPdfRegionDistrict } from "src/app/services/district/regions/dis
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 
 
 @Component({
@@ -47,9 +49,9 @@ export class DistrictEastAndNorthEastRainfallMapCummulativeComponent {
           this.isLoading = true;
           if(this.selectedMode.selectedMode == 'Unified'){
             console.log('date print', this.FromDate, this.ToDate)
-            await this.downloadPdf$.updateanddownloadpdfCustom("1", this.FromDate, this.ToDate);
+            await this.downloadPdf$.updateanddownloadpdfCustom("2", this.FromDate, this.ToDate);
           }else{
-            await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom("1", this.FromDate, this.ToDate);
+            await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom("2", this.FromDate, this.ToDate);
           }            
           this.isLoading = false;
         } catch (error) {
@@ -94,20 +96,32 @@ export class DistrictEastAndNorthEastRainfallMapCummulativeComponent {
         private district: DistrictService,
         private downloadPdf$: DownloadPdfRegionDistrict,
         private countryService: CountryService,
-        private constants: Constants
+        private constants: Constants,
+        private calcMode: CalculationsModeService,
+        private mapDataScheduleService: MapDataScheduleService
       ) {
-        // var currentDate = new Date();
-        // var dd = String(currentDate.getDate());
-        // var mon = String(currentDate.getMonth());
-        // var year = String(currentDate.getFullYear());
-        // this.formatteddate = `${dd.padStart(2, '0')}-${mon.padStart(2, '0')}-${year}`;
-    
-        const currentDate = new Date();
-        const dd = String(currentDate.getDate()).padStart(2, "0");
-        const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-        const year = String(currentDate.getFullYear());
+        this.calculateInitialZoom();
+
+        const loggedInUser = JSON.parse(
+          localStorage.getItem("isAuthorised") || "{}"
+        );
+        const role = loggedInUser?.data?.[0]?.mcorhq;
+
+        this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe(
+          (effectiveDate) => this.initWithEffectiveDate(effectiveDate),
+          () => this.initWithEffectiveDate(new Date())
+        );
+      }
+
+      private initWithEffectiveDate(effectiveDate: Date) {
+        const dd = String(effectiveDate.getDate()).padStart(2, "0");
+        const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0");
+        const year = String(effectiveDate.getFullYear());
         this.formatteddate = `${dd}-${mon}-${year}`;
-    
+
+        this.fromDate = this.formatDate(effectiveDate);
+        this.toDate = this.formatDate(effectiveDate);
+
         this.dataService.fromAndToDate$.subscribe((value) => {
           if (value) {
             let fromAndToDates = JSON.parse(value);
@@ -119,7 +133,6 @@ export class DistrictEastAndNorthEastRainfallMapCummulativeComponent {
             this.EndDate = `${year}-${mon}-${dd}`;
           }
           this.generateWeeklyOptions()
-          this.calculateInitialZoom();
           this.fetchBackend();
         });
       }
@@ -195,7 +208,10 @@ export class DistrictEastAndNorthEastRainfallMapCummulativeComponent {
       }
       else{
 
-        this.district.fetchData(data).subscribe((res) => {
+        (this.calcMode.isAwsEnabled
+          ? this.district.fetchDataWithAWS(data)
+          : this.district.fetchData(data)
+        ).subscribe((res) => {
           this.districtdatacum = res.data;
           this.loadGeoJSON();
           this.StartDate = this.convertToIndianDateFormat(this.StartDate);

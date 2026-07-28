@@ -15,6 +15,8 @@ import { SubdivDownloadStatistics } from "src/app/services/subDivision/statistic
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 
 @Component({
   selector: 'app-subdivision-rainfall-map-cummulative',
@@ -99,19 +101,33 @@ export class SubdivisionRainfallMapCummulativeComponent {
         private subdivisionService: SubdivisionService,
         private downlaodStatistics: SubdivDownloadStatistics,
         private countryService: CountryService,
-        private constants: Constants
+        private constants: Constants,
+        private calcMode: CalculationsModeService,
+        private mapDataScheduleService: MapDataScheduleService
       ) {
-        // var currentDate = new Date();
-        // var dd = String(currentDate.getDate());
-        // var mon = String(currentDate.getMonth());
-        // var year = String(currentDate.getFullYear());
-        // this.formatteddate = `${dd.padStart(2, '0')}-${mon.padStart(2, '0')}-${year}`;
-        const currentDate = new Date();
-        const dd = String(currentDate.getDate()).padStart(2, "0");
-        const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-        const year = String(currentDate.getFullYear());
+        this.calculateInitialZoom();
+
+        const loggedInUser = JSON.parse(
+          localStorage.getItem("isAuthorised") || "{}"
+        );
+        const role = loggedInUser?.data?.[0]?.mcorhq;
+
+        this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe(
+          (effectiveDate) => this.initWithEffectiveDate(effectiveDate),
+          () => this.initWithEffectiveDate(new Date())
+        );
+      }
+
+      private initWithEffectiveDate(effectiveDate: Date) {
+        const dd = String(effectiveDate.getDate()).padStart(2, "0");
+        const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0");
+        const year = String(effectiveDate.getFullYear());
         this.formatteddate = `${dd}-${mon}-${year}`;
-    
+
+        this.today = this.formatDate(effectiveDate);
+        this.fromDate = this.formatDate(effectiveDate);
+        this.toDate = this.formatDate(effectiveDate);
+
         this.dataService.fromAndToDate$.subscribe((value) => {
           if (value) {
             let fromAndToDates = JSON.parse(value);
@@ -126,7 +142,6 @@ export class SubdivisionRainfallMapCummulativeComponent {
             console.log(this.EndDate);
           }
           this.generateWeeklyOptions()
-          this.calculateInitialZoom();
           this.fetchBackend();
         });
       }
@@ -191,7 +206,10 @@ export class SubdivisionRainfallMapCummulativeComponent {
             });
 
           }else{
-            this.subdivisionService.fetchData(data).subscribe((res) => {
+            (this.calcMode.isAwsEnabled
+              ? this.subdivisionService.fetchDataWithAWS(data)
+              : this.subdivisionService.fetchData(data)
+            ).subscribe((res) => {
               this.subdivisiondatacum = res.data;
               // console.log('SUBDIV DATA', res.data);
               // console.log(typeof data.startDate, typeof data.endDate)
@@ -200,7 +218,10 @@ export class SubdivisionRainfallMapCummulativeComponent {
               this.EndDate = this.convertToIndianDateFormat(this.EndDate);
             });
 
-            this.countryService.fetchData(data).subscribe((res) => {
+            (this.calcMode.isAwsEnabled
+              ? this.countryService.fetchDataWithAWS(data)
+              : this.countryService.fetchData(data)
+            ).subscribe((res) => {
               this.countrydatacum = res.data;
               this.countryActual = this.constants.trimToOneDecimals(
                 this.countrydatacum[0].actual_rainfall
@@ -486,11 +507,6 @@ export class SubdivisionRainfallMapCummulativeComponent {
     
       ngOnInit() {
         this.initMap();
-    
-        const currentDate = new Date();
-        this.today = currentDate.toISOString().split("T")[0];
-        this.fromDate = this.today;
-        this.toDate = this.today;
       }
     
       ngAfterViewInit(): void {

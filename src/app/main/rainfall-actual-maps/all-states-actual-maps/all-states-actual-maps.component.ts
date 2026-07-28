@@ -10,6 +10,7 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
 import { DistrictService } from "src/app/services/district/district.service";
 import { DownloadPdf } from "src/app/services/district/pdfdownload.service";
 import jsPDF from "jspdf";
@@ -19,6 +20,7 @@ import { StateInformationService } from "src/app/services/state/allStates.servic
 import { StateService } from "src/app/services/state/state.service";
 import { DownloadPdfStateDistrict } from "src/app/services/district/states/districtStatesDownload.service";
 import { Constants } from "src/app/services/constants";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 
 @Component({
   selector: "app-all-states-actual-maps",
@@ -93,6 +95,11 @@ export class AllStatesActualMapsComponent {
 
   legendItems = [
     {
+      color: "#F5F5F5",
+      text: `Zero Rainfall <br>[0]`,
+      fontSize: "9.3px",
+    },
+    {
       color: "#abf200",
       text: `Very Light Rainfall <br>[0.001mm to 2.4mm]`,
       fontSize: "9.3px",
@@ -143,6 +150,7 @@ export class AllStatesActualMapsComponent {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     private district: DistrictService,
@@ -150,35 +158,57 @@ export class AllStatesActualMapsComponent {
     private countryService: CountryService,
     private stateinfoservice: StateInformationService,
     private stateService: StateService,
-    private constants: Constants
+    private constants: Constants,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
-    const { startDate, endDate } =
-      this.constants.getCurrentMonthSeasonFromAndToCurrentDate(new Date());
-    this.fromDate = startDate;
-    this.EndDate = startDate;
-
-    const currentDate = new Date();
-    const dd = String(currentDate.getDate()).padStart(2, "0");
-    const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-    const year = String(currentDate.getFullYear());
-    this.formatteddate = `${dd}-${mon}-${year}`;
+    // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+    // this.initialZoom immediately with no later correction, so it can't wait
+    // on the async date fetch below or the map builds at the hardcoded
+    // fallback zoom instead of the real window-size-based one.
+    this.calculateInitialZoom();
 
     let loggedInUser: any = localStorage.getItem("isAuthorised");
     this.loggedInUserObject = JSON.parse(loggedInUser);
 
-    this.dataService.fromAndToDate$.subscribe((value) => {
-      if (value) {
-        let fromAndToDates = JSON.parse(value);
-        this.StartDate = fromAndToDates.fromDate;
-        this.EndDate = fromAndToDates.toDate;
-        // console.log(this.previousWeekWeeklyStartDate, this.previousWeekWeeklyEndDate);
-      } else {
-        this.StartDate = `${year}-${mon}-${dd}`;
-        this.EndDate = `${year}-${mon}-${dd}`;
-      }
-      this.calculateInitialZoom();
-      this.fetchBackend();
-    });
+    // Effective latest date: today if this role's data is published,
+    // otherwise yesterday (today's data held back until published).
+    const initWithEffectiveDate = (effectiveDate: Date) => {
+      const { startDate } =
+        this.constants.getCurrentMonthSeasonFromAndToCurrentDate(effectiveDate);
+      this.fromDate = startDate;
+      this.EndDate = startDate;
+      this.toDate = this.formatDate(effectiveDate);
+
+      const dd = String(effectiveDate.getDate()).padStart(2, "0");
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+      const year = String(effectiveDate.getFullYear());
+      this.formatteddate = `${dd}-${mon}-${year}`;
+
+      this.dataService.fromAndToDate$.subscribe((value) => {
+        if (value) {
+          let fromAndToDates = JSON.parse(value);
+          this.StartDate = fromAndToDates.fromDate;
+          this.EndDate = fromAndToDates.toDate;
+        } else {
+          // If no value is emitted, use the effective latest date as the default
+          this.StartDate = `${year}-${mon}-${dd}`;
+          this.EndDate = `${year}-${mon}-${dd}`;
+        }
+        this.calculateInitialZoom();
+        this.fetchBackend();
+      });
+    };
+
+    const role = this.loggedInUserObject?.data?.[0]?.mcorhq;
+
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+        error: () => initWithEffectiveDate(new Date())
+      });
+    } else {
+      initWithEffectiveDate(new Date());
+    }
   }
 
   resetMapSmallScreen(): void {
@@ -254,7 +284,7 @@ export class AllStatesActualMapsComponent {
         );
       });
     } else {
-      this.district.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe((res) => {
         this.districtdatacum = res.data;
         console.log("fbdudusdubsudbsud", res.data);
         // const url = this.stateinfoservice.getMcRMCsJson()[this.loggedInUserObject.data[0].name].url
@@ -277,7 +307,7 @@ export class AllStatesActualMapsComponent {
         this.isLoading = false;
       });
 
-      this.countryService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
           this.countrydatacum[0].actual_rainfall

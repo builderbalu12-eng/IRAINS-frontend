@@ -5,8 +5,9 @@ import { environment } from 'src/environment/environment';
 import { Constants } from '../../constants';
 import autoTable, { Column } from 'jspdf-autotable';
 import { jsPDF } from 'jspdf';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
 
 
 @Injectable({
@@ -31,7 +32,7 @@ export class DownloadPdfStateDistrict {
   seasonPeriodDate: any;
     selectedStateCode: any;
 
-  constructor(private http: HttpClient, private constants: Constants) {
+  constructor(private http: HttpClient, private constants: Constants, private calcMode: CalculationsModeService) {
   }
 
   convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
@@ -201,35 +202,35 @@ export class DownloadPdfStateDistrict {
     console.log('updateCurrDateDataFromDataEntry DATA', data);
     try {
       await lastValueFrom(
-        this.fetchDistrictDataFromDataEntry(data).pipe(
+        (this.calcMode.isAwsEnabled ? this.fetchDistrictDataWithAWS(data) : this.fetchDistrictDataFromDataEntry(data)).pipe(
           concatMap(districtData => {
-            this.districtdepCurrdate = this.districtdepCurrdate.filter((x: any) => x.state_code === state_code);
             this.districtdepCurrdate = districtData.data;
+            this.districtdepCurrdate = this.districtdepCurrdate.filter((x: any) => x.state_code === state_code);
             console.log('indownloading---->', this.districtdepCurrdate);
-            return this.fetchStateDataFromDataEntry(data);
+            return (this.calcMode.isAwsEnabled ? this.fetchStateDataWithAWS(data) : this.fetchStateDataFromDataEntry(data));
           }),
           concatMap(stateData => {
             this.statedepCurrdate = stateData.data;
             console.log('indownloading---->', this.statedepCurrdate);
-            return this.fetchSubdivDataFromDataEntry(data);
+            return (this.calcMode.isAwsEnabled ? this.fetchSubdivDataWithAWS(data) : this.fetchSubdivDataFromDataEntry(data));
           }),
           concatMap(subdiv => {
             this.subdivdepCurrdate = subdiv.data;
             console.log('indownloading---->', this.subdivdepCurrdate);
-            return this.fetchDistrictDataFromDataEntry(seasonPeriodDate); // or any observable to complete the chain
+            return (this.calcMode.isAwsEnabled ? this.fetchDistrictDataWithAWS(seasonPeriodDate) : this.fetchDistrictDataFromDataEntry(seasonPeriodDate)); // or any observable to complete the chain
           }),
           concatMap(seasondistrictData => {
             this.districtdepSeasondate = seasondistrictData.data;
             this.districtdepSeasondate = this.districtdepSeasondate.filter((x: any) => x.state_code === state_code);
 
             console.log('indownloading---->', this.districtdepSeasondate);
-            return this.fetchStateDataFromDataEntry(seasonPeriodDate);
-          }),    
+            return (this.calcMode.isAwsEnabled ? this.fetchStateDataWithAWS(seasonPeriodDate) : this.fetchStateDataFromDataEntry(seasonPeriodDate));
+          }),
           concatMap(seasonstateData => {
             this.statedepSeasondate = seasonstateData.data;
             console.log('indownloading---->', this.statedepSeasondate, this.subdivdepSeasondate);
-            return this.fetchSubdivDataFromDataEntry(seasonPeriodDate);
-          }),    
+            return (this.calcMode.isAwsEnabled ? this.fetchSubdivDataWithAWS(seasonPeriodDate) : this.fetchSubdivDataFromDataEntry(seasonPeriodDate));
+          }),
           concatMap(seasonstateData => {
             this.subdivdepSeasondate = seasonstateData.data;
             console.log('indownloading---->', this.subdivdepSeasondate);
@@ -248,13 +249,28 @@ export class DownloadPdfStateDistrict {
     return this.http.post<any>(url, data);
   }
 
+  fetchDistrictDataWithAWS(data: any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchDistrictDataWithAWS`;
+    return this.http.post<any>(url, data);
+  }
+
   fetchStateDataFromDataEntry(data: any): Observable<any> {
     const url = `${this.baseUrl}/api/v1/fetchStateData`;
     return this.http.post<any>(url, data);
   }
 
+  fetchStateDataWithAWS(data: any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchStateDataWithAWS`;
+    return this.http.post<any>(url, data);
+  }
+
   fetchSubdivDataFromDataEntry(data: any): Observable<any> {
     const url = `${this.baseUrl}/api/v1/fetchSubDivisionData`;
+    return this.http.post<any>(url, data);
+  }
+
+  fetchSubdivDataWithAWS(data: any): Observable<any> {
+    const url = `${this.baseUrl}/api/v1/fetchSubDivisionDataWithAWS`;
     return this.http.post<any>(url, data);
   }
 
@@ -277,33 +293,89 @@ export class DownloadPdfStateDistrict {
   }
 
 
-  exportAsExcelFile(json: any[], excelFileName: string, columns: any, columns1: any): void {
-    const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
-    
-    // Define the range of cells you want to merge
-    const startCell = 'C1'; // Start cell for the first merge
-    const endCell = 'F1'; // End cell for the first merge
-    const startCell1 = 'G1'; // Start cell for the second merge
-    const endCell1 = 'J1'; // End cell for the second merge
+  exportAsExcelFile(
+    dataRows: any[][],
+    excelFileName: string,
+    dayStart: string,
+    dayEnd: string,
+    periodStart: string,
+    periodEnd: string
+  ): void {
+    const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
+    const blank = () => ({ v: '', t: 's', s: {} });
+    const mkBorder = (left = true, right = true, top = true, bottom = true) => ({
+      top:    top    ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      bottom: bottom ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      left:   left   ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      right:  right  ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+    });
+    const styledCell = (v: string, align: 'center' | 'left' = 'center', border = mkBorder()) => ({
+      v, t: 's', s: {
+        font: { bold: true, sz: 10, color: { rgb: '993300' } },
+        fill: { fgColor: { rgb: 'FFFFFF' } },
+        border,
+        alignment: { horizontal: align, vertical: 'middle' as const, wrapText: true },
+      }
+    });
 
-    // Merge the cells
-    worksheet['!merges'] = [
-        { s: XLSX.utils.decode_cell(startCell), e: XLSX.utils.decode_cell(endCell) },
-        { s: XLSX.utils.decode_cell(startCell1), e: XLSX.utils.decode_cell(endCell1) }
+    // Row 1: Title — dark brown, underlined, merged A1:J1
+    const row1 = [
+      { v: 'DISTRICT RAINFALL DISTRIBUTION', t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+      ...Array.from({ length: 9 }, () => blank()),
     ];
 
-    // Add the first header row (with merged cells)
-    XLSX.utils.sheet_add_aoa(worksheet, [columns1], { origin: 'A1' });
+    // Row 2: blank spacer
+    const row2 = Array.from({ length: 10 }, () => blank());
 
-    // Add the second header row
-    XLSX.utils.sheet_add_aoa(worksheet, [columns], { origin: 'A2' });
+    // Row 3: outer border only on DAY/PERIOD groups (no inner vertical lines)
+    const row3 = [
+      styledCell('S.No.'),
+      styledCell('MET.  SUBDIVISION/ UT', 'left'),
+      styledCell('DAY :',      'center', mkBorder(true,  false, true, true)),
+      styledCell(dayStart,     'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(dayEnd,       'center', mkBorder(false, true,  true, true)),
+      styledCell('PERIOD :',   'center', mkBorder(true,  false, true, true)),
+      styledCell(periodStart,  'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(periodEnd,    'center', mkBorder(false, true,  true, true)),
+    ];
 
-    // Adjust the starting point for the data rows
-    XLSX.utils.sheet_add_json(worksheet, json, { origin: 'A3', skipHeader: true });
+    // Row 4: full border on every cell
+    const row4 = [
+      blank(),
+      styledCell('STATE/DISTRICT (NAME)', 'left'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+    ];
 
-    // Create the workbook and add the worksheet
-    const workbook: XLSX.WorkBook = { Sheets: { 'data': worksheet }, SheetNames: ['data'] };
-    
+    // Row 5: full border on every cell
+    const row5 = [
+      blank(), blank(),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, [row1], { origin: 'A1' });
+    XLSX.utils.sheet_add_aoa(ws, [row2], { origin: 'A2' });
+    XLSX.utils.sheet_add_aoa(ws, [row3], { origin: 'A3' });
+    XLSX.utils.sheet_add_aoa(ws, [row4], { origin: 'A4' });
+    XLSX.utils.sheet_add_aoa(ws, [row5], { origin: 'A5' });
+    XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: 'A6' });
+
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },   // Title A1:J1
+      { s: { r: 2, c: 0 }, e: { r: 4, c: 0 } },   // S.No A3:A5
+      { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } },   // STATE/DISTRICT NAME B4:B5
+    ];
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 8 },
+      { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 },
+    ];
+    ws['!rows'] = [{ hpt: 25 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 15 }];
+
+    const workbook: XLSX.WorkBook = { Sheets: { data: ws }, SheetNames: ['data'] };
+
     // Generate the Excel file
     const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
 
@@ -345,36 +417,35 @@ export class DownloadPdfStateDistrict {
       },
       
     ]
-    const columns1forexcel = ['', '',
-    {
-      content : this.data.startDate==this.data.endDate ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`:`DAY: ${this.convertToIndianDateFormat(this.data.startDate)} to ${this.convertToIndianDateFormat(this.data.endDate)}`, colSpan:4
-    }, '', '', '',    
-    {
-      content : `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`, colSpan:4
-    }]
-
     const columns = ['S.No', 'MET.SUBDIVISION/UT/STATE/DISTRICT', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
 
     this.loadTheRows();
 
-    var newArr = this.rows.map((subArr) => {
-      return subArr.map((item:any) => {
-        if (typeof item === 'object' && item.hasOwnProperty('content')) {
-          return item.content;
+    const thinBlack = {
+      top:    { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left:   { style: 'thin', color: { rgb: '000000' } },
+      right:  { style: 'thin', color: { rgb: '000000' } },
+    };
+
+    var newArr: any[][] = this.rows.map((subArr) => {
+      const firstFill = (subArr[0] as any)?.styles?.fillColor;
+      const isState   = Array.isArray(firstFill) && firstFill[0] === 238;  // [238,130,238]
+      return subArr.map((item: any, colIdx: number) => {
+        let content = typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+        if ((colIdx === 4 || colIdx === 8) && content !== '' && content !== ' ' && content != null) {
+          content = `${content}%`;
         }
-        return item;
+        const cellFill  = item?.styles?.fillColor;
+        const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
+        const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
+        if (isState) {
+          return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: 'FF00FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
+        }
+        const fillHex = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
+        return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
       });
     });
-
-    
-
-    var newcolumns1 = columns1forexcel.map((item) => {
-      if (typeof item === 'object' && item.hasOwnProperty('content')) {
-        return item.content;
-      }
-      return item;
-    });
-
 
     let serialNumber = 1;
 
@@ -453,9 +524,13 @@ export class DownloadPdfStateDistrict {
       const pdfUrl = URL.createObjectURL(pdfBlob);
       window.open(pdfUrl);
     }else{
+      const dayStart    = this.convertToIndianDateFormat(this.data.startDate);
+      const dayEnd      = this.convertToIndianDateFormat(this.data.endDate);
+      const periodStart = this.convertToIndianDateFormat(this.seasonPeriodDate.startDate);
+      const periodEnd   = this.convertToIndianDateFormat(this.seasonPeriodDate.endDate);
       setTimeout(()=>{
         doc.save(filename);
-        this.exportAsExcelFile(newArr, `DISTRICT_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_cd`, columns, newcolumns1);
+        this.exportAsExcelFile(newArr, `DISTRICT_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_cd`, dayStart, dayEnd, periodStart, periodEnd);
       },3000)
     }
 
