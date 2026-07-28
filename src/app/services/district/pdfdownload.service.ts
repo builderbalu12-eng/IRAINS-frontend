@@ -383,6 +383,14 @@ export class DownloadPdf {
 
     this.loadTheRows();
 
+    if (this.isView) {
+      // On-page table view: data is already populated on this.rows /
+      // this.data / this.seasonPeriodDate for the component to read —
+      // skip PDF/Excel generation entirely.
+      this.isView = false;
+      return;
+    }
+
     const thinBlack = {
       top:    { style: 'thin', color: { rgb: '000000' } },
       bottom: { style: 'thin', color: { rgb: '000000' } },

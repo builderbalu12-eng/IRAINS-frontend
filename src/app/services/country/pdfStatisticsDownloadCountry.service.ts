@@ -352,9 +352,17 @@ export class CountryDownloadStatistics {
       },
     ]
     
-    const columns = ['S.No', 'REGION', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
+    const columns = ['S.No', 'COUNTRY', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
 
     this.loadTheRows();
+
+    if (this.isView) {
+      // On-page table view: data is already populated on this.rows /
+      // this.data / this.seasonPeriodDate for the component to read —
+      // skip PDF/Excel generation entirely.
+      this.isView = false;
+      return;
+    }
 
     const thinBlack = {
       top:    { style: 'thin', color: { rgb: '000000' } },
