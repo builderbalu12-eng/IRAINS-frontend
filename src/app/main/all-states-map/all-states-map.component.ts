@@ -42,10 +42,33 @@ export class AllStatesMapComponent {
   fromDate: any = this.formatDate(new Date());
   toDate: any = this.formatDate(new Date());
 
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics (district-level table for the selected state
+  // only, via DownloadPdfStateDistrict's state-scoped queries), rendered
+  // by the shared <app-rainfall-stats-panel>. No category-breakdown
+  // sub-table (buildCategoryStats() N/A for district-level data). Loaded
+  // on initial load / Submit (from inside fetchBackend's district
+  // callback, once the default state has been filled in) and on state
+  // selection (onSelectChange). To
+  // revert to a map-only page: delete these fields, loadStats() below,
+  // and the two `this.loadStats();` call sites (search this file for
+  // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  // ==== RIGHT PANEL fields end ====
+
   async getSelectedStateCode() {
+    // Was this.selectedDate (unbound to any input, stuck at raw `new
+    // Date()` from page load) — that's "today" even when today's data is
+    // still held back pending publish, so the lookup below silently
+    // found nothing and selectedStateCode never got set. fromDate is the
+    // same effective/held-back date the map and date picker already use.
     const data = {
-      startDate: this.selectedDate,
-      endDate: this.selectedDate,
+      startDate: this.fromDate,
+      endDate: this.fromDate,
     };
   
     try {
@@ -232,6 +255,13 @@ export class AllStatesMapComponent {
           this.loadGeoJSON(this.selectedUrl);
         }
         this.isLoading = false
+        // RIGHT PANEL — must fire here, not in the constructor: on first
+        // load selectedStateName is still "" and only gets defaulted to
+        // listOfmsRMCs[0] a few lines above, inside this callback. Calling
+        // loadStats() any earlier hits its `if (!this.selectedStateName)
+        // return;` guard and the panel stays blank until the user touches
+        // the dropdown. Remove this line if reverting to map-only.
+        this.loadStats();
       });
       
 
@@ -274,6 +304,13 @@ export class AllStatesMapComponent {
           this.loadGeoJSON(this.selectedUrl);
         }
         this.isLoading = false
+        // RIGHT PANEL — must fire here, not in the constructor: on first
+        // load selectedStateName is still "" and only gets defaulted to
+        // listOfmsRMCs[0] a few lines above, inside this callback. Calling
+        // loadStats() any earlier hits its `if (!this.selectedStateName)
+        // return;` guard and the panel stays blank until the user touches
+        // the dropdown. Remove this line if reverting to map-only.
+        this.loadStats();
       });
 
       (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
@@ -297,6 +334,38 @@ export class AllStatesMapComponent {
 
 
   }
+
+  // ==== RIGHT PANEL: loadStats ====
+  async loadStats() {
+    if (!this.selectedStateName) {
+      return;
+    }
+    this.statsLoading = true;
+    this.showStatsTable = false;
+    try {
+      await this.getSelectedStateCode();
+      // Must branch on selectedMode exactly like downloadMapData() above —
+      // hardcoding the FromDataEntry variant here left the panel reading
+      // from the wrong data source (empty/mismatched) whenever the app is
+      // actually running in "Unified" (FTP) mode, even though the download
+      // button — which does branch correctly — showed real data.
+      if (this.selectedMode?.selectedMode == 'Unified') {
+        await this.downloadPdf$.updateandViewpdfCustom(this.fromDate, this.toDate, this.selectedStateCode);
+      } else {
+        await this.downloadPdf$.updateandViewpdfFromDataEntryCustom(this.fromDate, this.toDate, this.selectedStateCode);
+      }
+      const svc = this.downloadPdf$;
+      const convert = svc.convertToIndianDateFormat;
+      this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+      this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+      this.tableRows = svc.rows;
+      this.showStatsTable = this.tableRows.length > 0;
+    } catch (error) {
+      console.error('Error loading state-district statistics panel:', error);
+    }
+    this.statsLoading = false;
+  }
+  // ==== RIGHT PANEL: loadStats end ====
 
   filter = (node: HTMLElement) => {
     const exclusionClasses = [
@@ -577,10 +646,14 @@ export class AllStatesMapComponent {
     }
     this.onWindowResize()
     // this.resetMap()
+    this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
   }
 
   onSubmit() {
     // console.log('Button clicked');
+    // RIGHT PANEL — fetchBackend() calls loadStats() once its district
+    // response lands, so no separate call here (it would just run the
+    // same four requests twice per Submit).
     this.fetchBackend()
     // Example usage of the button reference
     // this.submitButton.nativeElement.disabled = true;

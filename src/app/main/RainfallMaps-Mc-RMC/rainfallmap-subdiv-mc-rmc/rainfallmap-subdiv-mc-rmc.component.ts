@@ -18,6 +18,9 @@ import { Router, NavigationEnd } from "@angular/router";
 import { filter } from "rxjs/operators";
 import { McWiseSubdivDownloadStatistics } from "src/app/services/subDivision/mcWiseSubDivisionStatistics.service";
 import { Constants } from "src/app/services/constants";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
+import { skip } from "rxjs";
 
 @Component({
   selector: 'app-rainfallmap-subdiv-mc-rmc',
@@ -38,6 +41,49 @@ export class RainfallmapSubdivMcRmcComponent {
     displayMcName: any;
     today: any;
     allSubDivCodesinSelectedSet: any = new Set();
+
+  private modeSub?: any;
+
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics for this MC's subdivisions, via
+  // McWiseSubdivDownloadStatistics' subdiv-filtered queries, rendered by the
+  // shared <app-rainfall-stats-panel>. No category-breakdown sub-table. To
+  // revert to a map-only page: delete these fields, loadStats() below and its
+  // call site (search "this.loadStats()") — plus the HTML "RIGHT PANEL" block
+  // and the CSS "RIGHT PANEL rules" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  private statsInFlight = false;
+
+  async loadStats() {
+    // loadGeoJSON() runs on every date change / subdiv switch, so this stops
+    // overlapping calls stacking up duplicate fetches.
+    if (!this.allSubDivCodesinSelectedSet?.size || this.statsInFlight) {
+      return;
+    }
+    this.statsInFlight = true;
+    this.statsLoading = true;
+    this.showStatsTable = false;
+    try {
+      await this.downloadPdf$.updateandViewpdfFromDataEntryCustom(
+        this.allSubDivCodesinSelectedSet, this.fromDate, this.toDate
+      );
+      const svc = this.downloadPdf$;
+      const convert = svc.convertToIndianDateFormat;
+      this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+      this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+      this.tableRows = svc.rows;
+      this.showStatsTable = this.tableRows.length > 0;
+    } catch (error) {
+      console.error('Error loading MC subdivision statistics panel:', error);
+    }
+    this.statsLoading = false;
+    this.statsInFlight = false;
+  }
+  // ==== RIGHT PANEL END ====
   
     fromDate: any = this.formatDate(new Date());
     toDate: any = this.formatDate(new Date());
@@ -110,15 +156,10 @@ isLoadingSubdivs: any;
       private downloadPdf$: McWiseSubdivDownloadStatistics,
       private mcRMCService: MCRMCsServiceSubdiv,
       private router: Router, // Inject Router
-      private constants : Constants
+      private constants : Constants,
+      private calcMode: CalculationsModeService,
+      private mapDataScheduleService: MapDataScheduleService
     ) {
-      // Current date formatting
-      const currentDate = new Date();
-      const dd = String(currentDate.getDate()).padStart(2, "0");
-      const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-      const year = String(currentDate.getFullYear());
-      this.formatteddate = `${dd}-${mon}-${year}`;
-
       let selectedMode: any = localStorage.getItem("selectedMode");
       this.selectedMode = JSON.parse(selectedMode);
       console.log('this.selected mOde', this.selectedMode)
@@ -135,19 +176,48 @@ isLoadingSubdivs: any;
           this.checkUrl(); // Call the method to check URL
         });
   
-      // Date subscription logic
-      this.dataService.fromAndToDate$.subscribe((value) => {
-        if (value) {
-          let fromAndToDates = JSON.parse(value);
-          this.StartDate = fromAndToDates.fromDate;
-          this.EndDate = fromAndToDates.toDate;
-        } else {
-          this.StartDate = `${year}-${mon}-${dd}`;
-          this.EndDate = `${year}-${mon}-${dd}`;
-        }
-        this.calculateInitialZoom();
-        this.fetchBackend();
-      });
+      // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+      // this.initialZoom immediately, so it can't wait on the async
+      // effective-date fetch below or the map builds at the fallback zoom.
+      this.calculateInitialZoom();
+
+      // Effective latest date: today if this role's data is published,
+      // otherwise yesterday (today's data held back until published).
+      const initWithEffectiveDate = (effectiveDate: Date) => {
+        const dd = String(effectiveDate.getDate()).padStart(2, "0");
+        const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+        const year = String(effectiveDate.getFullYear());
+        this.formatteddate = `${dd}-${mon}-${year}`;
+
+        // Drives the date pickers ([(ngModel)]="fromDate"/"toDate", [max]="today")
+        // and fetchBackend()'s payload, so seed them with the effective date.
+        this.today = `${year}-${mon}-${dd}`;
+        this.fromDate = `${year}-${mon}-${dd}`;
+        this.toDate = `${year}-${mon}-${dd}`;
+
+        // Date subscription logic
+        this.dataService.fromAndToDate$.subscribe((value) => {
+          if (value) {
+            let fromAndToDates = JSON.parse(value);
+            this.StartDate = fromAndToDates.fromDate;
+            this.EndDate = fromAndToDates.toDate;
+          } else {
+            this.StartDate = `${year}-${mon}-${dd}`;
+            this.EndDate = `${year}-${mon}-${dd}`;
+          }
+          this.fetchBackend();
+        });
+      };
+
+      const role = this.loggedInUserObject?.data?.[0]?.mcorhq;
+      if (role) {
+        this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+          next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+          error: () => initWithEffectiveDate(new Date())
+        });
+      } else {
+        initWithEffectiveDate(new Date());
+      }
     }
   
     private checkUrl() {
@@ -209,7 +279,7 @@ isLoadingSubdivs: any;
         
         });
       }else{
-        this.district.fetchData(data).subscribe((res) => {
+        (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe((res) => {
           this.districtdatacum = res.data;
           console.log("fbdudusdubsudbsud", res.data);
         
@@ -426,6 +496,13 @@ isLoadingSubdivs: any;
 
       // this.onWindowResizer()
       this.initMap();
+      // skip(1) so the current value doesn't double-fetch on load — the
+      // constructor already kicks off the first fetchBackend().
+      this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
+    }
+
+    ngOnDestroy(): void {
+      this.modeSub?.unsubscribe();
     }
   
     ngAfterViewInit(): void {
@@ -612,6 +689,7 @@ isLoadingSubdivs: any;
 
         this.districtLayer = layer
         this.map.addLayer(layer);
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
 
       
       });

@@ -17,7 +17,17 @@ export class DashboardMaincontainerComponent implements OnInit {
   startDate = '';
   endDate = '';
   isActual = false;
-  maxDate = new Date().toISOString().split('T')[0];
+  // Local calendar date, not toISOString(). toISOString() is UTC, so in IST
+  // (+05:30) every load between midnight and 05:30 produced *yesterday* and
+  // capped the date pickers a day early.
+  maxDate = DashboardMaincontainerComponent.todayLocalIso();
+
+  private static todayLocalIso(): string {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
   selectedLevels: string[] = ['state', 'district', 'block'];
   mode: string = 'state';        
   selectedPlace: { layer: string; code: string; name: string } = { layer: 'subdivision', code: '401', name: 'ANDAMAN & NICOBAR ISLANDS' };

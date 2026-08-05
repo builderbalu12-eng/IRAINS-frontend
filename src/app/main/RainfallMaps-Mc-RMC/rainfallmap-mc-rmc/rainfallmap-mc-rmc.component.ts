@@ -21,6 +21,8 @@ import { filter } from "rxjs/operators";
 import { Constants } from "src/app/services/constants";
 import { McWiseStateStatistics } from "src/app/services/state/mcWiseStateStatistics.service";
 import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { skip } from "rxjs";
 
 @Component({
   selector: "app-rainfallmap-mc-rmc",
@@ -41,6 +43,49 @@ export class RainfallmapMcRmcComponent {
   displayMcName: any;
   today: any;
   allStateCodesinSelectedSet: any = new Set();
+
+  private modeSub?: any;
+
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics for this MC's states, via McWiseStateStatistics'
+  // state-filtered queries, rendered by the shared
+  // <app-rainfall-stats-panel>. No category-breakdown sub-table. To revert
+  // to a map-only page: delete these fields, loadStats() below and its call
+  // site (search "this.loadStats()") — plus the HTML "RIGHT PANEL" block
+  // and the CSS "RIGHT PANEL rules" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  private statsInFlight = false;
+
+  async loadStats() {
+    // loadGeoJSON() runs on every date change / state switch, so this stops
+    // overlapping calls stacking up duplicate fetches.
+    if (!this.allStateCodesinSelectedSet?.size || this.statsInFlight) {
+      return;
+    }
+    this.statsInFlight = true;
+    this.statsLoading = true;
+    this.showStatsTable = false;
+    try {
+      await this.downloadPdf$.updateandViewpdfFromDataEntryCustom(
+        this.allStateCodesinSelectedSet, this.fromDate, this.toDate
+      );
+      const svc = this.downloadPdf$;
+      const convert = svc.convertToIndianDateFormat;
+      this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+      this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+      this.tableRows = svc.rows;
+      this.showStatsTable = this.tableRows.length > 0;
+    } catch (error) {
+      console.error('Error loading MC state statistics panel:', error);
+    }
+    this.statsLoading = false;
+    this.statsInFlight = false;
+  }
+  // ==== RIGHT PANEL END ====
 
   fromDate: any;
   toDate: any;
@@ -112,6 +157,7 @@ export class RainfallmapMcRmcComponent {
     private elRef: ElementRef,
     private district: DistrictService,
     private downloadPdf$: McWiseStateStatistics,
+    private calcMode: CalculationsModeService,
     private mcRMCService: MCRMCsServiceState,
     private router: Router, // Inject Router,
     private constants : Constants,
@@ -234,7 +280,7 @@ export class RainfallmapMcRmcComponent {
         this.isLoadingStates = false;
       });
     }else{
-      this.district.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe((res) => {
         this.districtdatacum = res.data;
         console.log("fbdudusdubsudbsud", res.data);
       
@@ -448,6 +494,13 @@ export class RainfallmapMcRmcComponent {
     // ];
     this.onWindowResizer()
     this.initMap();
+    // skip(1) so the current value doesn't double-fetch on load — the
+    // constructor already kicks off the first fetchBackend().
+    this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
+  }
+
+  ngOnDestroy(): void {
+    this.modeSub?.unsubscribe();
   }
 
   ngAfterViewInit(): void {
@@ -627,6 +680,7 @@ export class RainfallmapMcRmcComponent {
       });
       this.districtLayer = layer
       this.map.addLayer(layer)
+      this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
     });
 
 

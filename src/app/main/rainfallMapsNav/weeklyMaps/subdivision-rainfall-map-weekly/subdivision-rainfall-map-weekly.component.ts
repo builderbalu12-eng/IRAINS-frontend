@@ -36,6 +36,23 @@ export class SubdivisionRainfallMapWeeklyComponent {
   selectedMode: any;
   selectedWeek: any;
 
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics (mirrors /daily-subdivision-rf-distribution's
+  // table, over the selected week's range), rendered by the shared
+  // <app-rainfall-stats-panel>. Only ONE call site — the Submit button
+  // only round-trips through dataService to re-fire the fromAndToDate$
+  // subscription, it doesn't call fetchBackend() directly. To revert to
+  // a map-only page: delete these fields, loadStats() below, and the
+  // `this.loadStats();` call site (search this file for
+  // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  categoryStats: { day: Record<string, { count: number; area: number }>; period: Record<string, { count: number; area: number }> } | null = null;
+  // ==== RIGHT PANEL fields end ====
+
   async downloadMapData() {
     this.isLoading = true;
     try {
@@ -134,6 +151,7 @@ export class SubdivisionRainfallMapWeeklyComponent {
         }
         this.generateWeeklyOptions(effectiveDate);
         this.fetchBackend();
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
       });
     };
 
@@ -325,6 +343,32 @@ export class SubdivisionRainfallMapWeeklyComponent {
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
   }
+
+  // ==== RIGHT PANEL: loadStats ====
+  async loadStats() {
+    if (!this.selectedWeek) {
+      return;
+    }
+    this.statsLoading = true;
+    this.showStatsTable = false;
+    try {
+      const dates = this.selectedWeek.split(" - ");
+      const fromDate = dates[0];
+      const toDate = dates[1];
+      await this.downlaodStatistics.updateandViewpdfFromDataEntryCustom(fromDate, toDate);
+      const svc = this.downlaodStatistics;
+      const convert = svc.convertToIndianDateFormat;
+      this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+      this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+      this.tableRows = svc.rows;
+      this.categoryStats = svc.buildCategoryStats();
+      this.showStatsTable = this.tableRows.length > 0;
+    } catch (error) {
+      console.error('Error loading subdivision statistics panel:', error);
+    }
+    this.statsLoading = false;
+  }
+  // ==== RIGHT PANEL: loadStats end ====
 
   filter = (node: HTMLElement) => {
     const exclusionClasses = [

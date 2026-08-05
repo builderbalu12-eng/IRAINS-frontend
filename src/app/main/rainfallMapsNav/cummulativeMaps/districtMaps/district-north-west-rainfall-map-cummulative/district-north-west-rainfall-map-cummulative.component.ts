@@ -39,6 +39,23 @@ export class DistrictNorthWestRainfallMapCummulativeComponent {
       toDate: any = this.formatDate(new Date());
       FromDate: any;
       ToDate: any;
+
+      // ==== RIGHT PANEL START =====================================
+      // Right-panel statistics (district-level table for this region only,
+      // via DownloadPdfRegionDistrict's region-scoped queries, over the
+      // fromDate/toDate range picker — NOT this.FromDate/ToDate, which are
+      // never actually assigned), rendered by the shared
+      // <app-rainfall-stats-panel>. No category-breakdown sub-table
+      // (buildCategoryStats() N/A for district data). To revert to a
+      // map-only page: delete these fields, loadStats() below, and the
+      // two `this.loadStats();` call sites (search this file for
+      // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+      statsLoading: boolean = false;
+      showStatsTable: boolean = false;
+      tableRows: any[][] = [];
+      dayLabel: string = '';
+      periodLabel: string = '';
+      // ==== RIGHT PANEL fields end ====
     
       async downloadMapData() {
         this.isLoading = true;
@@ -131,6 +148,7 @@ export class DistrictNorthWestRainfallMapCummulativeComponent {
           }
           this.generateWeeklyOptions()
           this.fetchBackend();
+          this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
         });
       }
     
@@ -223,6 +241,7 @@ export class DistrictNorthWestRainfallMapCummulativeComponent {
         };
         this.calculateInitialZoom()
         this.fetchBackend()
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
         // this.dataService.setfromAndToDate(JSON.stringify(data));
       }
       
@@ -280,6 +299,25 @@ export class DistrictNorthWestRainfallMapCummulativeComponent {
       return `${day}-${month}-${year}`;
     }
     
+      // ==== RIGHT PANEL: loadStats ====
+      async loadStats() {
+        this.statsLoading = true;
+        this.showStatsTable = false;
+        try {
+          await this.downloadPdf$.updateandViewpdfFromDataEntryCustom("3", this.fromDate, this.toDate);
+          const svc = this.downloadPdf$;
+          const convert = svc.convertToIndianDateFormat;
+          this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+          this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+          this.tableRows = svc.rows;
+          this.showStatsTable = this.tableRows.length > 0;
+        } catch (error) {
+          console.error('Error loading district statistics panel:', error);
+        }
+        this.statsLoading = false;
+      }
+      // ==== RIGHT PANEL: loadStats end ====
+
       filter = (node: HTMLElement) => {
         const exclusionClasses = [
           "download",

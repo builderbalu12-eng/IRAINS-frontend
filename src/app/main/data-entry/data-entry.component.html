@@ -51,6 +51,16 @@
       </div>
     </div>
 
+    <div class="upload-date-group" *ngIf="uploadResultInvalidHeaders.length > 0">
+      <div class="upload-date-group-label warn"><i class="bi bi-x-circle-fill"></i> Invalid column heading(s)</div>
+      <ul class="upload-invalid-header-list">
+        <li *ngFor="let h of uploadResultInvalidHeaders">
+          <span class="upload-date-chip warn">{{ h.header }}</span>
+          <span class="upload-invalid-header-reason">{{ h.reason }}</span>
+        </li>
+      </ul>
+    </div>
+
     <button class="restrict-ok-btn" (click)="showUploadResultPopup = false">OK</button>
   </div>
 </div>
@@ -356,6 +366,10 @@
             #rainfallFileInput
             (change)="onFileSelected($event)"
           />
+          <small class="excel-date-format-hint">
+            Date columns must be <strong>dd_Mon_yy</strong> — e.g.
+            <strong>29_Jul_26</strong> (year as last 2 digits only, not 2026)
+          </small>
         </div>
         <div class="col-md-2 col-sm-6 mb-3">
           <button (click)="uploadRainFallFile()" class="btn btn-success">

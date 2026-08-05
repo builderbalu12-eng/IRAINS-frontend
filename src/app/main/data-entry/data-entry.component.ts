@@ -118,9 +118,11 @@ export class DataEntryComponent implements OnInit {
   uploadResultMessage: string = '';
   uploadResultUploadedDates: string[] = [];
   uploadResultSkippedDates: string[] = [];
+  uploadResultInvalidHeaders: { header: string; reason: string }[] = [];
 
   // ── Pre-upload confirmation (highest rainfall per date) ─────────────────
-  private readonly rainfallSkipColumns = ["station_name", "centre_type", "station_id"];
+  // Fixed (non-date) columns, matching what insertRainfallFile destructures on the backend.
+  private readonly rainfallSkipColumns = ["district_name", "station_name", "centre_type", "station_id"];
   showPreUploadConfirmPopup: boolean = false;
   preUploadHighestByDate: { date: string; stationName: string; stationId: string; rainfall: number; hasData: boolean }[] = [];
   private pendingUploadJsonData: any[] = [];
@@ -721,28 +723,101 @@ export class DataEntryComponent implements OnInit {
   }
 
 
-  private openUploadResultPopup(ok: boolean, message: string, uploaded: string[] = [], skipped: string[] = []): void {
+  private openUploadResultPopup(
+    ok: boolean,
+    message: string,
+    uploaded: string[] = [],
+    skipped: string[] = [],
+    invalidHeaders: { header: string; reason: string }[] = []
+  ): void {
     this.uploadResultOk = ok;
     this.uploadResultMessage = message;
     this.uploadResultUploadedDates = uploaded;
     this.uploadResultSkippedDates = skipped;
+    this.uploadResultInvalidHeaders = invalidHeaders;
     this.showUploadResultPopup = true;
   }
 
   private readonly excelMonthAbbrevs = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-  /** Parses a "dd_Mon_yy" excel column header (e.g. "12_Sep_24") into a Date, or null if not a date column. */
+  /**
+   * Date column headers must be exactly dd_Mon_yy — two-digit day, 3-letter
+   * month, two-digit year (e.g. "29_Jul_26"). Anything else is rejected.
+   */
+  private readonly excelDateColumnFormat = "dd_Mon_yy (e.g. 29_Jul_26)";
+
+  /** Parses a "dd_Mon_yy" excel column header (e.g. "12_Sep_24") into a Date, or null if not a valid date column. */
   private parseExcelDateColumn(key: string): Date | null {
     const parts = key.split('_');
     if (parts.length !== 3) return null;
     const [ddStr, monStr, yyStr] = parts;
-    const dd = parseInt(ddStr, 10);
+    if (!/^\d{2}$/.test(ddStr) || !/^\d{2}$/.test(yyStr)) return null;
     const monIdx = this.excelMonthAbbrevs.indexOf(monStr);
+    if (monIdx === -1) return null;
+    const dd = parseInt(ddStr, 10);
     const yy = parseInt(yyStr, 10);
-    if (isNaN(dd) || monIdx === -1 || isNaN(yy) || yyStr.length !== 2) return null;
     const d = new Date(2000 + yy, monIdx, dd);
     d.setHours(0, 0, 0, 0);
+    // Rejects impossible days such as 31_Feb_26, which Date would roll over.
+    if (d.getDate() !== dd || d.getMonth() !== monIdx) return null;
     return d;
+  }
+
+  /**
+   * Explains every problem with an invalid dd_Mon_yy column heading, so the user
+   * can fix the whole heading in one go instead of one mistake per upload attempt.
+   */
+  private explainInvalidDateColumn(key: string): string {
+    if (key !== key.trim()) {
+      return `Remove the extra space(s) around the heading — it must be exactly ${this.excelDateColumnFormat}.`;
+    }
+
+    const parts = key.split('_');
+    if (parts.length !== 3) {
+      return `Must be ${this.excelDateColumnFormat} — day, 3-letter month and 2-digit year separated by underscores.`;
+    }
+
+    const [ddStr, monStr, yyStr] = parts;
+    const issues: string[] = [];
+    let suggestedDd = ddStr;
+    let suggestedMon = monStr;
+    let suggestedYy = yyStr;
+
+    if (/^\d$/.test(ddStr)) {
+      issues.push("day must be two digits");
+      suggestedDd = "0" + ddStr;
+    } else if (!/^\d{2}$/.test(ddStr)) {
+      issues.push("day must be two digits (01–31)");
+      suggestedDd = "dd";
+    }
+
+    if (this.excelMonthAbbrevs.indexOf(monStr) === -1) {
+      const match = this.excelMonthAbbrevs.find(
+        (m) => m.toLowerCase() === monStr.slice(0, 3).toLowerCase()
+      );
+      if (match) {
+        issues.push(`month must be written as ${match}`);
+        suggestedMon = match;
+      } else {
+        issues.push(`month must be one of ${this.excelMonthAbbrevs.join(", ")}`);
+        suggestedMon = "Mon";
+      }
+    }
+
+    if (/^\d{4}$/.test(yyStr)) {
+      issues.push("year must be the last two digits only");
+      suggestedYy = yyStr.slice(2);
+    } else if (!/^\d{2}$/.test(yyStr)) {
+      issues.push("year must be exactly two digits (2026 → 26, 2027 → 27)");
+      suggestedYy = "yy";
+    }
+
+    if (issues.length === 0) {
+      return `${ddStr} is not a valid day for ${monStr}.`;
+    }
+
+    const suggestion = `${suggestedDd}_${suggestedMon}_${suggestedYy}`;
+    return `${issues.join("; ")} — use ${suggestion}.`;
   }
 
   /** For each date column, finds the station with the highest rainfall value (excluding the -999.9 "no data" sentinel). */
@@ -795,9 +870,47 @@ export class DataEntryComponent implements OnInit {
             let skippedDateCols: string[] = [];
 
             if (jsonData.length > 0) {
-              const dateCols = Object.keys(jsonData[0]).filter(
+              const headers = Object.keys(jsonData[0]);
+
+              // Every non-fixed column must be a dd_Mon_yy date. The most common
+              // mistake is a 4-digit year (29_Jul_2026 instead of 29_Jul_26), so
+              // reject the file and say exactly what to fix rather than silently
+              // ignoring the column.
+              const invalidHeaders = headers
+                .filter(
+                  (k) =>
+                    !skipColumns.includes(k) &&
+                    !k.startsWith("__EMPTY") &&
+                    this.parseExcelDateColumn(k) === null
+                )
+                .map((k) => ({ header: k, reason: this.explainInvalidDateColumn(k) }));
+
+              if (invalidHeaders.length > 0) {
+                this.openUploadResultPopup(
+                  false,
+                  `Date columns must be in the format ${this.excelDateColumnFormat}. Please correct the column heading(s) below and upload again.`,
+                  [],
+                  [],
+                  invalidHeaders
+                );
+                this.clearRainfallFileInput();
+                this.isUploading = false;
+                return;
+              }
+
+              const dateCols = headers.filter(
                 (k) => !skipColumns.includes(k) && this.parseExcelDateColumn(k) !== null
               );
+
+              if (dateCols.length === 0) {
+                this.openUploadResultPopup(
+                  false,
+                  `No date columns found in this file. Each rainfall column heading must be in the format ${this.excelDateColumnFormat}.`
+                );
+                this.clearRainfallFileInput();
+                this.isUploading = false;
+                return;
+              }
 
               // Future dates can never have real rainfall data — reject the
               // whole upload instead of silently dropping the column.

@@ -192,4 +192,9 @@ export class FetchStationDataService {
   fetchRevisionEventsForDate(date: string): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionEventsForDate`, { date });
   }
+
+  /** Flat station-level rows for the whole window — backs the Investigation page downloads. */
+  fetchRevisionLogExport(params: { days?: number; date?: string }): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionLogExport`, params);
+  }
 }

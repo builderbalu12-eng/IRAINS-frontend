@@ -26,6 +26,10 @@ export class SpatialTableMapsComponent implements OnChanges {
   @Input() tableData: any[] = [];
   private map!: L.Map;
   private geojsonLayer!: L.GeoJSON;
+  // Name / reported-of-total / percentage labels drawn on each feature. Kept in
+  // their own group so a redraw can clear them in one call — added straight to
+  // the map they would accumulate on every tableData change.
+  private labelLayer: L.LayerGroup = L.layerGroup();
 
   private initialZoom = 4.8955;
   private defaultFontSizeonMap = 8;
@@ -51,8 +55,9 @@ export class SpatialTableMapsComponent implements OnChanges {
     if (!this.isFullscreen()) {
       this.calculateInitialZoom();
       if (this.map) {
-        this.map.setZoom(this.initialZoom);
-        this.map.setView([24, 81.9629], this.initialZoom);
+        // Re-fit rather than restoring a fixed centre/zoom: the card's size
+        // changed, so the previous "fit" no longer fills it.
+        this.fitToData();
       }
     }
   }
@@ -116,7 +121,11 @@ export class SpatialTableMapsComponent implements OnChanges {
       center: [22.5, 81.9629], // India center
       zoom: this.initialZoom, // use your initial zoom
       scrollWheelZoom: false,
-      zoomSnap: 0.9,
+      // 0.1, not 0.9: zoomSnap rounds any computed zoom DOWN to a multiple of
+      // itself, so at 0.9 a best-fit of ~5.3 snapped all the way to 4.5 and the
+      // map sat small inside its card. A fine step lets fitBounds() land on the
+      // zoom that actually fills the container.
+      zoomSnap: 0.1,
       zoomDelta: 0.1,
       touchZoom: false,
       dragging: false,
@@ -158,14 +167,14 @@ export class SpatialTableMapsComponent implements OnChanges {
   };
 
   resetMap(): void {
-    this.map.setView([24, 80.9629], this.initialZoom + 0.3);
+    this.fitToData();
   }
   downloadMappdf() {
     this.downloadMapImage(true);
   }
 
   resetMapSmallScreen(): void {
-    this.map.setView([24, 81.9629], this.initialZoom);
+    this.fitToData();
   }
 
   generatePDF(imageDataUrl: string) {
@@ -452,6 +461,10 @@ export class SpatialTableMapsComponent implements OnChanges {
         : "assets/geojson/INDIA_SUB_DIVISION.json";
 
     this.http.get<any>(geoJsonFile).subscribe((data) => {
+      // Clear previous labels before the features are rebuilt below, otherwise
+      // each redraw stacks a fresh set on top of the old ones.
+      this.labelLayer.clearLayers();
+
       if (this.geojsonLayer) {
         this.map.removeLayer(this.geojsonLayer);
       }
@@ -471,14 +484,7 @@ export class SpatialTableMapsComponent implements OnChanges {
           }
 
           // ✅ Matching logic
-          const matched = this.tableData.find((row) =>
-            this.mapType === "state"
-              ? row.state_name?.toLowerCase().trim() ===
-                nameField?.toLowerCase().trim()
-              : row.id === codeField ||
-                row.subdivision_name?.toLowerCase().trim() ===
-                  nameField?.toLowerCase().trim()
-          );
+          const matched = this.matchRow(nameField, codeField);
 
           const category = matched?.category || "Unknown";
 
@@ -502,14 +508,7 @@ export class SpatialTableMapsComponent implements OnChanges {
           }
 
           // ✅ Same matching logic for popup
-          const matched = this.tableData.find((row) =>
-            this.mapType === "state"
-              ? row.state_name?.toLowerCase().trim() ===
-                nameField?.toLowerCase().trim()
-              : row.id === codeField ||
-                row.subdivision_name?.toLowerCase().trim() ===
-                  nameField?.toLowerCase().trim()
-          );
+          const matched = this.matchRow(nameField, codeField);
 
           const category = matched?.category || "N/A";
           const stations = matched?.total_stations ?? "-";
@@ -523,12 +522,154 @@ export class SpatialTableMapsComponent implements OnChanges {
              Percentage: ${perc}%<br/>
              <strong>Category: ${category}</strong>`
           );
+
+          // On-map label: name, reported/total stations, and percentage, so the
+          // headline numbers are readable without hovering each feature.
+          // Centre comes from the drawn geometry's bounds rather than a lat/lng
+          // property, so it works for both the state and subdivision files.
+          if (matched) {
+            const center = (layer as any).getBounds?.().getCenter?.();
+            if (center) {
+              const label = L.marker(center, {
+                interactive: false, // never swallow clicks meant for the polygon
+                icon: L.divIcon({
+                  className: "spatial-map-label",
+                  html: `
+                    <div class="sml-box" style="font-size:${this.defaultFontSizeonMap}px">
+                      <div class="sml-name">${nameField ?? ""}</div>
+                      <div class="sml-nums">${reported}/${stations}</div>
+                      <div class="sml-pct">${perc}%</div>
+                    </div>`,
+                  iconSize: [90, 34],
+                }),
+              });
+              this.labelLayer.addLayer(label);
+            }
+          }
         },
       });
 
       this.geojsonLayer.addTo(this.map);
-      // this.map.fitBounds(this.geojsonLayer.getBounds());
-      this.map.setView([22, 80.5], this.initialZoom);
+      this.labelLayer.addTo(this.map); // labels sit above the polygons
+      this.fitToData();
+    });
+  }
+
+  /**
+   * Zoom/pan so the drawn geometry fills the card, instead of a hardcoded
+   * centre + zoom. A fixed level can't know the card's size, so the map sat
+   * small with wide empty margins; fitBounds measures the real container.
+   * invalidateSize() first because this runs inside an async HTTP callback —
+   * if the panel was still being laid out, Leaflet may have cached a stale
+   * container size and would then fit to the wrong dimensions.
+   */
+  /**
+   * Canonical form of a subdivision/state name, used to join the GeoJSON to the
+   * API rows.
+   *
+   * These two names come from unrelated sources — the map from
+   * assets/geojson/INDIA_SUB_DIVISION.json (`subdivisio`), the table from the
+   * DB column normal_district_details.subdiv_name — and they disagree on
+   * punctuation and spelling. Exact comparison therefore left valid rows
+   * unmatched and painted those regions grey as "No Data", e.g.:
+   *
+   *   GeoJSON "DELHI, HARYANA AND CHANDIGARH"  vs  API "DELHI AND HARYANA AND CHANDIGARH"
+   *   GeoJSON "TAMILNADU, PUDUCHERRY & KARAIKAL" vs API "... AND KARAIKAL"
+   *   GeoJSON "RAYALSEEMA"                      vs  API "RAYALASEEMA"
+   *
+   * So: apply known spelling aliases, then reduce to a sorted set of
+   * significant words, dropping the connectors (AND / & / commas) that the two
+   * sources use interchangeably. Sorting makes word ORDER irrelevant too.
+   */
+  private canonicalName(value: string | undefined | null): string {
+    if (!value) {
+      return "";
+    }
+    let s = value.toUpperCase().trim();
+
+    // Spelling variants that word-normalisation alone can't reconcile.
+    const aliases: Record<string, string> = {
+      RAYALSEEMA: "RAYALASEEMA",
+      TAMILNADU: "TAMIL NADU",
+      ORISSA: "ODISHA",
+      PONDICHERRY: "PUDUCHERRY",
+    };
+    for (const [from, to] of Object.entries(aliases)) {
+      s = s.replace(new RegExp(`\\b${from}\\b`, "g"), to);
+    }
+
+    return s
+      .replace(/[&,.\-/()]/g, " ") // punctuation the sources differ on
+      .split(/\s+/)
+      .filter((w) => w && w !== "AND")
+      .sort()
+      .join(" ");
+  }
+
+  /**
+   * Finds the API row for a GeoJSON feature.
+   *
+   * Code first: subdivision_code (added to the spatial API from
+   * normal_district_details.subdiv_code) lines up 1:1 with the GeoJSON's
+   * SubDiv_Cod, so it is a stable join key that can't be broken by spelling.
+   * Compared as strings because the GeoJSON stores codes as text ("101") while
+   * the DB returns them as numbers.
+   *
+   * The old `row.id === codeField` test could never work: `id` is MIN(n.id), an
+   * arbitrary primary key, not the subdivision code.
+   *
+   * Name matching stays as a fallback for rows with no code (and for the state
+   * map, whose GeoJSON has no equivalent code field).
+   */
+  private matchRow(nameField: string, codeField: number | string): any {
+    const key = this.canonicalName(nameField);
+    const code = codeField != null ? String(codeField).trim() : "";
+
+    if (this.mapType !== "state" && code) {
+      const byCode = this.tableData.find(
+        (row) =>
+          row.subdivision_code != null &&
+          String(row.subdivision_code).trim() === code
+      );
+      if (byCode) {
+        return byCode;
+      }
+    }
+
+    return this.tableData.find((row) =>
+      this.mapType === "state"
+        ? this.canonicalName(row.state_name) === key
+        : this.canonicalName(row.subdivision_name) === key
+    );
+  }
+
+  private fitToData(): void {
+    if (!this.map || !this.geojsonLayer) {
+      return;
+    }
+    const bounds = this.geojsonLayer.getBounds();
+    if (!bounds.isValid()) {
+      return;
+    }
+    this.map.invalidateSize();
+
+    // ── TUNE HERE ──────────────────────────────────────────────
+    // Asymmetric, not a single `padding`, because the IMD heading block and
+    // the category legend are overlays sitting INSIDE the map card. An even
+    // padding centres the geometry behind them, so the north of the map ran
+    // under the title/date text and the south ran under the legend.
+    // Reserving that space instead zooms out slightly and drops the map into
+    // the clear area between them.
+    //   TOP    — clears the IMD logo + title + date lines
+    //   BOTTOM — clears the category legend strip
+    //   SIDE   — small breathing room left/right
+    const TOP = 165;
+    const BOTTOM = 70;
+    const SIDE = 12;
+
+    this.map.fitBounds(bounds, {
+      paddingTopLeft: [SIDE, TOP],
+      paddingBottomRight: [SIDE, BOTTOM],
     });
   }
 

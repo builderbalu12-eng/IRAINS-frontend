@@ -1,0 +1,95 @@
+<div class="rmu-sheet-scaler" [style.height.px]="sheetHeight * scale">
+  <div
+    #sheet
+    class="rmu-sheet"
+    [style.transform]="'scale(' + scale + ')'"
+  >
+      <div class="rmu-page">
+        <!-- header, as laid out by Template/template.jpg -->
+        <img
+          class="rmu-imd-logo"
+          src="assets/images/IMDlogo_Ipart-iris.png"
+          alt="India Meteorological Department"
+        />
+        <div class="rmu-org rmu-org-left-hi">भारत मौसम विज्ञान विभाग</div>
+        <div class="rmu-org rmu-org-left-en">INDIA METEOROLOGICAL DEPARTMENT</div>
+        <div class="rmu-org rmu-org-right-hi">
+          जल मौसम विज्ञान प्रभाग, नई दिल्ली
+        </div>
+        <div class="rmu-org rmu-org-right-en">HYDROMET DIVISION, NEW DELHI</div>
+        <img
+          class="rmu-150-logo"
+          src="assets/images/IMD150(BGR).png"
+          alt="150 years of service to the nation"
+        />
+
+        <div class="rmu-compass">
+          <div class="rmu-compass-n">N</div>
+          <!-- The template's rose: four fat kite points in a 58 x 35 box,
+               each split into a light and a dark half at the centre -->
+          <svg viewBox="0 0 58 35">
+            <g stroke="#000000" stroke-width="0.35">
+              <g fill="#ffffff">
+                <polygon points="29,17.5 22.85,13.79 29,0" />
+                <polygon points="29,17.5 35.15,13.79 58,17.5" />
+                <polygon points="29,17.5 35.15,21.21 29,35" />
+                <polygon points="29,17.5 22.85,21.21 0,17.5" />
+              </g>
+              <g fill="#000000">
+                <polygon points="29,17.5 29,0 35.15,13.79" />
+                <polygon points="29,17.5 58,17.5 35.15,21.21" />
+                <polygon points="29,17.5 29,35 22.85,21.21" />
+                <polygon points="29,17.5 0,17.5 22.85,13.79" />
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <div class="rmu-title">{{ title }}</div>
+        <div class="rmu-period">{{ periodLabel }}</div>
+
+        <!-- the framed map -->
+        <div class="rmu-map-box">
+          <svg [attr.viewBox]="viewBox" preserveAspectRatio="xMidYMid meet">
+            <g>
+              <path
+                *ngFor="let s of shapes"
+                [attr.d]="s.path"
+                [attr.fill]="s.fill"
+              ></path>
+            </g>
+            <g>
+              <text
+                *ngFor="let s of shapes"
+                class="rmu-label"
+                [attr.x]="s.labelX"
+                [attr.y]="s.labelY"
+                [attr.font-size]="labelFont"
+                dominant-baseline="central"
+              >
+                <!-- prettier-ignore -->
+                <tspan [attr.x]="s.labelX" [attr.dy]="-labelLine / 2">{{ s.name }}</tspan>
+                <!-- prettier-ignore -->
+                <tspan [attr.x]="s.labelX" [attr.dy]="labelLine">{{ s.departure }}</tspan>
+              </text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- legend -->
+        <div class="rmu-legend-label">Legend</div>
+        <div class="rmu-legend">
+          <div class="rmu-legend-item" *ngFor="let item of legendItems">
+            <div class="rmu-swatch" [style.background]="item.color"></div>
+            <div class="rmu-legend-text">{{ item.text }}</div>
+          </div>
+        </div>
+
+        <div class="rmu-credit">
+          * Developed &amp; Prepared by RMU, Hydromet Division, IMD, New Delhi
+        </div>
+      </div>
+
+    <div class="rmu-loader" *ngIf="loading">Loading...</div>
+  </div>
+</div>

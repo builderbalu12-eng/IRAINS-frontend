@@ -47,6 +47,24 @@ export class StateRainfallMapCummulativeComponent {
     fromDate: any = this.formatDate(new Date());
     toDate: any = this.formatDate(new Date());
     today: any;
+
+    // ==== RIGHT PANEL START =====================================
+    // Right-panel statistics (mirrors /daily-state-rf-distribution's
+    // table, over the fromDate/toDate range picker — NOT selectedWeek,
+    // which is unused dead UI here; setFromAndToDate() below already
+    // ignores it and calls fetchBackend()/dataService with fromDate/
+    // toDate directly), rendered by the shared
+    // <app-rainfall-stats-panel>. To revert to a map-only page: delete
+    // these fields, loadStats() below, and the two `this.loadStats();`
+    // call sites (search this file for "this.loadStats()") — plus the
+    // matching HTML "RIGHT PANEL" block.
+    statsLoading: boolean = false;
+    showStatsTable: boolean = false;
+    tableRows: any[][] = [];
+    dayLabel: string = '';
+    periodLabel: string = '';
+    categoryStats: { day: Record<string, { count: number; area: number }>; period: Record<string, { count: number; area: number }> } | null = null;
+    // ==== RIGHT PANEL fields end ====
     selectedMode: any;
 
     formatDate(date: Date): string {
@@ -154,6 +172,7 @@ export class StateRainfallMapCummulativeComponent {
           this.EndDate = `${year}-${mon}-${dd}`;
         }
         this.fetchBackend();
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
       });
     }
   
@@ -247,6 +266,26 @@ export class StateRainfallMapCummulativeComponent {
     // };
   }
   
+    // ==== RIGHT PANEL: loadStats ====
+    async loadStats() {
+      this.statsLoading = true;
+      this.showStatsTable = false;
+      try {
+        await this.downloadStatistcs.updateandViewpdfFromDataEntryCustom(this.fromDate, this.toDate);
+        const svc = this.downloadStatistcs;
+        const convert = svc.convertToIndianDateFormat;
+        this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+        this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+        this.tableRows = svc.rows;
+        this.categoryStats = svc.buildCategoryStats();
+        this.showStatsTable = this.tableRows.length > 0;
+      } catch (error) {
+        console.error('Error loading state statistics panel:', error);
+      }
+      this.statsLoading = false;
+    }
+    // ==== RIGHT PANEL: loadStats end ====
+
     filter = (node: HTMLElement) => {
       const exclusionClasses = [
         "download",
@@ -436,6 +475,7 @@ export class StateRainfallMapCummulativeComponent {
       };
       this.calculateInitialZoom()
       this.fetchBackend()
+      this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
       // this.dataService.setfromAndToDate(JSON.stringify(data));
     }
   

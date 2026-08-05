@@ -78,7 +78,23 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
     private geoJsonData: any; // Store the full GeoJSON data
     filterBlocks: any[]|undefined;
     selectedBlockData: any;
-  
+
+    // ==== RIGHT PANEL START =====================================
+    // Right-panel statistics (block-level table, filtered by the same
+    // region/MC/RMC/state/district/block dropdowns as the map), rendered
+    // by the shared <app-rainfall-stats-panel>. No category-breakdown
+    // sub-table (buildCategoryStats() N/A here — block has no such
+    // category service, same as district-level pages). To revert to a
+    // map-only page: delete these fields, loadStats() below, and the two
+    // `this.loadStats();` call sites (search this file for
+    // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+    statsLoading: boolean = false;
+    showStatsTable: boolean = false;
+    tableRows: any[][] = [];
+    dayLabel: string = '';
+    periodLabel: string = '';
+    // ==== RIGHT PANEL fields end ====
+
     formatDate(date: Date): string {
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero based
@@ -206,6 +222,7 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
               this.EndDate = `${year}-${mon}-${dd}`;
             }
             this.fetchBackend();
+            this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
           });
         };
 
@@ -528,6 +545,35 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
         }
       }
     
+      // ==== RIGHT PANEL: loadStats ====
+      async loadStats() {
+        this.statsLoading = true;
+        this.showStatsTable = false;
+        try {
+          const filters: any = {
+            region_code: this.selectedRegion?.map((r: any) => r.toString()) || [],
+            centre: [
+              ...(this.selectedMC?.map((mc: any) => `${mc.centre_type} ${mc.centre_name}`) || []),
+              ...(this.selectedRMC?.map((rmc: any) => `${rmc.centre_type} ${rmc.centre_name}`) || [])
+            ],
+            state_code: this.selectedState?.map((s: any) => s.state_code.toString()) || [],
+            district_code: this.selectedDistrictData?.map((d: any) => d.district_code.toString()) || [],
+            block_code: this.selectedBlockData?.map((b: any) => b.block_code.toString()) || []
+          };
+          await this.downloadPdf$.updateandViewpdfFromDataEntryCustom(this.fromDate, this.toDate, filters);
+          const svc = this.downloadPdf$;
+          const convert = svc.convertToIndianDateFormat;
+          this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+          this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+          this.tableRows = svc.rows;
+          this.showStatsTable = this.tableRows.length > 0;
+        } catch (error) {
+          console.error('Error loading block statistics panel:', error);
+        }
+        this.statsLoading = false;
+      }
+      // ==== RIGHT PANEL: loadStats end ====
+
       filter = (node: HTMLElement) => {
         const exclusionClasses = [
           "download",
@@ -879,6 +925,7 @@ export class ActualBlockRainfallMapComponent implements AfterViewInit{
         this.formatteddate = this.fromDate.split("-").reverse().join("-")
         this.calculateInitialZoom()
         this.fetchBackend()
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
         // this.dataService.setfromAndToDate(JSON.stringify(data));
       }
     

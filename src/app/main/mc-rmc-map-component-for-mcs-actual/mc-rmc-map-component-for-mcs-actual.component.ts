@@ -1,8 +1,10 @@
+import { skip } from 'rxjs';
 import { Component, Input, Renderer2, ElementRef, AfterViewInit, HostListener } from '@angular/core';
 import * as L from 'leaflet';
 import { HttpClient } from '@angular/common/http';
 import * as htmlToImage from 'html-to-image';
 import { DataService } from 'src/app/data.service';
+import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
 import { DistrictService } from 'src/app/services/district/district.service';
 import { DownloadPdf } from 'src/app/services/district/pdfdownload.service';
 import jsPDF from 'jspdf';
@@ -10,6 +12,7 @@ import jsPDF from 'jspdf';
 import { MCRMCsService } from 'src/app/services/MC-RMCs/mcRmc.service';
 import { Constants } from 'src/app/services/constants';
 import { MCRMCDownloadStatistics } from 'src/app/services/MC-RMCs/mcRMCpdf.service';
+import { MapDataScheduleService } from 'src/app/services/mapDataSchedule.service';
 
 @Component({
   selector: 'app-mc-rmc-map-component-for-mcs-actual',
@@ -18,7 +21,7 @@ import { MCRMCDownloadStatistics } from 'src/app/services/MC-RMCs/mcRMCpdf.servi
 })
 export class McRmcMapComponentForMcsActualComponent {
 
-
+  private modeSub?: any;
   districtdatacum: any[] = [];
   StartDate: any;
   EndDate: any;
@@ -30,6 +33,22 @@ export class McRmcMapComponentForMcsActualComponent {
   displayMcName: any;
   mcDistricts = new Set();
 
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics (MC/RMC district-level table, via
+  // MCRMCDownloadStatistics' district-filtered queries), rendered by the
+  // shared <app-rainfall-stats-panel>. Shown only for MC users since this
+  // component is only rendered on /all-maps when mcorhq === 'mc'. No
+  // category-breakdown sub-table (buildCategoryStats() N/A here). To
+  // revert to a map-only page: delete these fields, loadStats() below,
+  // and the `this.loadStats();` call site (search this file for
+  // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block and
+  // the CSS "RIGHT PANEL rules" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  // ==== RIGHT PANEL fields end ====
 
   async downloadMapData() {
     this.isLoading = true; 
@@ -91,6 +110,7 @@ export class McRmcMapComponentForMcsActualComponent {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     private district : DistrictService,
@@ -98,35 +118,62 @@ export class McRmcMapComponentForMcsActualComponent {
     // private countryService: CountryService,
     private mcRMCService : MCRMCsService,
     private constants : Constants,
+    private mapDataScheduleService: MapDataScheduleService,
   ) {
 
-    const currentDate = new Date();
-    const dd = String(currentDate.getDate()).padStart(2, '0');
-    const mon = String(currentDate.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
-    const year = String(currentDate.getFullYear());
-    this.formatteddate = `${dd}-${mon}-${year}`;
-
-
+    // Read first: initWithEffectiveDate() below needs the role off this to
+    // ask the schedule service what date this user is allowed to see.
     let loggedInUser: any = localStorage.getItem("isAuthorised");
     this.loggedInUserObject = JSON.parse(loggedInUser);
 
-    this.dataService.fromAndToDate$.subscribe((value) => {
-      if (value) {
-        let fromAndToDates = JSON.parse(value);
-        this.StartDate = fromAndToDates.fromDate;
-        this.EndDate = fromAndToDates.toDate;
-        // console.log(this.previousWeekWeeklyStartDate, this.previousWeekWeeklyEndDate);
-      }
-      else {
-      this.StartDate = `${year}-${mon}-${dd}`;
-      this.EndDate = `${year}-${mon}-${dd}`;
-      }
-      this.calculateInitialZoom();
-      
-      this.fetchBackend();
-      this.resetMap()
+    // Effective latest date: today if this role's data is published,
+    // otherwise yesterday (today's data held back until published).
+    const initWithEffectiveDate = (effectiveDate: Date) => {
+      const dd = String(effectiveDate.getDate()).padStart(2, '0');
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+      const year = String(effectiveDate.getFullYear());
+      this.formatteddate = `${dd}-${mon}-${year}`;
 
-    });
+      this.dataService.fromAndToDate$.subscribe((value) => {
+        if (value) {
+          let fromAndToDates = JSON.parse(value);
+          this.StartDate = fromAndToDates.fromDate;
+          this.EndDate = fromAndToDates.toDate;
+          // console.log(this.previousWeekWeeklyStartDate, this.previousWeekWeeklyEndDate);
+        }
+        else {
+        // If no value is emitted, use the effective latest date as the default
+        this.StartDate = `${year}-${mon}-${dd}`;
+        this.EndDate = `${year}-${mon}-${dd}`;
+        }
+        // No calculateInitialZoom() here on purpose. ngAfterViewInit ->
+        // onWindowResize() already set this MC's own zoom, and this callback
+        // runs after it, so recalculating would overwrite that with the
+        // generic value and leave the map at the wrong zoom.
+        this.fetchBackend();
+
+        // Frame the map on load exactly as clicking "Reset Position" does.
+        // The button uses resetMapSmallScreen() (plain initialZoom); resetMap()
+        // adds +1, which is the fullscreen framing and over-zooms normal view.
+        // Guarded: on the synchronous no-role path the map isn't built yet and
+        // selectedMcName is still '' (getCordinates() throws on unknown names).
+        if (this.selectedMcName) {
+          this.resetMapSmallScreen();
+        }
+
+      });
+    };
+
+    const role = this.loggedInUserObject?.data?.[0]?.mcorhq;
+
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+        error: () => initWithEffectiveDate(new Date())
+      });
+    } else {
+      initWithEffectiveDate(new Date());
+    }
 
   }
   resetMapSmallScreen(): void {
@@ -145,7 +192,7 @@ export class McRmcMapComponentForMcsActualComponent {
     startDate: this.StartDate,
     endDate: this.EndDate,
   };
-    this.district.fetchData(data).subscribe(res => {
+    (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe(res => {
       this.districtdatacum = res.data;
       console.log('fbdudusdubsudbsud', res.data);
 
@@ -166,7 +213,36 @@ export class McRmcMapComponentForMcsActualComponent {
   
   }
 
-  filter = (node: HTMLElement) => {
+  // ==== RIGHT PANEL: loadStats ====
+private statsInFlight = false;
+
+async loadStats() {
+  // loadGeoJSON() runs several times per page load (constructor -> fetchBackend,
+  // ngAfterViewInit, onSelectChange), so without this the same fetch stacks up.
+  if (this.mcDistricts.size === 0 || this.statsInFlight) {
+    return;
+  }
+  this.statsInFlight = true;
+  this.statsLoading = true;
+  this.showStatsTable = false;
+  try {
+    const mcDistrictsArray = Array.from(this.mcDistricts);
+    await this.downloadPdf$.updateandViewpdfFromDataEntry(mcDistrictsArray);
+    const svc = this.downloadPdf$;
+    const convert = svc.convertToIndianDateFormat;
+    this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+    this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+    this.tableRows = svc.rows;
+    this.showStatsTable = this.tableRows.length > 0;
+  } catch (error) {
+    console.error('Error loading MC/RMC district statistics panel:', error);
+  }
+  this.statsLoading = false;
+  this.statsInFlight = false;
+}
+// ==== RIGHT PANEL: loadStats end ====
+
+filter = (node: HTMLElement) => {
     const exclusionClasses = ['download', 'downloadpdf', 'leaflet-control-zoom', 'leaflet-control-fullscreen', 'leaflet-control-zoomin', 'download-buttons', 'DownloadMaps', 'ResetMap'];
     return !exclusionClasses.some((classname) => node.classList?.contains(classname));
 };
@@ -327,11 +403,18 @@ async downloadMapImage(downloadpdf : boolean) {
 
 
 
+  ngOnDestroy(): void {
+    this.modeSub?.unsubscribe();
+  }
+
   ngOnInit(){
     this.selectedMcName = this.loggedInUserObject.data[0].name
     this.displayMcName = this.selectedMcName.toUpperCase()
     this.listOfmsRMCs = [this.selectedMcName, ...this.listOfmsRMCs.filter((item:any) => item !== this.selectedMcName)];
     this.initMap();
+    // skip(1) so the current value doesn't double-fetch on load — the
+    // constructor already kicks off the first fetchBackend().
+    this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
 
   }
 
@@ -507,6 +590,8 @@ async downloadMapImage(downloadpdf : boolean) {
       }).addTo(this.map);
 
       this.districtLayer = districtLayer
+
+      this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
 
     });
 

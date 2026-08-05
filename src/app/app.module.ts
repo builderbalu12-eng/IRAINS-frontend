@@ -117,6 +117,11 @@ import { DistrictEastAndNorthEastRainfallMapCummulativeComponent } from "./main/
 import { DistrictSouthPeninsularRainfallMapCummulativeComponent } from "./main/rainfallMapsNav/cummulativeMaps/districtMaps/district-south-peninsular-rainfall-map-cummulative/district-south-peninsular-rainfall-map-cummulative.component";
 import { DistrictCentralIndiaRainfallMapCummulativeComponent } from "./main/rainfallMapsNav/cummulativeMaps/districtMaps/district-central-india-rainfall-map-cummulative/district-central-india-rainfall-map-cummulative.component";
 import { AllStatesMapComponent } from "./main/all-states-map/all-states-map.component";
+import { RmuMapComponent } from "./main/rmu-map-products/rmu-map/rmu-map.component";
+import { RmuStatewiseMapComponent } from "./main/rmu-map-products/rmu-statewise-map/rmu-statewise-map.component";
+import { AllStatisticsComponent } from "./main/all-statistics/all-statistics.component";
+import { RmuSheetComponent } from "./main/rmu-map-products/rmu-sheet/rmu-sheet.component";
+import { RmuStatewiseSheetComponent } from "./main/rmu-map-products/rmu-statewise-sheet/rmu-statewise-sheet.component";
 import { RainfallDeparturesSectionComponent } from "./main/rainfall-departures-section/rainfall-departures-section.component";
 import { NormalRainfallComponent } from "./main/Normal-Rainfall-Map/normal-rainfall/normal-rainfall.component";
 import { NormalMapStateComponent } from "./main/normal-map-state/normal-map-state.component";
@@ -131,6 +136,7 @@ import { DistributionDistrictStatesDailyComponent } from "./main/distribution-di
 import { RainfallmapMcRmcComponent } from "./main/RainfallMaps-Mc-RMC/rainfallmap-mc-rmc/rainfallmap-mc-rmc.component";
 import { RainfallmapSubdivMcRmcComponent } from "./main/RainfallMaps-Mc-RMC/rainfallmap-subdiv-mc-rmc/rainfallmap-subdiv-mc-rmc.component";
 import { RainfallmapRegionMcRmcComponent } from "./main/RainfallMaps-Mc-RMC/rainfallmap-region-mc-rmc/rainfallmap-region-mc-rmc.component";
+import { RainfallStatsPanelComponent } from "./shared/rainfall-stats-panel/rainfall-stats-panel.component";
 import { StateRainfallMapDailyActualComponent } from "./main/rainfall-actual-maps/daily/state-rainfall-map-daily-actual/state-rainfall-map-daily-actual.component";
 import { SubdivisionRainfallMapDailyActualComponent } from "./main/rainfall-actual-maps/daily/subdivision-rainfall-map-daily-actual/subdivision-rainfall-map-daily-actual.component";
 import { HomogenousRainfallMapDailyActualComponent } from "./main/rainfall-actual-maps/daily/homogenous-rainfall-map-daily-actual/homogenous-rainfall-map-daily-actual.component";
@@ -314,6 +320,7 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     RainfallmapMcRmcComponent,
     RainfallmapSubdivMcRmcComponent,
     RainfallmapRegionMcRmcComponent,
+    RainfallStatsPanelComponent,
     StateRainfallMapDailyActualComponent,
     SubdivisionRainfallMapDailyActualComponent,
     HomogenousRainfallMapDailyActualComponent,
@@ -356,6 +363,11 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     ComparisonComponent,
     SpatialTableComponent,
     SpatialTableMapsComponent,
+    RmuMapComponent,
+    RmuStatewiseMapComponent,
+    AllStatisticsComponent,
+    RmuSheetComponent,
+    RmuStatewiseSheetComponent,
     BlockRainfallMapActualOrgawsMainPageComponent,
     MainChartsComponent,
     AdminPanelComponent,

@@ -36,6 +36,21 @@ export class EastNorthEastRegionComponent implements AfterViewInit{
     fromDate: any = this.formatDate(new Date()) ;
     toDate: any = this.formatDate(new Date());
     selectedMode: any;
+
+    // ==== RIGHT PANEL START =====================================
+    // Right-panel statistics (district-level table for this region only,
+    // via DownloadPdfRegionDistrict's region-scoped queries), rendered by
+    // the shared <app-rainfall-stats-panel>. No category-breakdown
+    // sub-table (buildCategoryStats() N/A for district-level data). To
+    // revert to a map-only page: delete these fields, loadStats() below,
+    // and the two `this.loadStats();` call sites (search this file for
+    // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+    statsLoading: boolean = false;
+    showStatsTable: boolean = false;
+    tableRows: any[][] = [];
+    dayLabel: string = '';
+    periodLabel: string = '';
+    // ==== RIGHT PANEL fields end ====
   
     formatDate(date: Date): string {
       const day = String(date.getDate()).padStart(2, '0');
@@ -150,6 +165,7 @@ export class EastNorthEastRegionComponent implements AfterViewInit{
             this.EndDate = `${year}-${mon}-${dd}`;
           }
           this.fetchBackend();
+          this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
         });
       };
 
@@ -237,6 +253,25 @@ export class EastNorthEastRegionComponent implements AfterViewInit{
       }
   }
   
+    // ==== RIGHT PANEL: loadStats ====
+    async loadStats() {
+      this.statsLoading = true;
+      this.showStatsTable = false;
+      try {
+        await this.downloadPdf$.updateandViewpdfFromDataEntryCustom("2", this.fromDate, this.fromDate);
+        const svc = this.downloadPdf$;
+        const convert = svc.convertToIndianDateFormat;
+        this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+        this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+        this.tableRows = svc.rows;
+        this.showStatsTable = this.tableRows.length > 0;
+      } catch (error) {
+        console.error('Error loading district statistics panel:', error);
+      }
+      this.statsLoading = false;
+    }
+    // ==== RIGHT PANEL: loadStats end ====
+
     filter = (node: HTMLElement) => {
       const exclusionClasses = [
         "download",
@@ -426,6 +461,7 @@ export class EastNorthEastRegionComponent implements AfterViewInit{
       this.formatteddate = this.fromDate.split("-").reverse().join("-")
       this.calculateInitialZoom()
       this.fetchBackend()
+      this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
     }
   
     // validateDateRange() {

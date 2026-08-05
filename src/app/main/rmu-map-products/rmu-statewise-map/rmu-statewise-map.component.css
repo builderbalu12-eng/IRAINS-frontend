@@ -1,0 +1,6 @@
+/* Page chrome only — the sheet lives in rmu-statewise-sheet.component.css */
+
+.rmu-toolbar {
+  max-width: 1200px;
+  margin: 0 auto 12px auto;
+}

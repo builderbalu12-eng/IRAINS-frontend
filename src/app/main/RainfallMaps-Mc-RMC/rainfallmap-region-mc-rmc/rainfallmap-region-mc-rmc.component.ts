@@ -24,6 +24,9 @@ import { Constants } from "src/app/services/constants";
 import { getDistrictService } from "src/app/services/district/getdistrict.service";
 import { RegionDownloadStatistics } from "src/app/services/region/downloadStatisticsRegion.service";
 import { DownloadPdfRegionDistrict } from "src/app/services/district/regions/districtRegionsDownload.service";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
+import { skip } from "rxjs";
 
 @Component({
   selector: 'app-rainfallmap-region-mc-rmc',
@@ -48,6 +51,48 @@ export class RainfallmapRegionMcRmcComponent {
   selectedMode: any;
   current_region_name: any;
   region_code: any;
+
+  private modeSub?: any;
+
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics for this MC's region, via DownloadPdfRegionDistrict's
+  // region-scoped queries, rendered by the shared <app-rainfall-stats-panel>.
+  // No category-breakdown sub-table. To revert to a map-only page: delete these
+  // fields, loadStats() below and its call site (search "this.loadStats()") —
+  // plus the HTML "RIGHT PANEL" block and the CSS "RIGHT PANEL rules" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  private statsInFlight = false;
+
+  async loadStats() {
+    // region_code is only known once loadGeoJSON() has read it off a feature;
+    // the in-flight flag stops overlapping calls stacking up duplicate fetches.
+    if (!this.region_code || this.statsInFlight) {
+      return;
+    }
+    this.statsInFlight = true;
+    this.statsLoading = true;
+    this.showStatsTable = false;
+    try {
+      await this.downloadPdf$.updateandViewpdfFromDataEntryCustom(
+        this.region_code, this.fromDate, this.toDate
+      );
+      const svc = this.downloadPdf$;
+      const convert = svc.convertToIndianDateFormat;
+      this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+      this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+      this.tableRows = svc.rows;
+      this.showStatsTable = this.tableRows.length > 0;
+    } catch (error) {
+      console.error('Error loading MC region statistics panel:', error);
+    }
+    this.statsLoading = false;
+    this.statsInFlight = false;
+  }
+  // ==== RIGHT PANEL END ====
   
     async downloadMapData() {
       this.isLoading = true;
@@ -112,15 +157,10 @@ export class RainfallmapRegionMcRmcComponent {
       private mcRMCService: MCRMCsServiceRegion,
       private getAllDistricts : getDistrictService,
       private router: Router, // Inject Router
-      private constants : Constants
+      private constants : Constants,
+      private calcMode: CalculationsModeService,
+      private mapDataScheduleService: MapDataScheduleService
     ) {
-      // Current date formatting
-      const currentDate = new Date();
-      const dd = String(currentDate.getDate()).padStart(2, "0");
-      const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-      const year = String(currentDate.getFullYear());
-      this.formatteddate = `${dd}-${mon}-${year}`;
-
       let selectedMode: any = localStorage.getItem("selectedMode");
       this.selectedMode = JSON.parse(selectedMode);
       console.log('this.selected mOde', this.selectedMode)
@@ -137,19 +177,48 @@ export class RainfallmapRegionMcRmcComponent {
           this.checkUrl(); // Call the method to check URL
         });
   
-      // Date subscription logic
-      this.dataService.fromAndToDate$.subscribe((value) => {
-        if (value) {
-          let fromAndToDates = JSON.parse(value);
-          this.StartDate = fromAndToDates.fromDate;
-          this.EndDate = fromAndToDates.toDate;
-        } else {
-          this.StartDate = `${year}-${mon}-${dd}`;
-          this.EndDate = `${year}-${mon}-${dd}`;
-        }
-        this.calculateInitialZoom();
-        this.fetchBackend();
-      });
+      // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+      // this.initialZoom immediately, so it can't wait on the async
+      // effective-date fetch below or the map builds at the fallback zoom.
+      this.calculateInitialZoom();
+
+      // Effective latest date: today if this role's data is published,
+      // otherwise yesterday (today's data held back until published).
+      const initWithEffectiveDate = (effectiveDate: Date) => {
+        const dd = String(effectiveDate.getDate()).padStart(2, "0");
+        const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+        const year = String(effectiveDate.getFullYear());
+        this.formatteddate = `${dd}-${mon}-${year}`;
+
+        // Drives the date pickers ([(ngModel)]="fromDate"/"toDate", [max]="today")
+        // and fetchBackend()'s payload, so seed them with the effective date.
+        this.today = `${year}-${mon}-${dd}`;
+        this.fromDate = `${year}-${mon}-${dd}`;
+        this.toDate = `${year}-${mon}-${dd}`;
+
+        // Date subscription logic
+        this.dataService.fromAndToDate$.subscribe((value) => {
+          if (value) {
+            let fromAndToDates = JSON.parse(value);
+            this.StartDate = fromAndToDates.fromDate;
+            this.EndDate = fromAndToDates.toDate;
+          } else {
+            this.StartDate = `${year}-${mon}-${dd}`;
+            this.EndDate = `${year}-${mon}-${dd}`;
+          }
+          this.fetchBackend();
+        });
+      };
+
+      const role = this.loggedInUserObject?.data?.[0]?.mcorhq;
+      if (role) {
+        this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+          next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+          error: () => initWithEffectiveDate(new Date())
+        });
+      } else {
+        initWithEffectiveDate(new Date());
+      }
     }
   
     private checkUrl() {
@@ -179,28 +248,38 @@ export class RainfallmapRegionMcRmcComponent {
         startDate: this.fromDate,
         endDate: this.toDate,
       };
-      this.getAllDistricts.fetchData().subscribe((res) => {
-        const data = res.data;
-        this.current_region_name = data.find((x: any) => {
-          console.log((x.centre_type + ' ' + x.centre_name).toLowerCase(), this.loggedInUserObject.data[0].name.toLowerCase());
-          return (x.centre_type + ' ' + x.centre_name).toLowerCase() == this.loggedInUserObject.data[0].name.toLowerCase();
-        }).region_name;
-      
- 
-        const url = this.mcRMCService.getUrlofParticukarMC(this.current_region_name);
-        this.loadGeoJSON(url);
-      });
+      // Draws + colours the map. Must run only AFTER districtdatacum is
+      // populated: loadGeoJSON() colours each feature via findMatchingData(),
+      // which reads districtdatacum. Firing this in parallel with the district
+      // fetch (as it used to) is a race — this call is small and usually wins,
+      // so the map would draw against an empty array and come out uncoloured.
+      const drawMap = () => {
+        this.getAllDistricts.fetchData().subscribe((res) => {
+          const data = res.data;
+          this.current_region_name = data.find((x: any) => {
+            console.log((x.centre_type + ' ' + x.centre_name).toLowerCase(), this.loggedInUserObject.data[0].name.toLowerCase());
+            return (x.centre_type + ' ' + x.centre_name).toLowerCase() == this.loggedInUserObject.data[0].name.toLowerCase();
+          }).region_name;
+
+
+          const url = this.mcRMCService.getUrlofParticukarMC(this.current_region_name);
+          this.loadGeoJSON(url);
+        });
+      };
+
       if(this.selectedMode.selectedMode == 'Unified'){
         this.district.fetchDataFtp(data).subscribe((res) => {
           this.districtdatacum = res.data;
           this.StartDate = this.convertToIndianDateFormat(this.StartDate);
           this.EndDate = this.convertToIndianDateFormat(this.EndDate);
+          drawMap();
         });
       }else{
-        this.district.fetchData(data).subscribe((res) => {
+        (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe((res) => {
           this.districtdatacum = res.data;
           this.StartDate = this.convertToIndianDateFormat(this.StartDate);
           this.EndDate = this.convertToIndianDateFormat(this.EndDate);
+          drawMap();
         });
       }
 
@@ -387,6 +466,13 @@ export class RainfallmapRegionMcRmcComponent {
 
       // this.onWindowResizer()
       this.initMap();
+      // skip(1) so the current value doesn't double-fetch on load — the
+      // constructor already kicks off the first fetchBackend().
+      this.modeSub = this.calcMode.useAws$.pipe(skip(1)).subscribe(() => this.fetchBackend());
+    }
+
+    ngOnDestroy(): void {
+      this.modeSub?.unsubscribe();
     }
   
     ngAfterViewInit(): void {
@@ -546,6 +632,7 @@ export class RainfallmapRegionMcRmcComponent {
         });
         this.districtLayer = layer
         this.map.addLayer(layer)
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
       });
   
   

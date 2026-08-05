@@ -66,51 +66,76 @@
   <!-- ── RIGHT: station data panel ────────────────────────── -->
   <div class="cm-right">
 
+    <!-- Station Data / Station Data Logs — top-level tabs -->
+    <div class="cm-tabs cm-right-tabs">
+      <button class="cm-tab" [class.active]="rightTab === 'data'" (click)="switchRightTab('data')">
+        <i class="bi bi-table me-1"></i>Station Data
+      </button>
+      <button class="cm-tab" [class.active]="rightTab === 'logs'" (click)="switchRightTab('logs')">
+        <i class="bi bi-clipboard-data me-1"></i>Station Data Logs
+      </button>
+    </div>
+
     <div class="cm-right-header">
-      <h5>
+      <h5 *ngIf="rightTab === 'data'">
         <i class="bi bi-table me-2"></i>Station Data
-        <span *ngIf="!useAws && !stationsLoading" class="cm-badge" style="margin-left:8px;font-size:0.8rem;">
-          {{ imdStations.length }}/{{ imdTotal }}
+        <span *ngIf="!useAws && !stationsLoading && isSingleDate" class="cm-badge" style="margin-left:8px;font-size:0.8rem;">
+          {{ imdStationCount }}/{{ imdTotal }}
         </span>
       </h5>
+      <h5 *ngIf="rightTab === 'logs'"><i class="bi bi-clipboard-data me-2"></i>Station Data Logs</h5>
 
-      <!-- Country Actual value pill -->
-      <div style="display:flex;align-items:center;gap:0.8rem;flex:1;justify-content:center;">
-        <!-- IMD tab: IMD-only country actual (also shown when toggle is OFF) -->
+      <!-- Today's Country Actual pill — fixed to the real calendar date, independent of the range below -->
+      <div *ngIf="rightTab === 'data'" style="display:flex;align-items:center;gap:0.8rem;flex:1;justify-content:center;">
+        <!-- IMD tab: IMD-only today's country actual (also shown when toggle is OFF) -->
         <div *ngIf="activeTab === 'imd' || !useAws" class="cm-country-pill imd">
           <i class="bi bi-globe me-1"></i>
-          <span>Country Actual (IMD):</span>
-          <strong *ngIf="countryActualImd !== null">{{ countryActualImd | number:'1.1-5' }} mm</strong>
-          <span *ngIf="countryActualImd === null && !countryLoading" class="text-muted">—</span>
-          <span *ngIf="countryLoading" class="spin" style="font-size:0.75rem;">↻</span>
+          <span>Today's Country Actual (IMD):</span>
+          <strong *ngIf="todayCountryActualImd !== null">{{ todayCountryActualImd | number:'1.1-5' }} mm</strong>
+          <span *ngIf="todayCountryActualImd === null && !todayCountryLoading" class="text-muted">—</span>
+          <span *ngIf="todayCountryLoading" class="spin" style="font-size:0.75rem;">↻</span>
         </div>
-        <!-- AWS tab: IMD+AWS country actual -->
+        <!-- AWS tab: today's IMD+AWS country actual -->
         <div *ngIf="activeTab === 'aws'" class="cm-country-pill aws">
           <i class="bi bi-globe me-1"></i>
-          <span>Country Actual (IMD+AWS):</span>
-          <strong *ngIf="countryActualAws !== null">{{ countryActualAws | number:'1.1-5' }} mm</strong>
-          <span *ngIf="countryActualAws === null && !countryLoading" class="text-muted">—</span>
-          <span *ngIf="countryLoading" class="spin" style="font-size:0.75rem;">↻</span>
+          <span>Today's Country Actual (IMD+AWS):</span>
+          <strong *ngIf="todayCountryActualAws !== null">{{ todayCountryActualAws | number:'1.1-5' }} mm</strong>
+          <span *ngIf="todayCountryActualAws === null && !todayCountryLoading" class="text-muted">—</span>
+          <span *ngIf="todayCountryLoading" class="spin" style="font-size:0.75rem;">↻</span>
         </div>
       </div>
+      <div *ngIf="rightTab === 'logs'" style="flex:1;"></div>
 
+      <!-- From/To range — shared by both Station Data and Station Data Logs -->
       <div class="cm-header-actions">
-        <input type="date" class="cm-date-input" [value]="selectedDate" (change)="onDateChange($event)" />
-        <button class="cm-download-btn" (click)="downloadExcel()" [disabled]="stationsLoading || displayedRows.length === 0">
+        <label class="cm-range-label">From</label>
+        <input type="date" class="cm-date-input" [(ngModel)]="fromDate" [max]="toDate" (change)="onRangeChange()" />
+        <label class="cm-range-label">To</label>
+        <input type="date" class="cm-date-input" [(ngModel)]="toDate" [min]="fromDate" (change)="onRangeChange()" />
+        <button *ngIf="rightTab === 'data'" class="cm-download-btn" (click)="downloadExcel()" [disabled]="stationsLoading || displayedRows.length === 0">
+          <i class="bi bi-download me-1"></i> Download
+        </button>
+        <button *ngIf="rightTab === 'logs'" class="cm-download-btn" (click)="downloadLogsExcel()" [disabled]="logsTab === 'imd' ? dataEntryLogsLoading : awsSourceLogsLoading">
           <i class="bi bi-download me-1"></i> Download
         </button>
       </div>
     </div>
 
+    <div *ngIf="rangeError" class="cm-message error" style="margin:0 1rem;">
+      <i class="bi bi-exclamation-triangle-fill"></i> {{ rangeError }}
+    </div>
+
+    <ng-container *ngIf="rightTab === 'data'">
+
     <!-- Tabs — only shown in IMD + AWS mode -->
     <div *ngIf="useAws" class="cm-tabs">
       <button class="cm-tab" [class.active]="activeTab === 'imd'" (click)="activeTab = 'imd'">
         <i class="bi bi-building me-1"></i>Data-entry Stations
-        <span class="cm-badge">{{ imdStations.length }}/{{ imdTotal }}</span>
+        <span *ngIf="isSingleDate" class="cm-badge">{{ imdStationCount }}/{{ imdTotal }}</span>
       </button>
       <button class="cm-tab" [class.active]="activeTab === 'aws'" (click)="activeTab = 'aws'">
         <i class="bi bi-broadcast me-1"></i>State AWS Stations
-        <span class="cm-badge aws">{{ awsStations.length }}/{{ awsTotal }}</span>
+        <span *ngIf="isSingleDate" class="cm-badge aws">{{ awsStationCount }}/{{ awsTotal }}</span>
       </button>
 
       <!-- Run buttons -->
@@ -162,11 +187,11 @@
       <i class="bi bi-arrow-repeat spin me-2"></i> Loading stations...
     </div>
 
-    <!-- Table -->
-    <div *ngIf="!stationsLoading" class="cm-table-wrap">
+    <!-- Single date: classic flat table with an In/Ex column, whole row red when excluded -->
+    <div *ngIf="!stationsLoading && isSingleDate" class="cm-table-wrap">
       <div *ngIf="displayedRows.length === 0" class="cm-empty">
         <i class="bi bi-inbox" style="font-size:2rem;color:#ccc"></i>
-        <p>No data for {{ selectedDate }}</p>
+        <p>No data for {{ fromDate }}</p>
       </div>
 
       <table *ngIf="displayedRows.length > 0" class="cm-table">
@@ -202,6 +227,211 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Real range: pivoted table — one row per station, one column per date -->
+    <div *ngIf="!stationsLoading && !isSingleDate" class="cm-table-wrap">
+      <div *ngIf="pivotRows.length === 0" class="cm-empty">
+        <i class="bi bi-inbox" style="font-size:2rem;color:#ccc"></i>
+        <p>No data for {{ fromDate }} to {{ toDate }}</p>
+      </div>
+
+      <table *ngIf="pivotRows.length > 0" class="cm-table cm-pivot-table">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th (click)="sort('station_code')">Station Code <span class="sh">{{ sortIcon('station_code') }}</span></th>
+            <th (click)="sort('state_name')">State <span class="sh">{{ sortIcon('state_name') }}</span></th>
+            <th (click)="sort('district_name')">District <span class="sh">{{ sortIcon('district_name') }}</span></th>
+            <th (click)="sort('block_name')">Block <span class="sh">{{ sortIcon('block_name') }}</span></th>
+            <th (click)="sort('station_name')">Station Name <span class="sh">{{ sortIcon('station_name') }}</span></th>
+            <th *ngFor="let date of pivotDates" class="cm-date-col-header">
+              <div class="cm-date-col-date">{{ date }}</div>
+              <div class="cm-date-col-actual">
+                <span *ngIf="countryActualForDate(date) !== null">{{ countryActualForDate(date) | number:'1.1-5' }} mm</span>
+                <span *ngIf="countryActualForDate(date) === null">—</span>
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of pivotRows; let i = index">
+            <td>{{ i + 1 }}</td>
+            <td>{{ row.station_code }}</td>
+            <td>{{ row.state_name }}</td>
+            <td>{{ row.district_name }}</td>
+            <td>{{ row.block_name || '—' }}</td>
+            <td>{{ row.station_name }}</td>
+            <td *ngFor="let date of pivotDates" class="cm-date-col-cell"
+                [class.val-zero]="cellValue(row, date) === 0"
+                [class.val-pos]="cellPositive(row, date)">
+              <div class="cm-cell-value">{{ cellValue(row, date) !== null ? cellValue(row, date) : '—' }}</div>
+              <div class="cm-cell-badge" *ngIf="cellValue(row, date) !== null">
+                <span [class.excl-badge]="cellExcluded(row, date)" [class.incl-badge]="!cellExcluded(row, date)">
+                  {{ cellExcluded(row, date) ? 'Excluded' : 'Included' }}
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    </ng-container>
+
+    <!-- ── Station Data Logs ─────────────────────────────────────────────────── -->
+    <ng-container *ngIf="rightTab === 'logs'">
+
+      <div class="cm-tabs">
+        <button class="cm-tab" [class.active]="logsTab === 'imd'" (click)="switchLogsTab('imd')">
+          <i class="bi bi-building me-1"></i>Data-entry Stations Data Logs
+        </button>
+        <button class="cm-tab" [class.active]="logsTab === 'aws'" (click)="switchLogsTab('aws')">
+          <i class="bi bi-broadcast me-1"></i>State AWS Stations Data Logs
+        </button>
+      </div>
+
+      <!-- Data-entry Stations Data Logs: MC/RMC rows, exactly like Verification HQ's Range tab, numbers only -->
+      <ng-container *ngIf="logsTab === 'imd'">
+        <div *ngIf="dataEntryLogsLoading" class="cm-station-loading">
+          <i class="bi bi-arrow-repeat spin me-2"></i> Loading logs...
+        </div>
+        <div class="cm-metric-toggle" *ngIf="dataEntryLogsDates.length > 1">
+          <button [class.active]="dataEntryLogsMetric === 'updated'" (click)="dataEntryLogsMetric = 'updated'">Updated</button>
+          <button [class.active]="dataEntryLogsMetric === 'notUpdated'" (click)="dataEntryLogsMetric = 'notUpdated'">Not Updated</button>
+        </div>
+        <div *ngIf="!dataEntryLogsLoading" class="cm-table-wrap">
+          <div *ngIf="dataEntryCentreLogs.length === 0" class="cm-empty">
+            <i class="bi bi-inbox" style="font-size:2rem;color:#ccc"></i>
+            <p>No data for {{ fromDate }} to {{ toDate }}</p>
+          </div>
+          <table *ngIf="dataEntryCentreLogs.length > 0" class="cm-table cm-pivot-table cm-logs-table">
+            <thead>
+              <tr>
+                <th>S.No</th>
+                <th>MC or RMC</th>
+                <th>Total Stations</th>
+                <ng-container *ngIf="dataEntryLogsDates.length === 1; else multiDateHeader">
+                  <th>Updated</th>
+                  <th>Not Updated</th>
+                </ng-container>
+                <ng-template #multiDateHeader>
+                  <th *ngFor="let date of dataEntryLogsDates" class="cm-date-col-header">{{ date }}</th>
+                </ng-template>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of dataEntryCentreLogs; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td class="cm-logs-row-label">{{ row.mc }}</td>
+                <td class="cm-date-col-cell">{{ row.total | number }}</td>
+                <ng-container *ngIf="dataEntryLogsDates.length === 1; else multiDateRow">
+                  <td class="cm-date-col-cell val-pos">{{ centreCell(row, dataEntryLogsDates[0]).updated | number }}</td>
+                  <td class="cm-date-col-cell">{{ centreCell(row, dataEntryLogsDates[0]).notUpdated | number }}</td>
+                </ng-container>
+                <ng-template #multiDateRow>
+                  <td *ngFor="let date of dataEntryLogsDates" class="cm-date-col-cell val-pos">{{ centreMetric(row, date) | number }}</td>
+                </ng-template>
+              </tr>
+              <tr class="cm-logs-total-row">
+                <td></td>
+                <td class="cm-logs-row-label">TOTAL</td>
+                <td class="cm-date-col-cell">{{ dataEntryTotalStations | number }}</td>
+                <ng-container *ngIf="dataEntryLogsDates.length === 1; else multiDateTotal">
+                  <td class="cm-date-col-cell val-pos">{{ dataEntryDateUpdatedTotal(dataEntryLogsDates[0]) | number }}</td>
+                  <td class="cm-date-col-cell">{{ dataEntryDateNotUpdatedTotal(dataEntryLogsDates[0]) | number }}</td>
+                </ng-container>
+                <ng-template #multiDateTotal>
+                  <td *ngFor="let date of dataEntryLogsDates" class="cm-date-col-cell val-pos">{{ dataEntryDateMetricTotal(date) | number }}</td>
+                </ng-template>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+
+      <!-- State AWS Stations Data Logs: one row per source (7 sources), one column per date -->
+      <ng-container *ngIf="logsTab === 'aws'">
+        <div *ngIf="awsSourceLogsLoading" class="cm-station-loading">
+          <i class="bi bi-arrow-repeat spin me-2"></i> Loading logs...
+        </div>
+
+        <ng-container *ngIf="!awsSourceLogsLoading">
+          <div class="cm-info-banner">
+            <i class="bi bi-info-circle-fill me-1"></i>
+            These {{ awsSourceLogs.length }} sources are the AWS data sources currently included in rainfall calculations — each station is mapped to its source by station code.
+          </div>
+          <div class="cm-table-wrap">
+            <div *ngIf="awsSourceLogs.length === 0" class="cm-empty">
+              <i class="bi bi-inbox" style="font-size:2rem;color:#ccc"></i>
+              <p>No data for {{ fromDate }} to {{ toDate }}</p>
+            </div>
+            <table *ngIf="awsSourceLogs.length > 0" class="cm-table cm-pivot-table cm-logs-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Total Stations</th>
+                  <th>Blocks Included</th>
+                  <th *ngFor="let date of awsSourceLogsDates" class="cm-date-col-header">
+                    <div class="cm-date-col-date">{{ date }}</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let src of awsSourceLogs">
+                  <td>
+                    <div class="cm-logs-row-label">{{ src.label }}</div>
+                    <a [href]="src.url" target="_blank" rel="noopener" class="cm-source-url">{{ src.url }}</a>
+                  </td>
+                  <td class="cm-date-col-cell">{{ src.totalStations }}</td>
+                  <td class="cm-date-col-cell">{{ src.totalBlocks }}</td>
+                  <td *ngFor="let day of src.daily" class="cm-date-col-cell"
+                      [class.val-zero]="day.count === 0" [class.val-pos]="day.count > 0">
+                    {{ day.count }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="cm-info-banner cm-info-banner-warn">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            <span>The below {{ excludedAwsSourceLogs.length }} sources are City IMD AWS data sources currently <strong>not</strong> included in rainfall calculations — having no station codes mapped. "Total Stations" here is an all-time distinct count from each source's own observation table (no master station list exists for these).</span>
+          </div>
+          <div class="cm-table-wrap" *ngIf="excludedAwsSourceLogs.length > 0">
+            <table class="cm-table cm-pivot-table cm-logs-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Total Stations</th>
+                  <th>Blocks Included</th>
+                  <th *ngFor="let date of awsSourceLogsDates" class="cm-date-col-header">
+                    <div class="cm-date-col-date">{{ date }}</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let src of excludedAwsSourceLogs">
+                  <td>
+                    <div class="cm-logs-row-label">{{ src.label }}</div>
+                    <a [href]="src.url" target="_blank" rel="noopener" class="cm-source-url">{{ src.url }}</a>
+                  </td>
+                  <td class="cm-date-col-cell">{{ src.totalStations }}</td>
+                  <td class="cm-date-col-cell">
+                    <span *ngIf="src.totalBlocks !== null">{{ src.totalBlocks }}</span>
+                    <span *ngIf="src.totalBlocks === null" class="text-muted">Not available</span>
+                  </td>
+                  <td *ngFor="let day of src.daily" class="cm-date-col-cell"
+                      [class.val-zero]="day.count === 0" [class.val-pos]="day.count > 0">
+                    {{ day.count }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
+      </ng-container>
+
+    </ng-container>
 
   </div>
 

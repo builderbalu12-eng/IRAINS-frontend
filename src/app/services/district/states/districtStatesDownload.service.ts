@@ -152,13 +152,13 @@ export class DownloadPdfStateDistrict {
           concatMap(districtData => {
             this.districtdepCurrdate = districtData.data;
             console.log('data type check', typeof state_code, state_code)
-            this.districtdepCurrdate = this.districtdepCurrdate.filter((x: any) => x.state_code === state_code);
+            this.districtdepCurrdate = this.districtdepCurrdate.filter((x: any) => Number(x.state_code) === Number(state_code));
             console.log('indownloading---->', this.districtdepCurrdate);
             return this.fetchStateData(data);
           }),
           concatMap(stateData => {
             this.statedepCurrdate = stateData.data;
-            this.statedepCurrdate = this.statedepCurrdate.filter((x: any) => x.state_code === state_code);
+            this.statedepCurrdate = this.statedepCurrdate.filter((x: any) => Number(x.state_code) === Number(state_code));
             console.log('indownloading---->', this.statedepCurrdate);
             return this.fetchDistrictData(seasonPeriodDate);;
           }),
@@ -169,13 +169,13 @@ export class DownloadPdfStateDistrict {
         //   }),
           concatMap(seasondistrictData => {
             this.districtdepSeasondate = seasondistrictData.data;
-            this.districtdepSeasondate = this.districtdepSeasondate.filter((x: any) => x.state_code === state_code);
+            this.districtdepSeasondate = this.districtdepSeasondate.filter((x: any) => Number(x.state_code) === Number(state_code));
             console.log('indownloading---->', this.districtdepSeasondate);
             return this.fetchStateData(seasonPeriodDate);
           }),    
           concatMap(seasonstateData => {
             this.statedepSeasondate = seasonstateData.data;
-            this.statedepSeasondate = this.statedepSeasondate.filter((x: any) => x.state_code === state_code);
+            this.statedepSeasondate = this.statedepSeasondate.filter((x: any) => Number(x.state_code) === Number(state_code));
 
             console.log('indownloading---->', this.statedepSeasondate, this.subdivdepSeasondate);
             this.downloadPdf();
@@ -205,7 +205,7 @@ export class DownloadPdfStateDistrict {
         (this.calcMode.isAwsEnabled ? this.fetchDistrictDataWithAWS(data) : this.fetchDistrictDataFromDataEntry(data)).pipe(
           concatMap(districtData => {
             this.districtdepCurrdate = districtData.data;
-            this.districtdepCurrdate = this.districtdepCurrdate.filter((x: any) => x.state_code === state_code);
+            this.districtdepCurrdate = this.districtdepCurrdate.filter((x: any) => Number(x.state_code) === Number(state_code));
             console.log('indownloading---->', this.districtdepCurrdate);
             return (this.calcMode.isAwsEnabled ? this.fetchStateDataWithAWS(data) : this.fetchStateDataFromDataEntry(data));
           }),
@@ -221,7 +221,7 @@ export class DownloadPdfStateDistrict {
           }),
           concatMap(seasondistrictData => {
             this.districtdepSeasondate = seasondistrictData.data;
-            this.districtdepSeasondate = this.districtdepSeasondate.filter((x: any) => x.state_code === state_code);
+            this.districtdepSeasondate = this.districtdepSeasondate.filter((x: any) => Number(x.state_code) === Number(state_code));
 
             console.log('indownloading---->', this.districtdepSeasondate);
             return (this.calcMode.isAwsEnabled ? this.fetchStateDataWithAWS(seasonPeriodDate) : this.fetchStateDataFromDataEntry(seasonPeriodDate));
@@ -420,6 +420,18 @@ export class DownloadPdfStateDistrict {
     const columns = ['S.No', 'MET.SUBDIVISION/UT/STATE/DISTRICT', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
 
     this.loadTheRows();
+
+    if (this.isView) {
+      // On-page table view: data is already populated on this.rows /
+      // this.data / this.seasonPeriodDate for the component to read —
+      // skip PDF/Excel generation entirely. Without this, the later
+      // `if (this.isView) { window.open(pdfUrl) }` branch at the end of
+      // this method still fires and pops the generated PDF into a new
+      // tab on every view-mode call (e.g. the all-states actual map
+      // page's right-panel stats refresh).
+      this.isView = false;
+      return;
+    }
 
     const thinBlack = {
       top:    { style: 'thin', color: { rgb: '000000' } },

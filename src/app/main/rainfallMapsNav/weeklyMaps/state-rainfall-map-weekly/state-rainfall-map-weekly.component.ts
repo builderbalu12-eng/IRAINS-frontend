@@ -38,6 +38,24 @@ export class StateRainfallMapWeeklyComponent {
   today: any;
   selectedMode: any;
 
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics (mirrors /daily-state-rf-distribution's table,
+  // but over the selected week's range), rendered by the shared
+  // <app-rainfall-stats-panel>. Only ONE call site (unlike the daily
+  // pages' two) — this page's Submit button only round-trips through
+  // dataService to re-fire the fromAndToDate$ subscription below, it
+  // doesn't call fetchBackend() directly itself. To revert to a map-only
+  // page: delete these fields, loadStats() below, and the
+  // `this.loadStats();` call site (search this file for
+  // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  categoryStats: { day: Record<string, { count: number; area: number }>; period: Record<string, { count: number; area: number }> } | null = null;
+  // ==== RIGHT PANEL fields end ====
+
   async downloadMapData() {
     this.isLoading = true;
     try {
@@ -137,6 +155,7 @@ export class StateRainfallMapWeeklyComponent {
         }
         this.generateWeeklyOptions(effectiveDate);
         this.fetchBackend();
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
       });
     };
 
@@ -249,6 +268,36 @@ export class StateRainfallMapWeeklyComponent {
     // endDate: this.EndDate || `${year}-${mon}-${dd}`,
     // };
   }
+
+  // ==== RIGHT PANEL: loadStats ====
+  async loadStats() {
+    if (!this.selectedWeek) {
+      return;
+    }
+    this.statsLoading = true;
+    this.showStatsTable = false;
+    try {
+      // Mirrors fetchBackend()'s own parsing of this.selectedWeek — the
+      // canonical "YYYY-MM-DD - YYYY-MM-DD" range — rather than
+      // this.StartDate/EndDate, which get flipped to Indian format and
+      // back inline in fetchBackend() and aren't safe to re-parse here.
+      const dates = this.selectedWeek.split(" - ");
+      const fromDate = dates[0];
+      const toDate = dates[1];
+      await this.downloadStatistcs.updateandViewpdfFromDataEntryCustom(fromDate, toDate);
+      const svc = this.downloadStatistcs;
+      const convert = svc.convertToIndianDateFormat;
+      this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+      this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+      this.tableRows = svc.rows;
+      this.categoryStats = svc.buildCategoryStats();
+      this.showStatsTable = this.tableRows.length > 0;
+    } catch (error) {
+      console.error('Error loading state statistics panel:', error);
+    }
+    this.statsLoading = false;
+  }
+  // ==== RIGHT PANEL: loadStats end ====
 
   filter = (node: HTMLElement) => {
     const exclusionClasses = [

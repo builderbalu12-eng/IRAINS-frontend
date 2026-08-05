@@ -1,0 +1,51 @@
+<div class="wholebody">
+  <app-header></app-header>
+
+  <h2 class="text-center text-primary mt-2">{{ config.title }}</h2>
+
+  <!-- controls (not part of the printed sheet) -->
+  <div class="container rmu-toolbar">
+    <div class="row justify-content-center align-items-end g-2">
+      <div class="col-md-3 col-sm-6 col-12">
+        <span class="fw-bold">From Date</span>
+        <input type="date" class="form-control" [(ngModel)]="fromDate" />
+      </div>
+      <div class="col-md-3 col-sm-6 col-12">
+        <span class="fw-bold">To Date</span>
+        <input type="date" class="form-control" [(ngModel)]="toDate" />
+      </div>
+      <div class="col-md-2 col-sm-6 col-12">
+        <button type="button" class="btn btn-primary w-100" (click)="onSubmit()">
+          Submit
+        </button>
+      </div>
+      <div class="col-md-2 col-sm-6 col-12">
+        <button
+          type="button"
+          class="btn btn-outline-primary w-100"
+          [disabled]="isDownloading"
+          (click)="downloadImage()"
+        >
+          {{ isDownloading ? "Preparing..." : "Map Download" }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= the product sheet ================= -->
+  <app-rmu-sheet
+    [title]="config.title"
+    [titleFontSize]="config.titleFontSize || 29"
+    [periodLabel]="periodLabel"
+    [shapes]="shapes"
+    [viewBox]="viewBox"
+    [labelFont]="labelFont"
+    [labelLine]="labelLine"
+    [showLabels]="config.labels"
+    [showAllIndia]="config.allIndia"
+    [allIndiaLine]="allIndiaLine"
+    [strokeWidth]="config.strokeWidth"
+    [scale]="sheetScale"
+    [loading]="isLoading"
+  ></app-rmu-sheet>
+</div>

@@ -10,7 +10,8 @@ import {
 } from "@angular/core";
 import { Chart } from "angular-highcharts";
 import * as Highcharts from "highcharts";
-import { lastValueFrom } from "rxjs";
+import { forkJoin, lastValueFrom, of } from "rxjs";
+import { catchError } from "rxjs/operators";
 import { CountryService } from "src/app/services/country/country.service";
 import { RegionService } from "src/app/services/region/region.service";
 import { StateService } from "src/app/services/state/state.service";
@@ -224,8 +225,59 @@ export class MapChartsComponent implements OnInit, OnChanges {
     private cdr: ChangeDetectorRef
   ) {}
 
+  // trackBy for the Statistics lists: without these, every refresh destroyed
+  // and rebuilt each row's DOM even when the values were unchanged.
+  trackByRegion = (_: number, r: any) => r?.name;
+  trackByName = (_: number, i: any) => i?.name;
+  trackByDate = (_: number, i: any) => i?.date;
+  trackByCode = (_: number, p: any) => p?.code;
+
+  // ==== REFRESH COALESCING ====================================
+  // The same four fetches used to be invoked straight from ngOnInit,
+  // two ngOnChanges branches and onPlaceChange(). Picking a place fires
+  // onPlaceChange() -> selectedPlaceChange.emit() -> the parent writes back
+  // -> ngOnChanges -> a second identical round of requests. Every refresh now
+  // goes through refresh(), which coalesces calls made in the same tick into
+  // one and drops a refresh whose inputs are identical to the one already
+  // rendered, so switching back and forth costs nothing.
+  private refreshQueued = false;
+  private lastRefreshKey = "";
+
+  private refreshKey(includePlaces: boolean): string {
+    return [
+      includePlaces ? "P" : "-",
+      this.selectedLayer,
+      this.selectedPlace?.layer,
+      this.selectedPlace?.code,
+      this.startDate,
+      this.endDate,
+      this.isActual,
+    ].join("|");
+  }
+
+  private refresh(includePlaces: boolean): void {
+    const key = this.refreshKey(includePlaces);
+    if (key === this.lastRefreshKey || this.refreshQueued) {
+      return;
+    }
+    this.refreshQueued = true;
+    // Microtask: lets a burst of input writes in the same tick settle into a
+    // single fetch round instead of one per changed @Input.
+    Promise.resolve().then(() => {
+      this.refreshQueued = false;
+      this.lastRefreshKey = this.refreshKey(includePlaces);
+      this.highestRecordedTitle = `${this.selectedPlace.name} Highest Recorded`;
+      if (includePlaces) {
+        this.fetchPlaces();
+      }
+      this.fetchDailyStatsData();
+      this.fetchTop5Data();
+      this.fetchChartData();
+    });
+  }
+  // ==== REFRESH COALESCING end ====
+
   ngOnInit(): void {
-    console.log("ngOnInit called at");
     Exporting(Highcharts);
     const today = new Date();
     this.endDate = this.endDate || this.formatDate(today);
@@ -233,44 +285,22 @@ export class MapChartsComponent implements OnInit, OnChanges {
     start.setDate(today.getDate() - 29);
     this.startDate = this.startDate || this.formatDate(start);
     this.highestRecordedTitle = `${this.selectedPlace.name} Highest Recorded`;
-    this.fetchPlaces();
-    this.fetchDailyStatsData();
-    this.fetchTop5Data();
-    this.fetchChartData();
+    this.refresh(true);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    console.log(
-      "ngOnChanges called with changes:",
-      changes,
-      "at",
-      new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-    );
     if (changes["selectedLayer"] || changes["selectedPlace"]) {
-      this.highestRecordedTitle = `${this.selectedPlace.name} Highest Recorded`;
-      this.fetchPlaces();
-      this.fetchDailyStatsData();
-      this.fetchTop5Data();
-      this.fetchChartData();
+      this.refresh(true);
     } else if (
       changes["startDate"] ||
       changes["endDate"] ||
       changes["isActual"]
     ) {
-      this.highestRecordedTitle = `${this.selectedPlace.name} Highest Recorded`;
-      this.fetchDailyStatsData();
-      this.fetchTop5Data();
-      this.fetchChartData();
+      this.refresh(false);
     }
   }
 
   onPlaceChange(): void {
-    console.log(
-      "Place changed to:",
-      this.selectedPlace.code,
-      "at",
-      new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-    );
     const selectedPlace = this.availablePlaces.find(
       (place) => place.code === this.selectedPlace.code
     );
@@ -282,9 +312,10 @@ export class MapChartsComponent implements OnInit, OnChanges {
       };
       this.highestRecordedTitle = `${this.selectedPlace.name} Highest Recorded`;
       this.selectedPlaceChange.emit(this.selectedPlace);
-      this.fetchDailyStatsData();
-      this.fetchTop5Data();
-      this.fetchChartData();
+      // refresh() rather than three direct calls: the emit above round-trips
+      // through the parent and comes back as ngOnChanges, and coalescing means
+      // that echo reuses this same fetch round instead of duplicating it.
+      this.refresh(false);
     }
   }
 
@@ -434,10 +465,32 @@ export class MapChartsComponent implements OnInit, OnChanges {
         endDate: this.dates[this.dates.length - 1],
         mode: this.isActual ? "Actual" : "Departure",
       };
-      console.log(
-        `Fetching chart data for ${this.selectedPlace.layer} with params:`,
-        params
-      );
+
+      // Start the "Highest Recorded" request NOW, in parallel with the 30-day
+      // range call below. Its params are derived from selectedPlace, never from
+      // the range response, so awaiting it afterwards (as this used to) simply
+      // serialised two independent requests and doubled this panel's load time.
+      // .catch here keeps it from surfacing as an unhandled rejection while in
+      // flight; the awaited value is null-checked below.
+      const topNService = this.getServiceForLayer(this.selectedPlace.layer);
+      const topNMethod = this.getTopNMethodName(this.selectedPlace.layer);
+      const topNCodeValue =
+        this.selectedPlace.layer === "country"
+          ? "INDIA"
+          : this.selectedPlace.code;
+      let topNPromise: Promise<any> | null = null;
+      if (topNService && topNMethod) {
+        const codeKey = this.getTopNCodeKey(this.selectedPlace.layer);
+        topNPromise = lastValueFrom(
+          (topNService as any)[topNMethod]({ [codeKey]: topNCodeValue })
+        ).catch((error) => {
+          console.error(
+            `Error fetching highest recorded data for ${this.selectedPlace.layer}:`,
+            error
+          );
+          return null;
+        });
+      }
 
       const res = (await lastValueFrom((service as any)[method](params))) as {
         success: boolean;
@@ -501,39 +554,23 @@ export class MapChartsComponent implements OnInit, OnChanges {
         }
       });
 
-      const topNService = this.getServiceForLayer(this.selectedPlace.layer);
-      const topNMethod = this.getTopNMethodName(this.selectedPlace.layer);
-      if (!topNService || !topNMethod) {
+      const codeValue = topNCodeValue;
+      if (!topNPromise) {
         console.error(
           `No service or topN method available for layer: ${this.selectedPlace.layer}`
         );
         this.highestRecorded = [];
       } else {
-        const codeKey = this.getTopNCodeKey(this.selectedPlace.layer);
-        const codeValue =
-          this.selectedPlace.layer === "country"
-            ? "INDIA"
-            : this.selectedPlace.code;
-        const topNParams = { [codeKey]: codeValue };
-        console.log(
-          `Fetching highest recorded data with params for ${this.selectedPlace.layer} (${codeValue}):`,
-          topNParams
-        );
-
         try {
-          const topNRes = (await lastValueFrom(
-            (topNService as any)[topNMethod](topNParams)
-          )) as {
+          // Already in flight since before the range call — this await is
+          // usually instant rather than a second round trip.
+          const topNRes = (await topNPromise) as {
             success: boolean;
             message: string;
             data: RainfallData[];
-          };
-          console.log(
-            `Highest recorded data response for ${this.selectedPlace.layer}:`,
-            topNRes
-          );
+          } | null;
 
-          if (topNRes.success && topNRes.data) {
+          if (topNRes && topNRes.success && topNRes.data) {
             this.highestRecorded = topNRes.data
               .filter((item) => {
                 const actual = parseFloat(
@@ -565,7 +602,7 @@ export class MapChartsComponent implements OnInit, OnChanges {
           } else {
             console.warn(
               `No valid highest recorded data for ${this.selectedPlace.layer}:`,
-              topNRes.message
+              topNRes?.message
             );
             this.highestRecorded = [];
           }
@@ -896,37 +933,43 @@ export class MapChartsComponent implements OnInit, OnChanges {
       country_code: "1", // Add country_code for India
     };
 
-    this.countryService.fetchData(params).subscribe({
-      next: (countryRes) => {
-        this.countryData = countryRes.data || [];
-        console.log("Country data fetched:", this.countryData); // Debug log
-        this.regionService
-          .fetchData({
-            startDate: this.startDate,
-            endDate: this.endDate,
-            mode: this.isActual ? "Actual" : "Departure",
+    // Country and region run in parallel: the region request's params are built
+    // from startDate/endDate/isActual, not from the country response, so the old
+    // nesting (region fired inside country's next handler) serialised two
+    // independent calls and doubled the wait for this card. catchError per
+    // stream so one failing endpoint still renders the other.
+    forkJoin({
+      country: this.countryService.fetchData(params).pipe(
+        catchError((err) => {
+          console.error("Error fetching country data:", err);
+          return of({ data: [] } as any);
+        })
+      ),
+      region: this.regionService
+        .fetchData({
+          startDate: this.startDate,
+          endDate: this.endDate,
+          mode: this.isActual ? "Actual" : "Departure",
+        })
+        .pipe(
+          catchError((err) => {
+            console.error("Error fetching region data:", err);
+            return of({ data: [] } as any);
           })
-          .subscribe({
-            next: (regionRes) => {
-              this.regionData = regionRes.data || [];
-              console.log("Region data fetched:", this.regionData); // Debug log
-              this.updateRegions();
-              this.isDailyStatsLoading = false; // Clear loading state
-            },
-            error: (err) => {
-              console.error("Error fetching region data:", err);
-              this.regionData = [];
-              this.updateRegions();
-              this.isDailyStatsLoading = false; // Clear loading state
-            },
-          });
+        ),
+    }).subscribe({
+      next: ({ country, region }) => {
+        this.countryData = country?.data || [];
+        this.regionData = region?.data || [];
+        this.updateRegions();
+        this.isDailyStatsLoading = false;
       },
       error: (err) => {
-        console.error("Error fetching country data:", err);
+        console.error("Error fetching daily stats data:", err);
         this.countryData = [];
         this.regionData = [];
         this.updateRegions();
-        this.isDailyStatsLoading = false; // Clear loading state
+        this.isDailyStatsLoading = false;
       },
     });
   }

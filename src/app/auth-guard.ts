@@ -38,8 +38,12 @@ export class AuthGuard implements CanActivate {
 					};
 					localStorage.setItem("selectedMode", JSON.stringify(modeData));
 	
-					// console.log("Navigating to Unified Departure...");
-					await this.router.navigate(['/all-maps']);
+					// This branch only ever runs for the auto guest login above, and
+					// guest authenticates as the 'public' role — so it lands on the
+					// iRAINS dashboard. Resolved from the freshly stored token rather
+					// than hardcoded, so it stays correct if the guest account's role
+					// ever changes.
+					await this.router.navigate([this.getLandingRoute()]);
 				} else {
 					alert(res.message);
 					return false;
@@ -69,6 +73,15 @@ export class AuthGuard implements CanActivate {
 		return false;
 	}
 	
+
+	/**
+	 * Where a user should land by default.
+	 * Guest/public logins open on the iRAINS dashboard; every other role keeps
+	 * the existing /all-maps landing.
+	 */
+	getLandingRoute(): string {
+		return this.getUserType() === 'public' ? '/irains-dashboard' : '/all-maps';
+	}
 
 	getUserType(): string {
 		var token = localStorage.getItem('isAuthorised');

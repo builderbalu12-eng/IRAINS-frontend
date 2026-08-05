@@ -586,3 +586,33 @@ button:hover {
   font-weight: bold;
   color: #007bff;
 }
+
+/* ==== RIGHT PANEL rules start — delete down to "RIGHT PANEL rules end"
+   if reverting to a map-only page. Table/skeleton styling lives in the
+   shared <app-rainfall-stats-panel>'s own CSS; this is just layout glue.
+   Deliberately NOT Bootstrap's .row/.col — those carry flex-wrap: wrap, so
+   the fixed-width map card and the stats table drop onto separate lines and
+   the panel ends up under the map instead of beside it. ==== */
+.map-stats-wrap {
+  padding: 0 12px 2rem;
+  overflow-x: auto;
+}
+
+.map-stats-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+}
+
+.map-col {
+  flex: 0 0 auto;
+}
+
+.stats-col {
+  flex: 1 1 0;
+  min-width: 420px;
+}
+/* ==== RIGHT PANEL rules end ==== */

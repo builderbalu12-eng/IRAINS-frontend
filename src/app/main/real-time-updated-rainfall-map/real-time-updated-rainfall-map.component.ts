@@ -42,6 +42,21 @@ export class RealTimeUpdatedRainfallMapComponent {
       selectedMode: any;
       selectedWeek: any;
 
+      // ==== RIGHT PANEL START =====================================
+      // Right-panel statistics (mirrors /daily-subdivision-rf-distribution's
+      // table, but over the annual/seasonal/monthly range computed by
+      // updateDates() instead of a single day), rendered by the shared
+      // <app-rainfall-stats-panel>. To revert to a map-only page: delete
+      // these fields, loadStats() below, and the two `this.loadStats();`
+      // call sites (search this file for "this.loadStats()") — plus the
+      // matching HTML "RIGHT PANEL" block.
+      statsLoading: boolean = false;
+      showStatsTable: boolean = false;
+      tableRows: any[][] = [];
+      dayLabel: string = '';
+      periodLabel: string = '';
+      categoryStats: { day: Record<string, { count: number; area: number }>; period: Record<string, { count: number; area: number }> } | null = null;
+      // ==== RIGHT PANEL fields end ====
 
       selectedDropMode: string = 'monthly'; // Default to Annual mode
       selectedYear: number | null = null;
@@ -112,6 +127,7 @@ export class RealTimeUpdatedRainfallMapComponent {
         this.updateDates();
         this.calculateInitialZoom()
         this.fetchBackend()
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
       }
 
 
@@ -210,6 +226,7 @@ export class RealTimeUpdatedRainfallMapComponent {
 
         this.calculateInitialZoom();
         this.fetchBackend();
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
       }
     
       convertToIndianDateFormat = (dateString: string) =>
@@ -305,6 +322,26 @@ export class RealTimeUpdatedRainfallMapComponent {
       }
       
     
+      // ==== RIGHT PANEL: loadStats ====
+      async loadStats() {
+        this.statsLoading = true;
+        this.showStatsTable = false;
+        try {
+          await this.downlaodStatistics.updateandViewpdfFromDataEntryCustom(this.fromDate, this.toDate);
+          const svc = this.downlaodStatistics;
+          const convert = svc.convertToIndianDateFormat;
+          this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+          this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+          this.tableRows = svc.rows;
+          this.categoryStats = svc.buildCategoryStats();
+          this.showStatsTable = this.tableRows.length > 0;
+        } catch (error) {
+          console.error('Error loading subdivision statistics panel:', error);
+        }
+        this.statsLoading = false;
+      }
+      // ==== RIGHT PANEL: loadStats end ====
+
       filter = (node: HTMLElement) => {
         const exclusionClasses = [
           "download",

@@ -1,0 +1,360 @@
+<app-header></app-header>
+
+<div class="as-wrap">
+  <!-- ── page header + controls ─────────────────────────────── -->
+  <div class="as-header">
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3">
+      <div>
+        <h4 class="mb-1">
+          <i class="bi bi-collection-fill me-2 text-primary"></i>All Statistics
+        </h4>
+        <small class="text-muted">
+          Every RMU product for one date range — download one at a time, or
+          select and pull the lot as a zip
+        </small>
+        <div class="as-applied mt-2" *ngIf="appliedCaption">
+          <i class="bi bi-calendar2-check me-1"></i>
+          <span class="as-applied-label">Showing</span>
+          <strong>{{ appliedCaption }}</strong>
+          <span class="as-applied-pending" *ngIf="hasPendingDates">
+            <i class="bi bi-exclamation-circle me-1"></i>press Apply to use the
+            dates you just picked
+          </span>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap align-items-end gap-2">
+        <div class="as-field">
+          <label class="as-label">From Date</label>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="fromDate" />
+        </div>
+        <div class="as-field">
+          <label class="as-label">To Date</label>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="toDate" />
+        </div>
+        <button
+          class="btn btn-sm px-3"
+          [class.btn-primary]="hasPendingDates"
+          [class.btn-outline-primary]="!hasPendingDates"
+          (click)="onApply()"
+        >
+          <i class="bi bi-arrow-repeat me-1"></i>Apply
+        </button>
+      </div>
+    </div>
+
+    <!-- departure / actual: only the maps differ, the exports are shared -->
+    <ul class="as-tabs mt-3">
+      <li>
+        <button
+          class="as-tab"
+          [class.active]="variant === 'DEPARTURE'"
+          (click)="setVariant('DEPARTURE')"
+        >
+          <i class="bi bi-percent me-1"></i>Departure
+        </button>
+      </li>
+      <li>
+        <button
+          class="as-tab"
+          [class.active]="variant === 'ACTUAL'"
+          (click)="setVariant('ACTUAL')"
+        >
+          <i class="bi bi-cloud-rain me-1"></i>Actual Rainfall
+        </button>
+      </li>
+    </ul>
+
+    <!-- selection summary + global actions -->
+    <div class="as-toolbar mt-0">
+      <div class="as-summary">
+        <span class="as-chip">
+          <i class="bi bi-image me-1"></i>{{ selectedMapCount }} map<span
+            *ngIf="selectedMapCount !== 1"
+            >s</span
+          >
+        </span>
+        <span class="as-chip">
+          <i class="bi bi-file-earmark-text me-1"></i>{{ selectedDocCount }} pdf /
+          excel
+        </span>
+        <span class="as-period" *ngIf="periodCaption">{{ periodCaption }}</span>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2">
+        <!-- remembers the current ticks as this user's default -->
+        <button
+          class="btn btn-sm btn-primary"
+          [disabled]="savingSelection || loadingSelection"
+          (click)="saveSelection()"
+          title="Remember these ticks and apply them next time this page opens"
+        >
+          <span
+            *ngIf="savingSelection"
+            class="spinner-border spinner-border-sm me-1"
+          ></span>
+          <i *ngIf="!savingSelection" class="bi bi-bookmark-check me-1"></i>
+          Save Selection
+        </button>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          *ngIf="hasSavedSelection"
+          [disabled]="savingSelection"
+          (click)="clearSavedSelection()"
+          title="Forget the saved default"
+        >
+          <i class="bi bi-bookmark-x me-1"></i>Forget
+        </button>
+
+        <button class="btn btn-sm btn-outline-secondary" (click)="selectEverything()">
+          <i class="bi bi-check2-square me-1"></i>Select All
+        </button>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          [disabled]="!totalSelected"
+          (click)="clearEverything()"
+        >
+          <i class="bi bi-eraser me-1"></i>Clear
+        </button>
+        <button
+          class="btn btn-sm btn-success"
+          [disabled]="!totalSelected"
+          (click)="downloadAll()"
+        >
+          <i class="bi bi-download me-1"></i>Download All
+          <span class="badge bg-light text-success ms-1" *ngIf="totalSelected">{{
+            totalSelected
+          }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="as-note as-progress mt-2" *ngIf="batchTotal">
+      <span class="spinner-border spinner-border-sm me-2"></span>
+      Downloading {{ batchDone }} of {{ batchTotal }} — leave this tab open.
+    </div>
+  </div>
+
+  <!-- ── body: list on the left, preview on the right ───────── -->
+  <div class="as-body">
+    <div class="as-list">
+      <div
+        class="as-section"
+        *ngFor="let section of sections"
+        [class.as-section-half]="
+          section.key === 'DRMS' ||
+          section.key === 'REGIONAL' ||
+          section.key === 'STATE' ||
+          section.key === 'MC'
+        "
+      >
+        <!-- section header -->
+        <div class="as-section-head">
+          <button
+            class="as-section-toggle"
+            (click)="section.expanded = !section.expanded"
+            [title]="section.expanded ? 'Collapse' : 'Expand'"
+          >
+            <i class="bi" [ngClass]="section.expanded ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+          </button>
+
+          <div class="as-section-title">
+            <i class="bi me-2" [ngClass]="section.icon"></i>
+            <span>{{ section.title }}</span>
+            <span class="as-count">{{ section.rows.length }}</span>
+          </div>
+
+          <div class="as-section-actions">
+            <label class="as-selall" [title]="'Select every map in ' + section.title">
+              <input
+                type="checkbox"
+                [checked]="sectionMapsAll(section)"
+                [indeterminate]="sectionMapsSome(section)"
+                (change)="toggleSectionMaps(section)"
+              />
+              <i class="bi bi-image"></i><span>All maps</span>
+            </label>
+
+            <label class="as-selall" [title]="'Select every pdf / excel in ' + section.title">
+              <input
+                type="checkbox"
+                [checked]="sectionDocsAll(section)"
+                [indeterminate]="sectionDocsSome(section)"
+                (change)="toggleSectionDocs(section)"
+              />
+              <i class="bi bi-file-earmark-text"></i><span>All pdf/excel</span>
+            </label>
+
+            <button
+              class="btn btn-sm btn-outline-light as-section-dl"
+              [disabled]="!sectionSelectedCount(section)"
+              (click)="downloadSection(section)"
+            >
+              <i class="bi bi-download me-1"></i>Download {{ section.title }}
+            </button>
+          </div>
+        </div>
+
+        <p class="as-section-sub">{{ section.subtitle }}</p>
+
+        <!-- long sections: compact tiles, several per row -->
+        <div class="as-grid" *ngIf="section.expanded && section.grid">
+          <div
+            class="as-tile"
+            *ngFor="let row of section.rows"
+            [class.as-busy]="busyKey === row.scope + '::' + row.key"
+          >
+            <label
+              class="as-tile-check"
+              [title]="mapAvailable(row) ? 'Map' : 'No actual-rainfall sheet for a state map'"
+            >
+              <input
+                type="checkbox"
+                [(ngModel)]="row.mapSelected"
+                [disabled]="!mapAvailable(row)"
+              />
+              <i class="bi bi-image"></i>
+            </label>
+            <label class="as-tile-check" title="PDF / Excel">
+              <input type="checkbox" [(ngModel)]="row.docSelected" [disabled]="!row.hasDoc" />
+              <i class="bi bi-file-earmark-text"></i>
+            </label>
+
+            <span class="as-tile-label" [title]="row.label">{{ row.label }}</span>
+
+            <span class="as-tile-busy" *ngIf="busyKey === row.scope + '::' + row.key">
+              <span class="spinner-border spinner-border-sm"></span>
+            </span>
+
+            <span class="as-tile-actions">
+              <button
+                class="btn btn-sm btn-outline-primary"
+                title="Download map"
+                [disabled]="!mapAvailable(row)"
+                (click)="downloadMap(row)"
+              >
+                <i class="bi bi-image"></i>
+              </button>
+              <button
+                class="btn btn-sm btn-outline-danger"
+                title="Download pdf / excel"
+                [disabled]="!row.hasDoc"
+                (click)="downloadDoc(row)"
+              >
+                <i class="bi bi-filetype-pdf"></i>
+              </button>
+            </span>
+          </div>
+        </div>
+
+        <!-- rows -->
+        <div class="as-rows" *ngIf="section.expanded && !section.grid">
+          <div class="as-empty" *ngIf="!section.rows.length">
+            <i class="bi bi-inbox fs-4 opacity-25"></i>
+            <span>Nothing to list yet</span>
+          </div>
+
+          <table class="table table-hover align-middle mb-0" *ngIf="section.rows.length">
+            <thead>
+              <tr>
+                <th class="as-th-check" title="Map"><i class="bi bi-image"></i></th>
+                <th class="as-th-check" title="PDF / Excel">
+                  <i class="bi bi-file-earmark-text"></i>
+                </th>
+                <th>Product</th>
+                <th class="as-th-output">Output</th>
+                <th class="as-th-actions">Download</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let row of section.rows"
+                [class.as-busy]="busyKey === row.scope + '::' + row.key"
+              >
+                <td class="as-td-check">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="row.mapSelected"
+                    [disabled]="!mapAvailable(row)"
+                  />
+                </td>
+                <td class="as-td-check">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="row.docSelected"
+                    [disabled]="!row.hasDoc"
+                  />
+                </td>
+                <td>
+                  <span class="as-row-label">{{ row.label }}</span>
+                  <span class="as-eye" *ngIf="busyKey === row.scope + '::' + row.key">
+                    <span class="spinner-border spinner-border-sm me-1"></span>working
+                  </span>
+                </td>
+                <td class="as-td-output">{{ outputHint(row) }}</td>
+                <td class="as-row-actions">
+                  <button
+                    class="btn btn-sm btn-outline-primary"
+                    title="Download map"
+                    [disabled]="!mapAvailable(row)"
+                    (click)="downloadMap(row)"
+                  >
+                    <i class="bi bi-image"></i>
+                  </button>
+                  <button
+                    class="btn btn-sm btn-outline-danger ms-1"
+                    title="Download pdf / excel"
+                    [disabled]="!row.hasDoc"
+                    (click)="downloadDoc(row)"
+                  >
+                    <i class="bi bi-filetype-pdf"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Off-screen render targets. The sheets must be laid out for real —
+     html-to-image cannot capture display:none — so they sit off to the left
+     at full 1000px scale while a download runs. -->
+<div class="as-capture" aria-hidden="true">
+  <app-rmu-sheet
+    *ngIf="sheetVm"
+    [title]="sheetVm.title"
+    [titleFontSize]="sheetVm.config.titleFontSize || 29"
+    [periodLabel]="sheetVm.periodLabel"
+    [shapes]="sheetVm.shapes"
+    [viewBox]="sheetVm.viewBox"
+    [labelFont]="labelFont"
+    [labelLine]="labelLine"
+    [showLabels]="sheetVm.config.labels"
+    [showAllIndia]="sheetVm.config.allIndia"
+    [allIndiaLine]="sheetVm.allIndiaLine"
+    [strokeWidth]="sheetVm.config.strokeWidth"
+    [variant]="sheetVm.variant"
+    [legend]="sheetVm.legend"
+    [scale]="1"
+  ></app-rmu-sheet>
+
+  <app-rmu-statewise-sheet
+    *ngIf="swVm"
+    [title]="swVm.title"
+    [periodLabel]="swVm.periodLabel"
+    [shapes]="swVm.shapes"
+    [viewBox]="swVm.viewBox"
+    [labelFont]="swLabelFont"
+    [labelLine]="swLabelLine"
+    [scale]="1"
+  ></app-rmu-statewise-sheet>
+</div>
+
+<!-- transient status line -->
+<div class="as-toast" *ngIf="statusMessage">
+  <i class="bi bi-info-circle me-2"></i>{{ statusMessage }}
+</div>

@@ -26,6 +26,21 @@ export class CountryRainfallMapCummulativeComponent {
       isLoading: boolean = false;
       fromDate: any = this.formatDate(new Date());
       toDate: any = this.formatDate(new Date());
+
+      // ==== RIGHT PANEL START =====================================
+      // Right-panel statistics (single-row "COUNTRY AS A WHOLE" table,
+      // over the fromDate/toDate range picker), rendered by the shared
+      // <app-rainfall-stats-panel>. No category-breakdown sub-table
+      // (buildCategoryStats() N/A here). To revert to a map-only page:
+      // delete these fields, loadStats() below, and the two
+      // `this.loadStats();` call sites (search this file for
+      // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+      statsLoading: boolean = false;
+      showStatsTable: boolean = false;
+      tableRows: any[][] = [];
+      dayLabel: string = '';
+      periodLabel: string = '';
+      // ==== RIGHT PANEL fields end ====
       today: any;
       months: any;
       selectedMode: any;
@@ -134,6 +149,7 @@ export class CountryRainfallMapCummulativeComponent {
           }
           this.generateWeeklyOptions();
           this.fetchBackend();
+          this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
         });
       }
     
@@ -250,6 +266,25 @@ export class CountryRainfallMapCummulativeComponent {
         return `${day}-${month}-${year}`;
       }
     
+      // ==== RIGHT PANEL: loadStats ====
+      async loadStats() {
+        this.statsLoading = true;
+        this.showStatsTable = false;
+        try {
+          await this.countryDownloadStatistics.updateandViewpdfFromDataEntryCustom(this.fromDate, this.toDate);
+          const svc = this.countryDownloadStatistics;
+          const convert = svc.convertToIndianDateFormat;
+          this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+          this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+          this.tableRows = svc.rows;
+          this.showStatsTable = this.tableRows.length > 0;
+        } catch (error) {
+          console.error('Error loading country statistics panel:', error);
+        }
+        this.statsLoading = false;
+      }
+      // ==== RIGHT PANEL: loadStats end ====
+
       filter = (node: HTMLElement) => {
         const exclusionClasses = [
           "download",
@@ -429,6 +464,7 @@ export class CountryRainfallMapCummulativeComponent {
         };
         this.calculateInitialZoom()
         this.fetchBackend()
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
         // this.dataService.setfromAndToDate(JSON.stringify(data));
       }
     

@@ -1,269 +1,317 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, ElementRef, ViewChild } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import * as L from 'leaflet';
-import 'leaflet-draw';
+import { Component, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { MatMenuTrigger } from '@angular/material/menu';
 import { Chart } from 'angular-highcharts';
 import * as Highcharts from 'highcharts';
-import { DataService
+import * as L from 'leaflet';
+import 'leaflet-draw';
+import 'leaflet.heat';
+import * as turf from '@turf/turf';
+import html2canvas from 'html2canvas';
+import { saveAs } from 'file-saver';
+import { Subject, forkJoin, of } from 'rxjs';
+import { catchError, takeUntil } from 'rxjs/operators';
 
- } from 'src/app/data.service';
 import { getRegionService } from 'src/app/services/region/getregion.service';
 import { CenterService } from 'src/app/services/centre/centre.service';
 import { getStateService } from 'src/app/services/state/getState.service';
 import { getDistrictService } from 'src/app/services/district/getdistrict.service';
 import { FetchStationDataService } from 'src/app/services/station/station.service';
-import { EMPTY, concatMap, lastValueFrom, of, takeWhile } from 'rxjs';
-import { defaultUrlMatcher } from '@angular/router';
 import { Constants } from 'src/app/services/constants';
-import { color } from 'highcharts';
-import Exporting from 'highcharts/modules/exporting';
-import FullScreen from 'highcharts/modules/full-screen';
-import * as turf from "@turf/turf"; // Import Turf.js
 
-// import { Radar } from 'leaflet-radar';
+import { RainfallCloudLayer, buildCloudField } from './rainfall-cloud-layer';
+import {
+  RAINFALL_BANDS,
+  RainfallBand,
+  bandFor,
+  isMissing,
+} from './rainfall-bands';
+
+/** A station as returned by the API, narrowed to the fields this page reads. */
+interface Station {
+  station_code: string | number;
+  station_name: string;
+  state_name: string;
+  district_name?: string;
+  subdiv_name?: string;
+  district_code?: string | number;
+  state_code?: string | number;
+  region_code?: string | number;
+  centre_name?: string;
+  station_type?: string;
+  latitude: string | number;
+  longitude: string | number;
+  data: number;
+}
+
+/** One row in the compare table. The chart reads selection off these objects. */
+interface CompareRow {
+  station_code: string | number;
+  station_name: string;
+  state_name: string;
+  /** Formatted "12.34 km", or null in polygon mode where distance is undefined. */
+  distance: string | null;
+  /** Raw reading, kept numeric so the table can sort and format consistently. */
+  data: number;
+  selected: boolean;
+}
+
+/** One day of a station's history, as returned by fetchAllDatesAndDataOfStation. */
+interface HistoryRow {
+  collection_date: string;
+  data: number;
+}
+
+/** Filter state for one rainfall band: the band plus its live count and toggle. */
+interface BandFilter {
+  band: RainfallBand;
+  count: number;
+  selected: boolean;
+}
+
+/** Which detail panel the bottom drawer is showing. */
+type PanelMode = 'station_details' | 'compare_charts' | 'polygon_compare';
+
+/** The draggable analytics cards that float over the map. */
+type CardKey = 'distribution' | 'coverage';
+
+/** Reporting completeness for one meteorological centre. */
+interface CentreCoverage {
+  centre: string;
+  total: number;
+  missing: number;
+  /** Percentage of the centre's stations that have reported, 0–100. */
+  pct: number;
+}
+
+const MAP_MIN_PANEL_HEIGHT = 180;
+/** Must match `--ss-drawer-max` in the stylesheet, or the chart outgrows the drawer. */
+const MAP_MAX_PANEL_HEIGHT_RATIO = 0.6;
+const DEFAULT_PANEL_HEIGHT = 320;
+const CHART_VERTICAL_CHROME = 96;
 
 @Component({
-  selector: "app-station-statistics-page",
-  templateUrl: "./station-statistics-page.component.html",
-  styleUrls: ["./station-statistics-page.component.css"],
+  selector: 'app-station-statistics-page',
+  templateUrl: './station-statistics-page.component.html',
+  styleUrls: ['./station-statistics-page.component.css'],
 })
 export class StationStatisticsPageComponent implements OnInit, OnDestroy {
-  // ------------------------------------------------------
-  currDate: any = new Date();
-  selectedRegion: any[] = [];
-  currentUserType: any;
-  loggedInUserObject: any;
-  currentUserName: any;
-  currentUserMcCategory : any;
-  regions: any[] = []; // Array to hold region data fetched from API
-  regionName: any;
-  selectedMC: any;
+  // ---------------------------------------------------------------- lifecycle
+  private readonly destroy$ = new Subject<void>();
+
+  // ------------------------------------------------------------------- user
+  currentUserType: string;
+  currentUserName: string;
+  currentUserMcCategory: string;
+
+  // ------------------------------------------------------------------- dates
+  /** Bound to the date input; always a yyyy-MM-dd string. */
+  selected_Date: string = this.toIsoDate(new Date());
+  /** Upper bound for the date picker — observations cannot be in the future. */
+  readonly maxDate: string = this.toIsoDate(new Date());
+  currSeasonStartDate = '';
+  currentSeasonEndDate = '';
+  readonly currentYear = new Date().getFullYear();
+
+  // ------------------------------------------------------------- filter data
+  regions: Array<{ label: string; value: any }> = [];
+  /** Master lists, fetched once. */
+  private allMCs: any[] = [];
+  private allRMCs: any[] = [];
+  private allStates: any[] = [];
+  private allDistricts: any[] = [];
+  /** Lists narrowed by the level above them. */
   centersMC1: any[] = [];
-  mcDisabled: boolean = false;
-  rmcDisabled: boolean = false;
-  selectedRMC: any;
   centersRMC1: any[] = [];
-  selectedState: any;
-  filterStates: any;
-  filterDistrict: any;
-  centersMC: any[] = [];
-  centersRMC: any[] = [];
-  selectedMCData: any[] = [];
-  states: any[] = [];
-  selectedStateData: any[] = [];
-  districts: any[] = [];
-  selectedDistrictData: any[] = [];
-  isLoading: boolean = false;
-  stationData: any; // Variable to hold the fetched data
+  filterStates: any[] = [];
+  filterDistrict: any[] = [];
   filteredStations: any[] = [];
-  comparefilteredStations: any[] = [];
-  selectedStation: any;
-  comparingselectedStations: any;
-  selectedDistrict: any;
+
+  selectedRegion: any[] = [];
+  selectedMC: any[] = [];
+  selectedRMC: any[] = [];
+  selectedState: any[] = [];
+  selectedDistrict: any[] = [];
   selectedstations: any[] = [];
-  filteredData: any;
-  isAwsSelected: boolean = true;
-  isOrgSelected: boolean = true;
-  isArgSelected: boolean = true;
-  dayStatistics: any = {
-    veryLightRainFallStations: {
-      count: 0,
-      isVeryLightRainFall: true,
-    },
-    lightRainfallStations: {
-      count: 0,
-      isLightRainfall: true,
-    },
-    modrateRainFallStations: {
-      count: 0,
-      isModrateRainFall: true,
-    },
-    heavyRainFallStations: {
-      count: 0,
-      isHeavyRainFall: true,
-    },
-    veryHeavyRainfallStations: {
-      count: 0,
-      isVeryHeavyRainfall: true,
-    },
-    extremelyHeavyRainfallStations: {
-      count: 0,
-      isExtremelyHeavyRainfall: true,
-    },
-    zeroRainfallStations : {
-      count : 0,
-      isZeroStations : true,
-    }
+
+  mcDisabled = false;
+  rmcDisabled = false;
+
+  isAwsSelected = true;
+  isOrgSelected = true;
+  isArgSelected = true;
+
+  /** Show stations that reported nothing. Off by default, as before. */
+  showMissingStations = false;
+
+  // -------------------------------------------------------------- statistics
+  bandFilters: BandFilter[] = RAINFALL_BANDS.map((band) => ({
+    band,
+    count: 0,
+    selected: true,
+  }));
+
+  maxStationRainfall: string = '—';
+  maxStationname = '';
+  maxStationStatename = '';
+  minStationRainfall: string = '—';
+  TotalStationsRecieved = 0;
+  TotalStationsPending = 0;
+
+  maxSeasonalStationRainfall: string = '—';
+  maxSeasonalStationname = '';
+
+  topN = 10;
+  topnStations: Station[] = [];
+
+  // ------------------------------------------------------------------- state
+  isLoading = false;
+  isloadingSurrondingStations = false;
+  ischartInLoading = false;
+  topNstationsloader = false;
+  /** True while html2canvas is rasterising the map. */
+  isSnapshotting = false;
+  /** User-facing error banner. Replaces the old alert() calls. */
+  errorMessage = '';
+
+  stationData: Station[] = [];
+  filteredData: Station[] = [];
+  /** Stations captured by the most recent free-hand polygon. */
+  stationInsidethePolygon: Station[] | null = null;
+
+  // --------------------------------------------------------------- selection
+  showSelectedStation = '';
+  showSelectedStationCode: string | number = '';
+  showSelectedState_name = '';
+  showSelectedDistrict_name = '';
+  StationTotalEntries: number | string = '—';
+  StationsMissingEntries: number | string = '—';
+  StationHighestRecord = '—';
+  StationLowestRecord = '—';
+  StationFirstDate = '—';
+  maxRecordedDataDateofSelectedStation = '';
+
+  // ----------------------------------------------------------------- compare
+  /**
+   * The single selection model shared by both the radius table and the polygon
+   * table. Previously the polygon table bound its checkboxes to
+   * `stationInsidethePolygon` while the chart read selection from a detached
+   * copy, so polygon compare never plotted anything.
+   */
+  compareRows: CompareRow[] = [];
+  selectAllChecked = false;
+  selectedRadius = 50;
+  private selectedLatitute: number | null = null;
+  private selectedLongitute: number | null = null;
+
+  // ------------------------------------------------------------------ charts
+  chart: Chart | null = null;
+  chartCompare: Chart | null = null;
+  /** Live Highcharts instance behind `chartCompare`, cached for resizing. */
+  private chartCompareRef: Highcharts.Chart | null = null;
+  panelHeight = DEFAULT_PANEL_HEIGHT;
+  chartHeight = `${DEFAULT_PANEL_HEIGHT - CHART_VERTICAL_CHROME}px`;
+
+  // ----------------------------------------------------- floating analytics
+  /** Cards live over the empty sea areas; each folds to its title bar. */
+  cardOpen: Record<CardKey, boolean> = {
+    distribution: true,
+    coverage: true,
   };
-  maxStationRainfall: any = 0;
-  minStationRainfall: any = 0;
-  TotalStationsRecieved: any = 0;
-  TotalStationsPending: any = 0;
 
-  seriesDailyData: any[] = [];
-  showSelectedStation: any = "";
-  seriesHistoricalData: any[] = [];
-  StationTotalEntries: any = "";
-  StationsMissingEntries: any = "";
-  StationHighestRecord: any = "";
-  StationFirstDate: any = "";
+  /** Master switch, alongside the Filters and Insights panel toggles. */
+  showFloatingCards = true;
 
-  // ------------------------------------------------------
-  toCompareStationCircleLayer: any;
-  isloadingSurrondingStations: any = false;
+  /**
+   * Drag displacement from each card's CSS anchor, in pixels.
+   *
+   * Stored as an offset rather than an absolute position so the cards keep
+   * their responsive anchoring (one pinned left, one pinned right) and only the
+   * user's own displacement is layered on top.
+   */
+  cardOffset: Record<CardKey, { x: number; y: number }> = {
+    distribution: { x: 0, y: 0 },
+    coverage: { x: 0, y: 0 },
+  };
+  /** Non-null only while a card is being dragged; also raises its z-index. */
+  draggingCard: CardKey | null = null;
 
-  showStationDetails: boolean = false;
-  showCompareData: boolean = false;
-  showStatistics: boolean = false;
-  showFirstMap: boolean = true;
-  showSecondMap: boolean = false;
-  stationType: any;
-  selectedRMCData: any;
-  markers: any[] = [];
-  StationLowestRecord: any;
-  showChart: boolean = true;
+  private dragOrigin = { x: 0, y: 0, ox: 0, oy: 0 };
+  private dragBounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  private readonly onCardDragRef = (e: MouseEvent) => this.onCardDrag(e);
+  private readonly onCardDragEndRef = () => this.endCardDrag();
+  distributionChart: Chart | null = null;
+  /** Reporting completeness donut in the right panel's day summary. */
+  coverageDonut: Chart | null = null;
+  /** Horizontal bars for the top-station leaderboard. */
+  topChart: Chart | null = null;
+  coverage: CentreCoverage[] = [];
+  /** Stations kept by the hierarchy + type filters, before band visibility. */
+  private scopedData: Station[] = [];
+  /** Geographic scope only — no station-type or band filtering. Drives clouds. */
+  private cloudSourceData: Station[] = [];
 
-  stationWeatherParametersnew = [
-    {
-      text: "Daily Data",
-    },
-    // {
-    //   text : 'Historical Data',
-    // }
+  showHeatLayer = false;
+  private heatLayer: L.HeatLayer | null = null;
+
+  /**
+   * Single source for the heat gradient — the layer and its legend are both
+   * built from this, so the swatch can never drift from what is drawn.
+   */
+  readonly heatGradient: ReadonlyArray<{ stop: number; color: string }> = [
+    { stop: 0, color: '#2c7bb6' },
+    { stop: 0.3, color: '#00ccbc' },
+    { stop: 0.5, color: '#90eb9d' },
+    { stop: 0.7, color: '#f9d057' },
+    { stop: 0.85, color: '#f29e2e' },
+    { stop: 1, color: '#d7191c' },
   ];
+  /** The day's highest reading; heat intensity is normalised against it. */
+  heatPeak = 0;
 
-  stationWeatherParametersCompareChartsnew = [
-    {
-      text: "Daily Data",
-    },
-    // {
-    //   text : 'Historical Data',
-    // }
-  ];
+  // -------------------------------------------------------------------- ui
+  /** Left rail: date, hierarchy, station type, rainfall categories. */
+  isFilterPanelOpen = true;
+  /** Right rail: day summary and the top-station leaderboard. */
+  isInsightPanelOpen = true;
+  isBottomNavOpen = false;
+  selectedOption: PanelMode = 'station_details';
+  isDraggingEnabled = true;
 
-  showSelectedStationCode: any;
-  DatabaseRecordedStartDate: any = "01-01-2024";
-  maxSeasonalStationRainfall: any;
-  minSeasonalStationRainfall: any;
-  TotalStationsRecievedSeasonal: any;
-  TotalStationsPendingSeasonal: any;
-  maxSeasonalStationname: any;
-  maxStationname: any;
-  maxRecordedDataDateofSelectedStation: any;
-  showSelectedStationObject: any;
-  maxStationStatename: any;
-  showSelectedState_name: any;
-  currSeasonStartDate: any;
-  currentSeasonEndDate: any;
-  compareBUttonClickedForTestPuporse: any = false;
-  selectedRadius: any = 50;
-  stationInsidethePolygon: any;
-  topN: number = 5;
-  topnStations: any[] = [];
-  topNstationsloader: boolean = true;
+  // ------------------------------------------------------------------- map
+  private stationObservationMap!: L.Map;
+  private markerLayer = L.layerGroup();
+  private drawnItems = new L.FeatureGroup();
+  private compareCircle: L.Circle | null = null;
 
+  // ------------------------------------------------------------------ clouds
+  /** Synthetic cloud rendered from this page's own rainfall readings. */
+  showRainClouds = false;
+  private rainCloudLayer: RainfallCloudLayer | null = null;
 
-  compareCharts(): void {
-    this.selectedOption = "compare_charts";
-    // this.updateChart(this.stationWeatherParameters[0]);
-    // this.updateChart(this.stationWeatherParameters[0]);
-    this.toggleBottomNav();
-    this.showCompareData = true;
-  }
+  /** 'street' = OpenStreetMap, 'satellite' = Esri World Imagery. */
+  basemap: 'street' | 'satellite' = 'street';
+  private streetTiles!: L.TileLayer;
+  private satelliteTiles!: L.TileLayer;
+  private stateBorders: L.GeoJSON | null = null;
+  /**
+   * The mask is ~17k vertices and the outline repeats them. On SVG that is 34k
+   * DOM path points re-projected on every zoom; canvas rebuilds the same path
+   * far more cheaply, and Leaflet's canvas renderer fills with the even-odd
+   * rule, which is exactly what punching holes needs.
+   */
+  private maskRenderer = L.canvas({ pane: 'ss-mask', padding: 0.1 });
 
-  viewStatistics(): void {
-    this.showChart = false;
-    this.selectedOption = "view_statistics";
-    this.toggleBottomNav();
-  }
-
-  @ViewChild("timeMenuTrigger") trigger: MatMenuTrigger | undefined;
-  selectedRegions: string[] = [];
-  selectedStates: string[] = [];
-  selectedMcs: string[] = [];
-  tempfilteredStations: any[] = [];
-  regionList: any[] = [];
-  filteredMcs: any[] = [];
-  filteredStates: any[] = [];
-  // selectedRegion: string = '';
-  // selectedState: string = '';
-  filteredDistricts: any[] = [];
-  totalstations: number = 0;
-  notreceivedata: number = 0;
-  receivedata: number = 0;
-  pendingdata: number = 0;
-  highestrecorded: number = 0;
-  lowestrecorded: number = 0;
-
-  loading = false;
-  private stationObservationMap: any;
-  type: any = "rainfall";
-  countryList: any;
-  levelList: any;
-  sourceList: any;
-  parameterList: any[] = [];
-  categoryList: any;
-  thresholdList: any[] = [];
-  currentHeavyThreshold: any | null = null;
-  currentExtremeThreshold: any | null = null;
-  weatherDataList: any[] = [];
-  displayedWeatherDataListColumns: string[] = ["date", "max", "avg", "min"];
-  selectedLevel: any;
-  shapeFilePath: any = "";
-  selectedSource: any;
-  parameterId: any = 1;
-  alertCategoryId: any = 1;
-  parameterName = "rf";
-  selectedWeatherParameterDetails: any | null = null;
-  form: FormGroup = new FormGroup({});
-
-  admEn: any;
-  admPcode: any;
-
-  sources: any;
-  levels: any;
-
-  dataTypeSlider: boolean = false;
-
-  zoom_level: any = 7;
-
-  defaultDataSourceDetails!: any;
-  defaultLevelDetails!: any;
-  endTime: any;
-  arrowRotation = 0;
-  existingstationdata: any[] = [];
-
-  chart: any;
-  chartCompare: any;
-  selectedOption: string = "station_details";
-  selectedParameter: any;
-  selectedCategory: any;
-  selected_Date: any = this.formatDate(new Date());
-  current_Date: any;
-  manual_date_time: any;
-  isSideNavOpen: boolean = true;
-  isBottomNavOpen: boolean = false;
-  selectedWeatherOption: string = "Temperature";
-
-  selectedWeatherOptionForCompareCharts = "Tempartaure";
-  // selectedWeatherData: any[] = this.stationWeatherParameters[0].data;
-  mcdata = [
-    { id: 101, name: "mc1" },
-    { id: 101, name: "mc1" },
-    { id: 101, name: "mc1" },
-    { id: 101, name: "mc1" },
-    { id: 101, name: "mc1" },
-  ];
-  startNumber: number = 1;
+  // --------------------------------------------------------------- resizing
+  private isResizing = false;
+  /** Stored so the listeners can actually be removed again. */
+  private readonly onMouseMoveRef = (e: MouseEvent) => this.onMouseMove(e);
+  private readonly onMouseUpRef = () => this.onMouseUp();
 
   constructor(
-    private formBuilder: FormBuilder,
     private datePipe: DatePipe,
-    private dataService: DataService,
     private http: HttpClient,
+    private zone: NgZone,
     private regionService: getRegionService,
     private centerService: CenterService,
     private getStateService: getStateService,
@@ -271,1820 +319,1715 @@ export class StationStatisticsPageComponent implements OnInit, OnDestroy {
     private fetchStationDataService: FetchStationDataService,
     private constants: Constants
   ) {
-    let loggedInUser: any = localStorage.getItem("isAuthorised");
-    this.loggedInUserObject = JSON.parse(loggedInUser);
-    this.currentUserType = this.loggedInUserObject.data[0].mcorhq;
-    this.currentUserName = this.loggedInUserObject.data[0].name.replace(
-      /^\S+\s/,
-      ""
-    );
-    this.currentUserMcCategory = this.loggedInUserObject.data[0].name.split(' ')[0].toLowerCase()
+    const loggedInUser = localStorage.getItem('isAuthorised');
+    const parsed = loggedInUser ? JSON.parse(loggedInUser) : null;
+    const user = parsed?.data?.[0] ?? {};
+    this.currentUserType = user.mcorhq ?? '';
+    this.currentUserName = (user.name ?? '').replace(/^\S+\s/, '');
+    this.currentUserMcCategory = (user.name ?? '').split(' ')[0].toLowerCase();
   }
 
-  Start() {
-    const getCSSVal = (e: any, v: any) => e.style.getPropertyValue(v);
-    const mod = (n: any, m: any) => ((n % m) + m) % m; // Fix negative Modulo
-    const PI = Math.PI;
-    const TAU = PI * 2;
-
-    const radar = (elRadar: any) => {
-      const elBeam = elRadar.querySelector(".beam");
-      const elsDot = elRadar.querySelectorAll(".dot");
-
-      const update = () => {
-        const beamAngle =
-          (parseFloat(getComputedStyle(elBeam).getPropertyValue("rotate")) *
-            PI) /
-            180 || 0;
-
-        elsDot.forEach((elDot: any) => {
-          const x = getCSSVal(elDot, "--x") - 0.5;
-          const y = getCSSVal(elDot, "--y") - 0.5;
-          const dotAngle = mod(Math.atan2(y, x), TAU);
-          const opacity = mod(dotAngle - beamAngle, TAU) / TAU;
-          elDot.style.opacity = opacity;
-        });
-
-        requestAnimationFrame(update);
-      };
-
-      update();
-    };
-
-    document.querySelectorAll(".radar").forEach(radar);
-  }
+  // =========================================================== lifecycle ====
 
   async ngOnInit(): Promise<void> {
-    this.Start();
-    this.form = this.formBuilder.group({
-      level: [0, Validators.required],
-      source: [0, Validators.required],
-    });
 
     this.initStationObservationMap();
-    this.getCurrentDate();
+    // GeoJSON first so state outlines sit underneath the markers rather than
+    // racing them and covering the smaller icons.
     this.loadGeoJSON();
-    this.fetchStationData(this.selected_Date);
-    this.fetchSeasonalStationData(this.selected_Date);
+
     this.fetchRegionData();
-    await this.getAllMCData();
-    await this.getAllRMCData();
+    await Promise.all([this.getAllMCData(), this.getAllRMCData()]);
     this.getAllStates();
     this.getAllDistricts();
 
-    
-
-
-    Exporting(Highcharts);
-    FullScreen(Highcharts);
-
-
-
+    this.fetchStationData(this.selected_Date);
+    this.fetchSeasonalStationData(this.selected_Date);
   }
-
-  getCurrentDate() {
-    const date = new Date();
-    const curr_Date = this.datePipe.transform(date, "d MMM yyyy, h:mm a");
-    if (curr_Date) {
-      const [formattedDate, formattedTime]: string[] = curr_Date.split(", ");
-
-      this.current_Date = {
-        date: formattedDate,
-        time: formattedTime,
-      };
-    }
-  }
-
-  onChangeRegion(checkedValues: any) {
-    this.selectedRegions = checkedValues;
-    let tempMcs = this.existingstationdata.filter((item) => {
-      return checkedValues.some((value: any) => {
-        return item.region == value;
-      });
-    });
-    let tempfilteredMcs = Array.from(new Set(tempMcs.map((a) => a.rmc_mc)));
-    this.filteredMcs = tempfilteredMcs.map((a) => {
-      return { name: a };
-    });
-  }
-
-  onChangeMc(checkedValues: any) {
-    this.selectedMcs = checkedValues;
-    let tempStates = this.existingstationdata.filter((item) => {
-      return checkedValues.some((value: any) => {
-        return item.rmc_mc == value;
-      });
-    });
-    let tempfilteredStates = Array.from(
-      new Set(tempStates.map((a) => a.state))
-    );
-    this.filteredStates = tempfilteredStates.map((a) => {
-      return { name: a };
-    });
-  }
-
-  onChangeState(checkedValues: any) {
-    let tempDistricts = this.existingstationdata.filter((item) => {
-      return checkedValues.some((value: any) => {
-        return item.state == value;
-      });
-    });
-    let tempfilteredDistricts = Array.from(
-      new Set(tempDistricts.map((a) => a.district))
-    );
-    this.filteredDistricts = tempfilteredDistricts.map((a) => {
-      return { name: a };
-    });
-    this.selectedDistrict = "";
-  }
-
-  onChangeDistrict(checkedValues: any) {
-    let tempStations = this.existingstationdata.filter((item) => {
-      return checkedValues.some((value: any) => {
-        return item.district == value;
-      });
-    });
-    let tempfilteredStations = Array.from(
-      new Set(tempStations.map((a) => a.station))
-    );
-    this.filteredStations = tempfilteredStations.map((a) => {
-      return { name: a };
-    });
-
-    this.selectedStation = "";
-  }
-
 
   ngOnDestroy(): void {
-    this.stationObservationMap.remove();
+    this.destroy$.next();
+    this.destroy$.complete();
+    window.removeEventListener('mousemove', this.onMouseMoveRef);
+    window.removeEventListener('mouseup', this.onMouseUpRef);
+    window.removeEventListener('mousemove', this.onCardDragRef);
+    window.removeEventListener('mouseup', this.onCardDragEndRef);
+    this.stationObservationMap?.remove();
   }
 
-  get formControls() {
-    return this.form.controls;
+  // =============================================================== helpers ==
+
+  /** Formats any date-ish input as yyyy-MM-dd. Safe for strings and Dates. */
+  private toIsoDate(value: Date | string): string {
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const month = `${d.getMonth() + 1}`.padStart(2, '0');
+    const day = `${d.getDate()}`.padStart(2, '0');
+    return `${d.getFullYear()}-${month}-${day}`;
   }
 
-
-
-
-
-
-
-
-
-
-
-
-  changeDate() {
-    this.manual_date_time = this.formatDate(this.selected_Date);
+  /** Public alias kept for the template's date formatting. */
+  formatDate(value: Date | string): string {
+    return this.toIsoDate(value);
   }
 
-  changeTimeToggle(event: any) {
-    this.dataTypeSlider = event.checked;
-
-    if (!this.dataTypeSlider) {
-    } else {
-    }
+  displayDate(value: string): string {
+    return this.datePipe.transform(value, 'dd MMM yyyy') ?? value;
   }
 
-  confirmTimeDate(event: Event): void {
-    if (this.trigger) {
-      this.trigger.closeMenu();
-    }
+  /** Renders a reading for display, collapsing the missing-value sentinel. */
+  formatReading(value: unknown): string {
+    return isMissing(value) ? 'No data' : `${Number(value).toFixed(1)} mm`;
   }
 
-  formatDate(date: any) {
-    const dateObject = new Date(date);
+  trackByStationCode = (_: number, s: { station_code: string | number }) =>
+    s.station_code;
+  trackByBandKey = (_: number, f: BandFilter) => f.band.key;
+  trackByCentre = (_: number, c: CentreCoverage) => c.centre;
 
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const day = date.getDate().toString().padStart(2, "0");
-    return `${year}-${month}-${day}`;
-
+  dismissError(): void {
+    this.errorMessage = '';
   }
 
+  // ========================================================== data loading ==
 
-  selectParameter(parameterObj: any) {
-    this.selectedParameter = parameterObj;
-    this.selectCategory(parameterObj.categoryOptions[0].text);
-  }
-
-  selectCategory(category: String) {
-    this.selectedCategory = category;
-  }
-  toggleBottomNav() {
-    this.isBottomNavOpen = true;
-  }
-  dateCalculation() {
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    let newDate = new Date(this.selected_Date);
-    let dd = String(newDate.getDate());
-    const year = newDate.getFullYear();
-    const currmonth = months[newDate.getMonth()];
-    const selectedYear = String(year).slice(-2);
-    return `${dd.padStart(2, "0")}_${currmonth}_${selectedYear}`;
-  }
-
-  toggleMapDisplay(): void {
-    this.showFirstMap = !this.showFirstMap;
-    this.showSecondMap = !this.showSecondMap;
-    if (this.showFirstMap) {
-      // this.loadGeoJSON();
-    } else {
-      // this.loadGeoJSON1();
-    }
-  }
-
-  findMatchingData(id: string): any | null {
-    const matchedData = this.filteredStations.find(
-      (data: any) => data.district_code == id
-    );
-    if (matchedData) {
-      return matchedData;
-    } else {
-      return null;
-    }
-  }
-
-  getColorForRainfall1(rainfall: any): string {
-    const numericId = Math.round(rainfall);
-    let cat = "";
-    if (rainfall == " ") {
-      return "#c0c0c0";
-    }
-    if (numericId > 60) {
-      cat = "LE";
-      return "#0096ff";
-    }
-    if (numericId >= 20 && numericId <= 59) {
-      cat = "E";
-      return "#32c0f8";
-    }
-    if (numericId >= -19 && numericId <= 19) {
-      cat = "N";
-      return "#00cd5b";
-    }
-    if (numericId >= -59 && numericId <= -20) {
-      cat = "D";
-      return "#ff2700";
-    }
-    if (numericId >= -99 && numericId <= -60) {
-      cat = "LD";
-      return "#ffff20";
-    }
-
-    if (numericId == -100) {
-      cat = "NR";
-      return "#ffffff";
-    } else {
-      cat = "ND";
-      return "#c0c0c0";
-    }
-  }
-
-  submitParameterForm() {
-    // this.filterByDate();
-    // const observationForm = {
-    //   weatherParam: this.selectedParameter,
-    //     ? this.manual_date_time.date
-    //     : this.current_Date.date,
-    //     ? this.manual_date_time.time
-    //     : this.current_Date.time,
-    // };
-    this.toggleBottomNav();
-    // this.loadGeoJSON();
-    // this.updateChart(this.stationWeatherParameters[0]);
-    // this.showMarkerOnMap();
-  }
-
-  // submitParameterForm() {
-  //   // this.filterByDate();
-  //   // const observationForm = {
-  //   //   weatherParam: this.selectedParameter,
-  //   //     ? this.manual_date_time.date
-  //   //     : this.current_Date.date,
-  //   //     ? this.manual_date_time.time
-  //   //     : this.current_Date.time,
-  //   // };
-  //   this.toggleBottomNav();
-  //   // this.loadGeoJSON();
-  //   this.updateChart(this.stationWeatherParameters[0]);
-  //   // this.showMarkerOnMap();
-  // }
-
-  closePopup() {
-    this.isBottomNavOpen = false;
-    this.showChart = true;
-
-    if (this.compareCircle) {
-      this.stationObservationMap.removeLayer(this.compareCircle);
-    }
-  }
-
-  selectStationDataOption(option: string): void {
-    this.selectedOption = option;
-  }
-
-  updateChart(weatherOptions: any) {
-    if (this.selectedOption === "station_details") {
-      var hoursArray;
-      var valuesArray;
-
-      hoursArray = weatherOptions.hourWisedata.map(
-        (dataPoint: any) => dataPoint.hour
-      );
-      valuesArray = weatherOptions.hourWisedata.map(
-        (dataPoint: any) => dataPoint.value
-      );
-
-      const unit = weatherOptions.data[0].unit;
-      this.chart = new Chart({
-        chart: {
-          type: "line",
-        },
-        title: {
-          text: "",
-        },
-        credits: {
-          enabled: false,
-        },
-        xAxis: {
-          categories: hoursArray,
-        },
-        yAxis: {
-          title: {
-            text: unit,
-          },
-        },
-        series: [
-          {
-            type: "line",
-            name: weatherOptions.text,
-            data: valuesArray,
-          },
-        ],
-      });
-
-      // this.selectedWeatherData = weatherOptions.data;
-    } else if (this.selectedOption === "compare_charts") {
-      const hoursArray = weatherOptions.data.map(
-        (dataPoint: any) => dataPoint.hour
-      );
-      const valuesArray = weatherOptions.data.map(
-        (dataPoint: any) => dataPoint.value
-      );
-      const valuesArray1 = weatherOptions.data1.map(
-        (dataPoint: any) => dataPoint.value
-      );
-      const unit = weatherOptions.data[0].unit;
-      this.chart = new Chart({
-        chart: {
-          type: "line",
-        },
-        title: {
-          text: "",
-        },
-        credits: {
-          enabled: false,
-        },
-        xAxis: {
-          categories: hoursArray,
-        },
-        yAxis: {
-          title: {
-            text: unit,
-          },
-        },
-        series: [
-          {
-            type: "line",
-            name: weatherOptions.text,
-            data: valuesArray,
-          },
-          {
-            type: "line",
-            name: weatherOptions.text + " 1",
-            data: valuesArray1,
-          },
-        ],
-      });
-
-      this.selectedWeatherOption = weatherOptions.text;
-      // this.selectedWeatherData = weatherOptions.data;
-    }
-  }
-
-  toggleDataParameter(param: string) {
-    return param === this.selectedWeatherOption;
-  }
-
-  toggleDataParameterCompareCharts(param: string) {
-    return param === this.selectedWeatherOptionForCompareCharts;
-  }
-
-  async fetchSeasonalStationData(date: any) {
-    const fromAndTodate =
-      this.constants.getCurrentMonthSeasonFromAndToCurrentDate(new Date(date));
-
-    (this.currSeasonStartDate = fromAndTodate.startDate),
-      (this.currentSeasonEndDate = fromAndTodate.endDate),
-      console.log("dhvsuhdvh", fromAndTodate);
-
-    const param = {
-      fromDate: fromAndTodate.startDate,
-      toDate: fromAndTodate.endDate,
-    };
-
-    try {
-      const response = await this.fetchStationDataService
-        .fetchInRangeStationdata(fromAndTodate.startDate, fromAndTodate.endDate)
-        .toPromise();
-      const fetchedData = response.data;
-
-      const initialResult = {
-        maxStation: fetchedData[0],
-        minStation: fetchedData[0],
-        validCount: 0,
-        invalidCount: 0,
-      };
-
-      const result = fetchedData.reduce((acc: any, station: any) => {
-        if (station.data !== -999.9 && station.data !== 0) {
-          if (!acc.maxStation || station.data > acc.maxStation.data) {
-            acc.maxStation = station;
-          }
-          if (!acc.minStation || station.data < acc.minStation.data) {
-            acc.minStation = station;
-          }
-          acc.validCount++;
-        } else {
-          acc.invalidCount++;
-        }
-        return acc;
-      }, initialResult);
-
-      this.maxSeasonalStationRainfall =
-        result.maxStation.data == -999.9
-          ? "No Data"
-          : result.maxStation.data.toFixed(1) + "mm";
-      this.maxSeasonalStationname = result.maxStation.station_name;
-      this.minSeasonalStationRainfall =
-        result.minStation.data == -999.9
-          ? "No Data"
-          : result.minStation.data + "mm";
-      this.TotalStationsRecievedSeasonal = result.validCount;
-      this.TotalStationsPendingSeasonal = result.invalidCount;
-    } catch (e) {
-      console.log(e);
-    }
-  }
-
-  fetchStationData(date: any): void {
-    this.isLoading = true;
-    try{
-      this.fetchStationDataService.fetchStationDataTemp(date ?? "").subscribe(
-        (response: any) => {
-          this.stationData = response?.data;
-          const initialResult = {
-            maxStation: this.stationData[0],
-            minStation: this.stationData[0],
-            validCount: 0,
-            invalidCount: 0,
-          };
-          const result = this.stationData.reduce((acc: any, station: any) => {
-            if (station.data !== -999.9) {  // && station.data !== 0
-              if (!acc.maxStation || station.data > acc.maxStation.data) {
-                acc.maxStation = station;
-              }
-              if (!acc.minStation || station.data < acc.minStation.data) {
-                acc.minStation = station;
-              }
-              acc.validCount++;
-            } else {
-              acc.invalidCount++;
-            }
-            return acc;
-          }, initialResult);
-  
-          this.maxStationRainfall =
-            result.maxStation.data == -999.9
-              ? "No Data"
-              : result.maxStation.data + "mm";
-          this.maxStationname = result.maxStation.station_name;
-          this.maxStationStatename = result.maxStation.state_name;
-          this.minStationRainfall =
-            result.minStation.data == -999.9
-              ? "No Data"
-              : result.minStation.data + "mm";
-          this.TotalStationsRecieved = result.validCount;
-          this.TotalStationsPending = result.invalidCount;
-  
-          //--------------------------------------------------------------
-  
-          this.comparefilteredStations = this.stationData;
-  
-          this.filteredData = this.stationData;
-  
-          this.getDayStatistics();
-          this.loadStations();
-          this.isLoading = false;
-        },
-        (error: any) => {
-          this.isLoading = false;
-          alert('Data not found for the selected date')
-          console.error("Error fetching data:", error);
-        }
-      );
-    }catch{
-    }
-
-  }
-
-  fetchRegionData() {
-    this.regionService.fetchData().subscribe(
-      (response) => {
-        if (response && response.data) {
-          this.regions = response.data.map((region: any) => ({
+  fetchRegionData(): void {
+    this.regionService
+      .fetchData()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          this.regions = (response?.data ?? []).map((region: any) => ({
             label: region.region_name,
             value: region.region_code,
           }));
-        } else {
-          console.error("Unexpected response format:", response);
-          alert("Data is not coming in the expected format");
-        }
-      },
-      (error) => {
-        console.error("Error fetching region data:", error);
-        alert("Data is not available for today");
-      }
-    );
+        },
+        error: () => {
+          this.errorMessage = 'Could not load regions. Filtering by region is unavailable.';
+        },
+      });
   }
 
-  async getAllMCData(): Promise<void> {
+  private async getAllMCData(): Promise<void> {
     try {
-      const response = await this.centerService.fetchData("MC").toPromise();
-      this.centersMC.push(response.data);
-    } catch (error) {
-      console.error("Error fetching center details:", error);
-    }
-  }
-  async getAllRMCData(): Promise<void> {
-    try {
-      const response = await this.centerService.fetchData("RMC").toPromise();
-      this.centersRMC.push(response.data);
-      console.log(this.currentUserMcCategory);
-    } catch (error) {
-      console.error("Error fetching center details:", error);
+      const response = await this.centerService.fetchData('MC').toPromise();
+      this.allMCs = response?.data ?? [];
+      this.centersMC1 = this.allMCs;
+    } catch {
+      this.errorMessage = 'Could not load meteorological centres.';
     }
   }
 
-  // Get all States
-  getAllStates(): void {
-    // this.getStateService.fetchData().subscribe(
-    //   (response) => {
-    //     this.states.push(response);
-    //     // this.selectedMC = [this.currentUserName]
-    //     // console.log(this.selectedMC)
-    //     if(this.currentUserType == 'mc'){
-    //       this.filterStates = this.states[0].data.filter((state: any) => {
-    //         return this.selectedMC.some(
-    //           (mc: any) => mc.centre_name == state.centre_name
-    //         );
-    //       });
-    //     }
-    //   },
-    //   (error) => {
-    //     console.error("Error fetching center details:", error);
-    //   }
-    // );
+  private async getAllRMCData(): Promise<void> {
+    try {
+      const response = await this.centerService.fetchData('RMC').toPromise();
+      this.allRMCs = response?.data ?? [];
+      this.centersRMC1 = this.allRMCs;
+    } catch {
+      this.errorMessage = 'Could not load regional meteorological centres.';
+    }
+  }
 
-      this.getStateService.fetchData().subscribe(
-        (response) => {
-          this.states.push(response);
+  private getAllStates(): void {
+    this.getStateService
+      .fetchData()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          this.allStates = response?.data ?? [];
+          this.filterStates = this.allStates;
 
-          if(this.currentUserType =='mc'){
-            if(this.currentUserMcCategory == 'mc'){
-  
-              this.rmcDisabled = true
-          
-              this.selectedMC = this.centersMC[0].filter((x:any)=>x.centre_name.toLowerCase() == this.currentUserName.toLowerCase())
-          
-              const filteredStates = this.states[0].data.filter((state: any) => {
-                return this.selectedMC.some(
-                  (mc: any) => mc.centre_name == state.centre_name
-                );
-              });
-  
-              console.log(filteredStates)
-          
-              this.filterStates = filteredStates;
-              }else{
-          
-                  this.mcDisabled = true;
-      
-                  this.selectedRMC = this.centersRMC[0].filter((x:any)=>x.centre_name.toLowerCase() == this.currentUserName.toLowerCase())
-                  const filterStatesRMC = this.states[0].data.filter((state: any) => {
-                    return this.selectedRMC.some(
-                      (rmc: any) => rmc.centre_name == state.centre_name
-                    );
-                  });
-              
-                  this.filterStates = filterStatesRMC;
-                
-              }
+          // MC/RMC users are pinned to their own centre and cannot widen the scope.
+          if (this.currentUserType !== 'mc') return;
+
+          const matchesUser = (c: any) =>
+            c.centre_name?.toLowerCase() === this.currentUserName.toLowerCase();
+
+          if (this.currentUserMcCategory === 'mc') {
+            this.rmcDisabled = true;
+            this.selectedMC = this.allMCs.filter(matchesUser);
+            this.filterStates = this.statesForCentres(this.selectedMC);
+          } else {
+            this.mcDisabled = true;
+            this.selectedRMC = this.allRMCs.filter(matchesUser);
+            this.filterStates = this.statesForCentres(this.selectedRMC);
           }
         },
-        (error) => {
-          console.error("Error fetching center details:", error);
-        }
-      );
+        error: () => {
+          this.errorMessage = 'Could not load states.';
+        },
+      });
   }
 
-  getAllDistricts(): void {
-    this.getDistrictService.fetchData().subscribe(
-      (response) => {
-        this.districts.push(response);
-      },
-      (error) => {
-        console.error("Error fetching center details:", error);
+  private getAllDistricts(): void {
+    this.getDistrictService
+      .fetchData()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          this.allDistricts = response?.data ?? [];
+        },
+        error: () => {
+          this.errorMessage = 'Could not load districts.';
+        },
+      });
+  }
+
+  private statesForCentres(centres: any[]): any[] {
+    const names = new Set(centres.map((c) => c.centre_name));
+    return this.allStates.filter((s) => names.has(s.centre_name));
+  }
+
+  fetchStationData(date: string): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    this.fetchStationDataService
+      .fetchStationDataTemp(date ?? '')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          this.stationData = response?.data ?? [];
+          this.computeDayHeadlines(this.stationData);
+          // Re-apply whatever filters the user already had set rather than
+          // silently resetting the map to "everything" on each date change.
+          this.filterStationData();
+          this.isLoading = false;
+        },
+        error: () => {
+          this.stationData = [];
+          this.filteredData = [];
+          this.renderMarkers();
+          this.resetHeadlines();
+          this.isLoading = false;
+          this.errorMessage = `No station data available for ${this.displayDate(date)}.`;
+        },
+      });
+  }
+
+  private resetHeadlines(): void {
+    this.maxStationRainfall = '—';
+    this.minStationRainfall = '—';
+    this.maxStationname = '';
+    this.maxStationStatename = '';
+    this.TotalStationsRecieved = 0;
+    this.TotalStationsPending = 0;
+    this.bandFilters.forEach((f) => (f.count = 0));
+    this.topnStations = [];
+    this.coverage = [];
+    this.distributionChart = null;
+    this.coverageDonut = null;
+    this.topChart = null;
+  }
+
+  /**
+   * Highest/lowest and received/pending for the day.
+   * The missing-value sentinel is excluded from both extremes — it used to be
+   * folded into the minimum, so the "lowest recorded" figure was -999.9 for any
+   * day where a single station had not reported.
+   */
+  private computeDayHeadlines(stations: Station[]): void {
+    let max: Station | null = null;
+    let min: Station | null = null;
+    let received = 0;
+    let pending = 0;
+
+    for (const station of stations) {
+      if (isMissing(station.data)) {
+        pending++;
+        continue;
       }
+      received++;
+      if (!max || station.data > max.data) max = station;
+      if (!min || station.data < min.data) min = station;
+    }
+
+    this.maxStationRainfall = max ? this.formatReading(max.data) : '—';
+    this.maxStationname = max?.station_name ?? '';
+    this.maxStationStatename = max?.state_name ?? '';
+    this.minStationRainfall = min ? this.formatReading(min.data) : '—';
+    this.TotalStationsRecieved = received;
+    this.TotalStationsPending = pending;
+    this.renderCoverageDonut();
+  }
+
+  private fetchSeasonalStationData(date: string): void {
+    const range = this.constants.getCurrentMonthSeasonFromAndToCurrentDate(
+      new Date(date)
+    );
+    this.currSeasonStartDate = range.startDate;
+    this.currentSeasonEndDate = range.endDate;
+
+    this.fetchStationDataService
+      .fetchInRangeStationdata(range.startDate, range.endDate)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          const rows: Station[] = response?.data ?? [];
+          let max: Station | null = null;
+          for (const row of rows) {
+            if (isMissing(row.data) || row.data === 0) continue;
+            if (!max || row.data > max.data) max = row;
+          }
+          this.maxSeasonalStationRainfall = max
+            ? this.formatReading(max.data)
+            : '—';
+          this.maxSeasonalStationname = max?.station_name ?? '';
+        },
+        error: () => {
+          this.maxSeasonalStationRainfall = '—';
+          this.maxSeasonalStationname = '';
+        },
+      });
+  }
+
+  // ============================================================== filtering ==
+
+  onDateChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    if (!value) return;
+    this.selected_Date = value;
+    this.fetchStationData(value);
+    this.fetchSeasonalStationData(value);
+  }
+
+  /**
+   * Each cascade level clears everything below it. Without this you could leave
+   * a district selected that no longer belonged to the chosen state, and the map
+   * would come back empty with no explanation.
+   */
+  onRegionChange(): void {
+    const codes = new Set(this.selectedRegion ?? []);
+    const inRegion = (c: any) => codes.size === 0 || codes.has(c.region_code);
+    this.centersMC1 = this.allMCs.filter(inRegion);
+    this.centersRMC1 = this.allRMCs.filter(inRegion);
+
+    this.selectedMC = [];
+    this.selectedRMC = [];
+    this.mcDisabled = false;
+    this.rmcDisabled = false;
+    this.filterStates = this.allStates;
+    this.clearStateAndBelow();
+  }
+
+  onMcChange(): void {
+    this.rmcDisabled = (this.selectedMC?.length ?? 0) > 0;
+    this.filterStates = this.selectedMC?.length
+      ? this.statesForCentres(this.selectedMC)
+      : this.allStates;
+    this.clearStateAndBelow();
+  }
+
+  onRMcChange(): void {
+    this.mcDisabled = (this.selectedRMC?.length ?? 0) > 0;
+    this.filterStates = this.selectedRMC?.length
+      ? this.statesForCentres(this.selectedRMC)
+      : this.allStates;
+    this.clearStateAndBelow();
+  }
+
+  onStateChange(): void {
+    const codes = new Set((this.selectedState ?? []).map((s: any) => s.state_code));
+    this.filterDistrict = codes.size
+      ? this.allDistricts.filter((d) => codes.has(d.state_code))
+      : [];
+    this.selectedDistrict = [];
+    this.filteredStations = [];
+    this.selectedstations = [];
+  }
+
+  onDistrictChange(): void {
+    const codes = new Set(
+      (this.selectedDistrict ?? []).map((d: any) => d.district_code)
+    );
+    this.filteredStations = codes.size
+      ? this.stationData.filter((s) => codes.has(s.district_code))
+      : [];
+    this.selectedstations = [];
+  }
+
+  private clearStateAndBelow(): void {
+    this.selectedState = [];
+    this.selectedDistrict = [];
+    this.selectedstations = [];
+    this.filterDistrict = [];
+    this.filteredStations = [];
+  }
+
+  /**
+   * Rebuilds the visible station set from scratch.
+   *
+   * Order matters: band counts are computed from the *scoped* set (hierarchy +
+   * station type) and before the band visibility filter is applied. That keeps
+   * each count stable no matter which bands are ticked — previously unticking a
+   * band re-derived the counts from the already-narrowed array, so the numbers
+   * shifted underneath the user.
+   */
+  filterStationData(): void {
+    let scoped: Station[] = this.selectedstations?.length
+      ? [...this.selectedstations]
+      : [...this.stationData];
+
+    if (!this.selectedstations?.length) {
+      if (this.selectedRegion?.length) {
+        const codes = new Set(this.selectedRegion);
+        scoped = scoped.filter((s) => codes.has(s.region_code));
+      }
+      if (this.selectedState?.length) {
+        const codes = new Set(this.selectedState.map((s: any) => s.state_code));
+        scoped = scoped.filter((s) => codes.has(s.state_code));
+      }
+      if (this.selectedDistrict?.length) {
+        const codes = new Set(
+          this.selectedDistrict.map((d: any) => d.district_code)
+        );
+        scoped = scoped.filter((s) => codes.has(s.district_code));
+      }
+    }
+
+    /*
+     * Snapshot for the cloud layer, taken before the station-type filter.
+     *
+     * The cloud represents the rainfall field over an area, not a set of
+     * instruments — so hiding AWS/ORG/ARG markers should not dissolve it. It
+     * still follows the geographic filters, which do change which area is
+     * being described.
+     */
+    const geoScope = scoped;
+
+    const types = new Set<string>();
+    if (this.isAwsSelected) types.add('AWS');
+    if (this.isOrgSelected) types.add('ORG');
+    if (this.isArgSelected) types.add('ARG');
+    scoped = scoped.filter((s) => types.has(s.station_type ?? ''));
+
+    /*
+     * The centre filter is applied *after* this snapshot on purpose.
+     *
+     * Coverage is built from the pre-centre scope so the Data Received card
+     * keeps listing every centre. Selecting one from that list previously
+     * narrowed the very data the list was built from, so the list collapsed to
+     * the single row you had just clicked and there was no way back.
+     */
+    this.scopedData = scoped;
+
+    // The centre restriction is geographic, so it applies to the cloud too.
+    const byCentre = (rows: Station[]): Station[] => {
+      if (this.selectedstations?.length) return rows;
+      let out = rows;
+      if (this.selectedMC?.length) {
+        const names = new Set(this.selectedMC.map((m: any) => m.centre_name));
+        out = out.filter((s) => names.has(s.centre_name));
+      }
+      if (this.selectedRMC?.length) {
+        const names = new Set(this.selectedRMC.map((m: any) => m.centre_name));
+        out = out.filter((s) => names.has(s.centre_name));
+      }
+      return out;
+    };
+
+    this.cloudSourceData = byCentre(geoScope);
+    scoped = byCentre(scoped);
+
+    this.updateBandCounts(scoped);
+
+    const visibleBands = new Set(
+      this.bandFilters.filter((f) => f.selected).map((f) => f.band.key)
+    );
+    this.filteredData = scoped.filter((station) => {
+      const band = bandFor(station.data);
+      if (!band) return this.showMissingStations;
+      return visibleBands.has(band.key);
+    });
+
+    this.computeTopNStations();
+    this.computeCoverage();
+    this.renderDistributionChart();
+    this.renderMarkers();
+    this.refreshHeatLayer();
+    this.refreshRainClouds();
+  }
+
+  /**
+   * Reporting completeness per centre, worst first.
+   *
+   * The "pending" headline says how many stations are missing but never which
+   * centres they belong to, which is the part an operator can act on. Computed
+   * from the scoped set so it respects the active filters.
+   */
+  private computeCoverage(): void {
+    const byCentre = new Map<string, { total: number; missing: number }>();
+
+    for (const station of this.scopedData) {
+      const centre = station.centre_name?.trim();
+      if (!centre) continue;
+      const entry = byCentre.get(centre) ?? { total: 0, missing: 0 };
+      entry.total++;
+      if (isMissing(station.data)) entry.missing++;
+      byCentre.set(centre, entry);
+    }
+
+    // Every centre is listed — the card scrolls rather than truncating, so a
+    // centre is never silently missing from the ranking. Worst first; fully
+    // reported centres fall to the bottom showing 0.
+    this.coverage = Array.from(byCentre, ([centre, v]) => ({
+      centre,
+      total: v.total,
+      missing: v.missing,
+      pct: v.total ? Math.round(((v.total - v.missing) / v.total) * 100) : 0,
+    })).sort((a, b) => b.missing - a.missing || a.centre.localeCompare(b.centre));
+  }
+
+  /** Centres still missing at least one station — drives the card's subtitle. */
+  get centresAwaiting(): number {
+    return this.coverage.filter((c) => c.missing > 0).length;
+  }
+
+  /**
+   * Totals derived from `coverage` rather than the day headlines, so the
+   * card's summary always agrees with the rows underneath it — the headlines
+   * count every station, while coverage respects the active filters.
+   */
+  get coverageTotal(): number {
+    return this.coverage.reduce((sum, c) => sum + c.total, 0);
+  }
+
+  get coverageReceived(): number {
+    return this.coverage.reduce((sum, c) => sum + (c.total - c.missing), 0);
+  }
+
+  /** Horizontal bars read better than columns inside a narrow floating card. */
+  private renderDistributionChart(): void {
+    const rows = this.bandFilters.filter((f) => f.count > 0);
+
+    if (!rows.length) {
+      this.distributionChart = null;
+      return;
+    }
+
+    this.distributionChart = new Chart({
+      chart: {
+        type: 'bar',
+        height: Math.max(120, rows.length * 26 + 34),
+        backgroundColor: 'transparent',
+        spacing: [4, 4, 4, 0],
+      },
+      title: { text: '' },
+      credits: { enabled: false },
+      legend: { enabled: false },
+      exporting: { enabled: false },
+      xAxis: {
+        categories: rows.map((f) => f.band.label),
+        lineWidth: 0,
+        tickLength: 0,
+        labels: { style: { fontSize: '10px', color: '#5b6675' } },
+      },
+      yAxis: {
+        title: { text: null },
+        gridLineColor: '#eef1f5',
+        labels: { style: { fontSize: '10px', color: '#8b96a5' } },
+      },
+      tooltip: {
+        headerFormat: '',
+        pointFormat: '<b>{point.category}</b><br>{point.y} stations',
+      },
+      plotOptions: {
+        bar: {
+          borderWidth: 0,
+          borderRadius: 2,
+          pointPadding: 0.04,
+          groupPadding: 0.08,
+          cursor: 'pointer',
+          point: {
+            events: {
+              // Clicking a bar isolates that band — the fastest way to ask
+              // "where exactly is the heavy rain today?".
+              click: (e: any) => {
+                this.zone.run(() => this.isolateBand(e.point.category));
+              },
+            },
+          },
+        },
+      },
+      series: [
+        {
+          type: 'bar',
+          name: 'Stations',
+          data: rows.map((f) => ({ y: f.count, color: f.band.color })),
+        },
+      ],
+    });
+  }
+
+  /** Received vs pending, as a donut sitting behind the two stat tiles. */
+  private renderCoverageDonut(): void {
+    const received = this.TotalStationsRecieved;
+    const pending = this.TotalStationsPending;
+
+    if (!received && !pending) {
+      this.coverageDonut = null;
+      return;
+    }
+
+    this.coverageDonut = new Chart({
+      chart: {
+        type: 'pie',
+        height: 132,
+        backgroundColor: 'transparent',
+        spacing: [2, 2, 2, 2],
+      },
+      title: {
+        // Completeness reads faster as a number in the hole than off the arc.
+        text: `<span style="font-size:17px;font-weight:700;color:#1a4fa0">${Math.round(
+          (received / Math.max(1, received + pending)) * 100
+        )}%</span><br><span style="font-size:9px;color:#8b96a5">REPORTED</span>`,
+        align: 'center',
+        verticalAlign: 'middle',
+        useHTML: true,
+        y: 4,
+      },
+      credits: { enabled: false },
+      legend: { enabled: false },
+      exporting: { enabled: false },
+      tooltip: { pointFormat: '<b>{point.y}</b> stations ({point.percentage:.1f}%)' },
+      plotOptions: {
+        pie: {
+          innerSize: '72%',
+          borderWidth: 0,
+          dataLabels: { enabled: false },
+          states: { hover: { halo: { size: 4 } } },
+        },
+      },
+      series: [
+        {
+          type: 'pie',
+          name: 'Stations',
+          data: [
+            { name: 'Received', y: received, color: '#1a4fa0' },
+            { name: 'Pending', y: pending, color: '#e0e5ec' },
+          ],
+        },
+      ],
+    });
+  }
+
+  /** Visual companion to the leaderboard list, coloured by rainfall band. */
+  private renderTopChart(): void {
+    if (!this.topnStations.length) {
+      this.topChart = null;
+      return;
+    }
+
+    // Highcharts bar charts plot bottom-up, so reverse to put #1 on top.
+    const rows = [...this.topnStations].reverse();
+
+    this.topChart = new Chart({
+      chart: {
+        type: 'bar',
+        height: Math.max(110, rows.length * 22 + 26),
+        backgroundColor: 'transparent',
+        spacing: [4, 4, 2, 0],
+      },
+      title: { text: '' },
+      credits: { enabled: false },
+      legend: { enabled: false },
+      exporting: { enabled: false },
+      xAxis: {
+        categories: rows.map((s) => s.station_name),
+        lineWidth: 0,
+        tickLength: 0,
+        labels: { style: { fontSize: '9px', color: '#5b6675' } },
+      },
+      yAxis: {
+        title: { text: null },
+        gridLineColor: '#eef1f5',
+        labels: { style: { fontSize: '9px', color: '#8b96a5' }, format: '{value}' },
+      },
+      tooltip: {
+        headerFormat: '',
+        pointFormat: '<b>{point.category}</b><br>{point.y} mm',
+      },
+      plotOptions: {
+        bar: {
+          borderWidth: 0,
+          borderRadius: 2,
+          pointPadding: 0.05,
+          groupPadding: 0.06,
+          cursor: 'pointer',
+          point: {
+            events: {
+              click: (e: any) => {
+                const station = rows[e.point.index];
+                if (station) this.zone.run(() => this.focusStation(station));
+              },
+            },
+          },
+        },
+      },
+      series: [
+        {
+          type: 'bar',
+          name: 'Rainfall',
+          data: rows.map((s) => ({
+            y: s.data,
+            // Pale bands need the outline they get on the map; here a darker
+            // stroke would be noisy, so fall back to the brand colour.
+            color: bandFor(s.data)?.color ?? '#1a4fa0',
+            borderColor: '#c8d0da',
+            borderWidth: 1,
+          })),
+        },
+      ],
+    });
+  }
+
+  /** Shows only the clicked band. Clicking the active band restores all. */
+  isolateBand(label: string): void {
+    const target = this.bandFilters.find((f) => f.band.label === label);
+    if (!target) return;
+
+    const alreadyIsolated =
+      target.selected && this.bandFilters.every((f) => f.selected === (f === target));
+
+    this.bandFilters.forEach((f) => (f.selected = alreadyIsolated || f === target));
+    this.showMissingStations = false;
+    this.filterStationData();
+  }
+
+  /** Centres the map on a station and opens its detail panel. */
+  focusStation(station: Station): void {
+    const lat = parseFloat(String(station.latitude));
+    const lng = parseFloat(String(station.longitude));
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      this.stationObservationMap.flyTo([lat, lng], 9, { duration: 0.8 });
+    }
+    this.showStationData(station);
+  }
+
+  toggleCard(key: CardKey): void {
+    this.cardOpen[key] = !this.cardOpen[key];
+
+    // Unfolding rebuilds the body, so the chart needs a fresh instance for the
+    // same reason toggleFloatingCards does.
+    if (key === 'distribution' && this.cardOpen.distribution) {
+      this.renderDistributionChart();
+    }
+  }
+
+  toggleFloatingCards(): void {
+    this.showFloatingCards = !this.showFloatingCards;
+
+    // Hiding the layer destroys the chart's container, and an angular-highcharts
+    // Chart instance cannot be re-attached to a new element — it would come back
+    // as an empty box. Build a fresh instance for the fresh container.
+    if (this.showFloatingCards) {
+      this.renderDistributionChart();
+    }
+  }
+
+  /** Returns both cards to their default anchored positions. */
+  resetCardPositions(): void {
+    this.cardOffset = { distribution: { x: 0, y: 0 }, coverage: { x: 0, y: 0 } };
+  }
+
+  /**
+   * Starts a drag from the card's grip handle.
+   *
+   * The grip is separate from the fold button so a drag can never be mistaken
+   * for a click on the title — no movement threshold or click suppression
+   * needed. Travel is clamped at mousedown against the map pane, so a card
+   * cannot be thrown off-screen and stranded.
+   */
+  startCardDrag(event: MouseEvent, key: CardKey): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const card = (event.currentTarget as HTMLElement).closest(
+      '.ss-fcard'
+    ) as HTMLElement | null;
+    const pane = card?.closest('.ss-map-pane') as HTMLElement | null;
+    if (!card || !pane) return;
+
+    const cardRect = card.getBoundingClientRect();
+    const paneRect = pane.getBoundingClientRect();
+    const offset = this.cardOffset[key];
+
+    this.draggingCard = key;
+    this.dragOrigin = { x: event.clientX, y: event.clientY, ox: offset.x, oy: offset.y };
+    this.dragBounds = {
+      minX: offset.x + (paneRect.left + 8 - cardRect.left),
+      maxX: offset.x + (paneRect.right - 8 - cardRect.right),
+      minY: offset.y + (paneRect.top + 8 - cardRect.top),
+      maxY: offset.y + (paneRect.bottom - 8 - cardRect.bottom),
+    };
+
+    window.addEventListener('mousemove', this.onCardDragRef);
+    window.addEventListener('mouseup', this.onCardDragEndRef);
+  }
+
+  private onCardDrag(event: MouseEvent): void {
+    const key = this.draggingCard;
+    if (!key) return;
+
+    const { minX, maxX, minY, maxY } = this.dragBounds;
+    this.cardOffset[key] = {
+      x: this.clamp(this.dragOrigin.ox + (event.clientX - this.dragOrigin.x), minX, maxX),
+      y: this.clamp(this.dragOrigin.oy + (event.clientY - this.dragOrigin.y), minY, maxY),
+    };
+  }
+
+  private endCardDrag(): void {
+    this.draggingCard = null;
+    window.removeEventListener('mousemove', this.onCardDragRef);
+    window.removeEventListener('mouseup', this.onCardDragEndRef);
+  }
+
+  private clamp(value: number, min: number, max: number): number {
+    // A folded card can be taller than its bounds allow; keep min authoritative.
+    return max < min ? min : Math.min(max, Math.max(min, value));
+  }
+
+  /** True when this centre is the one currently restricting the map. */
+  isCentreSelected(centre: string): boolean {
+    return (
+      this.selectedMC.some((c: any) => c.centre_name === centre) ||
+      this.selectedRMC.some((c: any) => c.centre_name === centre)
     );
   }
 
-  // getAllStations() : void{
-
-  // }
-
-  onRegionChange(): void {
-    if (this.selectedRegion && this.selectedRegion.length > 0) {
-      const filteredCenters = this.centersMC[0]?.filter((center: any) =>
-        this.selectedRegion.includes(center.region_code)
-      );
-
-      this.centersMC.push(filteredCenters);
-
-      let lenOfCenterMC = this.centersMC.length;
-      this.centersMC1 = this.centersMC[lenOfCenterMC - 1];
-
-      // <- RMC ->
-      const filteredCentersRMC = this.centersRMC[0]?.filter((center: any) =>
-        this.selectedRegion.includes(center.region_code)
-      );
-
-      this.centersRMC.push(filteredCentersRMC);
-
-      let lenOfCenterRMC = this.centersRMC.length;
-      this.centersRMC1 = this.centersRMC[lenOfCenterRMC - 1];
+  /**
+   * Restricts the map to a single centre straight from the coverage list, and
+   * highlights that row. Clicking the highlighted row again clears the
+   * restriction, so the list is a toggle rather than a one-way trip.
+   */
+  focusCentre(centre: string): void {
+    if (this.isCentreSelected(centre)) {
+      this.selectedMC = [];
+      this.selectedRMC = [];
+      this.mcDisabled = false;
+      this.rmcDisabled = false;
+      this.filterStates = this.allStates;
+      this.filterStationData();
+      return;
     }
-  }
 
-  onMcChange(event: any): void {
-    this.selectedMCData = event.value;
-
-    console.log('selected mcs',this.selectedMCData, this.selectedMC)
-
-    this.rmcDisabled = this.selectedMC.length > 0;
-
-    const filteredStates = this.states[0].data.filter((state: any) => {
-      return this.selectedMC.some(
-        (mc: any) => mc.centre_name == state.centre_name
-      );
-    });
-
-    this.filterStates = filteredStates;
-  }
-
-  onRMcChange(event: any): void {
-    this.selectedRMCData = event.value;
-
-    this.mcDisabled = this.selectedRMC.length > 0;
-
-    const filterStatesRMC = this.states[0].data.filter((state: any) => {
-      return this.selectedRMC.some(
-        (rmc: any) => rmc.centre_name == state.centre_name
-      );
-    });
-
-    this.filterStates = filterStatesRMC;
-  }
-
-  onStateChange(event: any): void {
-    this.selectedStateData = event.value;
-
-
-    console.log(this.selectedMCData)
-
-    const filteredDistricts = this.districts[0].data.filter((dist: any) => {
-      return this.selectedState.some(
-        (mc: any) => mc.state_code == dist.state_code
-      );
-    });
-    this.filterDistrict = filteredDistricts;
-  }
-
-  onDistrictChange(event: any): void {
-    this.selectedDistrictData = event.value;
-
-    const filteredStations = this.stationData.filter((dist: any) => {
-      return this.selectedDistrictData.some(
-        (st: any) => dist.district_code == st.district_code
-      );
-    });
-
-    this.filteredStations = filteredStations;
-  }
-
-  onStationChange(event: any): void {
-    this.selectedstations = event.value;
-  }
-
-  filterStationData(): void {
-    this.isLoading = true;
-    if (this.selectedstations.length == 0) {
-      this.filteredData = this.stationData;
-      if (this.selectedRegion && this.selectedRegion.length > 0) {
-        this.filteredData = this.filteredData.filter((station: any) =>
-          this.selectedRegion.includes(station.region_code)
-        );
-      }
-      if (this.selectedMC && this.selectedMC.length > 0) {
-        const selectedMCNames = this.selectedMC.map((mc:any) => mc.centre_name);
-        this.filteredData = this.filteredData.filter((station: any) =>
-          selectedMCNames.includes(station.centre_name)
-        );
-      }
-      if (this.selectedRMC && this.selectedRMC.length > 0) {
-        const selectedRMCNames = this.selectedRMC.map(
-          (rmc: any) => rmc.centre_name
-        );
-        this.filteredData = this.filteredData.filter((station: any) =>
-          selectedRMCNames.includes(station.centre_name)
-        );
-      }
-      if (this.selectedStateData && this.selectedStateData.length > 0) {
-        const selectedStateCodes = this.selectedStateData.map(
-          (state: any) => state.state_code
-        );
-
-        this.filteredData = this.filteredData.filter((item: any) =>
-          selectedStateCodes.includes(item.state_code)
-        );
-      }
-
-      if (this.selectedDistrictData && this.selectedDistrictData.length > 0) {
-        const selectedDistrictCodes = this.selectedDistrictData.map(
-          (item: any) => item.district_code
-        );
-
-        this.filteredData = this.filteredData.filter((item: any) =>
-          selectedDistrictCodes.includes(item.district_code)
-        );
-      }
+    const inMC = this.allMCs.find((c) => c.centre_name === centre);
+    if (inMC) {
+      this.selectedMC = [inMC];
+      this.selectedRMC = [];
+      this.rmcDisabled = true;
+      this.mcDisabled = false;
     } else {
-      this.filteredData = this.selectedstations;
+      const inRMC = this.allRMCs.find((c) => c.centre_name === centre);
+      if (!inRMC) return;
+      this.selectedRMC = [inRMC];
+      this.selectedMC = [];
+      this.mcDisabled = true;
+      this.rmcDisabled = false;
     }
-
-    this.filteredData = this.filteredData.filter((x: any) => {
-      return (
-        (this.isAwsSelected && x.station_type === "AWS") ||
-        (this.isOrgSelected && x.station_type === "ORG") ||
-        (this.isArgSelected && x.station_type === "ARG")
-      );
-    });
-
-    this.getDayStatistics();
-
-    this.filteredData = this.filteredData.filter((x: any) => {
-      const data = x.data;
-      return (
-        (this.dayStatistics.veryLightRainFallStations.isVeryLightRainFall &&
-          data >= 0.1 &&
-          data <= 2.4) ||
-        (this.dayStatistics.lightRainfallStations.isLightRainfall &&
-          data > 2.4 &&
-          data <= 15.5) ||
-        (this.dayStatistics.modrateRainFallStations.isModrateRainFall &&
-          data > 15.5 &&
-          data <= 64.4) ||
-        (this.dayStatistics.heavyRainFallStations.isHeavyRainFall &&
-          data > 64.4 &&
-          data <= 115.5) ||
-        (this.dayStatistics.veryHeavyRainfallStations.isVeryHeavyRainfall &&
-          data > 115.5 &&
-          data <= 204.4) ||
-        (this.dayStatistics.extremelyHeavyRainfallStations
-          .isExtremelyHeavyRainfall &&
-          data > 204.4) ||
-        (this.dayStatistics.zeroRainfallStations
-            .isZeroStations &&
-            data == 0)
-      );
-    });
-
-
-    let cout = 0;
-    for (const key in this.dayStatistics) {
-      cout = cout + this.dayStatistics[key].count;
-    }
-
-    this.loadStations();
-    this.isLoading = false;
+    this.filterStates = this.statesForCentres([...this.selectedMC, ...this.selectedRMC]);
+    this.clearStateAndBelow();
+    this.filterStationData();
   }
 
-  getDayStatistics() {
-    for (const key in this.dayStatistics) {
-      this.dayStatistics[key].count = 0;
-    }
+  // ================================================================= heat ==
 
-    for (let i = 0; i < this.filteredData.length; i++) {
-      const data = this.filteredData[i].data;
-      if (data == 0){
-        this.dayStatistics.zeroRainfallStations.count++
-        continue
+  toggleHeatLayer(): void {
+    this.showHeatLayer = !this.showHeatLayer;
+    this.refreshHeatLayer();
+  }
+
+  /** CSS gradient for the legend bar, built from the same stops as the layer. */
+  get heatGradientCss(): string {
+    const stops = this.heatGradient
+      .map((g) => `${g.color} ${Math.round(g.stop * 100)}%`)
+      .join(', ');
+    return `linear-gradient(to right, ${stops})`;
+  }
+
+  /**
+   * Tick labels in millimetres.
+   *
+   * Intensity is normalised against the day's own peak, so the colours mean
+   * nothing in absolute terms — the legend has to convert them back to mm or
+   * it is decoration.
+   */
+  get heatLegendTicks(): Array<{ pct: number; label: string }> {
+    const peak = this.heatPeak;
+    if (!peak) return [];
+    return [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+      pct: f * 100,
+      label: (peak * f).toFixed(f === 0 ? 0 : 1),
+    }));
+  }
+
+  /**
+   * Density surface over the reporting stations. Intensity is normalised
+   * against the day's own maximum so a quiet day still shows structure rather
+   * than a uniformly cold map.
+   */
+  private refreshHeatLayer(): void {
+    if (!this.showHeatLayer) {
+      if (this.heatLayer) {
+        this.stationObservationMap.removeLayer(this.heatLayer);
+        this.heatLayer = null;
       }
-      if (data >= 0.1 && data <= 2.4) {
-        this.dayStatistics.veryLightRainFallStations.count++;
-      } else if (data > 2.4 && data <= 15.5) {
-        this.dayStatistics.lightRainfallStations.count++;
-      } else if (data > 15.5 && data <= 64.4) {
-        this.dayStatistics.modrateRainFallStations.count++;
-      } else if (data > 64.4 && data <= 115.5) {
-        this.dayStatistics.heavyRainFallStations.count++;
-      } else if (data > 115.5 && data <= 204.4) {
-        this.dayStatistics.veryHeavyRainfallStations.count++;
-      } else if (data > 204.4) {
-        this.dayStatistics.extremelyHeavyRainfallStations.count++;
-      }
+      this.markerLayer.addTo(this.stationObservationMap);
+      return;
+    }
+
+    // Markers and the heat surface together are unreadable; show one at a time.
+    this.stationObservationMap.removeLayer(this.markerLayer);
+
+    const readings = this.filteredData.filter((s) => !isMissing(s.data) && s.data > 0);
+    const peak = readings.reduce((m, s) => Math.max(m, s.data), 0) || 1;
+    // Published to the legend so its labels track the data, not a fixed scale.
+    this.heatPeak = peak;
+
+    const points: L.HeatLatLngTuple[] = [];
+    for (const station of readings) {
+      const lat = parseFloat(String(station.latitude));
+      const lng = parseFloat(String(station.longitude));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      points.push([lat, lng, Math.min(1, station.data / peak)]);
+    }
+
+    if (this.heatLayer) {
+      this.heatLayer.setLatLngs(points);
+      return;
+    }
+
+    this.heatLayer = L.heatLayer(points, {
+      radius: 18,
+      blur: 22,
+      // Floor the alpha at 70% so light rainfall still reads as a solid signal
+      // instead of fading into the basemap.
+      minOpacity: 0.7,
+      max: 1,
+      gradient: this.heatGradient.reduce(
+        (acc, g) => ({ ...acc, [g.stop]: g.color }),
+        {} as Record<number, string>
+      ),
+    });
+    this.heatLayer.addTo(this.stationObservationMap);
+  }
+
+  private updateBandCounts(scoped: Station[]): void {
+    const counts = new Map<string, number>();
+    for (const station of scoped) {
+      const band = bandFor(station.data);
+      if (!band) continue;
+      counts.set(band.key, (counts.get(band.key) ?? 0) + 1);
+    }
+    for (const filter of this.bandFilters) {
+      filter.count = counts.get(filter.band.key) ?? 0;
     }
   }
 
-  isDraggingEnabled = false;
-  toggleDragging(): void {
-    this.isDraggingEnabled = !this.isDraggingEnabled;
-
-    if (this.isDraggingEnabled) {
-      this.stationObservationMap.dragging.enable();
-    } else {
-      this.stationObservationMap.dragging.disable();
-    }
+  toggleAllBands(selected: boolean): void {
+    this.bandFilters.forEach((f) => (f.selected = selected));
+    this.filterStationData();
   }
 
-  isPlottingEnabled: boolean = false;
-  private drawnCoordinates: any[] = [];
-
-  plotArea(): void {
-    if(this.stationInsidethePolygon){
-
-      this.stationsRadisuDataToDisplay = this.stationInsidethePolygon.map((x: any) => {
-        return {
-          selected: false,
-          station_name: x.station_name,
-          state_name: x.state_name,
-          data: x.data + "mm",
-          station_code: x.station_code,
-        };
-      });
-
-      this.isPlottingEnabled = true; // Enable storing coordinates after clicking this button
-      console.log("Plotting enabled");
-      this.selectedOption = "custom_hand_polygon"
-      this.toggleBottomNav()
-    }else{
-      alert("Select the stations using free hand polygon")
-    }
+  get allBandsSelected(): boolean {
+    return this.bandFilters.every((f) => f.selected);
   }
+
+  // ================================================================= top N ==
+
+  onTopNChange(value: number): void {
+    const n = Number(value);
+    this.topN = !Number.isFinite(n) ? 1 : Math.min(50, Math.max(1, Math.trunc(n)));
+    this.computeTopNStations();
+  }
+
+  /**
+   * `Array.prototype.sort` mutates in place, so the previous implementation
+   * permanently reordered `filteredData` — and with it the marker draw order —
+   * every time the Top N box changed. Sort a copy, and drop missing readings so
+   * the sentinel cannot rank.
+   */
+  private computeTopNStations(): void {
+    this.topNstationsloader = true;
+    this.topnStations = [...this.filteredData]
+      .filter((s) => !isMissing(s.data))
+      .sort((a, b) => b.data - a.data)
+      .slice(0, this.topN);
+    this.renderTopChart();
+    this.topNstationsloader = false;
+  }
+
+  // =================================================================== map ==
 
   private initStationObservationMap(): void {
-    this.stationObservationMap = L.map("map_observations", {
-      center: [23, 89.9629],
-      zoom: 5.2,
+    this.stationObservationMap = L.map('map_observations', {
+      // Draw all vector layers into one canvas instead of one SVG/DOM node per
+      // station. With several thousand markers this is the difference between a
+      // responsive map and a janky one.
+      preferCanvas: true,
+      center: [23, 82],
+      zoom: 5,
       zoomControl: true,
       scrollWheelZoom: true,
       zoomSnap: 0.1,
-      zoomDelta: 0.1,
-      minZoom: 5,
-      dragging: false,
+      zoomDelta: 0.5,
+      minZoom: 4,
+      // Panning is the primary interaction on a map page; it used to ship
+      // disabled behind a toggle button.
+      dragging: true,
     });
-  
-    const osmLayer = L.tileLayer(
-      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+
+    // crossOrigin is what makes the snapshot possible: without it the tiles
+    // taint the canvas and html2canvas produces a blank basemap.
+    this.streetTiles = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       {
-        attribution: "© OpenStreetMap contributors",
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18,
+        crossOrigin: 'anonymous',
       }
     );
-  
-    osmLayer.addTo(this.stationObservationMap);
-  
-    const drawnItems = new L.FeatureGroup();
-    this.stationObservationMap.addLayer(drawnItems);
-  
+
+    // Esri World Imagery — no API key required, unlike Mapbox or Google.
+    this.satelliteTiles = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution:
+          'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        maxZoom: 18,
+        crossOrigin: 'anonymous',
+      }
+    );
+
+    this.streetTiles.addTo(this.stationObservationMap);
+
+    // Own pane for the dimming mask: above the tiles (200) but below the
+    // markers (400), so it can never paint over a station.
+    const maskPane = this.stationObservationMap.createPane('ss-mask');
+    maskPane.style.zIndex = '350';
+    maskPane.style.pointerEvents = 'none';
+
+    // Synthetic cloud sits above the markers, as requested, at partial opacity
+    // so the stations it was derived from remain visible underneath.
+    const rainCloudPane = this.stationObservationMap.createPane('ss-raincloud');
+    rainCloudPane.style.zIndex = '450';
+    rainCloudPane.style.pointerEvents = 'none';
+    rainCloudPane.style.opacity = '0.88';
+
+    this.markerLayer.addTo(this.stationObservationMap);
+    this.stationObservationMap.addLayer(this.drawnItems);
+
     const drawControl = new L.Control.Draw({
-      edit: {
-        featureGroup: drawnItems,
-        remove: true,
-      },
+      edit: { featureGroup: this.drawnItems, remove: true },
       draw: {
         polyline: false,
         rectangle: false,
         circle: false,
         marker: false,
+        circlemarker: false,
       },
     });
-  
     this.stationObservationMap.addControl(drawControl);
-  
+
     this.stationObservationMap.on(L.Draw.Event.CREATED, (event: any) => {
-      const layer = event.layer;
-      let coordinates = layer.getLatLngs()[0]; // Get polygon coordinates
-    
-      if (coordinates.length > 0) {
-        // Ensure the polygon is closed by adding the first coordinate at the end
-        const firstCoord = coordinates[0];
-        const lastCoord = coordinates[coordinates.length - 1];
-    
-        if (firstCoord.lat !== lastCoord.lat || firstCoord.lng !== lastCoord.lng) {
-          coordinates.push(firstCoord); // Close the polygon
-        }
-    
-        const polygon = turf.polygon([coordinates.map((coord:any) => [coord.lng, coord.lat])]);
-    
-        // Filter stations inside polygon
-        const stationsInside = this.stationData.filter((station: any) => {
-          // Convert lat/lng to float and check for NaN
-          const lon = parseFloat(station.longitude);
-          const lat = parseFloat(station.latitude);
-    
-          if (isNaN(lon) || isNaN(lat)) {
-            console.warn("Invalid station coordinates:", station);
-            return false; // Ignore invalid data
-          }
-    
-          const point = turf.point([lon, lat]);
-          return turf.booleanPointInPolygon(point, polygon);
-        });
-
-
-        this.stationInsidethePolygon = stationsInside
-    
-        console.log("Stations inside polygon:", stationsInside);
-      }
-    
-      drawnItems.addLayer(layer);
+      this.zone.run(() => this.onPolygonDrawn(event));
     });
-  }
 
-  UpdatePolygonChart(data : string) {
-    console.log(this.stationsRadisuDataToDisplay.length, this.stationInsidethePolygon.length)
-    console.log(this.stationsRadisuDataToDisplay, this.stationInsidethePolygon)
-    console.log(this.stationsRadisuDataToDisplay.filter((x:any)=>{
-      return x.selected==true
-    }))
-    this.updateChartCompareNew(data)  
-  }
-  
-
-  loadGeoJSON(): void {
-    this.http.get("assets/geojson/INDIA_STATE.json").subscribe((res: any) => {
-      L.geoJSON(res, {
-        style: (feature: any) => {
-          return {
-            weight: 1,
-            opacity: 1,
-            color: "black",
-          };
-        },
-        onEachFeature: (feature: any, layer: any) => {},
-      }).addTo(this.stationObservationMap);
-    });
-  }
-  private getIconForData(data: number): L.Icon {
-    let iconUrl = "assets/images/EHR.png";
-
-    // if(data==0){
-    //   return #808080
-    // }
-    if(data==0){
-      iconUrl = "assets/images/zero rainfall5.png"
-    }
-    if (data > 0 && data <= 2.4) {
-      iconUrl = "assets/images/VLR.png";
-    } else if (data > 2.4 && data <= 15.5) {
-      iconUrl = "assets/images/LR.png";
-    } else if (data > 15.5 && data <= 64.4) {
-      iconUrl = "assets/images/MR.png"; // light blue
-    } else if (data > 64.4 && data <= 115.5) {
-      iconUrl = "assets/images/HR.png"; // yellow
-    } else if (data > 115.5 && data <= 204.4) {
-      iconUrl = "assets/images/VHR.png"; // orange
-    } else if (data > 204.4) {
-      iconUrl = "assets/images/EHR.png";
-    }
-
-    return L.icon({
-      iconUrl: iconUrl,
-      iconSize: [13, 13], // Adjust the size here
-      iconAnchor: [10, 20], // Adjust anchor if needed
-      popupAnchor: [0, -20], // Adjust popup anchor if needed
-    });
-  }
-
-  async updateRadius(): Promise<void> {
-    if (this.compareCircle) {
-      const radiusInKm = this.selectedRadius;
-      const radiusToPass = radiusInKm * 1000;
-      this.compareCircle.setRadius(radiusToPass);
-
-      this.isloadingSurrondingStations = true;
-
-      const response = await this.fetchStationDataService
-        .fetchStationDataInRadius(
-          this.selected_Date,
-          this.selectedLatitute,
-          this.selectedLongitute,
-          radiusInKm
-        )
-        .toPromise();
-      const fetchedData = response.data;
-      console.log("radiusdata", fetchedData);
-
-      this.stationsRadisuDataToDisplay = [];
-      this.stationsRadisuDataToDisplay = fetchedData.map((x: any) => {
-        return {
-          selected: false,
-          station_name: x.station_name,
-          state_name: x.state_name,
-          distance: x.distance_km.toFixed(2) + "km",
-          data: x.data + "mm",
-          station_code: x.station_code,
-        };
+    this.stationObservationMap.on(L.Draw.Event.DELETED, () => {
+      this.zone.run(() => {
+        this.stationInsidethePolygon = null;
       });
+    });
+  }
 
-      console.log("radiusdataFilterd", this.stationsRadisuDataToDisplay);
+  private onPolygonDrawn(event: any): void {
+    const layer = event.layer;
+    this.drawnItems.addLayer(layer);
 
-      this.isloadingSurrondingStations = false;
+    const latlngs = layer.getLatLngs?.()[0] ?? [];
+    if (latlngs.length < 3) return;
+
+    const ring = latlngs.map((c: L.LatLng) => [c.lng, c.lat]);
+    const [firstLng, firstLat] = ring[0];
+    const [lastLng, lastLat] = ring[ring.length - 1];
+    if (firstLng !== lastLng || firstLat !== lastLat) ring.push([firstLng, firstLat]);
+
+    const polygon = turf.polygon([ring]);
+
+    // Select from the currently visible set, not the full unfiltered list —
+    // drawing over a filtered map used to silently pull in hidden stations.
+    this.stationInsidethePolygon = this.filteredData.filter((station) => {
+      const lon = parseFloat(String(station.longitude));
+      const lat = parseFloat(String(station.latitude));
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return false;
+      return turf.booleanPointInPolygon(turf.point([lon, lat]), polygon);
+    });
+  }
+
+  /**
+   * Vector style for a reading.
+   *
+   * These used to be seven PNG sprites — seven image requests, plus one `<img>`
+   * element in the DOM per station. `circleMarker` is drawn straight into the
+   * map's shared canvas: no requests, no per-station DOM, and it stays crisp at
+   * any zoom or pixel density.
+   */
+  private styleFor(value: number): L.CircleMarkerOptions {
+    const band = bandFor(value);
+
+    // "Not reported" is dark grey at 60% — clearly separated from a genuine
+    // zero reading, which is solid white, without needing a dashed outline.
+    if (!band) {
+      return {
+        radius: 5,
+        color: '#1c2430',
+        weight: 1,
+        opacity: 0.7,
+        fillColor: '#4d4d4d',
+        fillOpacity: 0.6,
+      };
     }
-  }
 
-  circleMarkers = [];
-  compareCircle: any;
-  stationsRadisuDataToDisplay: any = [];
-  selectedLatitute: any;
-  selectedLongitute: any;
-
-  selectAllChecked = false;
-  stationsToBeDisplayedIncharts: Array<{
-    station_name: string;
-    state_name: string;
-    distance: number;
-    data: any;
-    selected?: boolean;
-  }> = [];
-
-  toggleSelectAll(event: any) {
-    this.selectAllChecked = event.target.checked;
-    this.stationsRadisuDataToDisplay.forEach(
-      (station: any) => (station.selected = this.selectAllChecked)
-    );
-  }
-
-  onStationSelectChange(station: any) {
-    // Update the selectAllChecked status based on individual selection
-    this.selectAllChecked = this.stationsRadisuDataToDisplay.every(
-      (station: any) => station.selected
-    );
-  }
-
-
-
-  onStationSelectChangeInPolygon(stationToSelect: any) {
-    this.stationsRadisuDataToDisplay = this.stationsRadisuDataToDisplay.map((station: any) => ({
-      ...station,
-      selected: station.station_code === stationToSelect.station_code // Only select the given station
-    }));
-  }
-  
-
-
-
-  private loadStations(): void {
-    this.topNStations()
-
-    this.isLoading = true;
-
-    this.markers.forEach((marker) => {
-      this.stationObservationMap.removeLayer(marker);
-    });
-    this.markers = [];
-
-    // Add new markers
-    this.filteredData.forEach((station: any) => {
-      const lat = parseFloat(station.latitude);
-      const lng = parseFloat(station.longitude);
-      const dataValue = station.data;
-
-      if (dataValue >=0) {
-        const icon = this.getIconForData(dataValue);
-
-        if (lat !== 0 && lng !== 0 && !isNaN(lat) && !isNaN(lng)) {
-          const marker = L.marker([lat, lng], { icon: icon });
-
-          const popupContent = `
-            <div>
-              <strong>Station Name:</strong> ${station.station_name}<br>
-              <strong>Rainfall:</strong> ${dataValue + "mm"}<br>
-              <button class="popup-button" data-station="${
-                station.station_name
-              }" style="padding: 5px 10px; background-color: #007bff; color: #fff; border: none; cursor: pointer;">More info</button>
-              <button class="compare-button" data-station="${
-                station.station_name
-              }" style="padding: 5px 10px; background-color: #28a745; color: #fff; border: none; cursor: pointer;">Compare</button>
-            </div>
-          `;
-
-          marker.bindPopup(popupContent).addTo(this.stationObservationMap);
-
-          marker.on("popupopen", (e) => {
-            const button = document.querySelector(
-              `.popup-button[data-station="${station.station_name}"]`
-            );
-            const compareButton = document.querySelector(
-              `.compare-button[data-station="${station.station_name}"]`
-            );
-
-            if (button) {
-              button.addEventListener("click", (event) => {
-                event.stopPropagation(); // Prevents the popup from closing
-                this.showStationData(
-                  station.station_code,
-                  station.station_name,
-                  station
-                );
-              });
-            }
-
-            if (compareButton) {
-              compareButton.addEventListener("click", async (event) => {
-                event.stopPropagation(); // Prevents the popup from closing
-                this.compareBUttonClickedForTestPuporse = true;
-
-                // Ensure the popup is defined before trying to update it
-                const popup = marker.getPopup();
-                marker.closePopup();
-                if (popup) {
-                  const radarContent = `
-                    <div class="radar" id="radar">
-                    fbfuchi
-                      <div class="beam"></div>
-                      <div class="dot" style="--x:0.7; --y:0.2"></div>
-                      <div class="dot" style="--x:0.2; --y:0.3"></div>
-                      <div class="dot" style="--x:0.6; --y:0.1"></div>
-                      <div class="dot" style="--x:0.4; --y:0.6"></div>
-                      <div class="dot" style="--x:0.9; --y:0.7"></div>
-                    </div>
-                  `;
-
-                  this.selectedLatitute = lat;
-                  this.selectedLongitute = lng;
-
-                  const radiusInKm = this.selectedRadius;
-                  const radiusToPass = radiusInKm * 1000;
-                  if (this.compareCircle) {
-                    this.stationObservationMap.removeLayer(this.compareCircle);
-                  }
-
-                  this.isloadingSurrondingStations = true;
-
-                  const response = await this.fetchStationDataService
-                    .fetchStationDataInRadius(
-                      this.selected_Date,
-                      lat,
-                      lng,
-                      radiusInKm
-                    )
-                    .toPromise();
-                  const fetchedData = response.data;
-                  console.log("radiusdata", fetchedData);
-
-                  this.stationsRadisuDataToDisplay = [];
-                  this.stationsRadisuDataToDisplay = fetchedData.map(
-                    (x: any) => {
-                      console.log("df", x.distance_km.toFixed(2));
-                      return {
-                        station_name: x.station_name,
-                        state_name: x.state_name,
-                        distance: x.distance_km.toFixed(2) + "km",
-                        data: x.data + "mm",
-                        station_code: x.station_code,
-                        selected: false,
-                      };
-                    }
-                  );
-
-                  console.log(
-                    "radiusdataFilterd",
-                    this.stationsRadisuDataToDisplay
-                  );
-
-                  this.isloadingSurrondingStations = false;
-
-                  this.compareCircle = L.circle([lat, lng], radiusToPass);
-                  this.compareCircle
-                    .bringToBack()
-                    .addTo(this.stationObservationMap);
-                  this.compareCircle.openPopup();
-                  marker.openPopup();
-
-                  this.Start();
-                }
-
-                this.compareCharts();
-              });
-            }
-          });
-
-          marker.on("popupclose", (e) => {
-            const button = document.querySelector(
-              `.popup-button[data-station="${station.station_name}"]`
-            );
-            const compareButton = document.querySelector(
-              `.compare-button[data-station="${station.station_name}"]`
-            );
-
-            if (button) {
-              button.removeEventListener("click", () =>
-                this.showStationData(
-                  station.station_code,
-                  station.station_name,
-                  station
-                )
-              );
-            }
-            if (compareButton) {
-              compareButton.removeEventListener("click", () =>
-                this.compareCharts()
-              );
-            }
-          });
-
-          this.markers.push(marker);
-        }
-      }
-    });
-
-    this.isLoading = false;
-  }
-
-  // getCurrentMonthDates(date: any): string[] {
-  //   const dates: string[] = [];
-  //   date = new Date(date)
-  //   const year = date.getFullYear();
-  //   const month = date.getMonth();
-  //   const today = date.getDate();
-
-  //   // Loop from the 1st of the month to today
-  //   for (let day = 1; day <= today; day++) {
-  //     const currentDate = new Date(year, month, day);
-  //     const formattedDate = currentDate.toISOString().split('T')[0]; // Format date as YYYY-MM-DD
-  //     dates.push(formattedDate);
-  //   }
-  //   console.log(dates)
-  //   return dates;
-  // }
-
-  filterCurrentMonthData(data: any) {
-    const filteredData = data.filter((item: any) => {
-      const collectionDate = new Date(item.collection_date);
-      const selectedDate = new Date(this.selected_Date);
-
-      const thirtyDaysBack = new Date(this.selected_Date);
-
-      thirtyDaysBack.setDate(thirtyDaysBack.getDate() - 30);
-
-      // console.log(selectedDate.getFullYear())
-      // const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-
-      return collectionDate >= thirtyDaysBack && collectionDate <= selectedDate;
-    });
-    return filteredData;
-  }
-
-  filterHistoricalMonthData(data: any, monthsBack: number) {
-    const currentDate = new Date();
-    console.log("filterHistoricalMonthData", currentDate.getFullYear());
-    currentDate.setMonth(currentDate.getMonth() - monthsBack);
-    console.log(currentDate.getFullYear());
-
-    const startDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() - monthsBack,
-      1
-    );
-
-    const filteredData = data.filter((item: any) => {
-      const collectionDate = new Date(item.collection_date);
-      return collectionDate >= startDate && collectionDate <= currentDate;
-    });
-
-    return filteredData;
-  }
-
-  async showStationData(
-    station_code: any,
-    station_name: any,
-    station: any
-  ): Promise<void> {
-    this.seriesDailyData = [];
-    this.seriesHistoricalData = [];
-    this.selectedOption = "station_details";
-
-    const body = {
-      station_id: +station_code,
+    return {
+      radius: 5,
+      // A dark hairline keeps the pale bands (#ffffff, #AAF200, #FFFF00)
+      // legible against light terrain.
+      color: '#1c2430',
+      weight: 1,
+      opacity: 0.85,
+      fillColor: band.color,
+      fillOpacity: 0.95,
     };
+  }
 
-    const response = await this.fetchStationDataService
-      .fetchAllDatesAndDataOfStation(body)
-      .toPromise();
-    const data = response.data;
+  private renderMarkers(): void {
+    this.markerLayer.clearLayers();
 
-    console.log(data);
-
-    this.showSelectedStation = station_name;
-    this.showSelectedState_name = station.state_name;
-    this.showSelectedStationObject = station;
-    this.showSelectedStationCode = station_code;
-
-    this.StationTotalEntries = data.filter((x: any) => {
-      return x.data != -999.9;
-    }).length;
-
-    this.StationsMissingEntries = data.filter((x: any) => {
-      return x.data == -999.9;
-    }).length;
-
-    let maxi = -999.9,
-      mini = 1000,
-      date = new Date(),
-      maxRecordedDate: any = "";
-
-    data.forEach((element: any) => {
-      if (element.data > maxi) {
-        maxi = element.data;
-        maxRecordedDate = this.formatDate(new Date(element.collection_date));
+    for (const station of this.filteredData) {
+      const lat = parseFloat(String(station.latitude));
+      const lng = parseFloat(String(station.longitude));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+        continue;
       }
-      if (element.data < mini) {
-        mini = element.data;
-      }
-      if (new Date(element.collection_date) < date) {
-        date = new Date(element.collection_date);
-      }
+
+      const marker = L.circleMarker([lat, lng], this.styleFor(station.data));
+      marker.bindPopup(() => this.buildPopup(station, lat, lng));
+      this.markerLayer.addLayer(marker);
+    }
+  }
+
+  /**
+   * Builds the popup as a real DOM node with listeners attached once at
+   * construction.
+   *
+   * The old version interpolated the station name into an HTML string and then
+   * re-attached a document-wide `querySelector` click handler on every
+   * `popupopen`, removing it on close with a freshly-created arrow function that
+   * could never match. Handlers accumulated, so the fifth time you opened a
+   * marker "More Info" fired five requests. Matching by name also wired the
+   * wrong button whenever two states shared a station name.
+   */
+  private buildPopup(station: Station, lat: number, lng: number): HTMLElement {
+    const root = document.createElement('div');
+    root.className = 'station-popup';
+
+    const title = document.createElement('div');
+    title.className = 'station-popup__title';
+    title.textContent = station.station_name;
+    root.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'station-popup__meta';
+    meta.textContent = [station.district_name, station.state_name]
+      .filter(Boolean)
+      .join(', ');
+    root.appendChild(meta);
+
+    const reading = document.createElement('div');
+    reading.className = 'station-popup__reading';
+    reading.textContent = this.formatReading(station.data);
+    root.appendChild(reading);
+
+    const actions = document.createElement('div');
+    actions.className = 'station-popup__actions';
+
+    const infoBtn = document.createElement('button');
+    infoBtn.type = 'button';
+    infoBtn.className = 'station-popup__btn station-popup__btn--info';
+    infoBtn.textContent = 'More info';
+    infoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.zone.run(() => this.showStationData(station));
     });
 
-    this.StationHighestRecord =
-      maxi !== -999.9 && maxi !== null ? maxi + "mm" : 0;
-    this.StationLowestRecord = mini;
-    this.StationFirstDate = this.formatDate(date);
-    this.maxRecordedDataDateofSelectedStation = maxRecordedDate;
+    const compareBtn = document.createElement('button');
+    compareBtn.type = 'button';
+    compareBtn.className = 'station-popup__btn station-popup__btn--compare';
+    compareBtn.textContent = 'Compare';
+    compareBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.zone.run(() => this.startCompare(station, lat, lng));
+    });
 
-    // graph pro
-    this.toggleBottomNav();
-    this.updateChartNew(this.stationWeatherParametersnew[0]);
-
-    // this.submitParameterForm();
+    actions.append(infoBtn, compareBtn);
+    root.appendChild(actions);
+    return root;
   }
 
-  onDateChange(event: any) {
-    this.selected_Date = event.target.value;
-    this.fetchStationData(this.selected_Date);
+  private loadGeoJSON(): void {
+    this.http
+      .get('assets/geojson/INDIA_STATE.json')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res: any) => {
+          this.addCountryMask(res);
 
-    // if(this.selectedOption=='station_details'){
-
-    //   this.showStationData(this.showSelectedStationCode, this.showSelectedStation, this.showSelectedStationObject)
-
-    // }
-  }
-
-  onCompareStationChange(event: any) {
-    this.comparingselectedStations = event.value;
-
-    // console.log('comparing selected stations', this.comparingselectedStations)
-  }
-
-  async updateChartNew(weatherOptions: any) {
-    if (weatherOptions.text === "Daily Data") {
-      const { dateIntervals, datum } = await this.showStationDailyCharts(
-        this.showSelectedStationCode
-      );
-
-      const combinedData = dateIntervals.map((date, index) => ({
-        date,
-        datum: datum[index],
-      }));
-      combinedData.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-
-      // Unpack sorted data
-      const sortedDateIntervals = combinedData.map((item) => item.date);
-      const sortedDatum = combinedData.map((item) => item.datum);
-
-      console.log(dateIntervals, datum);
-
-      this.chart = new Chart({
-        chart: {
-          type: "line",
+          // Internal state borders stay light so they read as reference lines
+          // rather than competing with the station markers.
+          this.stateBorders = L.geoJSON(res, {
+            interactive: false,
+            style: () => this.stateBorderStyle(),
+          }).addTo(this.stationObservationMap);
         },
-        title: {
-          text: "",
-        },
-        credits: {
-          enabled: false,
-        },
-        xAxis: {
-          // tickInterval : 5,
-          categories: sortedDateIntervals,
-          // categories: [],
-
-          title: {
-            text: `<${Array(50).fill("-").join("")} Dates ${Array(50)
-              .fill("-")
-              .join("")}>`,
-          },
-        },
-        series: [
-          {
-            name: "Station Data",
-            type: "line",
-            // data: [],
-            data: sortedDatum.map((value) => (value !== null ? value : 0)),
-            color: "darkblue",
-          },
-        ],
-        exporting: {
-          enabled: true,
-          buttons: {
-            contextButton: {
-              menuItems: ["viewFullscreen", "printChart"], // Only show Fullscreen and Print options
-            },
-          },
-        },
-        yAxis: {
-          title: {
-            text: `<${Array(4).fill("-").join("")} mm ${Array(4)
-              .fill("-")
-              .join("")}>`,
-          },
+        error: () => {
+          this.errorMessage = 'State boundaries could not be loaded.';
         },
       });
-      this.selectedWeatherOption = weatherOptions.text;
-    } else if (weatherOptions.text === "Historical Data") {
-      this.selectedWeatherOption = weatherOptions.text;
-    }
   }
-  async showStationHistoricStationCharts(station_code: any, months: any) {
-    let HistoricalIntervals: any[] = [];
-    let Historicaldatum: any[] = [];
+
+  /**
+   * Dims everything outside India.
+   *
+   * Built as one polygon covering the globe with India punched out as interior
+   * rings — Leaflet treats every ring after the first as a hole. The states in
+   * the GeoJSON tile the country exactly, so using each state's outer ring as a
+   * hole yields the national outline without an expensive turf union.
+   */
+  private addCountryMask(geojson: any): void {
+    const holes: L.LatLngExpression[][] = [];
+
+    for (const feature of geojson?.features ?? []) {
+      const geometry = feature?.geometry;
+      if (!geometry) continue;
+
+      const polygons =
+        geometry.type === 'Polygon'
+          ? [geometry.coordinates]
+          : geometry.type === 'MultiPolygon'
+          ? geometry.coordinates
+          : [];
+
+      for (const polygon of polygons) {
+        // [0] is the outer ring; any further rings are the state's own holes,
+        // which we deliberately ignore so enclaves stay lit.
+        const ring = polygon?.[0];
+        if (!ring?.length) continue;
+        holes.push(ring.map(([lng, lat]: number[]) => [lat, lng]));
+      }
+    }
+
+    if (!holes.length) return;
+
+    // Padded well past ±180 so the dimming survives horizontal panning.
+    const world: L.LatLngExpression[] = [
+      [-89.9, -360],
+      [-89.9, 360],
+      [89.9, 360],
+      [89.9, -360],
+    ];
+
+    L.polygon([world, ...holes], {
+      pane: 'ss-mask',
+      renderer: this.maskRenderer,
+      interactive: false,
+      stroke: false,
+      fillColor: '#0b1220',
+      fillOpacity: 0.8,
+    }).addTo(this.stationObservationMap);
+
+    // Bright rim on the dimmed side, so the coastline reads on both basemaps.
+    L.polygon(holes, {
+      pane: 'ss-mask',
+      renderer: this.maskRenderer,
+      interactive: false,
+      fill: false,
+      color: '#ffffff',
+      weight: 1.4,
+      opacity: 0.9,
+    }).addTo(this.stationObservationMap);
+  }
+
+  /** Dark hairlines vanish on satellite imagery, so the borders invert. */
+  private stateBorderStyle(): L.PathOptions {
+    return this.basemap === 'satellite'
+      ? { weight: 0.7, opacity: 0.45, color: '#ffffff', fill: false }
+      : { weight: 0.7, opacity: 0.55, color: '#3d4652', fill: false };
+  }
+
+  /**
+   * Saves the current map view as a PNG.
+   *
+   * Deliberately WYSIWYG: whatever overlays are on screen — the legend, the
+   * floating cards — land in the image, so hiding them with the Cards toggle
+   * first gives a clean map. Only interactive chrome is stripped, and the
+   * attribution strip is kept because OSM and Esri both require it.
+   */
+  async downloadMapSnapshot(): Promise<void> {
+    const pane = document.querySelector('.ss-map-pane') as HTMLElement | null;
+    if (!pane || this.isSnapshotting) return;
+
+    this.isSnapshotting = true;
+    this.errorMessage = '';
 
     try {
-      const data = {
-        station_id: station_code,
-      };
-
-      console.log(data);
-
-      // Convert observable to promise using toPromise()
-      const response = await this.fetchStationDataService
-        .fetchAllDatesAndDataOfStation(data)
-        .toPromise();
-      const fetchedData = response.data;
-
-      // Filter and process the data
-      const filteered_data = this.filterCurrentMonthData(fetchedData);
-      this.filterHistoricalMonthData(fetchedData, 54);
-
-      // const month = currentDate.getMonth() + 1
-
-      for (let i = 0; i < filteered_data.length; i++) {
-        HistoricalIntervals.push(
-          this.formatDate(new Date(filteered_data[i].collection_date))
-        );
-        Historicaldatum.push(
-          filteered_data[i].data === -999.9 ? null : filteered_data[i].data
-        );
-      }
-
-      console.log("filteered_data", HistoricalIntervals, Historicaldatum);
-
-      // Return the result
-      return { HistoricalIntervals, Historicaldatum };
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      alert("Data fetching error");
-      // Return empty arrays or handle error as needed
-      return { dateIntervals: [], datum: [] };
-    }
-  }
-
-  async showStationDailyCharts(
-    station_code: any
-  ): Promise<{ dateIntervals: any[]; datum: any[] }> {
-    let dateIntervals: any[] = [];
-    let datum: any[] = [];
-
-    try {
-      const data = {
-        station_id: station_code,
-      };
-
-      console.log(data);
-
-      const response = await this.fetchStationDataService
-        .fetchAllDatesAndDataOfStation(data)
-        .toPromise();
-      const fetchedData = response.data;
-
-      // Filter and process the data
-      const filteered_data = this.filterCurrentMonthData(fetchedData);
-
-      for (let i = 0; i < filteered_data.length; i++) {
-        dateIntervals.push(
-          this.formatDate(new Date(filteered_data[i].collection_date))
-        );
-        datum.push(
-          filteered_data[i].data === -999.9 ? null : filteered_data[i].data
-        );
-      }
-
-      console.log("filteered_data", dateIntervals, datum);
-
-      // Return the result
-      return { dateIntervals, datum };
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      alert("Data fetching error");
-      // Return empty arrays or handle error as needed
-      return { dateIntervals: [], datum: [] };
-    }
-  }
-  ischartInLoading : any = false;
-  async updateChartCompareNew(weatherOptions: any) {
-  this.ischartInLoading = true;
-
-    if (weatherOptions === "Daily Data") {
-      console.log('inside updaechartcomparenew', this.stationsRadisuDataToDisplay)
-      const stationsToDisplayInGraph = this.stationsRadisuDataToDisplay.filter(
-        (station: any) => {
-          return station.selected;
-        }
-      );
-      const { dateIntervals, series } = await this.CompareStationDailyCharts(
-        stationsToDisplayInGraph
-      );
-
-      this.chartCompare = new Chart({
-        chart: {
-          type: "line",
-          events: {
-            load: function () {
-              const chart = this;
-            },
-          },
-        },
-        title: {
-          text: "",
-        },
-        credits: {
-          enabled: false,
-        },
-        xAxis: {
-          categories: dateIntervals,
-          title: {
-            text: `Dates`,
-          },
-        },
-        series: series,
-        exporting: {
-          enabled: true, // Ensure exporting is enabled
-          buttons: {
-            contextButton: {
-              menuItems: [
-                "viewFullscreen", // Fullscreen option
-                "printChart", // Print option
-                "separator", // Adds a separator
-                "downloadPNG", // Option to download as PNG
-                "downloadJPEG", // Option to download as JPEG
-                "downloadPDF", // Option to download as PDF
-                "downloadSVG", // Option to download as SVG
-              ],
-            },
-          },
-        },
-        yAxis: {
-          title: {
-            text: "Rainfall (mm)",
-          },
+      const canvas = await html2canvas(pane, {
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        // Retina-quality output; the map is a deliverable, not a thumbnail.
+        scale: 2,
+        logging: false,
+        ignoreElements: (el: Element) => {
+          const cls = (el as HTMLElement).classList;
+          if (!cls) return false;
+          return (
+            cls.contains('ss-map-controls') ||
+            cls.contains('ss-status') ||
+            cls.contains('ss-error') ||
+            cls.contains('ss-drawer') ||
+            // Zoom and draw toolbars sit in .leaflet-top; .leaflet-bottom holds
+            // the attribution, which must survive.
+            cls.contains('leaflet-top')
+          );
         },
       });
 
-      this.selectedWeatherOption = weatherOptions;
-    } else if (weatherOptions === "Historical Data") {
-      this.selectedWeatherOption = weatherOptions;
-    }
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob((b) => resolve(b), 'image/png')
+      );
 
-    this.ischartInLoading = false
+      if (!blob) throw new Error('encode failed');
+      saveAs(blob, `station-rainfall-${this.selected_Date}.png`);
+    } catch {
+      this.errorMessage =
+        'Could not capture the map. Some map tiles may have blocked the export.';
+    } finally {
+      this.isSnapshotting = false;
+    }
   }
 
-  async CompareStationDailyCharts(
-    stationsToDisplay: any
-  ): Promise<{ dateIntervals: any[]; series: any[] }> {
-    let series: any[] = [];
-    let dateIntervals: any[] = [];
+  // ================================================================ clouds ==
+
+  /** Synthetic cloud derived from the rainfall currently on the map. */
+  toggleRainClouds(): void {
+    this.showRainClouds = !this.showRainClouds;
+
+    if (!this.showRainClouds) {
+      if (this.rainCloudLayer) {
+        this.stationObservationMap.removeLayer(this.rainCloudLayer);
+        this.rainCloudLayer = null;
+      }
+      return;
+    }
+
+    this.rainCloudLayer = new RainfallCloudLayer({
+      pane: 'ss-raincloud',
+      // Level 9 keeps the per-tile pixel work bounded; Leaflet upscales above it.
+      maxNativeZoom: 9,
+      updateWhenZooming: false,
+    });
+    this.rainCloudLayer.addTo(this.stationObservationMap);
+    this.refreshRainClouds();
+  }
+
+  /** Rebuilds the density field from whatever is currently on the map. */
+  private refreshRainClouds(): void {
+    if (!this.rainCloudLayer) return;
+
+    const points = [];
+    // cloudSourceData, not filteredData: unticking every station type empties
+    // the map but must not dissolve the rainfall field it represents.
+    for (const station of this.cloudSourceData) {
+      if (isMissing(station.data) || station.data <= 0) continue;
+      const lat = parseFloat(String(station.latitude));
+      const lng = parseFloat(String(station.longitude));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      points.push({ lat, lng, value: station.data });
+    }
+
+    this.rainCloudLayer.setField(buildCloudField(points));
+  }
+
+  toggleBasemap(): void {
+    const toSatellite = this.basemap === 'street';
+    this.stationObservationMap.removeLayer(
+      toSatellite ? this.streetTiles : this.satelliteTiles
+    );
+    (toSatellite ? this.satelliteTiles : this.streetTiles).addTo(
+      this.stationObservationMap
+    );
+    // Tiles land in the tile pane, below the mask — no need to re-stack.
+    this.basemap = toSatellite ? 'satellite' : 'street';
+    this.stateBorders?.setStyle(this.stateBorderStyle());
+  }
+
+  // ====================================================== station details ===
+
+  async showStationData(station: Station): Promise<void> {
+    this.selectedOption = 'station_details';
+    this.isBottomNavOpen = true;
+    this.showSelectedStation = station.station_name;
+    this.showSelectedState_name = station.state_name;
+    this.showSelectedDistrict_name = station.district_name ?? '';
+    this.showSelectedStationCode = station.station_code;
 
     try {
-      for (let j = 0; j < stationsToDisplay.length; j++) {
-        const data = {
-          station_id: stationsToDisplay[j].station_code,
-        };
-        const response = await this.fetchStationDataService
-          .fetchAllDatesAndDataOfStation(data)
-          .toPromise();
-        const fetchedData = response.data;
+      const response = await this.fetchStationDataService
+        .fetchAllDatesAndDataOfStation({ station_id: +station.station_code })
+        .toPromise();
+      const rows: HistoryRow[] = response?.data ?? [];
 
-        console.log('fetched daata in comparestationdailycharts', fetchedData)
+      this.StationTotalEntries = rows.filter((r) => !isMissing(r.data)).length;
+      this.StationsMissingEntries = rows.filter((r) => isMissing(r.data)).length;
 
-        const filteredData = this.filterCurrentMonthData(fetchedData);
-        let stationData: any[] = [];
-        let stationDates: any[] = [];
+      let max: { data: number; collection_date: string } | null = null;
+      let min: { data: number; collection_date: string } | null = null;
+      let earliest: number | null = null;
 
-        filteredData.forEach((item: any) => {
-          stationDates.push(this.formatDate(new Date(item.collection_date)));
-          stationData.push(item.data === -999.9 ? null : item.data);
-        });
-
-        const combinedData = stationDates.map((date, index) => ({
-          date,
-          data: stationData[index],
-        }));
-        combinedData.sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-
-        const sortedDates = combinedData.map((item) => item.date);
-        const sortedData = combinedData.map((item) => item.data);
-
-        series.push({
-          name: `${stationsToDisplay[j].station_name}`,
-          type: "line",
-          data: sortedData.map((value) => (value !== null ? value : 10)),
-        });
-
-        if (j === 0) {
-          dateIntervals = sortedDates; // Assuming all stations have the same date range
+      for (const row of rows) {
+        const time = new Date(row.collection_date).getTime();
+        if (Number.isFinite(time) && (earliest === null || time < earliest)) {
+          earliest = time;
         }
+        // Missing readings are excluded from both extremes.
+        if (isMissing(row.data)) continue;
+        if (!max || row.data > max.data) max = row;
+        if (!min || row.data < min.data) min = row;
       }
 
-      console.log(
-        "Fetched and sorted data for stations:",
-        dateIntervals,
-        series
-      );
-      return { dateIntervals, series };
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      alert("Data fetching error");
-      return { dateIntervals: [], series: [] };
+      this.StationHighestRecord = max ? this.formatReading(max.data) : '—';
+      this.maxRecordedDataDateofSelectedStation = max
+        ? this.displayDate(this.toIsoDate(max.collection_date))
+        : '';
+      this.StationLowestRecord = min ? this.formatReading(min.data) : '—';
+      this.StationFirstDate =
+        earliest !== null ? this.displayDate(this.toIsoDate(new Date(earliest))) : '—';
+
+      this.renderDailyChart(rows);
+    } catch {
+      this.errorMessage = `Could not load history for ${station.station_name}.`;
     }
   }
 
-  months = Array.from({ length: 12 }, (_, i) => `${i + 1} month(s) ago`); // Example months
-  selectedMonth: string = "";
+  /** Keeps only the 30 days ending on the selected date, inclusive. */
+  private lastThirtyDays<T extends { collection_date: string }>(rows: T[]): T[] {
+    const end = new Date(this.selected_Date);
+    end.setHours(23, 59, 59, 999);
+    const start = new Date(end);
+    start.setDate(start.getDate() - 30);
+    start.setHours(0, 0, 0, 0);
 
-  submitHistoricalData() {
-    if (this.selectedMonth) {
-      console.log("Selected Month:", this.selectedMonth);
-      // Add logic to process the selected month here
-    }
+    return rows.filter((row) => {
+      const d = new Date(row.collection_date);
+      return d >= start && d <= end;
+    });
   }
 
-  isResizing = false;
-  chartHeight: string = "232px"; // Default height
+  private renderDailyChart(rows: HistoryRow[]): void {
+    const points = this.lastThirtyDays(rows)
+      .map((row) => ({
+        date: this.toIsoDate(row.collection_date),
+        // Missing days become null so Highcharts leaves a gap. They used to be
+        // coerced to 0, which drew a false "no rain was recorded" trough.
+        value: isMissing(row.data) ? null : row.data,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    this.chart = new Chart({
+      chart: { type: 'line', height: this.chartPixelHeight(), spacingTop: 12 },
+      title: { text: '' },
+      credits: { enabled: false },
+      legend: { enabled: false },
+      exporting: { enabled: false },
+      xAxis: {
+        categories: points.map((p) => p.date),
+        title: { text: 'Date' },
+        tickInterval: Math.max(1, Math.ceil(points.length / 10)),
+      },
+      yAxis: { title: { text: 'Rainfall (mm)' }, min: 0 },
+      tooltip: { valueSuffix: ' mm' },
+      series: [
+        {
+          name: this.showSelectedStation || 'Station',
+          type: 'line',
+          data: points.map((p) => p.value),
+          color: '#1a4fa0',
+          connectNulls: false,
+        },
+      ],
+    });
+  }
+
+  // ============================================================= comparing ==
+
+  private startCompare(station: Station, lat: number, lng: number): void {
+    this.selectedOption = 'compare_charts';
+    this.isBottomNavOpen = true;
+    this.showSelectedStation = station.station_name;
+    this.selectedLatitute = lat;
+    this.selectedLongitute = lng;
+    this.drawCompareCircle(lat, lng);
+    this.loadSurroundingStations();
+  }
+
+  private drawCompareCircle(lat: number, lng: number): void {
+    if (this.compareCircle) {
+      this.stationObservationMap.removeLayer(this.compareCircle);
+    }
+    this.compareCircle = L.circle([lat, lng], {
+      radius: this.selectedRadius * 1000,
+      color: '#1a4fa0',
+      weight: 1,
+      fillOpacity: 0.06,
+    });
+    this.compareCircle.addTo(this.stationObservationMap);
+    this.compareCircle.bringToBack();
+  }
+
+  /** Debounced by the range input's own `change` event on the template side. */
+  updateRadius(): void {
+    if (this.selectedLatitute === null || this.selectedLongitute === null) return;
+    this.compareCircle?.setRadius(this.selectedRadius * 1000);
+    this.loadSurroundingStations();
+  }
+
+  private loadSurroundingStations(): void {
+    if (this.selectedLatitute === null || this.selectedLongitute === null) return;
+
+    this.isloadingSurrondingStations = true;
+    this.fetchStationDataService
+      .fetchStationDataInRadius(
+        this.selected_Date,
+        this.selectedLatitute,
+        this.selectedLongitute,
+        this.selectedRadius
+      )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          const rows: any[] = response?.data ?? [];
+          this.compareRows = rows.map((x) => ({
+            station_code: x.station_code,
+            station_name: x.station_name,
+            state_name: x.state_name,
+            distance: `${Number(x.distance_km).toFixed(2)} km`,
+            data: x.data,
+            selected: false,
+          }));
+          this.selectAllChecked = false;
+          this.isloadingSurrondingStations = false;
+        },
+        error: () => {
+          this.compareRows = [];
+          this.isloadingSurrondingStations = false;
+          this.errorMessage = 'Could not load surrounding stations.';
+        },
+      });
+  }
+
+  /**
+   * Loads the polygon selection into the same compare table the radius mode
+   * uses, so one selection model backs both and the chart reads the very
+   * objects the checkboxes bind to.
+   */
+  plotArea(): void {
+    if (!this.stationInsidethePolygon?.length) {
+      this.errorMessage =
+        'Draw a polygon on the map first — use the polygon tool in the top-left toolbar.';
+      return;
+    }
+
+    this.compareRows = this.stationInsidethePolygon.map((s) => ({
+      station_code: s.station_code,
+      station_name: s.station_name,
+      state_name: s.state_name,
+      distance: null,
+      data: s.data,
+      selected: false,
+    }));
+    this.selectAllChecked = false;
+    this.selectedOption = 'polygon_compare';
+    this.isBottomNavOpen = true;
+  }
+
+  toggleSelectAll(checked: boolean): void {
+    this.selectAllChecked = checked;
+    this.compareRows.forEach((row) => (row.selected = checked));
+  }
+
+  onCompareRowToggle(): void {
+    this.selectAllChecked =
+      this.compareRows.length > 0 && this.compareRows.every((r) => r.selected);
+  }
+
+  get selectedCompareCount(): number {
+    return this.compareRows.filter((r) => r.selected).length;
+  }
+
+  /**
+   * Fetches every selected station's history in parallel. The previous
+   * implementation awaited them one at a time inside a `for` loop, so ten
+   * stations meant ten sequential round-trips.
+   */
+  updateComparisonChart(): void {
+    const selected = this.compareRows.filter((r) => r.selected);
+    if (!selected.length) {
+      this.errorMessage = 'Select at least one station to plot.';
+      return;
+    }
+
+    this.ischartInLoading = true;
+    this.errorMessage = '';
+
+    forkJoin(
+      selected.map((row) =>
+        this.fetchStationDataService
+          .fetchAllDatesAndDataOfStation({ station_id: +row.station_code })
+          .pipe(catchError(() => of({ data: [] })))
+      )
+    )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (responses: any[]) => {
+          // A shared, sorted date axis so series with different coverage still
+          // line up. Previously the axis came from whichever station happened to
+          // be first, and the others were plotted against it positionally.
+          const perStation = responses.map((response, i) => {
+            const rows = this.lastThirtyDays<HistoryRow>(response?.data ?? []);
+            const byDate = new Map<string, number | null>();
+            for (const row of rows) {
+              byDate.set(
+                this.toIsoDate(row.collection_date),
+                isMissing(row.data) ? null : row.data
+              );
+            }
+            return { name: selected[i].station_name, byDate };
+          });
+
+          const dates = Array.from(
+            new Set(perStation.flatMap((s) => Array.from(s.byDate.keys())))
+          ).sort((a, b) => a.localeCompare(b));
+
+          const series = perStation.map((s) => ({
+            name: s.name,
+            type: 'line' as const,
+            // Missing days stay null. They used to be substituted with the
+            // literal value 10, inventing 10mm of rainfall on every gap.
+            data: dates.map((d) => s.byDate.get(d) ?? null),
+            connectNulls: false,
+          }));
+
+          this.chartCompare = new Chart({
+            chart: { type: 'line', height: this.chartPixelHeight() },
+            title: { text: '' },
+            credits: { enabled: false },
+            xAxis: {
+              categories: dates,
+              title: { text: 'Date' },
+              tickInterval: Math.max(1, Math.ceil(dates.length / 10)),
+            },
+            yAxis: { title: { text: 'Rainfall (mm)' }, min: 0 },
+            tooltip: { shared: true, valueSuffix: ' mm' },
+            series,
+      exporting: { enabled: false },
+          });
+          this.chartCompare.ref$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((instance) => (this.chartCompareRef = instance));
+          this.ischartInLoading = false;
+        },
+        error: () => {
+          this.ischartInLoading = false;
+          this.errorMessage = 'Could not load comparison data.';
+        },
+      });
+  }
+
+  // ================================================================= panel ==
+
+  closePopup(): void {
+    this.isBottomNavOpen = false;
+    this.chart = null;
+    this.chartCompare = null;
+    this.chartCompareRef = null;
+    if (this.compareCircle) {
+      this.stationObservationMap.removeLayer(this.compareCircle);
+      this.compareCircle = null;
+    }
+    this.selectedLatitute = null;
+    this.selectedLongitute = null;
+  }
+
+  /**
+   * The drawer is capped at `--ss-drawer-max` by CSS, so derive the chart size
+   * from the height the drawer will actually get — not from the raw
+   * `panelHeight`, which on a short viewport is larger than the drawer itself.
+   */
+  private effectivePanelHeight(): number {
+    const cap = window.innerHeight * MAP_MAX_PANEL_HEIGHT_RATIO;
+    return Math.min(this.panelHeight, Math.max(MAP_MIN_PANEL_HEIGHT, cap));
+  }
+
+  private chartPixelHeight(): number {
+    return Math.max(140, this.effectivePanelHeight() - CHART_VERTICAL_CHROME);
+  }
 
   onMouseDown(event: MouseEvent): void {
+    event.preventDefault();
     this.isResizing = true;
-    window.addEventListener("mousemove", this.onMouseMove.bind(this));
-    window.addEventListener("mouseup", this.onMouseUp.bind(this));
+    window.addEventListener('mousemove', this.onMouseMoveRef);
+    window.addEventListener('mouseup', this.onMouseUpRef);
   }
 
-  onMouseMove(event: MouseEvent): void {
-    if (this.isResizing) {
-      const resizableBox = document.querySelector(".resizable-box") as HTMLElement;
-      const tableContainer = document.querySelector(".table-container") as HTMLElement;
-  
-      const newHeight = window.innerHeight - event.clientY;
-  
-      // Set the new height for the resizable box
-      resizableBox.style.height = `${newHeight}px`;
-  
-      // Dynamically adjust table height
-      if (tableContainer) {
-        tableContainer.style.maxHeight = `${newHeight - 50}px`; // Adjust padding/margin accordingly
-      }
-  
-      // Update the chart height dynamically based on the new height
-      this.chartHeight = `${newHeight * 10}px`; // Adjust as needed
-  
-      // If the chart is already created, update its height
-      if (this.chartCompare) {
-        this.chartCompare.update({
-          chart: {
-            height: this.chartHeight,
-          },
-        });
-      }
-    }
-  }
-  
+  private onMouseMove(event: MouseEvent): void {
+    if (!this.isResizing) return;
 
-  onMouseUp(): void {
+    // Clamped to the viewport. The old version also multiplied the result by 10
+    // when sizing the chart, so a small drag produced a chart ten screens tall.
+    const raw = window.innerHeight - event.clientY;
+    const max = window.innerHeight * MAP_MAX_PANEL_HEIGHT_RATIO;
+    this.panelHeight = Math.min(max, Math.max(MAP_MIN_PANEL_HEIGHT, raw));
+    this.chartHeight = `${this.chartPixelHeight()}px`;
+    // Resize through the cached instance. Subscribing to `ref$` here would open
+    // a fresh subscription on every mousemove event.
+    this.chartCompareRef?.setSize(undefined, this.chartPixelHeight(), false);
+  }
+
+  private onMouseUp(): void {
     this.isResizing = false;
-    window.removeEventListener("mousemove", this.onMouseMove.bind(this));
-    window.removeEventListener("mouseup", this.onMouseUp.bind(this));
+    window.removeEventListener('mousemove', this.onMouseMoveRef);
+    window.removeEventListener('mouseup', this.onMouseUpRef);
   }
 
-
-  //------------------------------------------------------------------------------------------------------
-  //Notes and custop-polyhgon
-  userNotes = '';
-  notesExpanded = false;
-  additionalTableData = [
-    { detail: 'Temperature', value: '30°C' },
-    { detail: 'Humidity', value: '60%' },
-    { detail: 'Pressure', value: '1015 hPa' }
-  ];
-
-  
-  expandNotes(): void {
-    this.notesExpanded = !this.notesExpanded;
-    const notesElement = document.querySelector('.notes-container textarea');
-    if (notesElement) {
-      notesElement.setAttribute('rows', this.notesExpanded ? '5' : '2');
-    }
+  toggleFilterPanel(): void {
+    this.isFilterPanelOpen = !this.isFilterPanelOpen;
+    this.remeasureAfterTransition();
   }
 
-  topNStations():any {
-    this.topNstationsloader = true;
-    if (!this.filteredData || !Array.isArray(this.filteredData)) return [];
-    this.topnStations =  this.filteredData
-      .sort((a, b) => b.data - a.data) // sort descending by rainfall
-      .slice(0, this.topN);
-    this.topNstationsloader = false;
-    
+  toggleInsightPanel(): void {
+    this.isInsightPanelOpen = !this.isInsightPanelOpen;
+    this.remeasureAfterTransition();
   }
 
-
-  restrictInput(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const value = parseInt(input.value, 10);
-    if (value > 50) {
-      input.value = '50'; // Enforce max value in UI
-      this.topN = 50;
-    } else if (value < 1 || isNaN(value)) {
-      input.value = '1'; // Enforce min value in UI
-      this.topN = 1;
-    }
+  /** Leaflet and Highcharts both need a nudge once the panel finishes sliding. */
+  private remeasureAfterTransition(): void {
+    setTimeout(() => {
+      this.stationObservationMap?.invalidateSize();
+      this.chartCompareRef?.reflow();
+    }, 320);
   }
 
-
-  onTopNChange(newValue: number): void {
-
-  
-    // Ensure the value is within 1-50
-    if (newValue >= 1 && newValue <= 50) {
-      this.topN = newValue;
-    } else {
-      this.topN = newValue > 50 ? 50 : 1; // Cap at 50, floor at 1
-    }
-    this.topNStations(); // Fetch updated stations
+  clearPolygon(): void {
+    this.drawnItems.clearLayers();
+    this.stationInsidethePolygon = null;
   }
 }
-
-
-
-
-
-
-
-
-
-

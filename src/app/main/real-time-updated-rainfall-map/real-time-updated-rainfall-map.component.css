@@ -291,5 +291,18 @@ img {
   button:hover {
   background-color: #0056b3; /* Darker shade for hover */
   }
+
+/* ==== RIGHT PANEL rules start — delete if reverting to a map-only page.
+   The table/skeleton styling lives in the shared <app-rainfall-stats-panel>
+   (src/app/shared/rainfall-stats-panel) — this is just the layout glue for
+   the column it sits in. ==== */
+.stats-col {
+  min-width: 0;
+}
+
+.map-stats-wrap {
+  padding-bottom: 2rem;
+}
+/* ==== RIGHT PANEL rules end ==== */
   
   
