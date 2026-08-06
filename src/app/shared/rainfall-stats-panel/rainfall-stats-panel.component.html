@@ -1,0 +1,63 @@
+<div class="stats-panel-title">{{ title }}</div>
+
+<div *ngIf="loading" class="stats-skeleton">
+  <div class="skeleton-line skeleton-header"></div>
+  <div class="skeleton-line" *ngFor="let row of skeletonRows"></div>
+</div>
+
+<div class="stats-scroll-area" *ngIf="!loading && showTable">
+  <div class="rf-table-scroll">
+    <table class="rf-table">
+      <thead>
+        <tr>
+          <th rowspan="2">S.No</th>
+          <th rowspan="2">{{ entityLabel }}</th>
+          <th colspan="4">DAY: {{ dayLabel }}</th>
+          <th colspan="4">PERIOD: {{ periodLabel }}</th>
+        </tr>
+        <tr>
+          <th>Actual (mm)</th>
+          <th>Normal (mm)</th>
+          <th>%Dep.</th>
+          <th>Cat.</th>
+          <th>Actual (mm)</th>
+          <th>Normal (mm)</th>
+          <th>%Dep.</th>
+          <th>Cat.</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of rows">
+          <td *ngFor="let cell of row" [ngStyle]="cellStyle(cell)">{{ cellContent(cell) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="rf-table-scroll mt-4" *ngIf="categoryStats">
+    <table class="rf-table rf-category-table">
+      <thead>
+        <tr>
+          <th rowspan="2">Category</th>
+          <th colspan="2">Day</th>
+          <th colspan="2">Period</th>
+        </tr>
+        <tr>
+          <th>No. of {{ entityLabel }}</th>
+          <th>% Area</th>
+          <th>No. of {{ entityLabel }}</th>
+          <th>% Area</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let cat of categoryOrder">
+          <td class="text-start">{{ categoryLabels[cat] }}</td>
+          <td>{{ categoryStats.day[cat].count }}</td>
+          <td>{{ categoryStats.day[cat].area }}%</td>
+          <td>{{ categoryStats.period[cat].count }}</td>
+          <td>{{ categoryStats.period[cat].area }}%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

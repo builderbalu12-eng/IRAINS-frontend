@@ -31,9 +31,16 @@
         </div>
   
   
-  <div class="container">
-      <div class="row">
-        <div class="col-12" id="mapdiv1-ftp">
+  <!--
+    Split layout: map (left) + statistics panel (right). To revert to the
+    original centered-map-only page: delete the "col stats-col"
+    block below (down to "RIGHT PANEL END"), change "col-auto"
+    back to "col-12", and in the .ts file delete the fields/method between
+    the "RIGHT PANEL" comment markers plus the `this.loadStats();` call.
+  -->
+  <div class="container-fluid map-stats-wrap">
+      <div class="row justify-content-center g-2 align-items-stretch">
+        <div class="col-auto" id="mapdiv1-ftp">
           <div class="map-container">
             <div class="map-frame d-flex justify-content-center">
               <div
@@ -113,7 +120,13 @@
                               class="text-black fw-bold"
                               style="font-family: Arial; font-size: 12px"
                             >
+                              भारत मौसम विज्ञान विभाग
+                              <br>
                               INDIA METEOROLOGICAL DEPARTMENT, NEW DELHI
+                              <br>
+                              जल मौसम विज्ञान प्रभाग, नई दिल्ली
+                              <br>
+                              Hydromet Division, New Delhi
                             </label>
                           </div>
                           <div>
@@ -144,7 +157,7 @@
                               class="text-black fw-bold"
                               style="font-family: Arial; font-size: 14px"
                             >
-                              EAST AND NORTH EAST WISE RAINFALL MAP (mm)
+                              EAST AND NORTH EAST WISE DEPARTURE RAINFALL MAP (mm)
                             </label>
                           </div>
                         </div>
@@ -420,8 +433,22 @@
             </div>
           </div>
         </div>
+
+        <!-- RIGHT PANEL START -->
+        <div class="col stats-col">
+          <app-rainfall-stats-panel
+            title="WEEKLY DISTRICT DEPARTURE STATISTICS — EAST AND NORTH-EAST REGION"
+            entityLabel="Subdivision / UT / State / District"
+            [loading]="statsLoading"
+            [showTable]="showStatsTable"
+            [dayLabel]="dayLabel"
+            [periodLabel]="periodLabel"
+            [rows]="tableRows"
+          ></app-rainfall-stats-panel>
+        </div>
+        <!-- RIGHT PANEL END -->
       </div>
     </div>
-  
+
   </div>
     

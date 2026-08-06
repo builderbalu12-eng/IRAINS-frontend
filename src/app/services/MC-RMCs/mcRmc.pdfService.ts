@@ -43,6 +43,23 @@ export class MCRMCDownloadStatistics {
     await this.updateCurrDateData(this.data, this.seasonPeriodDate, mcRmcName)
   }
 
+  /**
+   * Same as updateanddownloadpdf, but for an explicitly chosen range rather
+   * than the app-wide one. Added for the ALL STATISTICS console, which has its
+   * own date pickers; every other level's service already had this variant.
+   */
+  async updateanddownloadpdfCustom(mcRmcName : any, fromDate : any, toDate : any){
+    this.data = { startDate: fromDate, endDate: toDate };
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    await this.updateCurrDateData(this.data, this.seasonPeriodDate, mcRmcName)
+  }
+
+  async updateanddownloadpdfFromDataEntryCustom(mcRmcName : any, fromDate : any, toDate : any){
+    this.data = { startDate: fromDate, endDate: toDate };
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
+    await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate, mcRmcName)
+  }
+
   async updateanddownloadpdfFromDataEntry(mcRmcName : any){
     const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();

@@ -5,7 +5,7 @@ import { environment } from 'src/environment/environment';
 import { Constants } from '../constants';
 import autoTable, { Column } from 'jspdf-autotable';
 import { jsPDF } from 'jspdf';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
 
 @Injectable({
@@ -45,25 +45,33 @@ export class MCRMCDownloadStatistics {
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate, mcRmcName);
   }
 
+  // View-only variants: populate this.rows / this.data / this.seasonPeriodDate
+  // for the on-page right-hand stats panel and generate NO files.
+  //
+  // "View" is threaded through as an explicit `viewOnly` argument rather than
+  // via the shared this.isView field. This service is providedIn: 'root', so
+  // that field is shared state — and the map components call loadStats() from
+  // inside loadGeoJSON()'s HTTP callback, which runs several times per page
+  // load. With a consumable flag, two overlapping view calls raced: the first
+  // reset it, the second then saw it as false and silently saved the PDF and
+  // Excel on refresh. A parameter is per-call, so it cannot race.
   async updateandViewpdf(mcRmcName: any) {
-    this.isView = true;
     const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
     this.mcDistricts = mcRmcName;
-    await this.updateCurrDateData(this.data, this.seasonPeriodDate, mcRmcName);
-  }
-  
-  async updateandViewpdfFromDataEntry(mcRmcName: any) {
-    this.isView = true;
-    const currDate = new Date();
-    this.data = this.constants.getRangeFromDateRange();
-    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
-    this.mcDistricts = mcRmcName;
-    await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate, mcRmcName);
+    await this.updateCurrDateData(this.data, this.seasonPeriodDate, mcRmcName, true);
   }
 
-  async updateCurrDateData(data: any, seasonPeriodDate: any, mcRmcName: any) {
+  async updateandViewpdfFromDataEntry(mcRmcName: any) {
+    const currDate = new Date();
+    this.data = this.constants.getRangeFromDateRange();
+    this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
+    this.mcDistricts = mcRmcName;
+    await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate, mcRmcName, true);
+  }
+
+  async updateCurrDateData(data: any, seasonPeriodDate: any, mcRmcName: any, viewOnly: boolean = false) {
     try {
       this.selectedMCName = mcRmcName;
       
@@ -83,8 +91,8 @@ export class MCRMCDownloadStatistics {
             // Filter season district data based on MC districts
             this.districtdepSeasondate = this.filterDistrictsByMC(seasonDistrictData.data);
             console.log('Filtered MC districts season date:', this.districtdepSeasondate);
-            
-            this.downloadPdf();
+
+            this.downloadPdf(viewOnly);
             return EMPTY;
           })
         )
@@ -94,7 +102,7 @@ export class MCRMCDownloadStatistics {
     }
   }
 
-  async updateCurrDateDataFromDataEntry(data: any, seasonPeriodDate: any, mcRmcName: any) {
+  async updateCurrDateDataFromDataEntry(data: any, seasonPeriodDate: any, mcRmcName: any, viewOnly: boolean = false) {
     try {
       this.selectedMCName = mcRmcName;
       
@@ -114,8 +122,8 @@ export class MCRMCDownloadStatistics {
             // Filter season district data based on MC districts
             this.districtdepSeasondate = this.filterDistrictsByMC(seasonDistrictData.data);
             console.log('Filtered MC districts season date from data entry:', this.districtdepSeasondate);
-            
-            this.downloadPdf();
+
+            this.downloadPdf(viewOnly);
             return EMPTY;
           })
         )
@@ -181,26 +189,89 @@ export class MCRMCDownloadStatistics {
     return this.http.post<any>(url, data);
   }
 
-  exportAsExcelFile(json: any[], excelFileName: string, columns: any, columns1: any): void {
-    const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
-    
-    const startCell = 'C1';
-    const endCell = 'F1';
-    const startCell1 = 'G1';
-    const endCell1 = 'J1';
+  exportAsExcelFile(
+    dataRows: any[][],
+    excelFileName: string,
+    dayStart: string,
+    dayEnd: string,
+    periodStart: string,
+    periodEnd: string
+  ): void {
+    const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
+    const blank = () => ({ v: '', t: 's', s: {} });
+    const mkBorder = (left = true, right = true, top = true, bottom = true) => ({
+      top:    top    ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      bottom: bottom ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      left:   left   ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      right:  right  ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+    });
+    const styledCell = (v: string, align: 'center' | 'left' = 'center', border = mkBorder()) => ({
+      v, t: 's', s: {
+        font: { bold: true, sz: 10, color: { rgb: '993300' } },
+        fill: { fgColor: { rgb: 'FFFFFF' } },
+        border,
+        alignment: { horizontal: align, vertical: 'middle' as const, wrapText: true },
+      }
+    });
 
-    worksheet['!merges'] = [
-        { s: XLSX.utils.decode_cell(startCell), e: XLSX.utils.decode_cell(endCell) },
-        { s: XLSX.utils.decode_cell(startCell1), e: XLSX.utils.decode_cell(endCell1) }
+    // Row 1: Title — dark brown, underlined, merged A1:J1
+    const row1 = [
+      { v: 'MC/RMC DISTRICT RAINFALL DISTRIBUTION', t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+      ...Array.from({ length: 9 }, () => blank()),
     ];
 
-    XLSX.utils.sheet_add_aoa(worksheet, [columns1], { origin: 'A1' });
-    XLSX.utils.sheet_add_aoa(worksheet, [columns], { origin: 'A2' });
-    XLSX.utils.sheet_add_json(worksheet, json, { origin: 'A3', skipHeader: true });
+    // Row 2: blank spacer
+    const row2 = Array.from({ length: 10 }, () => blank());
 
-    const workbook: XLSX.WorkBook = { Sheets: { 'data': worksheet }, SheetNames: ['data'] };
+    // Row 3: outer border only on DAY/PERIOD groups (no inner vertical lines)
+    const row3 = [
+      styledCell('S.No.'),
+      styledCell('MC/RMC DISTRICTS', 'left'),
+      styledCell('DAY :',      'center', mkBorder(true,  false, true, true)),
+      styledCell(dayStart,     'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(dayEnd,       'center', mkBorder(false, true,  true, true)),
+      styledCell('PERIOD :',   'center', mkBorder(true,  false, true, true)),
+      styledCell(periodStart,  'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(periodEnd,    'center', mkBorder(false, true,  true, true)),
+    ];
+
+    // Row 4: full border on every cell
+    const row4 = [
+      blank(),
+      styledCell('DISTRICT (NAME)', 'left'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+    ];
+
+    // Row 5: full border on every cell
+    const row5 = [
+      blank(), blank(),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, [row1], { origin: 'A1' });
+    XLSX.utils.sheet_add_aoa(ws, [row2], { origin: 'A2' });
+    XLSX.utils.sheet_add_aoa(ws, [row3], { origin: 'A3' });
+    XLSX.utils.sheet_add_aoa(ws, [row4], { origin: 'A4' });
+    XLSX.utils.sheet_add_aoa(ws, [row5], { origin: 'A5' });
+    XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: 'A6' });
+
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },   // Title A1:J1
+      { s: { r: 2, c: 0 }, e: { r: 4, c: 0 } },   // S.No A3:A5
+      { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } },   // name column B4:B5
+    ];
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 8 },
+      { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 },
+    ];
+    ws['!rows'] = [{ hpt: 25 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 15 }];
+
+    const workbook: XLSX.WorkBook = { Sheets: { data: ws }, SheetNames: ['data'] };
     const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-
     this.saveAsExcelFile(excelBuffer, excelFileName);
   }
 
@@ -211,7 +282,16 @@ export class MCRMCDownloadStatistics {
     FileSaver.saveAs(data, fileName + EXCEL_EXTENSION);
   }
 
-  public async downloadPdf() {
+  public async downloadPdf(viewOnly: boolean = false) {
+    // On-page stats panel: this.rows is all the caller needs, so build it and
+    // stop. Deliberately ahead of the empty-districts alert() below — the
+    // panel refreshes on every page load, and it must never pop an alert or
+    // save a file without the user pressing "Statistics Download".
+    if (viewOnly) {
+      this.loadTheRows();
+      return;
+    }
+
     console.log('Generating MC/RMC Districts PDF', this.data.startDate, this.data.endDate);
     console.log('Rows to be included in PDF:', this.districtdepCurrdate.length);
 
@@ -252,12 +332,27 @@ export class MCRMCDownloadStatistics {
 
     this.loadTheRows();
 
-    var newArr = this.rows.map((subArr) => {
-      return subArr.map((item: any) => {
-        if (typeof item === 'object' && item.hasOwnProperty('content')) {
-          return item.content;
+    // Styled cells for the Excel sheet, matching the all-India districts export
+    // in /all-maps: thin black borders, CAT. cells keeping their category
+    // colour, % suffix on the departure columns, name column left-aligned.
+    const thinBlack = {
+      top:    { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left:   { style: 'thin', color: { rgb: '000000' } },
+      right:  { style: 'thin', color: { rgb: '000000' } },
+    };
+
+    var newArr: any[][] = this.rows.map((subArr) => {
+      return subArr.map((item: any, colIdx: number) => {
+        let content = typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+        if ((colIdx === 4 || colIdx === 8) && content !== '' && content !== ' ' && content != null) {
+          content = `${content}%`;
         }
-        return item;
+        const cellFill  = item?.styles?.fillColor;
+        const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
+        const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
+        const fillHex = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
+        return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
       });
     });
 
@@ -340,7 +435,14 @@ export class MCRMCDownloadStatistics {
     } else {
       setTimeout(() => {
         doc.save(filename);
-        this.exportAsExcelFile(newArr, `MCRMC_DISTRICTS_RAINFALL_DISTRIBUTION_INDIA_cd`, columns, newcolumns1);
+        this.exportAsExcelFile(
+          newArr,
+          `MCRMC_DISTRICTWISE_RAINFALL_DISTRIBUTION`,
+          this.convertToIndianDateFormat(this.data.startDate),
+          this.convertToIndianDateFormat(this.data.endDate),
+          this.convertToIndianDateFormat(this.seasonPeriodDate.startDate),
+          this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)
+        );
       }, 3000);
     }
   }

@@ -538,6 +538,14 @@ export class SubdivDownloadStatistics {
 
     this.loadTheRows();
 
+    if (this.isView) {
+      // On-page table view: data is already populated on this.rows /
+      // this.data / this.seasonPeriodDate for the component to read —
+      // skip PDF/Excel generation entirely.
+      this.isView = false;
+      return;
+    }
+
     const redBorder = {
       top:    { style: 'medium', color: { rgb: 'C0000B' } },
       bottom: { style: 'medium', color: { rgb: 'C0000B' } },
@@ -939,7 +947,7 @@ export class SubdivDownloadStatistics {
   private subdivAreaMap: Map<number, number> = new Map();
   private subdivDisplayOrder: any[] = [];
 
-  private buildCategoryStats() {
+  buildCategoryStats() {
     const cats = ['LE', 'E', 'N', 'D', 'LD', 'NR'] as const;
     type CatKey = typeof cats[number];
 

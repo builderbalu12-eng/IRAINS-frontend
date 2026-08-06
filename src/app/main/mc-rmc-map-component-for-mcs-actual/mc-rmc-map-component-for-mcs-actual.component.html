@@ -7,10 +7,22 @@
 
 
 <br> -->
-<div class="container">
-  
-    <div class="row">
-      <div class="col-12" id="mapdiv1-ftp_actual">
+<!--
+  Split layout: map (left) + statistics panel (right), added on top of the
+  original map-only page. To revert to the original centered-map-only look:
+    1. Delete the entire "col stats-col" <div> block below (the
+       right panel, from its opening tag down to its matching closing
+       </div> right before the row's closing </div>).
+    2. On the map's column div right below, change "col-auto"
+       back to "col-12" so the map is centered in a full-width row again.
+    3. In the .ts file, delete the "RIGHT PANEL" fields, the loadStats()
+       method, and the `this.loadStats();` call site.
+    4. In the .css file, delete the "RIGHT PANEL rules" block.
+-->
+<div class="map-stats-wrap">
+
+    <div class="map-stats-row">
+      <div class="map-col" id="mapdiv1-ftp_actual">
         <div class="map-container">
           <div class="map-frame d-flex align-items-center justify-content-center">
             <div
@@ -206,6 +218,19 @@
         </div>
       </div>
     </div>
+
+    <!-- RIGHT PANEL START — delete this whole <div class="stats-col"> ... </div> block (down to "RIGHT PANEL END" below) to go back to a map-only page. -->
+    <div class="stats-col">
+      <app-rainfall-stats-panel
+        [title]="displayMcName + ' DISTRICT STATISTICS'"
+        entityLabel="MC/RMC Districts"
+        [loading]="statsLoading"
+        [showTable]="showStatsTable"
+        [dayLabel]="dayLabel"
+        [periodLabel]="periodLabel"
+        [rows]="tableRows"
+      ></app-rainfall-stats-panel>
+    </div>
+    <!-- RIGHT PANEL END -->
   </div>
 </div>
-  

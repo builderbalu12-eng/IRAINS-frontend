@@ -9,10 +9,12 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
 import { CountryService } from "src/app/services/country/country.service";
 import { CountryDownloadStatistics } from "src/app/services/country/pdfStatisticsDownloadCountry.service";
 import jsPDF from "jspdf";
 import { Constants } from "src/app/services/constants";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 
 @Component({
   selector: "app-country-rainfall-map-daily",
@@ -27,6 +29,21 @@ export class CountryRainfallMapDailyComponent {
   fromDate: any = this.formatDate(new Date()) ;
   toDate: any = this.formatDate(new Date());
   selectedMode: any;
+
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics (single-row "COUNTRY AS A WHOLE" table),
+  // rendered by the shared <app-rainfall-stats-panel>. No
+  // category-breakdown sub-table (buildCategoryStats() N/A here — same
+  // as the COUNTRY branch in rainfall-statistics.component.ts). To
+  // revert to a map-only page: delete these fields, loadStats() below,
+  // and the two `this.loadStats();` call sites (search this file for
+  // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  // ==== RIGHT PANEL fields end ====
   today : any
 
   formatDate(date: Date): string {
@@ -92,34 +109,64 @@ export class CountryRainfallMapDailyComponent {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     private countryService: CountryService,
     private countryDownloadStatistics: CountryDownloadStatistics,
-    private constants: Constants
+    private constants: Constants,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
-    const currentDate = new Date();
-    const dd = String(currentDate.getDate()).padStart(2, "0");
-    const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-    const year = String(currentDate.getFullYear());
-    this.formatteddate = `${dd}-${mon}-${year}`;
+    // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+    // this.initialZoom immediately with no later correction, so it can't wait
+    // on the async date fetch below or the map builds at the hardcoded
+    // fallback zoom instead of the real window-size-based one.
+    this.calculateInitialZoom();
 
-    this.dataService.fromAndToDate$.subscribe((value) => {
-      if (value) {
-        let fromAndToDates = JSON.parse(value);
-        this.StartDate = fromAndToDates.fromDate;
-        this.EndDate = fromAndToDates.toDate;
-        // console.log(this.previousWeekWeeklyStartDate, this.previousWeekWeeklyEndDate);
-      } else {
-        // If no value is emitted, use the current date as the default
-        this.StartDate = `${year}-${mon}-${dd}`;
-        this.EndDate = `${year}-${mon}-${dd}`;
-        // console.log(this.StartDate);
-        // console.log(this.EndDate);
-      }
-      this.calculateInitialZoom();
-      this.fetchBackend();
-    });
+    // Effective latest date: today if this role's data is published,
+    // otherwise yesterday (today's data held back until published).
+    const initWithEffectiveDate = (effectiveDate: Date) => {
+      const dd = String(effectiveDate.getDate()).padStart(2, "0");
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+      const year = String(effectiveDate.getFullYear());
+      this.formatteddate = `${dd}-${mon}-${year}`;
+
+      // Drives the date picker ([(ngModel)]="fromDate", [max]="today") and
+      // fetchBackend()'s request payload — both read fromDate/toDate, not
+      // StartDate/EndDate, so the picker must be seeded with the effective
+      // (possibly held-back) date here, not left at real today.
+      const isoEffectiveDate = `${year}-${mon}-${dd}`;
+      this.today = isoEffectiveDate;
+      this.fromDate = isoEffectiveDate;
+      this.toDate = isoEffectiveDate;
+
+      this.dataService.fromAndToDate$.subscribe((value) => {
+        if (value) {
+          let fromAndToDates = JSON.parse(value);
+          this.StartDate = fromAndToDates.fromDate;
+          this.EndDate = fromAndToDates.toDate;
+        } else {
+          // If no value is emitted, use the effective latest date as the default
+          this.StartDate = `${year}-${mon}-${dd}`;
+          this.EndDate = `${year}-${mon}-${dd}`;
+        }
+        this.fetchBackend();
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
+      });
+    };
+
+    const loggedInUser: any = localStorage.getItem("isAuthorised");
+    const loggedInUserObject = loggedInUser ? JSON.parse(loggedInUser) : null;
+    const role = loggedInUserObject?.data?.[0]?.mcorhq;
+
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+        error: () => initWithEffectiveDate(new Date())
+      });
+    } else {
+      initWithEffectiveDate(new Date());
+    }
   }
 
   convertToIndianDateFormat = (dateString: string) =>
@@ -158,18 +205,37 @@ export class CountryRainfallMapDailyComponent {
 
 
     else{
-      this.countryService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
         this.countrydatacum = res.data;
         console.log("COUNTRY DATA", res.data);
         this.loadGeoJSON();
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
         this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       });
-      this.countryService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
         this.countrydatacum = res.data;
       });
     }
   }
+
+  // ==== RIGHT PANEL: loadStats ====
+  async loadStats() {
+    this.statsLoading = true;
+    this.showStatsTable = false;
+    try {
+      await this.countryDownloadStatistics.updateandViewpdfFromDataEntryCustom(this.fromDate, this.fromDate);
+      const svc = this.countryDownloadStatistics;
+      const convert = svc.convertToIndianDateFormat;
+      this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+      this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+      this.tableRows = svc.rows;
+      this.showStatsTable = this.tableRows.length > 0;
+    } catch (error) {
+      console.error('Error loading country statistics panel:', error);
+    }
+    this.statsLoading = false;
+  }
+  // ==== RIGHT PANEL: loadStats end ====
 
   filter = (node: HTMLElement) => {
     const exclusionClasses = [
@@ -351,6 +417,7 @@ export class CountryRainfallMapDailyComponent {
     this.formatteddate = this.fromDate.split("-").reverse().join("-")
     this.calculateInitialZoom()
     this.fetchBackend()
+    this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
     // this.dataService.setfromAndToDate(JSON.stringify(data));
   }
 

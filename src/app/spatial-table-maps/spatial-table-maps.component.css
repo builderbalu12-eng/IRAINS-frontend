@@ -258,3 +258,37 @@ img {
 .text-size {
   font-size: 11px;
 }
+
+/* ── On-map labels (name / reported-of-total / percentage) ──────
+   Leaflet's divIcon default styling adds a white box + border, so it
+   is reset here and restyled. pointer-events stay off so the label
+   never blocks a click on the polygon underneath. */
+.spatial-map-label {
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+
+.sml-box {
+  text-align: center;
+  line-height: 1.05;
+  white-space: nowrap;
+  color: #10233f;
+  font-weight: 700;
+  /* Light halo keeps the text legible over any category fill colour. */
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
+
+.sml-name {
+  font-size: 0.82em;
+  letter-spacing: 0.01em;
+}
+
+.sml-nums {
+  font-size: 0.95em;
+}
+
+.sml-pct {
+  font-size: 0.95em;
+  color: #0b3d91;
+}

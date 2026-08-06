@@ -304,6 +304,23 @@ button:hover {
 
 .custom-z-index {
   z-index: 1050;
-  position: relative; 
+  position: relative;
 }
+
+/* ==== RIGHT PANEL rules start — delete down to "RIGHT PANEL rules end"
+   if reverting to a map-only page. The table/skeleton styling itself now
+   lives in the shared <app-rainfall-stats-panel>'s own CSS
+   (src/app/shared/rainfall-stats-panel) — this is just the layout glue
+   for the column it sits in. ==== */
+.stats-col {
+  /* Without this, a flex/grid item won't shrink below its content's
+     intrinsic width, so the wide table pushes the column past the
+     viewport instead of scrolling inside .rf-table-scroll. */
+  min-width: 0;
+}
+
+.map-stats-wrap {
+  padding-bottom: 2rem;
+}
+/* ==== RIGHT PANEL rules end ==== */
 

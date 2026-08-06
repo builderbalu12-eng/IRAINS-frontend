@@ -30,6 +30,10 @@ export class SpatialTableComponent implements OnInit {
   selectedDate: string = "";
   startDate: string = "";
   endDate: string = "";
+  // Daywise is a single day, so it gets its own model rather than reusing the
+  // period range — sharing them meant switching modes carried the other mode's
+  // dates across.
+  singleDate: string = "";
   originalData: any[] = [];
   private categorySorted = false;
   // 🔹 Daywise support
@@ -63,11 +67,7 @@ export class SpatialTableComponent implements OnInit {
       this.centreType = match[1];
       this.centreName = match[2];
     }
-    const today = new Date();
-    const lastWeek = new Date();
-    lastWeek.setDate(today.getDate() - 7);
-    this.startDate = lastWeek.toISOString().split("T")[0];
-    this.endDate = today.toISOString().split("T")[0];
+    this.seedDefaultDates();
     // fetch initial period data
     this.fetchPeriodData(this.startDate, this.endDate, "period");
   }
@@ -77,6 +77,56 @@ export class SpatialTableComponent implements OnInit {
     this.dataSource.data = []; // clear table
     this.originalData = [];
     this.categorySorted = false;
+    // Daywise state belongs to the previous mode — stale dates here leave the
+    // day stepper pointing at days the new result set doesn't contain.
+    this.daywiseGrouped = {};
+    this.daywiseDates = [];
+    this.currentDayIndex = 0;
+
+    // Refetch for the newly selected mode, mirroring setViewMode() below.
+    // Without this the toggle only blanked the table and nothing reloaded, so
+    // switching to Period/Daywise looked like it had hung. startDate/endDate
+    // are already seeded in ngOnInit, so there is always a range to fetch.
+    if (!this.startDate || !this.endDate) {
+      this.seedDefaultDates();
+    }
+    if (selected === "period") {
+      this.fetchPeriodData(this.startDate, this.endDate, "period");
+    } else if (selected === "daywise") {
+      // Daywise always reopens on today, per request — a single day, not a range.
+      this.singleDate = this.todayLocal();
+      this.fetchSingleDay(this.singleDate);
+    }
+  }
+
+  // Daywise fetch for one day: the API is range-based, so pass the same date as
+  // both bounds and let it group that single day.
+  fetchSingleDay(date: string) {
+    if (!date) return;
+    this.fetchDaywiseData(date, date);
+  }
+
+  private todayLocal(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  // Last 7 days, built from the local calendar date. toISOString() is UTC, so
+  // in IST every load before 05:30 rolled the range back by a day.
+  private seedDefaultDates() {
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+        d.getDate()
+      ).padStart(2, "0")}`;
+    const today = new Date();
+    const lastWeek = new Date();
+    lastWeek.setDate(today.getDate() - 7);
+    this.startDate = fmt(lastWeek);
+    this.endDate = fmt(today);
+    this.singleDate = fmt(today); // daywise opens on today
   }
   // 🔹 NEW: Switch viewMode (subdivision / state)
   setViewMode(mode: "subdivision" | "state") {
@@ -88,7 +138,8 @@ export class SpatialTableComponent implements OnInit {
     if (this.mode === "period") {
       this.fetchPeriodData(this.startDate, this.endDate, "period");
     } else if (this.mode === "daywise") {
-      this.fetchDaywiseData(this.startDate, this.endDate);
+      // Daywise is driven by singleDate, not the period range.
+      this.fetchSingleDay(this.singleDate || this.todayLocal());
     }
   }
   // 🔹 Single date
@@ -338,13 +389,12 @@ export class SpatialTableComponent implements OnInit {
           : `${name}/${tableDate}`;
         return [
           dateCell,
-          item.category.toUpperCase(),
-          "WEAK"
+          item.category.toUpperCase()
         ];
       });
-  
+
       autoTable(doc, {
-        head: [[`${this.viewMode.toUpperCase()}`, 'RAINFALL DISTRIBUTION', 'MONSOON ACTIVITY']],
+        head: [[`${this.viewMode.toUpperCase()}`, 'RAINFALL DISTRIBUTION']],
         body: tableData,
         startY: y,
         theme: 'plain',
@@ -358,8 +408,7 @@ export class SpatialTableComponent implements OnInit {
         },
         columnStyles: {
           0: { halign: 'left', fontStyle: 'normal' },
-          1: { halign: 'center', fontStyle: 'normal' },
-          2: { halign: 'center', fontStyle: 'normal' }
+          1: { halign: 'center', fontStyle: 'normal' }
         },
         margin: { left: margin, right: margin },
         tableWidth: pageWidth - 2 * margin

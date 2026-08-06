@@ -177,6 +177,129 @@ input:checked + .cm-slider:before { transform: translateX(32px); }
   cursor: pointer;
 }
 
+.cm-range-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #666;
+}
+
+/* Pivoted table (Calculation Mode range view) — one column per date */
+.cm-date-col-cell {
+  text-align: center;
+  white-space: nowrap;
+}
+.cm-cell-value {
+  font-weight: 600;
+}
+.cm-cell-badge {
+  margin-top: 2px;
+}
+.cm-cell-badge .excl-badge,
+.cm-cell-badge .incl-badge {
+  font-size: 0.62rem;
+  padding: 1px 5px;
+}
+.cm-date-col-header {
+  text-align: center;
+  min-width: 110px;
+  cursor: default !important;
+}
+.cm-date-col-header:hover {
+  background: #002467 !important;
+}
+.cm-date-col-date {
+  font-weight: 700;
+}
+.cm-date-col-actual {
+  font-weight: 400;
+  font-size: 0.72rem;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+/* Station Data / Station Logs top-level tabs */
+.cm-right-tabs {
+  background: #f8f9fa;
+  padding: 0 0.5rem;
+}
+
+/* Station Logs tables (Data-entry categories x dates, AWS sources x dates) */
+.cm-logs-table td:first-child,
+.cm-logs-table th:first-child {
+  text-align: left;
+  min-width: 180px;
+}
+.cm-logs-row-label {
+  font-weight: 600;
+  color: #002467;
+}
+.cm-source-url {
+  display: block;
+  font-size: 0.72rem;
+  color: #666;
+  font-weight: 400;
+  text-decoration: none;
+  word-break: break-all;
+}
+.cm-source-url:hover {
+  color: #002467;
+  text-decoration: underline;
+}
+.cm-logs-total-row {
+  font-weight: 700;
+  background: #eef2fa;
+}
+.cm-logs-total-row td {
+  border-top: 2px solid #002467;
+}
+
+/* Metric toggle (Updated / Not Updated) — shown only when there's more than
+   one date, so a wide range still fits one column per date instead of two. */
+.cm-metric-toggle {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid #dee2e6;
+  background: #f8f9fa;
+}
+.cm-metric-toggle button {
+  border: 1px solid #ced4da;
+  background: #fff;
+  color: #444;
+  border-radius: 6px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cm-metric-toggle button.active {
+  background: #002467;
+  color: #fff;
+  border-color: #002467;
+}
+
+.cm-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #0c5460;
+  background: #d1ecf1;
+  border-bottom: 1px solid #bee5eb;
+}
+.cm-info-banner i {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+.cm-info-banner-warn {
+  color: #721c24;
+  background: #f8d7da;
+  border-bottom: 1px solid #f5c2c7;
+  border-top: 1px solid #dee2e6;
+}
+
 /* Tabs */
 .cm-tabs {
   display: flex;

@@ -43,9 +43,9 @@
 
 
 
-<div class="container pt-3">
-    <div class="row">
-      <div class="col-12" id="mapdiv1-ftp">
+<div class="map-stats-wrap pt-3">
+    <div class="map-stats-row">
+      <div class="map-col" id="mapdiv1-ftp">
         <div class="map-container">
           <div class="map-frame d-flex align-items-center justify-content-center">
             <div
@@ -96,7 +96,13 @@
                   <div class="d-flex flex-column align-items-center ps-4">
                     <div>
                       <label class="text-black fw-bold" style="font-family: Arial; font-size: 12px;">
+                        भारत मौसम विज्ञान विभाग
+                        <br>
                         INDIA METEOROLOGICAL DEPARTMENT, NEW DELHI
+                        <br>
+                        जल मौसम विज्ञान प्रभाग, नई दिल्ली
+                        <br>
+                        Hydromet Division, New Delhi
                       </label>
                     </div>
                     <div>
@@ -191,5 +197,19 @@
         </div>
       </div>
     </div>
+
+      <!-- RIGHT PANEL START — delete this whole <div class="stats-col"> ... </div> block (down to "RIGHT PANEL END") to go back to a map-only page. -->
+      <div class="stats-col">
+        <app-rainfall-stats-panel
+          [title]="displayMcName + ' SUBDIVISION STATISTICS'"
+          entityLabel="Met. Subdivision / UT / State / District"
+          [loading]="statsLoading"
+          [showTable]="showStatsTable"
+          [dayLabel]="dayLabel"
+          [periodLabel]="periodLabel"
+          [rows]="tableRows"
+        ></app-rainfall-stats-panel>
+      </div>
+      <!-- RIGHT PANEL END -->
   </div>
 </div>

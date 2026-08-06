@@ -15,6 +15,8 @@ import { DownloadPdfRegionDistrict } from "src/app/services/district/regions/dis
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 
 
 @Component({
@@ -41,6 +43,23 @@ export class DistrictSouthPeninsularRainfallMapCummulativeComponent {
     toDate: any = this.formatDate(new Date());
     FromDate: any;
     ToDate: any;
+
+    // ==== RIGHT PANEL START =====================================
+    // Right-panel statistics (district-level table for this region only,
+    // via DownloadPdfRegionDistrict's region-scoped queries, over the
+    // fromDate/toDate range picker — NOT this.FromDate/ToDate, which are
+    // never actually assigned), rendered by the shared
+    // <app-rainfall-stats-panel>. No category-breakdown sub-table
+    // (buildCategoryStats() N/A for district data). To revert to a
+    // map-only page: delete these fields, loadStats() below, and the
+    // two `this.loadStats();` call sites (search this file for
+    // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+    statsLoading: boolean = false;
+    showStatsTable: boolean = false;
+    tableRows: any[][] = [];
+    dayLabel: string = '';
+    periodLabel: string = '';
+    // ==== RIGHT PANEL fields end ====
     
       async downloadMapData() {
         this.isLoading = true;
@@ -95,20 +114,32 @@ export class DistrictSouthPeninsularRainfallMapCummulativeComponent {
         private district: DistrictService,
         private downloadPdf$: DownloadPdfRegionDistrict,
         private countryService: CountryService,
-        private constants: Constants
+        private constants: Constants,
+        private calcMode: CalculationsModeService,
+        private mapDataScheduleService: MapDataScheduleService
       ) {
-        // var currentDate = new Date();
-        // var dd = String(currentDate.getDate());
-        // var mon = String(currentDate.getMonth());
-        // var year = String(currentDate.getFullYear());
-        // this.formatteddate = `${dd.padStart(2, '0')}-${mon.padStart(2, '0')}-${year}`;
-    
-        const currentDate = new Date();
-        const dd = String(currentDate.getDate()).padStart(2, "0");
-        const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-        const year = String(currentDate.getFullYear());
+        this.calculateInitialZoom();
+
+        const loggedInUser = JSON.parse(
+          localStorage.getItem("isAuthorised") || "{}"
+        );
+        const role = loggedInUser?.data?.[0]?.mcorhq;
+
+        this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe(
+          (effectiveDate) => this.initWithEffectiveDate(effectiveDate),
+          () => this.initWithEffectiveDate(new Date())
+        );
+      }
+
+      private initWithEffectiveDate(effectiveDate: Date) {
+        const dd = String(effectiveDate.getDate()).padStart(2, "0");
+        const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0");
+        const year = String(effectiveDate.getFullYear());
         this.formatteddate = `${dd}-${mon}-${year}`;
-    
+
+        this.fromDate = this.formatDate(effectiveDate);
+        this.toDate = this.formatDate(effectiveDate);
+
         this.dataService.fromAndToDate$.subscribe((value) => {
           if (value) {
             let fromAndToDates = JSON.parse(value);
@@ -120,8 +151,8 @@ export class DistrictSouthPeninsularRainfallMapCummulativeComponent {
             this.EndDate = `${year}-${mon}-${dd}`;
           }
           this.generateWeeklyOptions()
-          this.calculateInitialZoom();
           this.fetchBackend();
+          this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
         });
       }
     
@@ -164,7 +195,10 @@ export class DistrictSouthPeninsularRainfallMapCummulativeComponent {
       }
       else{
 
-        this.district.fetchData(data).subscribe((res) => {
+        (this.calcMode.isAwsEnabled
+          ? this.district.fetchDataWithAWS(data)
+          : this.district.fetchData(data)
+        ).subscribe((res) => {
           this.districtdatacum = res.data;
           this.loadGeoJSON();
           this.StartDate = this.convertToIndianDateFormat(this.StartDate);
@@ -181,6 +215,7 @@ export class DistrictSouthPeninsularRainfallMapCummulativeComponent {
         };
         this.calculateInitialZoom()
         this.fetchBackend()
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
         // this.dataService.setfromAndToDate(JSON.stringify(data));
       }
       
@@ -238,6 +273,25 @@ export class DistrictSouthPeninsularRainfallMapCummulativeComponent {
       return `${day}-${month}-${year}`;
     }
     
+      // ==== RIGHT PANEL: loadStats ====
+      async loadStats() {
+        this.statsLoading = true;
+        this.showStatsTable = false;
+        try {
+          await this.downloadPdf$.updateandViewpdfFromDataEntryCustom("4", this.fromDate, this.toDate);
+          const svc = this.downloadPdf$;
+          const convert = svc.convertToIndianDateFormat;
+          this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+          this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+          this.tableRows = svc.rows;
+          this.showStatsTable = this.tableRows.length > 0;
+        } catch (error) {
+          console.error('Error loading district statistics panel:', error);
+        }
+        this.statsLoading = false;
+      }
+      // ==== RIGHT PANEL: loadStats end ====
+
       filter = (node: HTMLElement) => {
         const exclusionClasses = [
           "download",

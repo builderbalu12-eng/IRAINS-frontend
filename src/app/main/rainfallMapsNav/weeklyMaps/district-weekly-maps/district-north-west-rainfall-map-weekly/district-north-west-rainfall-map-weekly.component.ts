@@ -10,11 +10,13 @@ import * as L from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import * as htmlToImage from "html-to-image";
 import { DataService } from "src/app/data.service";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
 import { DistrictService } from "src/app/services/district/district.service";
 import { DownloadPdfRegionDistrict } from "src/app/services/district/regions/districtRegionsDownload.service";
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 @Component({
   selector: "app-district-north-west-rainfall-map-weekly",
   templateUrl: "./district-north-west-rainfall-map-weekly.component.html",
@@ -35,6 +37,25 @@ export class DistrictNorthWestRainfallMapWeeklyComponent {
   fromDate: any;
   FromDate: any;
   ToDate: any;
+
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics (district-level table for this region only,
+  // via DownloadPdfRegionDistrict's region-scoped queries, over the
+  // selected week's range), rendered by the shared
+  // <app-rainfall-stats-panel>. No category-breakdown sub-table
+  // (buildCategoryStats() N/A for district data). Only ONE call site —
+  // the Submit button only round-trips through dataService to re-fire
+  // the fromAndToDate$ subscription, it doesn't call fetchBackend()
+  // directly. To revert to a map-only page: delete these fields,
+  // loadStats() below, and the `this.loadStats();` call site (search
+  // this file for "this.loadStats()") — plus the matching HTML
+  // "RIGHT PANEL" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  // ==== RIGHT PANEL fields end ====
 
   async downloadMapData() {
     this.isLoading = true;
@@ -92,39 +113,58 @@ export class DistrictNorthWestRainfallMapWeeklyComponent {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
+    private calcMode: CalculationsModeService,
     private renderer: Renderer2,
     private elRef: ElementRef,
     private district: DistrictService,
     private downloadPdf$: DownloadPdfRegionDistrict,
     private countryService: CountryService,
-    private constants: Constants
+    private constants: Constants,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
-    // var currentDate = new Date();
-    // var dd = String(currentDate.getDate());
-    // var mon = String(currentDate.getMonth());
-    // var year = String(currentDate.getFullYear());
-    // this.formatteddate = `${dd.padStart(2, '0')}-${mon.padStart(2, '0')}-${year}`;
+    // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+    // this.initialZoom immediately with no later correction, so it can't wait
+    // on the async date fetch below or the map builds at the hardcoded
+    // fallback zoom instead of the real window-size-based one.
+    this.calculateInitialZoom();
 
-    const currentDate = new Date();
-    const dd = String(currentDate.getDate()).padStart(2, "0");
-    const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-    const year = String(currentDate.getFullYear());
-    this.formatteddate = `${dd}-${mon}-${year}`;
+    // Effective latest date: today if this role's data is published,
+    // otherwise yesterday (today's data held back until published). For
+    // weekly maps this gates generateWeeklyOptions()'s last available week.
+    const initWithEffectiveDate = (effectiveDate: Date) => {
+      const dd = String(effectiveDate.getDate()).padStart(2, "0");
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+      const year = String(effectiveDate.getFullYear());
+      this.formatteddate = `${dd}-${mon}-${year}`;
 
-    this.dataService.fromAndToDate$.subscribe((value) => {
-      if (value) {
-        let fromAndToDates = JSON.parse(value);
-        this.StartDate = fromAndToDates.fromDate;
-        this.EndDate = fromAndToDates.toDate;
-        // console.log(this.previousWeekWeeklyStartDate, this.previousWeekWeeklyEndDate);
-      } else {
-        this.StartDate = `${year}-${mon}-${dd}`;
-        this.EndDate = `${year}-${mon}-${dd}`;
-      }
-      this.generateWeeklyOptions();
-      this.calculateInitialZoom();
-      this.fetchBackend();
-    });
+      this.dataService.fromAndToDate$.subscribe((value) => {
+        if (value) {
+          let fromAndToDates = JSON.parse(value);
+          this.StartDate = fromAndToDates.fromDate;
+          this.EndDate = fromAndToDates.toDate;
+        } else {
+          // If no value is emitted, use the effective latest date as the default
+          this.StartDate = `${year}-${mon}-${dd}`;
+          this.EndDate = `${year}-${mon}-${dd}`;
+        }
+        this.generateWeeklyOptions(effectiveDate);
+        this.fetchBackend();
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
+      });
+    };
+
+    const loggedInUser: any = localStorage.getItem("isAuthorised");
+    const loggedInUserObject = loggedInUser ? JSON.parse(loggedInUser) : null;
+    const role = loggedInUserObject?.data?.[0]?.mcorhq;
+
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+        error: () => initWithEffectiveDate(new Date())
+      });
+    } else {
+      initWithEffectiveDate(new Date());
+    }
   }
 
   convertToIndianDateFormat = (dateString: string) =>
@@ -193,7 +233,7 @@ export class DistrictNorthWestRainfallMapWeeklyComponent {
       //   );
       // });
     } else {
-      this.district.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe((res) => {
         this.districtdatacum = res.data;
         this.loadGeoJSON();
         this.StartDate = this.convertToIndianDateFormat(this.StartDate);
@@ -228,8 +268,9 @@ export class DistrictNorthWestRainfallMapWeeklyComponent {
     this.dataService.setfromAndToDate(JSON.stringify(data));
   }
 
-  generateWeeklyOptions() {
+  generateWeeklyOptions(effectiveDate: Date = new Date()) {
     this.months = [];
+    const monthGroups: { [key: string]: any } = {};
     const monthNames = [
       "January",
       "February",
@@ -246,7 +287,7 @@ export class DistrictNorthWestRainfallMapWeeklyComponent {
     ];
 
     const startDate = new Date(2025, 0, 1); // January 1, 2024
-    const endDate = new Date(); // December 31, 2024
+    const endDate = effectiveDate;
 
     let currentDate = startDate;
     while (currentDate <= endDate) {
@@ -254,13 +295,14 @@ export class DistrictNorthWestRainfallMapWeeklyComponent {
         // Thursday
         let startOfWeek = new Date(currentDate);
         let endOfWeek = new Date(currentDate);
-        let todayofWeek = new Date();
+        let todayofWeek = effectiveDate;
         endOfWeek.setDate(endOfWeek.getDate() + 6);
         if (endOfWeek > todayofWeek) {
           endOfWeek = todayofWeek;
         }
 
         let monthIndex = startOfWeek.getMonth();
+        let yearOfWeek = startOfWeek.getFullYear();
         let weekRange = `${this.formatDate(startOfWeek)} - ${this.formatDate(
           endOfWeek
         )}`;
@@ -268,13 +310,17 @@ export class DistrictNorthWestRainfallMapWeeklyComponent {
           startOfWeek
         )} - ${this.formatDateForDisplay(endOfWeek)}`;
 
-        if (!this.months[monthIndex]) {
-          this.months[monthIndex] = { name: monthNames[monthIndex], weeks: [] };
+        const groupKey = `${yearOfWeek}-${monthIndex}`;
+        let group = monthGroups[groupKey];
+        if (!group) {
+          group = { name: `${monthNames[monthIndex]} ${yearOfWeek}`, weeks: [] };
+          monthGroups[groupKey] = group;
+          this.months.push(group);
         }
 
-        let weekNumber = this.months[monthIndex].weeks.length + 1;
+        let weekNumber = group.weeks.length + 1;
         let weekLabel = `Week ${weekNumber}`;
-        this.months[monthIndex].weeks.push({
+        group.weeks.push({
           label: weekLabel,
           range: weekRange,
           displayRange: weekRangeForDisplay,
@@ -298,6 +344,31 @@ export class DistrictNorthWestRainfallMapWeeklyComponent {
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
   }
+
+  // ==== RIGHT PANEL: loadStats ====
+  async loadStats() {
+    if (!this.selectedWeek) {
+      return;
+    }
+    this.statsLoading = true;
+    this.showStatsTable = false;
+    try {
+      const dates = this.selectedWeek.split(" - ");
+      const fromDate = dates[0];
+      const toDate = dates[1];
+      await this.downloadPdf$.updateandViewpdfFromDataEntryCustom("3", fromDate, toDate);
+      const svc = this.downloadPdf$;
+      const convert = svc.convertToIndianDateFormat;
+      this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+      this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+      this.tableRows = svc.rows;
+      this.showStatsTable = this.tableRows.length > 0;
+    } catch (error) {
+      console.error('Error loading district statistics panel:', error);
+    }
+    this.statsLoading = false;
+  }
+  // ==== RIGHT PANEL: loadStats end ====
 
   filter = (node: HTMLElement) => {
     const exclusionClasses = [

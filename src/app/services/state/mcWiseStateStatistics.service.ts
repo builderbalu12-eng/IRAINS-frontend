@@ -5,7 +5,7 @@ import { environment } from 'src/environment/environment';
 import { Constants } from '../constants';
 import autoTable, { Column } from 'jspdf-autotable';
 import { jsPDF } from 'jspdf';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
 
 
@@ -50,19 +50,17 @@ export class McWiseStateStatistics {
   }
 
   async updateandViewpdf(stateCodes:any){
-    this.isView = true
-    const currDate = new Date();
+        const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
-    await this.updateCurrDateData(stateCodes, this.data, this.seasonPeriodDate)
+    await this.updateCurrDateData(stateCodes, this.data, this.seasonPeriodDate, true)
   }
   
   async updateandViewpdfFromDataEntry(stateCodes:any){
-    this.isView = true
-    const currDate = new Date();
+        const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
-    await this.updateCurrDateDataFromDataEntry(stateCodes, this.data, this.seasonPeriodDate)
+    await this.updateCurrDateDataFromDataEntry(stateCodes, this.data, this.seasonPeriodDate, true)
   }
 
 
@@ -102,8 +100,7 @@ export class McWiseStateStatistics {
   }
 
   async updateandViewpdfCustom(stateCodes:any, fromDate : any, toDate : any){
-    this.isView = true
-    const currDate = new Date();
+        const currDate = new Date();
     // this.data = this.constants.getRangeFromDateRange();
     this.data  = {
       startDate : fromDate, // 2024-09-18 format
@@ -111,12 +108,11 @@ export class McWiseStateStatistics {
     }
     
     this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
-    await this.updateCurrDateData(stateCodes, this.data, this.seasonPeriodDate)
+    await this.updateCurrDateData(stateCodes, this.data, this.seasonPeriodDate, true)
   }
 
   async updateandViewpdfFromDataEntryCustom(stateCodes:any, fromDate : any, toDate : any){
-    this.isView = true
-    const currDate = new Date();
+        const currDate = new Date();
     // this.data = this.constants.getRangeFromDateRange();
     this.data  = {
       startDate : fromDate, // 2024-09-18 format
@@ -124,7 +120,7 @@ export class McWiseStateStatistics {
     }
     
     this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodateCustom(new Date(toDate));
-    await this.updateCurrDateDataFromDataEntry(stateCodes, this.data, this.seasonPeriodDate)
+    await this.updateCurrDateDataFromDataEntry(stateCodes, this.data, this.seasonPeriodDate, true)
   }
 
 
@@ -137,17 +133,30 @@ export class McWiseStateStatistics {
 
   
   
-  async updateCurrDateData(stateCodes:any, data: any, seasonPeriodDate: any) {
+  // Keep only the rows belonging to this MC/RMC. stateCodes is the Set the map
+  // component builds from its own GeoJSON, so without this the table listed
+  // every state in the country instead of just this centre's. Number(...)
+  // because the Set holds numeric codes while the API returns them as strings.
+  private keepOnlyMcStates(rows: any[], stateCodes: any): any[] {
+    if (!rows || !stateCodes || typeof stateCodes.has !== 'function' || stateCodes.size === 0) {
+      return rows ?? [];
+    }
+    return rows.filter((x: any) => stateCodes.has(Number(x.state_code)));
+  }
+
+  async updateCurrDateData(stateCodes:any, data: any, seasonPeriodDate: any, viewOnly: boolean = false) {
     try {
       await lastValueFrom(
         this.fetchDistrictData(data).pipe(
           concatMap(districtData => {
             this.districtdepCurrdate = districtData.data;
+            this.districtdepCurrdate = this.keepOnlyMcStates(this.districtdepCurrdate, stateCodes);
             console.log('indownloading---->', this.districtdepCurrdate);
             return this.fetchStateData(data);
           }),
           concatMap(stateData => {
             this.statedepCurrdate = stateData.data;
+            this.statedepCurrdate = this.keepOnlyMcStates(this.statedepCurrdate, stateCodes);
             console.log('indownloading---->', this.statedepCurrdate);
             return this.fetchSubdivData(data);
           }),
@@ -158,18 +167,20 @@ export class McWiseStateStatistics {
           }),
           concatMap(seasondistrictData => {
             this.districtdepSeasondate = seasondistrictData.data;
+            this.districtdepSeasondate = this.keepOnlyMcStates(this.districtdepSeasondate, stateCodes);
             console.log('indownloading---->', this.districtdepSeasondate);
             return this.fetchStateData(seasonPeriodDate);
           }),    
           concatMap(seasonstateData => {
             this.statedepSeasondate = seasonstateData.data;
+            this.statedepSeasondate = this.keepOnlyMcStates(this.statedepSeasondate, stateCodes);
             console.log('indownloading---->', this.statedepSeasondate, this.subdivdepSeasondate);
             return this.fetchSubdivData(seasonPeriodDate);
           }),    
           concatMap(seasonstateData => {
             this.subdivdepSeasondate = seasonstateData.data;
             console.log('indownloading---->', this.subdivdepSeasondate);
-            this.downloadPdf();
+            this.downloadPdf(viewOnly);
             return EMPTY;
           })
         )
@@ -180,7 +191,7 @@ export class McWiseStateStatistics {
   }
 
 
-  async updateCurrDateDataFromDataEntry(stateCodes:any, data: any, seasonPeriodDate: any) {
+  async updateCurrDateDataFromDataEntry(stateCodes:any, data: any, seasonPeriodDate: any, viewOnly: boolean = false) {
 
     console.log('updateCurrDateDataFromDataEntry DATA', data);
     try {
@@ -188,11 +199,13 @@ export class McWiseStateStatistics {
         this.fetchDistrictDataFromDataEntry(data).pipe(
           concatMap(districtData => {
             this.districtdepCurrdate = districtData.data;
+            this.districtdepCurrdate = this.keepOnlyMcStates(this.districtdepCurrdate, stateCodes);
             console.log('indownloading---->', this.districtdepCurrdate);
             return this.fetchStateDataFromDataEntry(data);
           }),
           concatMap(stateData => {
             this.statedepCurrdate = stateData.data;
+            this.statedepCurrdate = this.keepOnlyMcStates(this.statedepCurrdate, stateCodes);
             console.log('indownloading---->', this.statedepCurrdate);
             return this.fetchSubdivDataFromDataEntry(data);
           }),
@@ -203,18 +216,20 @@ export class McWiseStateStatistics {
           }),
           concatMap(seasondistrictData => {
             this.districtdepSeasondate = seasondistrictData.data;
+            this.districtdepSeasondate = this.keepOnlyMcStates(this.districtdepSeasondate, stateCodes);
             console.log('indownloading---->', this.districtdepSeasondate);
             return this.fetchStateDataFromDataEntry(seasonPeriodDate);
           }),    
           concatMap(seasonstateData => {
             this.statedepSeasondate = seasonstateData.data;
+            this.statedepSeasondate = this.keepOnlyMcStates(this.statedepSeasondate, stateCodes);
             console.log('indownloading---->', this.statedepSeasondate, this.subdivdepSeasondate);
             return this.fetchSubdivDataFromDataEntry(seasonPeriodDate);
           }),    
           concatMap(seasonstateData => {
             this.subdivdepSeasondate = seasonstateData.data;
             console.log('indownloading---->', this.subdivdepSeasondate);
-            this.downloadPdf();
+            this.downloadPdf(viewOnly);
             return EMPTY;
           })
         )
@@ -258,39 +273,91 @@ export class McWiseStateStatistics {
   }
 
 
-  exportAsExcelFile(json: any[], excelFileName: string, columns: any, columns1: any): void {
-    const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
-    
-    // Define the range of cells you want to merge
-    const startCell = 'C1'; // Start cell for the first merge
-    const endCell = 'F1'; // End cell for the first merge
-    const startCell1 = 'G1'; // Start cell for the second merge
-    const endCell1 = 'J1'; // End cell for the second merge
+  exportAsExcelFile(
+    dataRows: any[][],
+    excelFileName: string,
+    dayStart: string,
+    dayEnd: string,
+    periodStart: string,
+    periodEnd: string
+  ): void {
+    const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet([]);
+    const blank = () => ({ v: '', t: 's', s: {} });
+    const mkBorder = (left = true, right = true, top = true, bottom = true) => ({
+      top:    top    ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      bottom: bottom ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      left:   left   ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+      right:  right  ? { style: 'thin', color: { rgb: '000000' } } : undefined,
+    });
+    const styledCell = (v: string, align: 'center' | 'left' = 'center', border = mkBorder()) => ({
+      v, t: 's', s: {
+        font: { bold: true, sz: 10, color: { rgb: '993300' } },
+        fill: { fgColor: { rgb: 'FFFFFF' } },
+        border,
+        alignment: { horizontal: align, vertical: 'middle' as const, wrapText: true },
+      }
+    });
 
-    // Merge the cells
-    worksheet['!merges'] = [
-        { s: XLSX.utils.decode_cell(startCell), e: XLSX.utils.decode_cell(endCell) },
-        { s: XLSX.utils.decode_cell(startCell1), e: XLSX.utils.decode_cell(endCell1) }
+    // Row 1: Title — dark brown, underlined, merged A1:J1
+    const row1 = [
+      { v: 'STATEWISE DISTRICT RAINFALL DISTRIBUTION', t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+      ...Array.from({ length: 9 }, () => blank()),
     ];
 
-    // Add the first header row (with merged cells)
-    XLSX.utils.sheet_add_aoa(worksheet, [columns1], { origin: 'A1' });
+    // Row 2: blank spacer
+    const row2 = Array.from({ length: 10 }, () => blank());
 
-    // Add the second header row
-    XLSX.utils.sheet_add_aoa(worksheet, [columns], { origin: 'A2' });
+    // Row 3: outer border only on DAY/PERIOD groups (no inner vertical lines)
+    const row3 = [
+      styledCell('S.No.'),
+      styledCell('MET.  SUBDIVISION/ UT', 'left'),
+      styledCell('DAY :',      'center', mkBorder(true,  false, true, true)),
+      styledCell(dayStart,     'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(dayEnd,       'center', mkBorder(false, true,  true, true)),
+      styledCell('PERIOD :',   'center', mkBorder(true,  false, true, true)),
+      styledCell(periodStart,  'center', mkBorder(false, false, true, true)),
+      styledCell('TO',         'center', mkBorder(false, false, true, true)),
+      styledCell(periodEnd,    'center', mkBorder(false, true,  true, true)),
+    ];
 
-    // Adjust the starting point for the data rows
-    XLSX.utils.sheet_add_json(worksheet, json, { origin: 'A3', skipHeader: true });
+    // Row 4: full border on every cell
+    const row4 = [
+      blank(),
+      styledCell('STATE/DISTRICT (NAME)', 'left'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+      styledCell('ACTUAL'),  styledCell('NORMAL'),  styledCell('% DEP.'),  styledCell('CAT.'),
+    ];
 
-    // Create the workbook and add the worksheet
-    const workbook: XLSX.WorkBook = { Sheets: { 'data': worksheet }, SheetNames: ['data'] };
-    
-    // Generate the Excel file
+    // Row 5: full border on every cell
+    const row5 = [
+      blank(), blank(),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+      styledCell('(mm)'), styledCell('(mm)'), styledCell(''), styledCell(''),
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, [row1], { origin: 'A1' });
+    XLSX.utils.sheet_add_aoa(ws, [row2], { origin: 'A2' });
+    XLSX.utils.sheet_add_aoa(ws, [row3], { origin: 'A3' });
+    XLSX.utils.sheet_add_aoa(ws, [row4], { origin: 'A4' });
+    XLSX.utils.sheet_add_aoa(ws, [row5], { origin: 'A5' });
+    XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: 'A6' });
+
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },   // Title A1:J1
+      { s: { r: 2, c: 0 }, e: { r: 4, c: 0 } },   // S.No A3:A5
+      { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } },   // name column B4:B5
+    ];
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 8 },
+      { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 },
+    ];
+    ws['!rows'] = [{ hpt: 25 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 15 }];
+
+    const workbook: XLSX.WorkBook = { Sheets: { data: ws }, SheetNames: ['data'] };
     const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-
-    // Save the file
     this.saveAsExcelFile(excelBuffer, excelFileName);
-}
+  }
 
   saveAsExcelFile(buffer: any, fileName: string): void {
     const EXCEL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
@@ -305,7 +372,7 @@ export class McWiseStateStatistics {
 
 
   
-  public async downloadPdf(){
+  public async downloadPdf(viewOnly: boolean = false){
 
     console.log('ssssss', this.data.startDate, typeof this.data.startDate,  this.data.endDate, this.data.startDate==this.data.endDate);
 
@@ -343,12 +410,45 @@ export class McWiseStateStatistics {
 
     this.loadTheRows();
 
-    var newArr = this.rows.map((subArr) => {
-      return subArr.map((item:any) => {
-        if (typeof item === 'object' && item.hasOwnProperty('content')) {
-          return item.content;
+    if (viewOnly) {
+      // On-page table view (right-hand stats panel): this.rows / this.data /
+      // this.seasonPeriodDate are already populated for the component to read,
+      // so skip PDF/Excel generation entirely.
+      //
+      // Passed per call rather than via the shared this.isView field: this
+      // service is providedIn: 'root', so that field is shared state. A view
+      // call that set it and never reached here left it true, and the next
+      // "Statistics Download" click then hit this guard and silently produced
+      // no file. A parameter cannot leak between calls.
+      return;
+    }
+
+    // Styled cells for the Excel sheet, matching the all-India districts export
+    // in /all-maps: thin black borders, CAT. cells keeping their category
+    // colour, % suffix on the departure columns, name column left-aligned.
+    const thinBlack = {
+      top:    { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left:   { style: 'thin', color: { rgb: '000000' } },
+      right:  { style: 'thin', color: { rgb: '000000' } },
+    };
+
+    var newArr: any[][] = this.rows.map((subArr) => {
+      const firstFill = (subArr[0] as any)?.styles?.fillColor;
+      const isGroupRow = Array.isArray(firstFill) && firstFill[0] === 144;
+      return subArr.map((item: any, colIdx: number) => {
+        let content = typeof item === 'object' && item.hasOwnProperty('content') ? item.content : item;
+        if ((colIdx === 4 || colIdx === 8) && content !== '' && content !== ' ' && content != null) {
+          content = `${content}%`;
         }
-        return item;
+        const cellFill  = item?.styles?.fillColor;
+        const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
+        const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
+        if (isGroupRow) {
+          return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: 'FF00FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
+        }
+        const fillHex = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
+        return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
       });
     });
 
@@ -441,7 +541,14 @@ export class McWiseStateStatistics {
     }else{
       setTimeout(()=>{
         doc.save(filename);
-        this.exportAsExcelFile(newArr, `DISTRICT_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_cd`, columns, newcolumns1);
+        this.exportAsExcelFile(
+          newArr,
+          `MC_STATEWISE_RAINFALL_DISTRIBUTION`,
+          this.convertToIndianDateFormat(this.data.startDate),
+          this.convertToIndianDateFormat(this.data.endDate),
+          this.convertToIndianDateFormat(this.seasonPeriodDate.startDate),
+          this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)
+        );
       },3000)
     }
 
@@ -582,7 +689,11 @@ export class McWiseStateStatistics {
     }, {});
 
     // Create a mapping of state codes to state names
-    const stateNames = this.statedepCurrdate.map((x: any) => [x.s_code, x.state_name]);
+    // state_code, not s_code: /api/v1/fetchStateData returns state_code (the
+    // working state map matches on data.state_code). s_code is what the
+    // SUBDIVISION endpoint returns, so reading it here was undefined on every
+    // row — every lookup below missed and the table came out empty.
+    const stateNames = this.statedepCurrdate.map((x: any) => [x.state_code, x.state_name]);
     const codeToNameMap = new Map(stateNames.map(([code, name]) => [code, name]));
 
     // Sort states by name
@@ -595,8 +706,18 @@ export class McWiseStateStatistics {
     let stateColorCode = [144, 238, 144];
 
     for (const stateCode of sortedStates) {
-        const stateDate = this.statedepCurrdate.find(state => stateCode === state.s_code);
-        const stateSeason = this.statedepSeasondate.find(state => stateCode === state.s_code);
+        // Match on state_code (what /api/v1/fetchStateData actually returns),
+        // and String(...) both sides because stateCode comes from Object.keys()
+        // — always a string — while state_code comes back as a number, so a
+        // strict === would never match.
+        const stateDate = this.statedepCurrdate.find(state => String(stateCode) === String(state.state_code));
+        const stateSeason = this.statedepSeasondate.find(state => String(stateCode) === String(state.state_code));
+
+        // A state with no matching row in either dataset can't be rendered;
+        // skip it rather than throwing and losing every remaining row.
+        if (!stateDate || !stateSeason) {
+          continue;
+        }
 
         const DateCat = this.constants.getColorAndCat(stateDate.departure);
         const SeasonCat = this.constants.getColorAndCat(stateSeason.departure);

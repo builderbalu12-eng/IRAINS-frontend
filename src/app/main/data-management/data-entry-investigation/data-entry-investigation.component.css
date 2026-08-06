@@ -419,3 +419,69 @@
   text-overflow: clip;
   padding: 0.35rem 0.7rem;
 }
+
+/* ── Old → New change cell in the drill-down tables ─────────────────────── */
+.di-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+.di-change-old {
+  color: #b02a37;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.di-change-arrow {
+  color: #9aa5b1;
+}
+.di-change-new {
+  color: #0f7b3f;
+  font-weight: 600;
+}
+.di-change-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #4a5568;
+  background: #eef0f2;
+  border-radius: 3px;
+  padding: 0.08rem 0.32rem;
+}
+.di-change-count {
+  font-size: 0.68rem;
+  color: #b45309;
+  background: #fef3c7;
+  border-radius: 3px;
+  padding: 0.08rem 0.32rem;
+}
+.di-change-none {
+  color: #9aa5b1;
+  cursor: help;
+}
+
+/* ── Download button in the card headers ────────────────────────────────── */
+.di-card h3 .di-download-btn {
+  float: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #002467;
+  background: #fff;
+  border: 1px solid #c7cfd8;
+  border-radius: 6px;
+  padding: 0.22rem 0.6rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.di-card h3 .di-download-btn:hover:not(:disabled) {
+  background: #eef2f8;
+  border-color: #002467;
+}
+.di-card h3 .di-download-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

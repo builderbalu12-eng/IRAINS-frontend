@@ -99,6 +99,11 @@
         <h3>
           Revision Log
           <i class="bi bi-info-circle di-info-icon" title="Each row groups edits by the day they happened AND the date whose value was changed. Hover a row to see the station names."></i>
+          <button type="button" class="di-download-btn" (click)="downloadRevisionLog()" [disabled]="downloading"
+                  title="Download every Revision Log row plus all the station rows inside them, for the selected period.">
+            <i class="bi bi-download"></i>
+            {{ downloading ? 'Preparing…' : 'Download' }}
+          </button>
         </h3>
         <div class="di-table-wrap">
           <table class="di-table">
@@ -145,6 +150,10 @@
                             <th>State</th>
                             <th>District</th>
                             <th>Value (mm)</th>
+                            <th>
+                              Change (Old → New)
+                              <i class="bi bi-info-circle di-info-icon" title="What the value changed from and to on this day. Blank means the edit happened before change-tracking was switched on. 'No data' means -999.9, i.e. no reading."></i>
+                            </th>
                             <th>Data Date</th>
                             <th>Updated At</th>
                           </tr>
@@ -157,10 +166,20 @@
                             <td>{{ d.stateName }}</td>
                             <td>{{ d.districtName }}</td>
                             <td>{{ d.value }}</td>
+                            <td>
+                              <span *ngIf="d.editCount > 0" class="di-change">
+                                <span class="di-change-old">{{ formatEditValue(d.oldValue) }}</span>
+                                <span class="di-change-arrow">→</span>
+                                <span class="di-change-new">{{ formatEditValue(d.newValue) }}</span>
+                                <span class="di-change-badge">{{ editTypeLabel(d.editType) }}</span>
+                                <span *ngIf="d.editCount > 1" class="di-change-count">{{ d.editCount }} edits</span>
+                              </span>
+                              <span *ngIf="d.editCount === 0" class="di-change-none" title="Not tracked — this edit predates the change log.">—</span>
+                            </td>
                             <td>{{ d.dataDate }}</td>
                             <td>{{ d.updatedAt | date: 'dd-MMM-yyyy HH:mm:ss' }}</td>
                           </tr>
-                          <tr *ngIf="r.details && r.details.length === 0"><td colspan="8">No station details found.</td></tr>
+                          <tr *ngIf="r.details && r.details.length === 0"><td colspan="9">No station details found.</td></tr>
                         </tbody>
                       </table>
                     </div>
@@ -177,6 +196,11 @@
         <h3>
           MC / RMC-Wise Reupdates
           <i class="bi bi-info-circle di-info-icon" title="Grouped by centre (MC/RMC), same grouping as the Verification HQ page. Click either count to see which stations and dates it covers."></i>
+          <button type="button" class="di-download-btn" (click)="downloadMcWiseLog()" [disabled]="downloading"
+                  title="Download every MC/RMC row plus all the station rows inside them, for the selected period.">
+            <i class="bi bi-download"></i>
+            {{ downloading ? 'Preparing…' : 'Download' }}
+          </button>
         </h3>
         <div *ngIf="loadingMcWise" class="di-loading">Loading…</div>
         <div class="di-table-wrap" *ngIf="!loadingMcWise">
@@ -213,6 +237,10 @@
                             <th>State</th>
                             <th>District</th>
                             <th>Value (mm)</th>
+                            <th>
+                              Change (Old → New)
+                              <i class="bi bi-info-circle di-info-icon" title="What the value changed from and to. Blank means the edit happened before change-tracking was switched on. 'No data' means -999.9, i.e. no reading."></i>
+                            </th>
                             <th>Data Date</th>
                             <th>Updated At</th>
                           </tr>
@@ -223,10 +251,20 @@
                             <td>{{ d.stateName }}</td>
                             <td>{{ d.districtName }}</td>
                             <td>{{ d.value }}</td>
+                            <td>
+                              <span *ngIf="d.editCount > 0" class="di-change">
+                                <span class="di-change-old">{{ formatEditValue(d.oldValue) }}</span>
+                                <span class="di-change-arrow">→</span>
+                                <span class="di-change-new">{{ formatEditValue(d.newValue) }}</span>
+                                <span class="di-change-badge">{{ editTypeLabel(d.editType) }}</span>
+                                <span *ngIf="d.editCount > 1" class="di-change-count">{{ d.editCount }} edits</span>
+                              </span>
+                              <span *ngIf="d.editCount === 0" class="di-change-none" title="Not tracked — this edit predates the change log.">—</span>
+                            </td>
                             <td>{{ d.dataDate }}</td>
                             <td>{{ d.updatedAt | date: 'dd-MMM-yyyy HH:mm:ss' }}</td>
                           </tr>
-                          <tr *ngIf="getFilteredMcDetails(m).length === 0"><td colspan="6">No station details found.</td></tr>
+                          <tr *ngIf="getFilteredMcDetails(m).length === 0"><td colspan="7">No station details found.</td></tr>
                         </tbody>
                       </table>
                     </div>

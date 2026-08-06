@@ -23,10 +23,19 @@ export class NormalRainfallComponent {
   ];
   maps: string[] = ["State", "Subdivision"];
 
-  selectedSeason: string = "Winter";
+  selectedSeason: string = this.getCurrentSeason();
   selectedMap: string = "State";
   selectedDate: Date | null = null; // Holds the selected date for 'Daily' season
   mapData: any = null;
+  isLoading: boolean = false;
+
+  private getCurrentSeason(): string {
+    const month = new Date().getMonth() + 1; // 1-12
+    if (month === 1 || month === 2) return "Winter";
+    if (month >= 3 && month <= 5) return "Pre Monsoon";
+    if (month >= 6 && month <= 9) return "Monsoon";
+    return "Post Monsoon"; // 10, 11, 12
+  }
 
   constructor(
     private http: HttpClient,
@@ -62,7 +71,7 @@ export class NormalRainfallComponent {
 
   onSubmit() {
     let requestData: any = {};
-  
+
     // If "Daily" is selected, process date picker selection
     if (this.selectedSeason === "Daily") {
       if (this.selectedDate) {
@@ -74,7 +83,9 @@ export class NormalRainfallComponent {
         console.error("No date selected for 'Daily'");
         return;
       }
-  
+
+      this.isLoading = true;
+
       // Check which map type is selected and call the appropriate API
       if (this.selectedMap === "State") {
         // Fetch data for "State"
@@ -83,9 +94,11 @@ export class NormalRainfallComponent {
             this.mapData = response; // Set new data
             console.log(this.mapData, 'STATE MAPDATA');
             console.log('State API response', response);
+            this.isLoading = false;
           },
           (error) => {
             console.error("State API Error:", error);
+            this.isLoading = false;
           }
         );
       } else if (this.selectedMap === "Subdivision") {
@@ -94,15 +107,18 @@ export class NormalRainfallComponent {
           (response) => {
             this.mapData = response; // Set new data
             console.log('Subdivision API response', response);
+            this.isLoading = false;
           },
           (error) => {
             console.error("Subdivision API Error:", error);
+            this.isLoading = false;
           }
         );
       } else {
         console.error("No valid map type selected for 'Daily'");
+        this.isLoading = false;
       }
-  
+
     } else {
       const year = new Date().getFullYear();
       console.log('ye', year)
@@ -117,27 +133,32 @@ export class NormalRainfallComponent {
       };
   
       requestData = seasonDateRanges[this.selectedSeason] || {};
-  
+
       if (Object.keys(requestData).length > 0) {
         // Reset mapData before fetching new data
         this.mapData = null;
-  
+        this.isLoading = true;
+
         if (this.selectedMap === "State") {
           this.stateService.fetchData(requestData).subscribe(
             (response) => {
               this.mapData = response; // Set new data
+              this.isLoading = false;
             },
             (error) => {
               console.error("State API Error:", error);
+              this.isLoading = false;
             }
           );
         } else if (this.selectedMap === "Subdivision") {
           this.subdivisionService.fetchData(requestData).subscribe(
             (response) => {
               this.mapData = response; // Set new data
+              this.isLoading = false;
             },
             (error) => {
               console.error("Subdivision API Error:", error);
+              this.isLoading = false;
             }
           );
         }

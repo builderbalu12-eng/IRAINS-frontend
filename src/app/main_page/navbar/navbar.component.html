@@ -204,21 +204,6 @@
                     >BLOCK RAINFALL MAP</a
                   >
                 </li>
-                <li>
-                  <a
-                    *ngIf="hasAccess('block-rainfall-awsorg-map-daily')"
-                    routerLink="../block-rainfall-awsorg-map-daily"
-                    >BLOCK RAINFALL ORGAWS MAP</a
-                  >
-                </li>
-                <li>
-                  <a
-                    style="background-color: blue"
-                    *ngIf="hasAccess('underprogress')"
-                    routerLink="../underprogress"
-                    >RIVER BASIN</a
-                  >
-                </li>
               </ul>
             </li>
 
@@ -333,14 +318,6 @@
                     >BLOCK RAINFALL MAP</a
                   >
                 </li>
-                <li>
-                  <a
-                    style="background-color: blue"
-                    *ngIf="hasAccess('underprogress')"
-                    routerLink="../underprogress"
-                    >RIVER BASIN</a
-                  >
-                </li>
               </ul>
             </li>
 
@@ -422,22 +399,6 @@
                     routerLink="../weekly-departure-country-map"
                     >COUNTRY RAINFALL MAP
                   </a>
-                </li>
-                <li>
-                  <a
-                    style="background-color: blue"
-                    *ngIf="hasAccess('underprogress')"
-                    routerLink="../underprogress"
-                    >RIVER BASIN</a
-                  >
-                </li>
-                <li>
-                  <a
-                    style="background-color: blue"
-                    *ngIf="hasAccess('underprogress')"
-                    routerLink="../underprogress"
-                    >BLOCK RAINFALL MAP</a
-                  >
                 </li>
               </ul>
             </li>
@@ -532,23 +493,6 @@
                     routerLink="../cummulative-departure-country-map"
                     >COUNTRY RAINFALL MAP
                   </a>
-                </li>
-
-                <li>
-                  <a
-                    style="background-color: blue"
-                    *ngIf="hasAccess('underprogress')"
-                    routerLink="../underprogress"
-                    >RIVER BASIN</a
-                  >
-                </li>
-                <li>
-                  <a
-                    style="background-color: blue"
-                    *ngIf="hasAccess('underprogress')"
-                    routerLink="../underprogress"
-                    >BLOCK RAINFALL MAP</a
-                  >
                 </li>
               </ul>
             </li>
@@ -705,13 +649,104 @@
           </ul>
         </li>
 
+        <!-- RMU MAP PRODUCTS: the printed RMU sheets (irainsmap2.0.py /
+             StatewiseDistrictMap_iRAINS.py) rendered in the browser. Shown
+             only here, nowhere else in the app. -->
         <li>
           <a
-            *ngIf="hasAccess('last-five-year-data')"
-            routerLink="/last-five-year-data"
-            >DISTRICT WISE RAINFALL-LAST 5 YEARS</a
+            *ngIf="hasAccess('all-statistics')"
+            routerLink="../all-statistics"
+            >ALL STATISTICS</a
           >
         </li>
+
+        <!-- RMU MAP PRODUCTS — hidden: every sheet here is reachable from
+             ALL STATISTICS above, which also does the batch download.
+             The routes and components are untouched, so uncommenting this
+             block brings the individual pages straight back.
+        <li>
+          <a>RMU MAP PRODUCTS</a>
+          <ul>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-country-rainfall-map')"
+                routerLink="../rmu-country-rainfall-map"
+                >COUNTRY RAINFALL MAP</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-region-rainfall-map')"
+                routerLink="../rmu-region-rainfall-map"
+                >HOMOGENOUS REGION RAINFALL MAP</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-subdivision-rainfall-map')"
+                routerLink="../rmu-subdivision-rainfall-map"
+                >SUBDIVISION RAINFALL MAP</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-state-rainfall-map')"
+                routerLink="../rmu-state-rainfall-map"
+                >STATE RAINFALL MAP</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-district-rainfall-map')"
+                routerLink="../rmu-district-rainfall-map"
+                >DISTRICT RAINFALL MAP</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-block-rainfall-map')"
+                routerLink="../rmu-block-rainfall-map"
+                >BLOCK RAINFALL MAP</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-statewise-district-map')"
+                routerLink="../rmu-statewise-district-map"
+                >STATE WISE DISTRICT MAP</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-central-india-rainfall-map')"
+                routerLink="../rmu-central-india-rainfall-map"
+                >CENTRAL INDIA DISTRICTS</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-east-north-east-rainfall-map')"
+                routerLink="../rmu-east-north-east-rainfall-map"
+                >EAST &amp; NORTH EAST DISTRICTS</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-north-west-rainfall-map')"
+                routerLink="../rmu-north-west-rainfall-map"
+                >NORTH WEST DISTRICTS</a
+              >
+            </li>
+            <li>
+              <a
+                *ngIf="hasAccess('rmu-south-peninsula-rainfall-map')"
+                routerLink="../rmu-south-peninsula-rainfall-map"
+                >SOUTH PENINSULA DISTRICTS</a
+              >
+            </li>
+          </ul>
+        </li>
+        -->
       </ul>
     </li>
     <li>
@@ -743,14 +778,6 @@
                 style="background-color: blue"
                 *ngIf="hasAccess('underprogress')"
                 routerLink="../underprogress"
-                >RIVER BASIN</a
-              >
-            </li>
-            <li>
-              <a
-                style="background-color: blue"
-                *ngIf="hasAccess('underprogress')"
-                routerLink="../underprogress"
                 >BLOCK</a
               >
             </li>
@@ -773,14 +800,6 @@
                 style="background-color: blue"
                 *ngIf="hasAccess('underprogress')"
                 routerLink="../underprogress"
-                >RIVER BASIN</a
-              >
-            </li>
-            <li>
-              <a
-                style="background-color: blue"
-                *ngIf="hasAccess('underprogress')"
-                routerLink="../underprogress"
                 >BLOCK</a
               >
             </li>
@@ -795,14 +814,6 @@
                 *ngIf="hasAccess('cummulative-daily-spatial')"
                 routerLink="../cummulative-daily-spatial"
                 >DISTRICT</a
-              >
-            </li>
-            <li>
-              <a
-                style="background-color: blue"
-                *ngIf="hasAccess('underprogress')"
-                routerLink="../underprogress"
-                >RIVER BASIN</a
               >
             </li>
             <li>

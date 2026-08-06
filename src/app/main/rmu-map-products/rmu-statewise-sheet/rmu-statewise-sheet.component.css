@@ -1,0 +1,253 @@
+/*
+  STATE WISE DISTRICT RAINFALL DEPARTURE MAP — the browser port of
+  StatewiseDistrictMap_iRAINS.py.
+
+  That script composites onto a fixed Template/template.jpg, so this sheet is
+  a 1:1 trace of that template: 1000 x 1400 internal px = the product's
+  2400 x 3360 scaled by 0.41667. Every offset below was measured off the
+  template (recovered by diffing several of the 36 printed sheets against
+  each other), not chosen by eye — don't convert them to % / rem.
+*/
+
+
+
+.rmu-sheet-scaler {
+  display: flex;
+  justify-content: center;
+}
+
+.rmu-sheet {
+  position: relative;
+  width: 1000px;
+  height: 1400px; /* the template's own 2400:3360 */
+  background: #ffffff;
+  transform-origin: top center;
+  flex: 0 0 auto;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #000000;
+  overflow: hidden;
+}
+
+.rmu-page {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1000px;
+  height: 1400px;
+}
+
+/* styles.css carries `* { font-family: "Mukta Malar" }`. A universal selector
+   applies to every element directly, so setting the family on .rmu-sheet alone
+   is not enough — the children take Mukta Malar and every measured width on
+   this sheet goes wide (the NOTES lines wrapped into each other). The
+   descendant selector out-specifies `*` and pins the whole sheet to Arial,
+   which is what the layout below was measured in. */
+.rmu-sheet,
+.rmu-sheet * {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ---- header ------------------------------------------------------------- */
+.rmu-imd-logo {
+  position: absolute;
+  left: 5px;
+  top: 4px;
+  height: 94px;
+  z-index: 3;
+}
+
+.rmu-150-logo {
+  position: absolute;
+  left: 884px;
+  /* Template slot is x 850-972, y 25-75. Our asset is a taller crop than the
+     one baked into the template, so it is sized by height instead — at 92px
+     wide its caption ran into the compass N below. */
+  top: 25px;
+  width: 88px;
+  z-index: 3;
+}
+
+/* the two blue two-line captions either side of the header */
+.rmu-org {
+  position: absolute;
+  color: #1b4ba0;
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.rmu-org-left-hi {
+  left: 60px;
+  top: 12px;
+  font-size: 26px;
+}
+
+.rmu-org-left-en {
+  left: 60px;
+  top: 56px;
+  font-size: 18px;
+}
+
+.rmu-org-right-hi {
+  left: 554px;
+  top: 32px;
+  font-size: 22px;
+}
+
+.rmu-org-right-en {
+  left: 578px;
+  top: 60px;
+  font-size: 16.5px;
+}
+
+/* Sits clear below the 150 logo (which ends at y 75). Measured on the
+   template: the N is at y 96-105 and the rose at y 110-145, x 921-979 —
+   a flattened rose, hence preserveAspectRatio="none" on the svg. */
+.rmu-compass {
+  position: absolute;
+  left: 914px;
+  top: 93px;
+  width: 72px;
+  text-align: center;
+  z-index: 3;
+}
+
+.rmu-compass .rmu-compass-n {
+  /* the template's N is a serif face, not the sheet's Arial */
+  font-family: "Times New Roman", Times, serif;
+  font-size: 16px;
+  line-height: 14px;
+}
+
+.rmu-compass svg {
+  width: 58px;
+  height: 35px;
+  margin: 5px auto 0;
+  display: block;
+}
+
+/* draw.text(..., anchor="mm") at y=300 / y=370 on the 3360 template */
+.rmu-title,
+.rmu-period {
+  position: absolute;
+  left: 0;
+  width: 1000px;
+  text-align: center;
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.rmu-title {
+  top: 112px;
+  font-size: 21px;
+}
+
+.rmu-period {
+  top: 144px;
+  font-size: 21px;
+}
+
+/* ---- the framed map ----------------------------------------------------- */
+.rmu-map-box {
+  position: absolute;
+  left: 18px;
+  top: 170px;
+  width: 964px;
+  height: 1157px;
+  border: 1.5px solid #000000;
+  /* the python scales the map against the template minus a ~100px margin, so
+     it never quite touches the frame — measured at ~2% on the printed sheets */
+  padding: 20px 22px;
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+.rmu-map-box svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.rmu-map-box path {
+  stroke: #000000;
+  stroke-width: 1.2; /* matplotlib linewidth 0.7 */
+  stroke-linejoin: round;
+}
+
+/* plt.text(..., fontsize=12) — normal weight, not bold, unlike the country
+   sheets */
+.rmu-label {
+  font-family: Arial, Helvetica, sans-serif;
+  fill: #000000;
+  text-anchor: middle;
+}
+
+/* ---- legend ------------------------------------------------------------- */
+/* Clear of the map frame, whose bottom rule is at y 1320-1327 — at the old
+   1315 the word sat on the line. Template: label ink 1337-1348, swatch row
+   1356-1375, credit 1385-1392. */
+.rmu-legend-label {
+  position: absolute;
+  left: 22px;
+  top: 1335px;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1;
+  z-index: 3;
+}
+
+.rmu-legend {
+  position: absolute;
+  left: 22px;
+  right: 24px;
+  top: 1356px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 3;
+}
+
+.rmu-legend .rmu-legend-item {
+  display: flex;
+  align-items: center;
+}
+
+.rmu-legend .rmu-swatch {
+  width: 5px;
+  height: 16px;
+  border: 0.5px solid #000000;
+  flex: 0 0 auto;
+}
+
+.rmu-legend .rmu-legend-text {
+  font-size: 11.5px;
+  font-weight: bold;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.rmu-credit {
+  position: absolute;
+  left: 26px;
+  top: 1383px;
+  font-size: 8px;
+  font-weight: bold;
+  line-height: 1;
+  z-index: 3;
+}
+
+/* ---- chrome that is not part of the product ----------------------------- */
+.rmu-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 20px;
+  font-weight: bold;
+  z-index: 9;
+}

@@ -106,8 +106,9 @@ showOthersInput: any = false;
           localStorage.setItem("selectedMode", JSON.stringify(data));
           console.log(this.router)
 
-          this.router.navigate(['/all-maps']);
-            this.router.navigate(['/all-maps']);
+          // Public logins open on the iRAINS dashboard, all other roles on
+          // /all-maps. (Previously this navigated twice to the same route.)
+          this.router.navigate([this.landingRouteFor(res)]);
           } else {
             alert(res.message);
           }
@@ -126,6 +127,17 @@ showOthersInput: any = false;
 
 
 
+
+  /**
+   * Landing route for a successful login response.
+   * Guest and public accounts both authenticate as the 'public' role, and open
+   * on the iRAINS dashboard; every other role keeps the existing /all-maps
+   * landing.
+   */
+  private landingRouteFor(res: any): string {
+    const role = res?.data?.[0]?.mcorhq;
+    return role === 'public' ? '/irains-dashboard' : '/all-maps';
+  }
 
   onGuestLogin(): void {
     let data1 = {
@@ -150,7 +162,9 @@ showOthersInput: any = false;
           localStorage.setItem("selectedMode", JSON.stringify(data));
           console.log(this.router)
 
-          this.router.navigate(['/all-maps']);
+          // Guest signs in as the 'public' role, so this lands on the iRAINS
+          // dashboard.
+          this.router.navigate([this.landingRouteFor(res)]);
         } else {
           alert(res.message);
         }

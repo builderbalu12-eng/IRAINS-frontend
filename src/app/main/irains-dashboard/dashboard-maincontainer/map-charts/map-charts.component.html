@@ -14,7 +14,7 @@
             <div class="text-primary small">Loading data ....</div>
           </div>
           <div class="overflow-y-auto" style="max-height: 12rem;" [ngClass]="{'opacity-50': isDailyStatsLoading}">
-            <div *ngFor="let region of regions" class="d-flex flex-column p-1 bg-light rounded mb-1">
+            <div *ngFor="let region of regions; trackBy: trackByRegion" class="d-flex flex-column p-1 bg-light rounded mb-1">
               <div class="fw-medium text-dark small">{{region.name}}</div>
               <div class="d-flex justify-content-between align-items-center">
                 <div class="text-center">
@@ -47,7 +47,7 @@
             <div class="text-primary small">Loading data ....</div>
           </div>
           <div class="overflow-y-auto" style="max-height: 12rem;" [ngClass]="{'opacity-50': isTop5Loading}">
-            <div *ngFor="let item of top5; let last = last" class="d-flex justify-content-between align-items-center p-1 bg-light rounded" [ngClass]="{'mb-1': !last}">
+            <div *ngFor="let item of top5; let last = last; trackBy: trackByName" class="d-flex justify-content-between align-items-center p-1 bg-light rounded" [ngClass]="{'mb-1': !last}">
               <div>
                 <div class="fw-medium text-dark small">{{item.name}}</div>
                 <div class="small text-muted">Daily Actual Rainfall (mm)</div>
@@ -72,7 +72,7 @@
             <div class="text-primary small">Loading data ....</div>
           </div>
           <div class="overflow-y-auto" style="max-height: 12rem;" [ngClass]="{'opacity-50': isHighestRecordedLoading}">
-            <div *ngFor="let item of highestRecorded; let last = last" class="d-flex justify-content-between align-items-center p-1 bg-light rounded" [ngClass]="{'mb-1': !last}">
+            <div *ngFor="let item of highestRecorded; let last = last; trackBy: trackByDate" class="d-flex justify-content-between align-items-center p-1 bg-light rounded" [ngClass]="{'mb-1': !last}">
               <div>
                 <div class="fw-medium text-dark small">{{item.date}}</div>
                 <div class="small text-muted">Highest Recorded Actual Value (mm)</div>
@@ -103,7 +103,7 @@
         (change)="onPlaceChange()" 
         [disabled]="selectedLayer === 'country'"
       >
-        <option *ngFor="let place of availablePlaces" [value]="place.code">{{ place.name }}</option>
+        <option *ngFor="let place of availablePlaces; trackBy: trackByCode" [value]="place.code">{{ place.name }}</option>
       </select>
     </div>
   </div>

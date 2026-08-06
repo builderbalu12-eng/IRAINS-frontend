@@ -1,0 +1,99 @@
+:host {
+  /* Pinned to the map card's own fixed height (map pages set their map
+     div to height: 58.8rem inline) rather than a percentage of a
+     flex-stretched ancestor — a percentage has no definite basis while
+     the row's own cross size is still being computed, so browsers would
+     just let both columns grow to fit content instead of capping either
+     one. A fixed height here + overflow-y:auto on .stats-scroll-area
+     below is what keeps this panel's bottom level with the map's. */
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  height: 58.8rem;
+  max-height: 58.8rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.stats-panel-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #002467;
+  margin-bottom: 12px;
+}
+
+.stats-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+  flex: 1;
+  /* Enough thin rows are rendered to outlast any realistic panel height;
+     overflow hidden clips whatever spills past the bottom edge so it
+     still reads as a full-height skeleton without the rows themselves
+     having to stretch into thick blocks. */
+  overflow: hidden;
+}
+
+.skeleton-line {
+  flex: 0 0 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e8edf5 25%, #f2f5fa 37%, #e8edf5 63%);
+  background-size: 400% 100%;
+  animation: stats-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-header {
+  flex: 0 0 20px;
+  width: 60%;
+}
+
+@keyframes stats-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.stats-scroll-area {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.rf-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.rf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.rf-table th,
+.rf-table td {
+  border: 1px solid #333;
+  padding: 3px 5px;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.rf-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #dbe6ff;
+  color: #002467;
+  font-weight: 700;
+  z-index: 1;
+}
+
+.rf-category-table {
+  max-width: 600px;
+}

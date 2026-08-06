@@ -169,6 +169,23 @@
     margin-right: 4px;
 }
 
+/* ─── Real-time data disclaimer (floating, bottom of page) ───── */
+.realtime-disclaimer {
+    position: fixed;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    background: rgba(0, 36, 103, 0.55);
+    color: #ffffff;
+    font-size: 12px;
+    font-style: italic;
+    padding: 5px 14px;
+    border-radius: 20px;
+    z-index: 3000;
+    pointer-events: none;
+    backdrop-filter: blur(2px);
+}
+
 /* ─── Backdrop ───────────────────────────────────────────────── */
 .sidebar-backdrop {
     position: fixed;

@@ -17,6 +17,8 @@ import { SubdivDownloadStatistics } from "src/app/services/subDivision/statistic
 import jsPDF from "jspdf";
 import { CountryService } from "src/app/services/country/country.service";
 import { Constants } from "src/app/services/constants";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 @Component({
   selector: 'app-real-time-updated-rainfall-map',
   templateUrl: './real-time-updated-rainfall-map.component.html',
@@ -40,11 +42,27 @@ export class RealTimeUpdatedRainfallMapComponent {
       selectedMode: any;
       selectedWeek: any;
 
+      // ==== RIGHT PANEL START =====================================
+      // Right-panel statistics (mirrors /daily-subdivision-rf-distribution's
+      // table, but over the annual/seasonal/monthly range computed by
+      // updateDates() instead of a single day), rendered by the shared
+      // <app-rainfall-stats-panel>. To revert to a map-only page: delete
+      // these fields, loadStats() below, and the two `this.loadStats();`
+      // call sites (search this file for "this.loadStats()") — plus the
+      // matching HTML "RIGHT PANEL" block.
+      statsLoading: boolean = false;
+      showStatsTable: boolean = false;
+      tableRows: any[][] = [];
+      dayLabel: string = '';
+      periodLabel: string = '';
+      categoryStats: { day: Record<string, { count: number; area: number }>; period: Record<string, { count: number; area: number }> } | null = null;
+      // ==== RIGHT PANEL fields end ====
 
       selectedDropMode: string = 'monthly'; // Default to Annual mode
       selectedYear: number | null = null;
       selectedSeason: string | null = null;
       selectedMonth: string | null = null;
+      effectiveDate: Date = new Date();
     
       // Options for dropdowns
       years = this.getYears() // Add relevant years here
@@ -63,42 +81,40 @@ export class RealTimeUpdatedRainfallMapComponent {
 
 
       updateDates() {
-        const year = this.selectedYear ?? new Date().getFullYear();
+        const year = this.selectedYear ?? this.effectiveDate.getFullYear();
         let monthIndex;
-    
+
         switch (this.selectedDropMode) {
           case 'annual':
-            const currentDate = new Date();
-            const currentYear = currentDate.getFullYear();
-          
+            const currentYear = this.effectiveDate.getFullYear();
+
             this.fromDate = this.datePipe.transform(new Date(year, 0, 1), 'yyyy-MM-dd');
-          
+
             if (year === currentYear) {
-              this.toDate = this.datePipe.transform(currentDate, 'yyyy-MM-dd');
+              this.toDate = this.datePipe.transform(this.effectiveDate, 'yyyy-MM-dd');
             } else {
               this.toDate = this.datePipe.transform(new Date(year, 11, 31), 'yyyy-MM-dd');
             }
             break;
-          
-    
+
+
           case 'seasonal':
             if (this.selectedSeason) {
-              const {start, end} = this.constants.getSeasonDatesUptoCurrentDate(this.selectedSeason.toLowerCase(), year)
-              this.fromDate = this.datePipe.transform(start, 'yyyy-MM-dd'), 
+              const {start, end} = this.constants.getSeasonDatesUptoCurrentDate(this.selectedSeason.toLowerCase(), year, this.effectiveDate)
+              this.fromDate = this.datePipe.transform(start, 'yyyy-MM-dd'),
               this.toDate  = this.datePipe.transform(end, 'yyyy-MM-dd')
             }
             break;
-    
+
           case 'monthly':
             if (this.selectedMonth) {
-              const currentDate = new Date();
-              const currentMonthIndex = currentDate.getMonth();
+              const currentMonthIndex = this.effectiveDate.getMonth();
               monthIndex = this.dropDownMonths.indexOf(this.selectedMonth);
-            
+
               this.fromDate = this.datePipe.transform(new Date(year, monthIndex, 1), 'yyyy-MM-dd');
-            
-              if (monthIndex === currentMonthIndex && year === currentDate.getFullYear()) {
-                this.toDate = this.datePipe.transform(currentDate, 'yyyy-MM-dd');
+
+              if (monthIndex === currentMonthIndex && year === this.effectiveDate.getFullYear()) {
+                this.toDate = this.datePipe.transform(this.effectiveDate, 'yyyy-MM-dd');
               } else {
                 this.toDate = this.datePipe.transform(new Date(year, monthIndex + 1, 0), 'yyyy-MM-dd');
               }
@@ -111,6 +127,7 @@ export class RealTimeUpdatedRainfallMapComponent {
         this.updateDates();
         this.calculateInitialZoom()
         this.fetchBackend()
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
       }
 
 
@@ -174,26 +191,42 @@ export class RealTimeUpdatedRainfallMapComponent {
         private downlaodStatistics: SubdivDownloadStatistics,
         private countryService: CountryService,
         private datePipe: DatePipe,
-        private constants : Constants
-        
-      ) {
-        // var currentDate = new Date();
-        // var dd = String(currentDate.getDate());
-        // var mon = String(currentDate.getMonth());
-        // var year = String(currentDate.getFullYear());
-        // this.formatteddate = `${dd.padStart(2, '0')}-${mon.padStart(2, '0')}-${year}`;
-        const currentDate = new Date();
-        const dd = String(currentDate.getDate()).padStart(2, "0");
-        const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-        const year = String(currentDate.getFullYear());
+        private constants : Constants,
+        private calcMode: CalculationsModeService,
+        private mapDataScheduleService: MapDataScheduleService
 
-        this.selectedYear = currentDate.getFullYear();
-        this.selectedMonth = this.dropDownMonths[currentDate.getMonth()];
+      ) {
+        // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+        // this.initialZoom immediately with no later correction, so it can't wait
+        // on the async date fetch below.
+        this.calculateInitialZoom();
+
+        const loggedInUser = JSON.parse(
+          localStorage.getItem("isAuthorised") || "{}"
+        );
+        const role = loggedInUser?.data?.[0]?.mcorhq;
+
+        this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe(
+          (effectiveDate) => this.initWithEffectiveDate(effectiveDate),
+          () => this.initWithEffectiveDate(new Date())
+        );
+      }
+
+      private initWithEffectiveDate(effectiveDate: Date) {
+        this.effectiveDate = effectiveDate;
+
+        const dd = String(effectiveDate.getDate()).padStart(2, "0");
+        const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+        const year = String(effectiveDate.getFullYear());
+
+        this.selectedYear = effectiveDate.getFullYear();
+        this.selectedMonth = this.dropDownMonths[effectiveDate.getMonth()];
         this.updateDates()
         this.formatteddate = `${dd}-${mon}-${year}`;
-    
+
         this.calculateInitialZoom();
         this.fetchBackend();
+        this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
       }
     
       convertToIndianDateFormat = (dateString: string) =>
@@ -247,12 +280,12 @@ export class RealTimeUpdatedRainfallMapComponent {
 
           }else{
 
-            this.subdivisionService.fetchData(data).subscribe((res) => {
+            (this.calcMode.isAwsEnabled ? this.subdivisionService.fetchDataWithAWS(data) : this.subdivisionService.fetchData(data)).subscribe((res) => {
               this.subdivisiondatacum = res.data;
               this.loadGeoJSON(false);
             });
 
-            this.countryService.fetchData(data).subscribe((res) => {
+            (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
               this.countrydatacum = res.data;
               this.countryActual = this.constants.trimToOneDecimals(
                 this.countrydatacum[0].actual_rainfall
@@ -289,6 +322,26 @@ export class RealTimeUpdatedRainfallMapComponent {
       }
       
     
+      // ==== RIGHT PANEL: loadStats ====
+      async loadStats() {
+        this.statsLoading = true;
+        this.showStatsTable = false;
+        try {
+          await this.downlaodStatistics.updateandViewpdfFromDataEntryCustom(this.fromDate, this.toDate);
+          const svc = this.downlaodStatistics;
+          const convert = svc.convertToIndianDateFormat;
+          this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+          this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+          this.tableRows = svc.rows;
+          this.categoryStats = svc.buildCategoryStats();
+          this.showStatsTable = this.tableRows.length > 0;
+        } catch (error) {
+          console.error('Error loading subdivision statistics panel:', error);
+        }
+        this.statsLoading = false;
+      }
+      // ==== RIGHT PANEL: loadStats end ====
+
       filter = (node: HTMLElement) => {
         const exclusionClasses = [
           "download",
@@ -499,11 +552,6 @@ export class RealTimeUpdatedRainfallMapComponent {
     
       ngOnInit() {
         this.initMap();
-    
-        const currentDate = new Date();
-        this.today = currentDate.toISOString().split("T")[0];
-        this.fromDate = this.today;
-        this.toDate = this.today;
       }
     
       ngAfterViewInit(): void {

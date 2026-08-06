@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { FetchStationDataService } from 'src/app/services/station/station.service';
+import { MapDataScheduleService } from 'src/app/services/mapDataSchedule.service';
 
 @Component({
   selector: 'app-map-nav-bar',
@@ -45,7 +46,8 @@ export class MapNavBarComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private fetchStationDataService: FetchStationDataService
+    private fetchStationDataService: FetchStationDataService,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
     this.levelForm = this.fb.group({
       country: [false],
@@ -58,6 +60,8 @@ export class MapNavBarComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Seed synchronously from the local-clock cutoff so the pickers and marquee
+    // render immediately, then correct below once the authoritative date lands.
     const marqueeDate = this.getMarqueeDate();
     this.startDate = marqueeDate;
     this.endDate = marqueeDate;
@@ -66,6 +70,35 @@ export class MapNavBarComponent implements OnInit {
     this.levelForm.valueChanges.subscribe(() => {
       this.updateSelectionMessage();
     });
+
+    // Publish held-back: getMarqueeDate() only approximates this with a
+    // hardcoded 1:45PM cutoff read off the *client's* clock, so a user whose
+    // machine is skewed — or any role whose data publishes on a different
+    // schedule — sees a date the backend hasn't released yet. The schedule
+    // service is role-aware and server-driven, so it decides. Only re-fetch if
+    // it actually disagrees with the seed, to avoid a duplicate round trip.
+    const loggedInUser: any = localStorage.getItem('isAuthorised');
+    const loggedInUserObject = loggedInUser ? JSON.parse(loggedInUser) : null;
+    const role = loggedInUserObject?.data?.[0]?.mcorhq;
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate: Date) => {
+          const yyyy = effectiveDate.getFullYear();
+          const mm = String(effectiveDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(effectiveDate.getDate()).padStart(2, '0');
+          const iso = `${yyyy}-${mm}-${dd}`;
+          if (iso !== this.startDate) {
+            this.startDate = iso;
+            this.endDate = iso;
+            this.fetchStationData(iso);
+            this.onFilterChange(); // push the corrected date to the dashboard
+          }
+        },
+        error: () => {
+          /* keep the cutoff-based seed already applied above */
+        }
+      });
+    }
   }
 
   getMarqueeDate(): string {

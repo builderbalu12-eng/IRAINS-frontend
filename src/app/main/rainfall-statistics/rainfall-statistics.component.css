@@ -1,6 +1,7 @@
 .wholebody{
   background-color: #a2c5b6;
-  height: 100vh;
+  min-height: 100vh;
+  padding-bottom: 3rem;
 }
 
 img{
@@ -26,11 +27,6 @@ img{
     }
   } */
 
-  .margin{
-    margin-top: 8rem !important;
-    height: 29rem !important;
-  }
-  
   
   .logo {
     margin: 6px 0 0 51px;
@@ -79,12 +75,49 @@ img{
     border-width: 2px;
     border-color: #002467;
   }
-  .values{
-    margin: 10px 32% 10px  32%;
+  .page-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.4rem;
+    color: #002467;
+    margin-top: 1.5rem;
+    margin-bottom: 4px;
+  }
+
+  .values.rcontainer {
+    margin: 10px auto;
     background-color: white;
     padding: 25px;
     border-radius: 10px;
     width: auto;
+    text-align: center;
+    display: inline-block;
+  }
+
+  .date-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .date-field {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+
+  .date-field .form-control {
+    width: 170px;
+  }
+
+  .action-btn {
+    height: 38px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
   #month{
     background-color: #002467;
@@ -201,5 +234,46 @@ img{
   
 .fa-spinner {
   font-size: 20px;
-  margin-right: 5px; 
+  margin-right: 5px;
+}
+
+.table-wrap {
+  width: 92%;
+  max-width: 1200px;
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 2rem;
+}
+
+.rf-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.rf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.rf-table th,
+.rf-table td {
+  border: 1px solid #333;
+  padding: 4px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rf-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #dbe6ff;
+  color: #002467;
+  font-weight: 700;
+  z-index: 1;
+}
+
+.rf-category-table {
+  max-width: 600px;
 }

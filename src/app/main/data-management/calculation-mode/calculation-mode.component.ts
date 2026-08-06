@@ -28,19 +28,62 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
   empFormError = '';
   empIdentificationForm: FormGroup;
 
-  // Station data
+  // Station data — flat across the whole [fromDate, toDate] range, each row
+  // carries its own collection_date; pivoted into station-rows × date-columns
+  // for display (see pivotRows / pivotDates).
   stationsLoading = false;
   imdStations: any[] = [];
   awsStations: any[] = [];
   imdTotal: number = 0;
   awsTotal: number = 0;
   activeTab: 'imd' | 'aws' = 'imd';
-  selectedDate: string = this.todayStr();
+  fromDate: string = this.todayStr();
+  toDate: string = this.todayStr();
 
-  // Country actual values
-  countryActualImd: number | null = null;
-  countryActualAws: number | null = null;
-  countryLoading = false;
+  // Single day picked → classic flat table (In/Ex column, whole row highlighted
+  // red when excluded), same as before the range feature. A real multi-day
+  // range → the pivoted table (dates as columns).
+  get isSingleDate(): boolean {
+    return this.fromDate === this.toDate;
+  }
+
+  // Per-date country actual values for the selected range (from fetchCalcModeCountryRange)
+  rangeCountryData: { date: string; imd: number | null; aws: number | null }[] = [];
+  rangeLoading = false;
+
+  // Fixed "Today" country actual pill at the top — independent of the range
+  // picker below, always the real calendar date.
+  todayCountryActualImd: number | null = null;
+  todayCountryActualAws: number | null = null;
+  todayCountryLoading = false;
+
+  // ── Station Data | Station Logs ──────────────────────────────────────────
+  rightTab: 'data' | 'logs' = 'data';
+  logsTab: 'imd' | 'aws' = 'imd';
+
+  // Data-entry Stations Logs — MC/RMC rows, exactly the data Verification HQ's
+  // own Range tab uses (fetchCentreStationSummary), reshaped client-side the
+  // same way its transformCumulativeData() does. Numbers only, no buttons.
+  dataEntryCentreLogs: { mc: string; total: number; byDate: { [date: string]: { updated: number; notUpdated: number } } }[] = [];
+  dataEntryLogsDates: string[] = [];
+  dataEntryLogsLoading = false;
+  // One metric shown per date column at a time (same as Verification HQ's own
+  // Range tab filter) — avoids cramming 2 columns per date into the table.
+  dataEntryLogsMetric: 'updated' | 'notUpdated' = 'updated';
+
+  // State AWS Stations Logs — one row per source (7 sources), one column per date.
+  awsSourceLogs: { key: string; label: string; url: string; totalStations: number; totalBlocks: number; daily: { date: string; count: number }[] }[] = [];
+  awsSourceLogsDates: string[] = [];
+  awsSourceLogsLoading = false;
+
+  // City IMD AWS sources that ARE fetched (controllers/scripts/aws/awsFetcher.js)
+  // but have no aws_mapping_id entry — their data lands only in its own raw
+  // observation table and never reaches aws_station_daily_data, so it isn't
+  // part of any calculation. totalBlocks is null for sources with no block
+  // column at all (NHP/Zomato) — only Karnataka's table has one. "Total
+  // Stations" is an all-time distinct count since there's no master registry
+  // for these to compare against.
+  excludedAwsSourceLogs: { key: string; label: string; url: string; totalStations: number; totalBlocks: number | null; daily: { date: string; count: number }[] }[] = [];
 
   // Sort
   sortCol: string = '';
@@ -165,7 +208,7 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
           : 'Mode set to IMD Only — all maps and exports use IMD stations only.';
         setTimeout(() => this.message = '', 4000);
         this.activeTab = 'imd';
-        this.loadStations();
+        this.loadRange();
       },
       error: (err) => {
         this.saving = false;
@@ -190,23 +233,81 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
     });
   }
 
-  onDateChange(event: any): void {
-    this.selectedDate = event.target.value;
-    this.loadStations();
+  private initPage(): void {
+    this.loading = true;
+    this.calcMode.loadMode().subscribe({
+      next: (res) => {
+        this.suppressToggleChange = true;
+        this.useAws = res.use_aws === 1;
+        this.suppressToggleChange = false;
+        this.loading = false;
+        this.loadRange();
+      },
+      error: () => { this.loading = false; }
+    });
+    this.loadTodayCountryActual();
   }
 
-  loadStations(): void {
+  /** Undo checkbox change without triggering onToggleChange → setMode */
+  private revertToggle(): void {
+    this.suppressToggleChange = true;
+    this.useAws = !this.useAws;
+    setTimeout(() => { this.suppressToggleChange = false; });
+  }
+
+  // Fixed "Today" pill — always the real calendar date, independent of fromDate/toDate below.
+  private loadTodayCountryActual(): void {
+    const today = this.todayStr();
+    this.todayCountryLoading = true;
+    const payload = { startDate: today, endDate: today };
+
+    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryData`, payload).subscribe({
+      next: (res) => {
+        const d = res.data?.[0] ?? res.data;
+        this.todayCountryActualImd = d?.actual_rainfall ?? null;
+        this.todayCountryLoading = false;
+      },
+      error: () => { this.todayCountryLoading = false; }
+    });
+
+    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryDataWithAWS`, payload).subscribe({
+      next: (res) => {
+        const d = res.data?.[0] ?? res.data;
+        this.todayCountryActualAws = d?.actual_rainfall ?? null;
+      },
+      error: () => {}
+    });
+  }
+
+  onRangeChange(): void {
+    if (!this.fromDate) this.fromDate = this.todayStr();
+    if (!this.toDate) this.toDate = this.fromDate;
+    if (this.fromDate > this.toDate) this.toDate = this.fromDate;
+    this.loadRange();
+    if (this.rightTab === 'logs') this.loadActiveLogsTab();
+  }
+
+  private daysBetween(from: string, to: string): number {
+    return Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+  }
+
+  rangeError: string = '';
+
+  loadRange(): void {
+    if (this.daysBetween(this.fromDate, this.toDate) + 1 > 31) {
+      this.rangeError = 'Date range cannot exceed 31 days.';
+      return;
+    }
+    this.rangeError = '';
+
     this.stationsLoading = true;
     this.imdStations = [];
     this.awsStations = [];
     this.sortCol = '';
-    this.countryActualImd = null;
-    this.countryActualAws = null;
-    this.countryLoading = true;
+    this.rangeCountryData = [];
+    this.rangeLoading = true;
 
-    const payload = { startDate: this.selectedDate, endDate: this.selectedDate };
-
-    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCalcModeStations`, { date: this.selectedDate }).subscribe({
+    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCalcModeStations`, { fromDate: this.fromDate, toDate: this.toDate }).subscribe({
       next: (res) => {
         this.imdStations = res.imd ?? [];
         this.awsStations = res.aws ?? [];
@@ -217,21 +318,105 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
       error: () => { this.stationsLoading = false; }
     });
 
-    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryData`, payload).subscribe({
+    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCalcModeCountryRange`, { fromDate: this.fromDate, toDate: this.toDate }).subscribe({
       next: (res) => {
-        const d = res.data?.[0] ?? res.data;
-        this.countryActualImd = d?.actual_rainfall ?? null;
-        this.countryLoading = false;
+        this.rangeCountryData = (res.data ?? []).map((d: any) => ({
+          date: d.date,
+          imd: d.imd?.actual_rainfall ?? null,
+          aws: d.aws?.actual_rainfall ?? null,
+        }));
+        this.rangeLoading = false;
       },
-      error: () => { this.countryLoading = false; }
+      error: () => { this.rangeLoading = false; }
     });
+  }
 
-    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCountryDataWithAWS`, payload).subscribe({
+  switchRightTab(tab: 'data' | 'logs'): void {
+    if (this.rightTab === tab) return;
+    this.rightTab = tab;
+    if (tab === 'logs') this.loadActiveLogsTab();
+  }
+
+  switchLogsTab(tab: 'imd' | 'aws'): void {
+    if (this.logsTab === tab) return;
+    this.logsTab = tab;
+    this.loadActiveLogsTab();
+  }
+
+  private loadActiveLogsTab(): void {
+    if (this.logsTab === 'imd') {
+      this.loadDataEntryLogs();
+    } else {
+      this.loadAwsSourceLogs();
+    }
+  }
+
+  // Reuses the exact endpoint Verification HQ's own Range tab calls
+  // (fetchCentreStationSummary) — same per-(MC, date) rows, reshaped into
+  // MC rows the same way its transformCumulativeData() does. No new backend
+  // logic, no Verified/Not Verified here (not part of this table).
+  private loadDataEntryLogs(): void {
+    this.dataEntryLogsLoading = true;
+    this.http.post<any>(`${this.baseUrl}/api/v1/fetchCentreStationSummary`, { startDate: this.fromDate, endDate: this.toDate }).subscribe({
       next: (res) => {
-        const d = res.data?.[0] ?? res.data;
-        this.countryActualAws = d?.actual_rainfall ?? null;
+        const rows: any[] = res.data ?? [];
+        const map = new Map<string, { mc: string; total: number; byDate: { [date: string]: { updated: number; notUpdated: number } } }>();
+        for (const r of rows) {
+          const mc = r['MC or RMC'];
+          const date = r['DATE'];
+          // Postgres COUNT()/numeric columns come back as strings via the pg
+          // driver — coerce to Number here so the TOTAL row sums add instead
+          // of string-concatenating into astronomical garbage.
+          if (!map.has(mc)) map.set(mc, { mc, total: Number(r['TOTAL STATIONS']) || 0, byDate: {} });
+          map.get(mc)!.byDate[date] = {
+            updated: Number(r['UPDATED STATIONS']) || 0,
+            notUpdated: Number(r['NOT UPDATED STATIONS']) || 0,
+          };
+        }
+        this.dataEntryCentreLogs = Array.from(map.values()).sort((a, b) => a.mc.localeCompare(b.mc));
+        this.dataEntryLogsDates = Array.from(new Set(rows.map(r => r['DATE'] as string))).sort();
+        this.dataEntryLogsLoading = false;
       },
-      error: () => {}
+      error: () => { this.dataEntryLogsLoading = false; }
+    });
+  }
+
+  centreCell(row: { byDate: { [date: string]: { updated: number; notUpdated: number } } }, date: string): { updated: number; notUpdated: number } {
+    return row.byDate[date] ?? { updated: 0, notUpdated: 0 };
+  }
+
+  // Whichever metric is currently toggled on, for one row's one date column.
+  centreMetric(row: { byDate: { [date: string]: { updated: number; notUpdated: number } } }, date: string): number {
+    const cell = this.centreCell(row, date);
+    return this.dataEntryLogsMetric === 'updated' ? cell.updated : cell.notUpdated;
+  }
+
+  get dataEntryTotalStations(): number {
+    return this.dataEntryCentreLogs.reduce((sum, r) => sum + (r.total || 0), 0);
+  }
+
+  dataEntryDateMetricTotal(date: string): number {
+    return this.dataEntryCentreLogs.reduce((sum, r) => sum + this.centreMetric(r, date), 0);
+  }
+
+  dataEntryDateUpdatedTotal(date: string): number {
+    return this.dataEntryCentreLogs.reduce((sum, r) => sum + this.centreCell(r, date).updated, 0);
+  }
+
+  dataEntryDateNotUpdatedTotal(date: string): number {
+    return this.dataEntryCentreLogs.reduce((sum, r) => sum + this.centreCell(r, date).notUpdated, 0);
+  }
+
+  private loadAwsSourceLogs(): void {
+    this.awsSourceLogsLoading = true;
+    this.http.post<any>(`${this.baseUrl}/api/v1/fetchAwsSourceLogs`, { fromDate: this.fromDate, toDate: this.toDate }).subscribe({
+      next: (res) => {
+        this.awsSourceLogs = res.sources ?? [];
+        this.awsSourceLogsDates = res.dates ?? [];
+        this.excludedAwsSourceLogs = res.excludedSources ?? [];
+        this.awsSourceLogsLoading = false;
+      },
+      error: () => { this.awsSourceLogsLoading = false; }
     });
   }
 
@@ -251,6 +436,78 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Every date in [fromDate, toDate] inclusive, in order — the column set for
+  // the pivoted table. Generated directly from the range (not from whichever
+  // async call happens to land first) so columns appear immediately.
+  get pivotDates(): string[] {
+    const dates: string[] = [];
+    let cursor = new Date(`${this.fromDate}T00:00:00`);
+    const last = new Date(`${this.toDate}T00:00:00`);
+    while (cursor <= last) {
+      dates.push(this.formatDateLocal(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return dates;
+  }
+
+  // One row per station (not per station-date), each carrying a map of
+  // date -> that station's value/excluded-flag on that date. Built from
+  // displayedRows so it stays filtered by activeTab and sorted by whichever
+  // identity column was clicked.
+  get pivotRows(): { station_code: any; station_name: any; state_name: any; district_name: any; block_name: any; values: { [date: string]: { data: number | null; is_excluded: boolean } } }[] {
+    const byStation = new Map<string, any>();
+    for (const r of this.displayedRows) {
+      let p = byStation.get(r.station_code);
+      if (!p) {
+        p = {
+          station_code: r.station_code,
+          station_name: r.station_name,
+          state_name: r.state_name,
+          district_name: r.district_name,
+          block_name: r.block_name,
+          values: {},
+        };
+        byStation.set(r.station_code, p);
+      }
+      p.values[r.collection_date] = { data: r.data, is_excluded: r.is_excluded };
+    }
+    return Array.from(byStation.values());
+  }
+
+  cellValue(row: { values: { [date: string]: { data: number | null; is_excluded: boolean } } }, date: string): number | null {
+    return row.values[date]?.data ?? null;
+  }
+
+  cellPositive(row: { values: { [date: string]: { data: number | null; is_excluded: boolean } } }, date: string): boolean {
+    const v = row.values[date]?.data;
+    return v != null && v > 0;
+  }
+
+  cellExcluded(row: { values: { [date: string]: { data: number | null; is_excluded: boolean } } }, date: string): boolean {
+    return !!row.values[date]?.is_excluded;
+  }
+
+  countryActualForDate(date: string): number | null {
+    const c = this.rangeCountryData.find(x => x.date === date);
+    if (!c) return null;
+    return this.activeTab === 'imd' ? c.imd : c.aws;
+  }
+
+  // Distinct stations with valid (non -999.9) data — the table itself now
+  // shows every station regardless of value, but this badge is meant to answer
+  // "how many actually have real data", so it filters here.
+  get imdStationCount(): number {
+    return new Set(this.imdStations.filter(r => Number(r.data) !== -999.9).map(r => r.station_code)).size;
+  }
+
+  get awsStationCount(): number {
+    return new Set(this.awsStations.filter(r => Number(r.data) >= 0).map(r => r.station_code)).size;
+  }
+
+  private formatDateLocal(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   sort(col: string): void {
     if (this.sortCol === col) {
       this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
@@ -266,9 +523,7 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
   }
 
   downloadExcel(): void {
-    const date = this.selectedDate.replace(/-/g, '');
-    const headers = ['S.No', 'In/Ex', 'Station Code', 'State', 'District', 'Block', 'Station Name', 'Value (mm)'];
-    const colWidths = [{ wch: 6 }, { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 12 }];
+    const date = `${this.fromDate}_to_${this.toDate}`.replace(/-/g, '');
 
     const hdrStyle = {
       font: { bold: true, color: { rgb: 'FFFFFF' } },
@@ -288,9 +543,22 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
       alignment: { horizontal: 'left' as const }
     };
 
-    const buildSheet = (rows: any[], countryActual: number | null, label: string, total: number) => {
-      const summaryRow = [`${label} — Country Actual: ${countryActual !== null ? countryActual.toFixed(5) + ' mm' : 'N/A'}    Stations shown: ${rows.length} / ${total}`];
+    const applyCommonStyle = (ws: XLSX.WorkSheet, headers: string[], colWidths: { wch: number }[]) => {
+      const summaryCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
+      if (ws[summaryCell]) ws[summaryCell].s = infoStyle;
+      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }];
+      headers.forEach((_, i) => {
+        const cell = XLSX.utils.encode_cell({ r: 1, c: i });
+        if (ws[cell]) ws[cell].s = hdrStyle;
+      });
+      ws['!cols'] = colWidths;
+    };
 
+    // Single date: one flat row per station — small and simple, same as before.
+    const buildFlatSheet = (rows: any[], label: string, total: number) => {
+      const headers = ['S.No', 'In/Ex', 'Station Code', 'State', 'District', 'Block', 'Station Name', 'Value (mm)'];
+      const colWidths = [{ wch: 6 }, { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 12 }];
+      const summaryRow = [`${label} — ${this.fromDate}    Stations shown: ${rows.length} / ${total}`];
       const data = rows.map((r, i) => [
         i + 1,
         r.is_excluded ? 'Excluded' : 'Included',
@@ -301,57 +569,153 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
         r.station_name  ?? '',
         r.data          ?? '',
       ]);
-
       const ws = XLSX.utils.aoa_to_sheet([summaryRow, headers, ...data]);
-
-      const summaryCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
-      if (ws[summaryCell]) ws[summaryCell].s = infoStyle;
-      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }];
-
-      headers.forEach((_, i) => {
-        const cell = XLSX.utils.encode_cell({ r: 1, c: i });
-        if (ws[cell]) ws[cell].s = hdrStyle;
-      });
-      ws['!cols'] = colWidths;
+      applyCommonStyle(ws, headers, colWidths);
       return ws;
     };
 
+    // Real multi-day range: pivot by station (one row per station, one column
+    // per date) instead of one row per station-per-date — a 30-day range with
+    // thousands of stations was generating hundreds of thousands of flat rows,
+    // which froze the tab building/writing the sheet. Pivoting keeps the row
+    // count at "number of stations" regardless of how many dates are picked.
+    const buildPivotSheet = (rows: any[], label: string, total: number) => {
+      const dates = this.pivotDates;
+      const headers = ['S.No', 'Station Code', 'State', 'District', 'Block', 'Station Name', ...dates];
+      const colWidths = [{ wch: 6 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 28 }, ...dates.map(() => ({ wch: 12 }))];
+
+      const byStation = new Map<string, any>();
+      for (const r of rows) {
+        let p = byStation.get(r.station_code);
+        if (!p) {
+          p = { station_code: r.station_code, station_name: r.station_name, state_name: r.state_name, district_name: r.district_name, block_name: r.block_name, values: {} };
+          byStation.set(r.station_code, p);
+        }
+        p.values[r.collection_date] = { data: r.data, is_excluded: r.is_excluded };
+      }
+      const pivoted = Array.from(byStation.values());
+
+      const summaryRow = [`${label} — ${this.fromDate} to ${this.toDate}    Stations shown: ${pivoted.length} / ${total}`];
+      const data = pivoted.map((p, i) => [
+        i + 1,
+        p.station_code  ?? '',
+        p.state_name    ?? '',
+        p.district_name ?? '',
+        p.block_name    ?? '',
+        p.station_name  ?? '',
+        ...dates.map(d => {
+          const cell = p.values[d];
+          if (!cell || cell.data == null) return '';
+          return cell.is_excluded ? `${cell.data} (Excluded)` : cell.data;
+        }),
+      ]);
+      const ws = XLSX.utils.aoa_to_sheet([summaryRow, headers, ...data]);
+      applyCommonStyle(ws, headers, colWidths);
+      return ws;
+    };
+
+    const buildSheet = this.isSingleDate ? buildFlatSheet : buildPivotSheet;
+
     const wb = XLSX.utils.book_new();
 
-    const imdSheetName = `IMD (${this.imdStations.length}-${this.imdTotal})`;
-    const awsSheetName = `AWS (${this.awsStations.length}-${this.awsTotal})`;
+    const imdSheetName = `IMD (${this.imdStationCount}-${this.imdTotal})`;
+    const awsSheetName = `AWS (${this.awsStationCount}-${this.awsTotal})`;
 
     if (this.useAws) {
-      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, this.countryActualImd, 'IMD Only',  this.imdTotal), imdSheetName);
-      XLSX.utils.book_append_sheet(wb, buildSheet(this.awsStations, this.countryActualAws, 'IMD + AWS', this.awsTotal), awsSheetName);
+      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, 'IMD Only',  this.imdTotal), imdSheetName);
+      XLSX.utils.book_append_sheet(wb, buildSheet(this.awsStations, 'IMD + AWS', this.awsTotal), awsSheetName);
       const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `IMD_AWS_Stations_${date}.xlsx`);
     } else {
-      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, this.countryActualImd, 'IMD Only', this.imdTotal), imdSheetName);
+      XLSX.utils.book_append_sheet(wb, buildSheet(this.imdStations, 'IMD Only', this.imdTotal), imdSheetName);
       const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `DataEntry_Stations_${date}.xlsx`);
     }
   }
 
-  private initPage(): void {
-    this.loading = true;
-    this.calcMode.loadMode().subscribe({
-      next: (res) => {
-        this.suppressToggleChange = true;
-        this.useAws = res.use_aws === 1;
-        this.suppressToggleChange = false;
-        this.loading = false;
-        this.loadStations();
-      },
-      error: () => { this.loading = false; }
+  downloadLogsExcel(): void {
+    if (this.logsTab === 'imd') {
+      this.downloadDataEntryLogsExcel();
+    } else {
+      this.downloadAwsSourceLogsExcel();
+    }
+  }
+
+  private logsRangeSuffix(): string {
+    return `${this.fromDate}_to_${this.toDate}`.replace(/-/g, '');
+  }
+
+  private styleHeaderRow(ws: XLSX.WorkSheet, headers: string[]): void {
+    const hdrStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '002467' } },
+      alignment: { horizontal: 'center' as const },
+    };
+    headers.forEach((_, i) => {
+      const cell = XLSX.utils.encode_cell({ r: 0, c: i });
+      if (ws[cell]) ws[cell].s = hdrStyle;
     });
   }
 
-  /** Undo checkbox change without triggering onToggleChange → setMode */
-  private revertToggle(): void {
-    this.suppressToggleChange = true;
-    this.useAws = !this.useAws;
-    setTimeout(() => { this.suppressToggleChange = false; });
+  // Exports the full Updated + Not Updated breakdown per date, regardless of
+  // which single metric the on-screen toggle currently shows — Excel isn't
+  // width-constrained the way the table is.
+  private downloadDataEntryLogsExcel(): void {
+    const headers = ['S.No', 'MC or RMC', 'Total Stations'];
+    this.dataEntryLogsDates.forEach(d => headers.push(`${d} Updated`, `${d} Not Updated`));
+
+    const data = this.dataEntryCentreLogs.map((row, i) => {
+      const line: (string | number)[] = [i + 1, row.mc, row.total];
+      this.dataEntryLogsDates.forEach(d => {
+        const cell = this.centreCell(row, d);
+        line.push(cell.updated, cell.notUpdated);
+      });
+      return line;
+    });
+
+    const totalLine: (string | number)[] = ['', 'TOTAL', this.dataEntryTotalStations];
+    this.dataEntryLogsDates.forEach(d => {
+      totalLine.push(this.dataEntryDateUpdatedTotal(d), this.dataEntryDateNotUpdatedTotal(d));
+    });
+    data.push(totalLine);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    this.styleHeaderRow(ws, headers);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data-entry Stations');
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `DataEntry_Stations_Data_Logs_${this.logsRangeSuffix()}.xlsx`);
+  }
+
+  private downloadAwsSourceLogsExcel(): void {
+    const headers = ['Source', 'URL', 'Total Stations', 'Blocks Included', ...this.awsSourceLogsDates];
+    const data = this.awsSourceLogs.map(src => [
+      src.label,
+      src.url,
+      src.totalStations,
+      src.totalBlocks,
+      ...src.daily.map(d => d.count),
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    this.styleHeaderRow(ws, headers);
+
+    const excludedHeaders = ['Source', 'URL', 'Total Stations (all-time)', 'Blocks Included', ...this.awsSourceLogsDates];
+    const excludedData = this.excludedAwsSourceLogs.map(src => [
+      src.label,
+      src.url,
+      src.totalStations,
+      src.totalBlocks !== null ? src.totalBlocks : 'Not available',
+      ...src.daily.map(d => d.count),
+    ]);
+    const excludedWs = XLSX.utils.aoa_to_sheet([excludedHeaders, ...excludedData]);
+    this.styleHeaderRow(excludedWs, excludedHeaders);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Included Sources');
+    XLSX.utils.book_append_sheet(wb, excludedWs, 'Not Included Sources');
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    FileSaver.saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `AWS_Source_Data_Logs_${this.logsRangeSuffix()}.xlsx`);
   }
 
   private todayStr(): string {
@@ -359,6 +723,7 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
+  // ── Cron trigger buttons ──────────────────────────────────────────────────
   runningAddDaily = false;
   addDailyMsg = '';
   addDailyErr = false;
@@ -392,7 +757,7 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
         this.runningDailyStore = false;
         this.dailyStoreMsg = res.message ?? 'Done — aws_station_daily_data refreshed';
         this.dailyStoreErr = false;
-        this.loadStations();
+        this.loadRange();
       },
       error: (err) => {
         this.runningDailyStore = false;

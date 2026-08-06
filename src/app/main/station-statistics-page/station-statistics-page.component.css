@@ -1,673 +1,1456 @@
+/* ==========================================================================
+   Station Statistics
+   One set of tokens drives every surface on the page. Previously the layout was
+   assembled from percentage-positioned absolute buttons and ~40 inline styles,
+   which drifted or collided at any viewport other than the author's.
+   ========================================================================== */
 
-.loader {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); 
-  z-index: 1050; 
+:host {
+  --ss-brand: #1a4fa0;
+  --ss-brand-dark: #143b78;
+  --ss-brand-tint: #eaf0fa;
+  --ss-ink: #1c2430;
+  --ss-ink-soft: #5b6675;
+  --ss-ink-faint: #8b96a5;
+  --ss-line: #dfe4ea;
+  --ss-line-soft: #eef1f5;
+  --ss-surface: #ffffff;
+  --ss-canvas: #f5f7fa;
+  --ss-danger: #c0392b;
+  --ss-danger-tint: #fdecea;
+  /* Selection green — deliberately not the brand blue, so a selected row is
+     unmistakable against the blue "received" bars sitting next to it. */
+  --ss-select: #1e7a45;
+  --ss-select-dark: #14522f;
+
+  --ss-radius: 8px;
+  --ss-radius-sm: 5px;
+  --ss-shadow: 0 1px 3px rgba(16, 24, 40, 0.09), 0 4px 12px rgba(16, 24, 40, 0.06);
+  --ss-shadow-lg: 0 -2px 20px rgba(16, 24, 40, 0.14);
+
+  --ss-panel-left-w: 316px;
+  --ss-panel-right-w: 300px;
+
+  /* The drawer may never take more than this share of the viewport, so the map
+     stays usable on short windows (docked devtools, laptops, split screens). */
+  --ss-drawer-max: 60vh;
+
+  /* This route has no app-header, so the component *is* the page. Sizing the
+     host to the viewport and clipping here stops the document growing past one
+     screen — otherwise anything that overflowed left a dead band of page
+     background below the layout. */
   display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Loading message box styling */
-.loading-message {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
-  font-size: 16px;
-  color: #333;
-  display: flex;
-  align-items: center;
-}
-
-/* Spinner icon styling */
-.loading-message i {
-  margin-right: 10px;
-  font-size: 24px; /* Adjust the spinner size */
-}
-
-
-
-app-weather-alert {
-    .legends-container {
-      display: flex;
-      justify-content: space-evenly;
-      width: 80%;
-      z-index: 999;
-      position: absolute;
-      left: 0.3%;
-      top: 96%;
-      background-color: #fff;
-      border-radius: 20px;
-      box-shadow: 11px 10px 5px 0px rgba(0, 0, 0, 0.3);
-      border: 1px solid #212529;
-    }
-  
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-  
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-  }
-  
-  .fcst-controls {
-    margin-left: 10px;
-    position: absolute;
-    top: 12px;
-    z-index: 1000;
-  }
-  
-  .mat-mdc-menu-content .mat-mdc-menu-item .mat-mdc-menu-item-text{
-    display: flex !important;
-  }
-  
-  
-  .main-container {
-    display: flex;
-    height: 100vh;
-    flex-direction: row-reverse;
-  }
-  
-  .first-sub-container {
-    display: flex;
-    flex-direction: row-reverse;
-  }
-  .toggle-map-button {
-    position: absolute;
-    top: 20px; /* Adjust top position as needed */
-    right: 20px; /* Adjust right position as needed */
-    z-index: 999; /* Ensure it's above other content */
-  }
-  
-  .map-container {
-    flex-grow: 1;
-    transition: flex-grow 0.3s ease-in-out;
-  
-    position: relative;
-    z-index:0;
-  
-    /* Custom position for zoom controls */
-    .leaflet-control-zoom {
-      position: absolute;
-      bottom: 70px;
-    }
-
-    .leaflet-control-layers {
-      position: absolute !important; /* Override default fixed positioning */
-      top: 4vh; /* Center vertically */
-      right: 28vh; /* Center horizontally */
-      transform: translate(-50%, -50%); /* Adjust for the element's dimensions */
-      z-index: 1000; /* Ensure it's above map elements */
-      background-color: white; /* Optional: Add background for better visibility */
-      padding: 10px;
-      width: auto;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  }
-  
-  
-    .data-bars{
-      background-color:#4050b5;
-      color:white;
-      border-radius:4em;
-    }
-  
-    .selected-parameter-icon{
-      background-color: #4050b5;
-      color: white;
-      border-radius: 50%;
-      margin: auto;
-      padding: 3px 4px;
-    }
-  
-    .data-bars-container{
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap:0.5em;
-      position: absolute;
-      flex-wrap:wrap;
-      z-index:401;
-      margin: 1em 0 0 1em;
-      width: 98%;
-    }
-  
-    .temperature-data-container{
-      bottom: 1em;
-      right:1em;
-    }
-  
-    .form {
-      display: flex;
-      flex-direction: column;
-      background-color: #F8F9FA;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-  }
-  
-  .full-width {
-    flex-grow: 1;
-    width: 100%;
-  }
-  
-  .full-height {
-    flex-grow: 1;
-    height: 100%;
-  }
-  
-  .weather-data-list-container {
-    width: 0;
-    overflow-x: hidden;
-    transition: width 0.3s ease-in-out;
-    position: relative;
-  }
-  
-  .side-nav-visible {
-    width: 16%;
-  }
-  
-  .side-nav-hidden{
-    width: 5%;
-  }
-  
-  .custom-bg {
-    background-color: #fbf9f9;
-  }
-  
-  .recent-forecast-data-side-nav-container {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    padding-right: 20px;
-    margin: 10px;
-  
-    .side-nav-title {
-      font-size: 18px;
-      font-weight: 900;
-      line-height: 1.33334;
-    }
-  
-    .close-button {
-      color: gray;
-      background-color: #e7e1e1;
-      cursor: pointer;
-    }
-  }
-  
-  table {
-    width: 100%;
-  }
-  
-  
-  .main-drawer-container{
-  padding-top: 1em;
-  padding-left: 0.5em;
-  }
-  
-  .drawer-fields{
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding:0.5em;
-  }
-  
-  .drawer-fields:hover{
-  background-color: #f0efef;
-  }
-  
-  .drawer-fields button{
-  gap: 1.2em;
-  }
-  
-  .timeMenu div{
-  padding-left: 1em !important;
-  }
-  
-  .time-bg{
-  color: #efefef;
-  border-radius: 50%;
-  padding: 2px;
-  width: 1.22em;
-  height:1.12em;
-  margin-left: -0.4em;
-  }
-  
-  .bg-light-green{
-  background-color: #4caf50;
-  }
-  
-  .bg-orange{
-  background-color: #ff9800;
-  }
-  
-  .text-light-green{
-  color: #4caf50;
-  }
-  
-  .text-orange{
-  color: #ff9800;
-  }
-  
-  .rotate-180 {
-  transform: rotate(-180deg);
-  transition: transform 0.3s ease-in-out;
-  }
-  
-  .hidden{
-  display: none;
-  }
-  
-  .nav-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  padding: 0 1em;
-  }
-  
-  .station-data-container{
-  position:absolute;
-  z-index:1;
-  bottom:0;
-  background-color:white;
-  width:84%;
-  height: 70%;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
-  }
-  
-  .station-data-table{
-  color: #000000;
-  border-bottom: 1px solid rgb(197, 194, 194);
-  }
-  
-  .station-data-options{
-  display:flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: baseline;
-  font-size: 15px;
-  border: 1px solid #eae7e7;
-  width: 38%;
-  margin: 0 auto;
-  }
-  
-  .station-data-sub-options:not(:last-child) {
-  border-right: 1px solid #eae7e7;
-  }
-  
-  .station-data-sub-options.clicked {
-  background-color: #4050b5;
-  color: white;
-  }
-  
-  .station-data-sub-options:hover{
-  background-color: #daddf1;
-  cursor: pointer;
-  }
-  
-  .selected {
-  color:#4050b5;
-  cursor: pointer;
-  }
-  
-  .chart-container div{
-  width: 650px;
-  }
-  
-  /* leaflet-map.component.css */
-  .custom-marker {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 50%;
-    background-color: red; /* Change the color as needed */
-  }
-  
-  .round-marker {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background-color: white; /* Change the color as needed */
-  }
-
-
-
-/* 
-  .station-details-container {
-    text-align: center;
-    margin-bottom: 20px;
-    align-items: center;
-  }
-  
-  .station-details-header {
-    text-align: center;
-    margin-bottom: 10px;
-  }
-  
-  .station-details-content {
-    overflow-y: scroll;
-    width: 100%;
-    padding: 1em;
-  }
-  
-  .station-stats-container {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    padding: 1em;
-  }
-  
-  .station-stats-container .d-flex {
-    width: 48%; 
-  }
-  
-   */
-
-
-
-
-
-
-   .sidenav_right {
-    height: 100%;
-    width: 300px;
-    position: fixed;
-    z-index: 1;
-    top: 0;
-    right: 0;
-    background-color:white;
-    overflow-x: hidden;
-    padding-top: 20px;
-  }
-  
-  .sidenav_right a {
-    padding: 6px 6px 6px 32px;
-    text-decoration: none;
-    font-size: 25px;
-    color: black;
-    display: block;
-  }
-  
-  .sidenav_right a:hover {
-    color: #f1f1f1;
-  }
-
-  
-
-
-
-
-
-
-
-
-  .radar {
-    position: relative;
-    overflow: hidden;
-    width: 300px;
-    aspect-ratio: 1;
-    background: #072767 url(https://i.sstatic.net/vY6Tl.png) center / cover;
-    border-radius: 50%;
-    opacity: 100;
-  }
-  
-  .beam {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: inherit;
-    aspect-ratio: inherit;
-    background: url(../../../assets/images/GCbf1.png) center / cover;
-    animation: 5s rotate linear infinite;
-  }
-  
-  @keyframes rotate {
-    100% {
-      rotate: 1turn;
-    }
-  }
-  
-  .dot {
-    position: absolute;
-    left: calc(var(--x) * 100%);
-    top: calc(var(--y) * 100%);
-    border-radius: 50%;
-    width: 4px;
-    height: 4px;
-    margin: -2px;
-    background: #cf5;
-    box-shadow: 0 0 10px 5px rgba(100, 255, 0, 0.5);
-    opacity: 0;
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  /* :host {
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    height: 100%;
-  } */
-  
-
-
-
-
-
-
-
-
-/* 
-
-  .resizable-box {
-    width: auto;
-    height: 100px; 
-    background-color: #f0f0f0;
-    position: relative;
-    border-top: 2px solid #ccc;
-    box-sizing: border-box;
-    padding: 10px;
-    text-align: center;
-  }
-  
-  .resizer {
-    width: 100%;
-    height: 10px;
-    background-color: #ccc;
-    cursor: ns-resize;
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-  
-
-
- */
-
-
-
-
-
-
-
-
- .resizable-box {
-  width: auto;
-  height: 1%;
-  background-color: #f0f0f0;
+  color: var(--ss-ink);
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------------ layout */
+
+.ss-page {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--ss-canvas);
+}
+
+.ss-map-pane {
   position: relative;
-  border-top: 2px solid #ccc;
-  box-sizing: border-box;
-  padding: 10px;
-  text-align: center;
-  transition: height 0.2s ease; 
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ss-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Leaflet's draw toolbar lives top-left; keep our cluster clear of it. */
+.ss-map-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 500;
   display: flex;
   flex-direction: column;
-  height: 300px; /* Initial height */
+  gap: 6px;
+  align-items: stretch;
+}
+
+.ss-map-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ss-ink);
+  background: var(--ss-surface);
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius-sm);
+  box-shadow: var(--ss-shadow);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ss-map-btn:hover:not(:disabled) {
+  background: var(--ss-brand-tint);
+  border-color: var(--ss-brand);
+}
+
+.ss-map-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ss-map-btn--primary {
+  color: #fff;
+  background: var(--ss-brand);
+  border-color: var(--ss-brand);
+}
+
+.ss-map-btn--primary:hover:not(:disabled) {
+  background: var(--ss-brand-dark);
+  border-color: var(--ss-brand-dark);
+}
+
+.ss-map-btn mat-icon {
+  font-size: 17px;
+  width: 17px;
+  height: 17px;
+  line-height: 17px;
+}
+
+.ss-badge {
+  min-width: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  line-height: 17px;
+  text-align: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.ss-map-btn:not(.ss-map-btn--primary) .ss-badge {
+  background: var(--ss-brand-tint);
+  color: var(--ss-brand);
+}
+
+/* ------------------------------------------------- floating analytics rail */
+
+/* Transparent layer spanning the map. It ignores pointer events so only the
+   cards themselves are interactive and a drag started on bare map still pans. */
+.ss-float-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  pointer-events: none;
   overflow: hidden;
 }
 
-.resizer {
-  width: 100%;
-  height: 10px;
-  background-color: #ccc;
-  cursor: ns-resize;
+.ss-fcard {
   position: absolute;
-  top: 0;
-  left: 0;
+  width: 236px;
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius);
+  box-shadow: var(--ss-shadow);
+  overflow: hidden;
 }
 
+/* Default anchors. Drag displacement is layered on as a transform, so these
+   stay authoritative and the cards remain correctly placed at any width. */
+.ss-fcard--distribution { left: 12px; top: 224px; }
 
+/* Sits low on the right so it clears the map control cluster above it. */
+.ss-fcard--coverage { right: 12px; top: 392px; }
 
-
-
-
-.table-container {
-  flex-grow: 1; /* Allow the table to grow with the resizable box */
-  overflow-y: auto; /* Enable scrolling if content overflows */
-  max-height: fit-content;
+.ss-fcard--dragging {
+  box-shadow: 0 8px 28px rgba(16, 24, 40, 0.26);
+  /* Above its sibling while moving, so it never slides underneath. */
+  z-index: 2;
+  user-select: none;
 }
 
-
-.resizer:hover {
-  background-color: #aaa;
+.ss-fcard__head {
+  display: flex;
+  align-items: stretch;
 }
 
-
-
-.slider-container {
-  width: 100%;
-  margin: 20px; 
-  justify-content: center;
+.ss-fcard__grip {
+  display: flex;
   align-items: center;
+  padding: 0 1px 0 5px;
+  color: var(--ss-ink-faint);
+  cursor: grab;
 }
 
-.custom-slider {
-  
-  width: 100%; 
-  height: 10px;
-  background: linear-gradient(to right, #4050b5 0%, #4050b5 0%, #e0e0e0 0%, #e0e0e0 100%);
-  border-radius: 5px;
-  outline: none;
-  transition: background 0.3s;
+.ss-fcard__grip:active { cursor: grabbing; }
+.ss-fcard__grip:hover { color: var(--ss-brand); }
+
+.ss-fcard__grip mat-icon {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+}
+
+/* The fold control is its own button beside the grip, so dragging and folding
+   can never be confused for one another. */
+.ss-fcard__toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px 8px 4px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ss-ink-soft);
+  background: none;
+  border: none;
   cursor: pointer;
+  text-align: left;
 }
 
-.custom-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  background-color: #4050b5;
-  border-radius: 50%;
+.ss-fcard__toggle:hover { background: var(--ss-brand-tint); }
+
+.ss-fcard__toggle mat-icon {
+  flex: 0 0 auto;
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--ss-brand);
+}
+
+.ss-fcard__title { flex: 1 1 auto; }
+
+.ss-fcard__hint {
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ss-brand);
+}
+
+.ss-fcard__chev {
+  transition: transform 0.2s ease;
+  color: var(--ss-ink-faint) !important;
+}
+
+.ss-fcard--folded .ss-fcard__chev { transform: rotate(-90deg); }
+
+.ss-fcard__body {
+  padding: 0 10px 9px;
+  border-top: 1px solid var(--ss-line-soft);
+}
+
+.ss-fcard__foot {
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--ss-ink-faint);
+}
+
+.ss-fcard__empty {
+  margin: 9px 0 2px;
+  font-size: 11px;
+  color: var(--ss-ink-faint);
+}
+
+/* ------------------------------------------------------- coverage meters */
+
+.ss-cov,
+.ss-lead {
+  list-style: none;
+  margin: 7px 0 0;
+  padding: 0;
+}
+
+/* Every centre is listed, so the list scrolls inside the card instead of the
+   card growing until it covers the map. */
+.ss-cov {
+  max-height: 232px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Room for the scrollbar so it never sits on top of the count. */
+  padding-right: 2px;
+}
+
+.ss-cov::-webkit-scrollbar { width: 7px; }
+.ss-cov::-webkit-scrollbar-track { background: transparent; }
+
+.ss-cov::-webkit-scrollbar-thumb {
+  background: #c8d0da;
+  border-radius: 4px;
+}
+
+.ss-cov::-webkit-scrollbar-thumb:hover { background: var(--ss-ink-faint); }
+
+/* Fully-reported centres sink to the bottom; dim them so the ranking reads. */
+.ss-cov__row--clear { opacity: 0.55; }
+
+/* The centre currently restricting the map. Full opacity wins over --clear so
+   a selected, fully-reported centre is still obviously selected. */
+.ss-cov__row--on,
+.ss-cov__row--on.ss-cov__row--clear {
+  opacity: 1;
+  background: var(--ss-select);
+  box-shadow: inset 2px 0 0 var(--ss-select-dark);
+}
+
+.ss-cov__row--on:hover { background: var(--ss-select-dark); }
+.ss-cov__row--on .ss-cov__name { color: #fff; }
+.ss-cov__row--on .ss-cov__num { color: #fff; }
+.ss-cov__row--on .ss-cov__of { color: rgba(255, 255, 255, 0.7); }
+.ss-cov__row--on .ss-cov__meter { background: rgba(255, 255, 255, 0.3); }
+.ss-cov__row--on .ss-cov__fill { background: #fff; }
+
+.ss-cov__row,
+.ss-lead__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 5px;
+  font: inherit;
+  background: none;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
+  text-align: left;
 }
 
-.custom-slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  background-color: #4050b5;
-  border-radius: 50%;
-  cursor: pointer;
+.ss-cov__row:hover,
+.ss-lead__row:hover { background: var(--ss-brand-tint); }
+
+.ss-cov__row:focus-visible,
+.ss-lead__row:focus-visible {
+  outline: 2px solid var(--ss-brand);
+  outline-offset: -1px;
 }
 
-.custom-slider::-ms-thumb {
-  width: 20px;
-  height: 20px;
-  background-color: #4050b5;
-  border-radius: 50%;
-  cursor: pointer;
+.ss-cov__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.form-label {
-  font-size: 18px; 
-  color: #333; 
+/* Two-tone: blue fill = stations received, light red track = still missing.
+   The key in the card footer states this, so the colours are self-explaining. */
+.ss-cov__meter {
+  flex: 0 0 38px;
+  height: 5px;
+  background: #f2b8b3;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
+.ss-cov__fill {
+  display: block;
+  height: 100%;
+  background: var(--ss-brand);
+}
 
+.ss-cov__num {
+  flex: 0 0 auto;
+  min-width: 46px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--ss-ink);
+}
 
-.chartloader {
-  width: 48px;
-  height: 48px;
-  border: 5px solid black;
+/* The denominator is context, not the reading — de-emphasise it. */
+.ss-cov__of {
+  font-weight: 400;
+  color: var(--ss-ink-faint);
+}
+
+/* Colour key for the meter, so the encoding is stated on screen. */
+.ss-cov__key {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid var(--ss-line-soft);
+  font-size: 10px;
+  color: var(--ss-ink-soft);
+}
+
+.ss-cov__key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ss-cov__key-dot {
+  width: 11px;
+  height: 5px;
+  border-radius: 3px;
+}
+
+.ss-cov__key-dot--got { background: var(--ss-brand); }
+.ss-cov__key-dot--gap { background: #f2b8b3; }
+
+/* ----------------------------------------------------------- leaderboard */
+
+.ss-lead { counter-reset: ss-lead-rank; }
+
+.ss-lead li { counter-increment: ss-lead-rank; }
+
+.ss-lead__row::before {
+  content: counter(ss-lead-rank);
+  flex: 0 0 14px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ss-ink-faint);
+  text-align: center;
+}
+
+.ss-lead__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ss-lead__name small {
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--ss-ink-faint);
+}
+
+.ss-lead__val {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ss-brand);
+}
+
+/* Panel toggles sit side by side so the cluster stays compact. */
+.ss-map-btn-pair {
+  display: flex;
+  gap: 6px;
+}
+
+.ss-map-btn--half {
+  flex: 1 1 0;
+  justify-content: center;
+  padding: 7px 8px;
+}
+
+/* Leaderboard rendered in the right panel rather than a floating card:
+   roomier type, since there is no need to economise on space here. */
+.ss-lead--panel .ss-lead__row { padding: 5px 4px; }
+.ss-lead--panel .ss-lead__name { font-size: 12px; }
+.ss-lead--panel .ss-lead__name small { font-size: 10px; }
+.ss-lead--panel .ss-lead__val { font-size: 12px; }
+.ss-lead--panel li + li { border-top: 1px solid var(--ss-line-soft); }
+
+/* Generic "this mode is on" state. */
+.ss-map-btn--active {
+  color: #fff;
+  background: var(--ss-brand);
+  border-color: var(--ss-brand);
+}
+
+.ss-map-btn--active:hover:not(:disabled) {
+  background: var(--ss-brand-dark);
+  border-color: var(--ss-brand-dark);
+}
+
+/* Amber, not blue: the synthetic cloud layer should never look like the
+   verified-data toggles sitting beside it. */
+.ss-map-btn--sim,
+.ss-map-btn--sim:hover:not(:disabled) {
+  color: #4a3410;
+  background: #f5c451;
+  border-color: #e0ab33;
+}
+
+.ss-map-btn--sim:hover:not(:disabled) { background: #e8b33c; }
+
+/* Heat scale, bottom-left. Mounted only while the heat layer is active. */
+.ss-heat-legend {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 550;
+  width: 200px;
+  padding: 9px 11px 7px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius-sm);
+  box-shadow: var(--ss-shadow);
+}
+
+.ss-heat-legend__head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ss-ink-soft);
+}
+
+.ss-heat-legend__head mat-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: #d7191c;
+}
+
+.ss-heat-legend__bar {
+  height: 9px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+}
+
+/* Ticks are absolutely placed at their percentage along the bar, so the
+   labels line up with the colour they describe rather than being evenly
+   spaced text that only looks aligned. */
+.ss-heat-legend__ticks {
+  position: relative;
+  height: 13px;
+  margin-top: 2px;
+}
+
+.ss-heat-legend__ticks span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ss-ink-soft);
+  white-space: nowrap;
+}
+
+/* End labels pull inside the box so they are not clipped. */
+.ss-heat-legend__ticks span:first-child { transform: translateX(0); }
+.ss-heat-legend__ticks span:last-child { transform: translateX(-100%); }
+
+.ss-heat-legend__note {
+  margin: 1px 0 0;
+  font-size: 9px;
+  line-height: 1.3;
+  color: var(--ss-ink-faint);
+}
+
+/* The band legend shares this corner; lift it clear when both are shown. */
+.ss-heat-legend ~ .ss-map-legend { bottom: 116px; }
+
+/* On-map provenance badge for the simulated cloud layer. */
+.ss-sim-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(460px, calc(100% - 24px));
+  padding: 7px 12px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #4a3410;
+  background: rgba(253, 240, 205, 0.96);
+  border: 1px solid #e0ab33;
+  border-radius: var(--ss-radius-sm);
+  box-shadow: var(--ss-shadow);
+}
+
+.ss-sim-badge mat-icon {
+  flex: 0 0 auto;
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+}
+
+/* The heat layer gets its own colour so it is distinguishable at a glance
+   from the basemap toggle sitting directly above it. */
+.ss-map-btn--hot,
+.ss-map-btn--hot:hover:not(:disabled) {
+  color: #fff;
+  background: #d7191c;
+  border-color: #d7191c;
+}
+
+.ss-map-btn--hot:hover:not(:disabled) {
+  background: #b0140f;
+  border-color: #b0140f;
+}
+
+/* Compact legend shown only when the sidebar is collapsed. */
+.ss-map-legend {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 500;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  max-width: min(620px, calc(100% - 28px));
+  padding: 8px 12px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius-sm);
+  box-shadow: var(--ss-shadow);
+}
+
+.ss-map-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ------------------------------------------------------- status and errors */
+
+.ss-status,
+.ss-error {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(560px, calc(100% - 24px));
+  padding: 9px 14px;
+  font-size: 13px;
+  background: var(--ss-surface);
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius-sm);
+  box-shadow: var(--ss-shadow);
+}
+
+.ss-error {
+  top: 56px;
+  color: var(--ss-danger);
+  background: var(--ss-danger-tint);
+  border-color: #f5c6c2;
+}
+
+.ss-error mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.ss-spinner {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--ss-brand);
   border-bottom-color: transparent;
   border-radius: 50%;
   display: inline-block;
-  box-sizing: border-box;
-  animation: rotation 1s linear infinite;
+  animation: ss-rotate 0.9s linear infinite;
+}
+
+@keyframes ss-rotate {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-spinner { animation-duration: 3s; }
+  * { transition-duration: 0.01ms !important; }
+}
+
+/* ------------------------------------------------------------- map popups */
+
+::ng-deep .station-popup {
+  min-width: 190px;
+  font-family: inherit;
+}
+
+::ng-deep .station-popup__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ss-ink, #1c2430);
+}
+
+::ng-deep .station-popup__meta {
+  margin-top: 1px;
+  font-size: 12px;
+  color: #5b6675;
+}
+
+::ng-deep .station-popup__reading {
+  margin: 7px 0 9px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #1a4fa0;
+}
+
+::ng-deep .station-popup__actions {
+  display: flex;
+  gap: 6px;
+}
+
+::ng-deep .station-popup__btn {
+  flex: 1;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+::ng-deep .station-popup__btn--info { background: #1a4fa0; }
+::ng-deep .station-popup__btn--info:hover { background: #143b78; }
+::ng-deep .station-popup__btn--compare { background: #1e7a45; }
+::ng-deep .station-popup__btn--compare:hover { background: #165c34; }
+
+::ng-deep .station-popup__btn:focus-visible {
+  outline: 2px solid #1a4fa0;
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------- the drawer */
+
+.ss-drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+  /* Hard cap: the inline height binding can never squeeze the map away. */
+  max-height: var(--ss-drawer-max);
+  background: var(--ss-surface);
+  border-top: 1px solid var(--ss-line);
+  box-shadow: var(--ss-shadow-lg);
+}
+
+.ss-drawer__resizer {
+  height: 7px;
+  flex: 0 0 auto;
+  cursor: ns-resize;
+  background: var(--ss-line-soft);
+  border-bottom: 1px solid var(--ss-line);
+}
+
+.ss-drawer__resizer:hover {
+  background: var(--ss-brand-tint);
+}
+
+.ss-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--ss-line);
+}
+
+.ss-drawer__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--ss-brand);
+}
+
+.ss-drawer__title mat-icon {
+  font-size: 19px;
+  width: 19px;
+  height: 19px;
+}
+
+.ss-drawer__body {
+  flex: 1 1 auto;
+  display: flex;
+  gap: 16px;
+  min-height: 0;
+  padding: 12px 14px;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------- station details */
+
+.ss-detail-facts {
+  flex: 0 0 320px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.ss-detail-facts dl { margin: 0; }
+
+.ss-fact {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--ss-line-soft);
+}
+
+.ss-fact dt {
+  font-weight: 500;
+  color: var(--ss-ink-soft);
+}
+
+.ss-fact dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.ss-fact dd small {
+  display: block;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--ss-ink-faint);
+}
+
+.ss-detail-chart {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ss-chart-caption {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ss-ink-soft);
+}
+
+/* Charts size to their container instead of the old fixed 57em / 650px. */
+.ss-chart {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.ss-chart ::ng-deep .highcharts-container,
+.ss-chart ::ng-deep .highcharts-root {
+  width: 100% !important;
+}
+
+/* --------------------------------------------------------------- compare */
+
+.ss-compare-left {
+  flex: 0 0 44%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ss-compare-right {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ss-compare-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ss-radius label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+  color: var(--ss-ink-soft);
+}
+
+.ss-slider {
+  width: 100%;
+  height: 5px;
+  appearance: none;
+  background: var(--ss-line);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.ss-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  background: var(--ss-brand);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.ss-slider::-moz-range-thumb {
+  width: 17px;
+  height: 17px;
+  background: var(--ss-brand);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.ss-slider:focus-visible {
+  outline: 2px solid var(--ss-brand);
+  outline-offset: 3px;
+}
+
+/* ---------------------------------------------------------------- tables */
+
+.ss-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius-sm);
+}
+
+.ss-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ss-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 10px;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: left;
+  color: var(--ss-ink-soft);
+  background: var(--ss-canvas);
+  border-bottom: 1px solid var(--ss-line);
+  white-space: nowrap;
+}
+
+.ss-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--ss-line-soft);
+}
+
+.ss-table tbody tr:hover { background: var(--ss-canvas); }
+.ss-row--selected { background: var(--ss-brand-tint) !important; }
+
+.ss-table__check { width: 36px; text-align: center; }
+.ss-table__num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.ss-empty {
+  padding: 14px;
+  color: var(--ss-ink-faint);
+  text-align: center;
+  font-size: 13px;
+}
+
+/* --------------------------------------------------------------- sidebar */
+
+/* Two collapsible rails flanking the map. Each keeps its inner width fixed
+   while the outer box animates to zero, so the content never reflows mid-slide. */
+.ss-panel {
+  background: var(--ss-canvas);
+  transition: flex-basis 0.25s ease, width 0.25s ease;
+  overflow: hidden;
+}
+
+.ss-panel--left {
+  flex: 0 0 var(--ss-panel-left-w);
+  width: var(--ss-panel-left-w);
+  border-right: 1px solid var(--ss-line);
+}
+
+.ss-panel--right {
+  flex: 0 0 var(--ss-panel-right-w);
+  width: var(--ss-panel-right-w);
+  border-left: 1px solid var(--ss-line);
+}
+
+.ss-panel--collapsed {
+  flex-basis: 0;
+  width: 0;
+  border-left: none;
+  border-right: none;
+}
+
+.ss-panel__scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ss-panel--left .ss-panel__scroll { width: var(--ss-panel-left-w); }
+.ss-panel--right .ss-panel__scroll { width: var(--ss-panel-right-w); }
+
+/* ----------------------------------------------- day summary (right rail) */
+
+.ss-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.ss-summary__donut {
+  flex: 0 0 132px;
+  min-width: 0;
+}
+
+.ss-summary__tiles {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ss-topchart { margin: 4px 0 2px; }
+
+.ss-card {
+  padding: 12px;
+  background: var(--ss-surface);
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius);
+  box-shadow: var(--ss-shadow);
+}
+
+.ss-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.ss-card__title {
+  margin: 0 0 9px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ss-ink-soft);
+}
+
+.ss-card__head .ss-card__title { margin-bottom: 0; }
+
+/* ----------------------------------------------------------- form inputs */
+
+.ss-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ss-field__icon {
+  flex: 0 0 auto;
+  color: var(--ss-brand);
+  font-size: 19px;
+  width: 19px;
+  height: 19px;
+}
+
+.ss-input {
+  width: 100%;
+  padding: 7px 9px;
+  font: inherit;
+  color: var(--ss-ink);
+  background: var(--ss-surface);
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius-sm);
+}
+
+.ss-input:focus-visible,
+.ss-check input:focus-visible,
+.ss-legend__row input:focus-visible,
+.ss-table input:focus-visible {
+  outline: 2px solid var(--ss-brand);
+  outline-offset: 1px;
+}
+
+.ss-input--num { width: 66px; padding: 4px 7px; text-align: center; }
+
+.ss-field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ss-field-stack ::ng-deep .ss-multiselect { width: 100%; }
+
+.ss-field-stack ::ng-deep .ss-multiselect .p-multiselect {
+  width: 100%;
+  border-radius: var(--ss-radius-sm);
+  border-color: var(--ss-line);
+}
+
+.ss-scope-note {
+  margin: 0;
+  padding: 7px 9px;
+  font-size: 13px;
+  color: var(--ss-ink-soft);
+  background: var(--ss-brand-tint);
+  border-radius: var(--ss-radius-sm);
+}
+
+.ss-fieldset {
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius-sm);
+}
+
+.ss-fieldset legend {
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ss-ink-faint);
+  width: auto;
+}
+
+.ss-check-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ss-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* -------------------------------------------------------------- buttons */
+
+.ss-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid transparent;
+  border-radius: var(--ss-radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ss-btn--primary { color: #fff; background: var(--ss-brand); }
+.ss-btn--primary:hover:not(:disabled) { background: var(--ss-brand-dark); }
+.ss-btn--block { width: 100%; }
+
+.ss-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ss-btn:focus-visible,
+.ss-map-btn:focus-visible,
+.ss-icon-btn:focus-visible,
+.ss-link-btn:focus-visible {
+  outline: 2px solid var(--ss-brand);
+  outline-offset: 2px;
+}
+
+/* The close control used to be a bare <mat-icon> with a click handler: not
+   focusable and invisible to a screen reader. It is a real button now. */
+.ss-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  color: var(--ss-ink-soft);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ss-icon-btn:hover { background: var(--ss-line-soft); color: var(--ss-ink); }
+
+.ss-link-btn {
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ss-brand);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------ stat tiles */
+
+.ss-stat {
+  padding: 7px 9px;
+  text-align: center;
+  background: var(--ss-brand-tint);
+  border-radius: var(--ss-radius-sm);
+}
+
+.ss-stat--muted { background: var(--ss-line-soft); }
+
+.ss-stat__value {
+  display: block;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--ss-brand);
+}
+
+.ss-stat--muted .ss-stat__value { color: var(--ss-ink-soft); }
+
+.ss-stat__label {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ss-ink-soft);
+}
+
+.ss-mini-facts { margin: 0; }
+
+.ss-mini-facts > div {
+  padding: 7px 0;
+  border-top: 1px solid var(--ss-line-soft);
+}
+
+.ss-mini-facts dt {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ss-ink-faint);
+}
+
+.ss-mini-facts dt small { text-transform: none; letter-spacing: 0; }
+
+.ss-mini-facts dd {
+  margin: 2px 0 0;
+  font-weight: 700;
+}
+
+.ss-mini-facts dd small {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--ss-ink-soft);
+}
+
+/* ---------------------------------------------------------------- legend */
+
+.ss-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ss-legend__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 3px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ss-legend__row:hover { background: var(--ss-canvas); }
+
+/* Unticked bands dim rather than disappear, and keep their count. */
+.ss-legend__row--off { opacity: 0.5; }
+
+/* Round, to read as the same object as the circleMarker on the map. */
+.ss-swatch {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border: 1px solid #1c2430;
+  border-radius: 50%;
+}
+
+/* Mirrors the marker for stations that did not report: dark grey at 60%,
+   distinct from Zero Rainfall, which is a solid white circle. */
+.ss-swatch--hollow {
+  background: #4d4d4d;
+  border-color: #1c2430;
+  opacity: 0.6;
+}
+
+.ss-legend__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.ss-legend__label { font-size: 13px; font-weight: 500; }
+.ss-legend__range { font-size: 11px; color: var(--ss-ink-faint); }
+
+.ss-legend__count {
+  flex: 0 0 auto;
+  min-width: 30px;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ss-ink-soft);
+}
+
+/* -------------------------------------------------------------- top list */
+
+.ss-top-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: ss-rank;
+}
+
+.ss-top-list li {
+  counter-increment: ss-rank;
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  grid-template-areas: 'rank name reading' 'rank meta reading';
+  gap: 0 8px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--ss-line-soft);
+}
+
+.ss-top-list li::before {
+  grid-area: rank;
+  content: counter(ss-rank);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ss-ink-faint);
+  text-align: center;
+}
+
+.ss-top-list__name {
+  grid-area: name;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ss-top-list__meta {
+  grid-area: meta;
+  font-size: 11px;
+  color: var(--ss-ink-faint);
+  overflow-wrap: anywhere;
+}
+
+.ss-top-list__reading {
+  grid-area: reading;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ss-brand);
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------- a11y ---- */
+
+.ss-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* -------------------------------------------------------- responsiveness */
+
+@media (max-width: 1440px) {
+  .ss-fcard { width: 210px; }
+}
+
+@media (max-width: 1280px) {
+  :host { --ss-panel-left-w: 280px; --ss-panel-right-w: 268px; }
+  .ss-compare-left { flex-basis: 50%; }
+  .ss-detail-facts { flex-basis: 270px; }
+}
+
+/* Below this the two panels leave too little map for floating cards to clear
+   the landmass, so the cards give way. The panels carry the same figures. */
+@media (max-width: 1500px) {
+  .ss-float-layer { display: none; }
+}
+
+@media (max-width: 980px) {
+  .ss-page { flex-direction: column; }
+
+  /* Stacked: map first, then whichever panels are open. */
+  .ss-map-pane { order: -1; min-height: 45vh; }
+
+  .ss-panel {
+    flex: 0 0 auto;
+    width: 100%;
+    max-height: 40vh;
+    border-left: none;
+    border-right: none;
+    border-top: 1px solid var(--ss-line);
   }
 
-  @keyframes rotation {
-  0% {
-      transform: rotate(0deg);
-  }
-  100% {
-      transform: rotate(360deg);
-  }
-  } 
+  .ss-panel--left .ss-panel__scroll,
+  .ss-panel--right .ss-panel__scroll { width: 100%; }
+  .ss-panel--collapsed { max-height: 0; border-top: none; }
 
-
-
-
-
-
-
+  /* Stacking beats a 44% column that would be ~150px wide here. */
+  .ss-drawer__body { flex-direction: column; overflow-y: auto; }
+  .ss-detail-facts,
+  .ss-compare-left { flex: 0 0 auto; }
+  .ss-chart { min-height: 220px; }
+  .ss-map-legend { display: none; }
+}

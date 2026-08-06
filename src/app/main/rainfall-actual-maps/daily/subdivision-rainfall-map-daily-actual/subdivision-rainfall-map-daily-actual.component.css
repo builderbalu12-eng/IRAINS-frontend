@@ -292,3 +292,19 @@ button:hover {
   background-color: #0056b3; /* Darker shade for hover */
 }
 
+/* ==== RIGHT PANEL rules start — delete if reverting to a map-only page.
+   The table/skeleton styling lives in the shared <app-rainfall-stats-panel>
+   (src/app/shared/rainfall-stats-panel) — this is just the layout glue for
+   the column it sits in. ==== */
+.stats-col {
+  /* Without this, a flex/grid item won't shrink below its content's
+     intrinsic width, so the wide table pushes the column past the
+     viewport instead of scrolling inside the panel. */
+  min-width: 0;
+}
+
+.map-stats-wrap {
+  padding-bottom: 2rem;
+}
+/* ==== RIGHT PANEL rules end ==== */
+

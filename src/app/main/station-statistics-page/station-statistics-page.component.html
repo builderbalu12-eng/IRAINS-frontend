@@ -1,663 +1,688 @@
-<!-- <div id="loader" class="loader" *ngIf="isLoading">
-	<div class="loading-message">
-	  <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading..
-	</div>
-</div> -->
-
-<div id="loader" class="loader" *ngIf="isloadingSurrondingStations">
-	<div class="loading-message">
-	  <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i> Loading Surrounding Stations...
-	</div>
-</div>
-
-
-
-<div class="main-container">
-	<div [class.full-width]="!isSideNavOpen" class="map-container position-relative">
-		<!-- Map container -->
-		<div class="main-map" style="height: 100vh; position: relative;" id="map_observations">
-		  
-		  <!-- First button -->
-		  <!-- <button 
-			mat-button 
-			type="button" 
-			[ngStyle]="{
-			  'position': 'absolute',
-			  'top': '18%',
-			  'right': '94%',
-			  'z-index': '1000',
-			  'padding': '1.5rem 0.2rem',
-			  'background-color': isDraggingEnabled ? '#007bff' : '#6c757d',
-			  'color': 'white',
-			  'opacity': isDraggingEnabled ? '1' : '0.6',
-			  'border': 'none',
-			  'border-radius': '4px',
-			  'box-shadow': '0 4px 6px rgba(0, 0, 0, 0.1)',
-			  'cursor': 'pointer',
-			  'white-space': 'pre-line',
-			  'width': 'auto',
-			  'font-size': '16px'
-			}"
-			(click)="toggleDragging()">
-			{{isDraggingEnabled ? 'Disable\nDragging' : 'Enable\nDragging'}}
-		  </button> -->
-	  
-		  <!-- Second button -->
-		  <button 
-			mat-button 
-			type="button" 
-			[ngStyle]="{
-			  'position': 'absolute',
-			  'top': '2%',
-			  'left': '75%',
-			  'z-index': '1000',
-			  'padding': '1.5rem 0.2rem',
-			  'background-color': '#006fb9',
-			  'color': 'white',
-			  'border': 'none',
-			  'border-radius': '4px',
-			  'box-shadow': '0 4px 6px rgba(0, 0, 0, 0.1)',
-			  'cursor': 'pointer',
-			  'white-space': 'pre-line',
-			  'width': 'auto',
-			  'font-size': '16px'
-			}"
-			(click)="plotArea()">
-			{{'Plot\nArea'}}
-		  </button>
-		</div>
-
-
-		<button 
-		mat-button 
-		type="button" 
-		[ngStyle]="{
-		  'position': 'absolute',
-		  'top': '10%',
-		  'left': '74%',
-		  'z-index': '1000',
-		  'padding': '1.5rem 0.2rem',
-		  'background-color': isDraggingEnabled ? '#007bff' : '#6c757d',
-		  'color': 'white',
-		  'opacity': isDraggingEnabled ? '1' : '0.6',
-		  'border': 'none',
-		  'border-radius': '4px',
-		  'box-shadow': '0 4px 6px rgba(0, 0, 0, 0.1)',
-		  'cursor': 'pointer',
-		  'white-space': 'pre-line',
-		  'width': 'auto',
-		  'font-size': '16px'
-		}"
-		(click)="toggleDragging()">
-		{{isDraggingEnabled ? 'Disable\nDragging' : 'Enable\nDragging'}}
-	  </button>
-	  
-		<!-- Additional map container (hidden by default) -->
-		<div class="main-map1" style="height: 100vh; display: none;" id="map_observations1"></div>
-	  </div>
-	  
-
-
-	<div class="sidenav_right">
-
-
-
-		<div class="row justify-content-center">
-			<div class="d-flex flex-column justify-content-center align-items-center" >
-				<div class="station-details-container text-center mb-2">
-				  <div class="station-details-header">
-					<span class="h5">STATISTICS DETAILS</span>
-					<mat-divider style="border-top: 4px solid #333"></mat-divider>
-				  </div>
-
-				  <div class="station-details-header" style="margin-bottom: 1%;">
-					<span class="h5">Selected Date : {{selected_Date}}</span>
-				  </div>
-
-				</div> 
-				  <!-- <div class="station-stats-container p-2" style="margin-top: 20%;">
-					<div class="d-flex flex-column justify-content-center align-items-center mb-4">
-					  <span class="h5">TODAY STATISTICS</span>
-			
-					  <div style="overflow-y:scroll; width:100%; padding:1em;">
-						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
-						  <span>Highest recorded rainfall : {{maxStationRainfall}}</span>
-						</div>
-						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
-						  <span>Highest recorded Station : {{maxStationname}}, {{maxStationStatename}}</span>
-						</div>
-						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
-						  <span>No of Stations received : {{TotalStationsRecieved}}</span>
-						</div>
-						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
-						  <span>No of Stations Pending : {{TotalStationsPending}}</span>
-						</div>
-					  </div>
-					</div>
-				  </div> -->
-
-				  <!-- <div class="station-stats-container p-2" style="margin-top: 20%;">
-					<div class="d-flex flex-column justify-content-center align-items-center mb-4">
-					  <span class="h5">TODAY STATISTICS - Top {{ topN }}</span>
-				  
-					  <div style="overflow-y: scroll; width: 100%; padding: 1em;">
-						<div
-						  *ngFor="let station of topnStations"
-						  class="py-2 d-flex flex-column station-data-table w-100 mb-3 border rounded p-2"
-						>
-						  <span><strong>Station:</strong> {{ station.station_name }}, {{ station.state_name }}</span>
-						  <span><strong>Rainfall:</strong> {{ station.data }} mm</span>
-						  <span><strong>District:</strong> {{ station.district_name }}</span>
-						  <span><strong>Subdivision:</strong> {{ station.subdiv_name }}</span>
-						</div>
-					  </div>
-					</div>
-				  </div> -->
-
-
-
-				  <div class="station-stats-container p-2" style="margin-top: 2%;">
-
-
-					
-					<div class="d-flex flex-column justify-content-center align-items-center mb-4">
-						<div class="py-2 d-flex justify-content-between station-data-table mb-3">
-							<span>No of Stations received : {{TotalStationsRecieved}}</span>
-						  </div>
-						  <div class="py-2 d-flex justify-content-between station-data-table  mb-3">
-							<span>No of Stations Pending : {{TotalStationsPending}}</span>
-						  </div>
-						
-					  <div class="mb-3 w-100" style="max-width: 200px;">
-						<label for="topNSelect" class="form-label">Select Top N Stations(1-50):</label>
-						<input 
-						  type="number" 
-						  id="topNSelect" 
-						  class="form-control" 
-						  [(ngModel)]="topN" 
-						  (ngModelChange)="onTopNChange($event)"
-						  min="1" 
-						  max="50"
-						  required
-						  placeholder="Enter 1-50"
-						  style="border-color: #00FF00; border-width: 0.05cm;"
-						>
-					  </div>
-					  
-					  <span class="h5">TODAY STATISTICS - Top {{ topN }}</span>
-					  
-					  <div style="overflow-y: scroll; width: 100%; padding: 1em;">
-						<span *ngIf="topNstationsloader" class="chartloader"></span>
-
-						<div
-						  *ngFor="let station of topnStations"
-						  class="py-2 d-flex flex-column station-data-table w-100 mb-3 border rounded p-2"
-						>
-						  <span><strong>Station:</strong> {{ station.station_name }}, {{ station.state_name }}</span>
-						  <span><strong>Rainfall:</strong> {{ station.data }} mm</span>
-						  <span><strong>District:</strong> {{ station.district_name }}</span>
-						  <span><strong>Subdivision:</strong> {{ station.subdiv_name }}</span>
-						</div>
-					  </div>
-					</div>
-				  </div>
-
-
-			
-				  <!-- <div class="station-stats-container p-2" style="margin-top: 10%;">
-					<div class="d-flex flex-column justify-content-center align-items-center mb-4">
-					  <span class="h5">SEASONAL STATISTICS - {{currDate.getFullYear()}}</span>
-					  <span class="h5">({{currSeasonStartDate}}, {{currentSeasonEndDate}})</span>
-			
-					  <div style="overflow-y:scroll; width:100%; padding:1em;">
-						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
-						  <span>Highest recorded rainfall : {{maxSeasonalStationRainfall}}</span>
-						</div>
-						<div class="py-2 d-flex justify-content-between station-data-table w-100 mb-3">
-						  <span>Highest recorded Station : {{maxSeasonalStationname}}</span>
-						</div>
-
-					  </div>
-					</div>
-				  </div> -->
-			  </div>
-		</div>
-
-		  
-	  </div>
-
-
-
-	
-	<div [class.side-nav-visible]="isSideNavOpen" [class.side-nav-hidden]="!isSideNavOpen" style="height: 100%"
-		class="weather-data-list-container">
-		<div id="observation-form" class="form-container">
-			<mat-divider></mat-divider>
-			<div class="my-3 d-flex align-items-center" style="gap: 1.2em; padding-left: 1em;"
-			[ngClass]="{'justify-content-around': isSideNavOpen, 'justify-content-start': !isSideNavOpen}">
-		 <span><mat-icon class="time-bg bg-light-green">access_time</mat-icon></span>
-		 <input class="form-control w-auto" type="date" id="birthdaytime"
-				[ngModel]="selected_Date | date:'yyyy-MM-dd'" (change)="onDateChange($event)"
-				name="birthdaytime">
-	   </div>
-			<mat-divider></mat-divider>
-
-			<div class="container-fluid p-2">
-				<div class="row g-3">
-				  <!-- Region Selection -->
-				  <div *ngIf="currentUserType == 'hq' || currentUserType == 'sp'" class="col-12">
-					<p-multiSelect
-					  [(ngModel)]="selectedRegion"
-					  [options]="regions"
-					  optionLabel="label"
-					  optionValue="value"
-					  placeholder="Select Regions"
-					  (onChange)="onRegionChange()"
-					  [showToggleAll]="false"
-					  styleClass="w-100"
-					></p-multiSelect>
-				  </div>
-			  
-				  <!-- Region Name Display -->
-				  <div *ngIf="currentUserType == 'mc' || currentUserType == 'rmc'" class="col-12 text-center fw-bold fs-5 py-2">
-					{{ this.regionName }}
-				  </div>
-			  
-				  <!-- MC Selection -->
-				  <ng-container *ngIf="currentUserType == 'hq' || currentUserType == 'sp'; else showUserName">
-					<div class="col-12">
-					  <p-multiSelect
-						[(ngModel)]="selectedMC"
-						[options]="centersMC1"
-						optionLabel="centre_name"
-						placeholder="Select MCs"
-						(ngModelChange)="onMcChange($event)"
-						[disabled]="mcDisabled"
-						[showToggleAll]="false"
-						styleClass="w-100"
-					  ></p-multiSelect>
-					</div>
-				  </ng-container>
-				  <ng-template #showUserName>
-					<div class="col-12 text-center fw-bold fs-5 py-2 px-3">
-					  {{ this.currentUserName }}
-					</div>
-				  </ng-template>
-			  
-				  <!-- RMC Selection -->
-				  <div *ngIf="currentUserType == 'hq' || currentUserType == 'sp'" class="col-12">
-					<p-multiSelect
-					  [(ngModel)]="selectedRMC"
-					  [options]="centersRMC1"
-					  optionLabel="centre_name"
-					  placeholder="Select RMCs"
-					  (ngModelChange)="onRMcChange($event)"
-					  [disabled]="rmcDisabled"
-					  [showToggleAll]="false"
-					  styleClass="w-100"
-					></p-multiSelect>
-				  </div>
-			  
-				  <!-- State Selection -->
-				  <div class="col-12">
-					<p-multiSelect
-					  [(ngModel)]="selectedState"
-					  [options]="filterStates"
-					  optionLabel="state_name"
-					  placeholder="Select States"
-					  (onChange)="onStateChange($event)"
-					  [showToggleAll]="false"
-					  styleClass="w-100"
-					></p-multiSelect>
-				  </div>
-			  
-				  <!-- District Selection -->
-				  <div class="col-12">
-					<p-multiSelect
-					  [(ngModel)]="selectedDistrict"
-					  [options]="filterDistrict"
-					  optionLabel="district_name"
-					  placeholder="Select Districts"
-					  (onChange)="onDistrictChange($event)"
-					  [showToggleAll]="false"
-					  styleClass="w-100"
-					></p-multiSelect>
-				  </div>
-			  
-				  <!-- Station Selection -->
-				  <div class="col-12">
-					<p-multiSelect
-					  [(ngModel)]="selectedStation"
-					  [options]="filteredStations"
-					  optionLabel="station_name"
-					  placeholder="Select Stations"
-					  (onChange)="onStationChange($event)"
-					  [showToggleAll]="false"
-					  styleClass="w-100"
-					></p-multiSelect>
-				  </div>
-			  
-				  <!-- Divider -->
-				  <div class="col-12">
-					<hr class="my-3">
-				  </div>
-			  
-				  <!-- Type Selection -->
-				  <div class="col-12">
-					<div class="text-center fw-bold mb-3">Select Type</div>
-					<div class="row row-cols-1 row-cols-md-3 g-2">
-					  <div class="col">
-						<div class="form-check d-flex align-items-center gap-2">
-						  <input
-							class="form-check-input"
-							type="checkbox"
-							id="aws"
-							name="aws"
-							[(ngModel)]="isAwsSelected"
-							(change)="filterStationData()"
-						  >
-						  <label class="form-check-label" for="aws">AWS</label>
-						</div>
-					  </div>
-					  <div class="col">
-						<div class="form-check d-flex align-items-center gap-2">
-						  <input
-							class="form-check-input"
-							type="checkbox"
-							id="org"
-							name="org"
-							[(ngModel)]="isOrgSelected"
-							(change)="filterStationData()"
-						  >
-						  <label class="form-check-label" for="org">ORG</label>
-						</div>
-					  </div>
-					  <div class="col">
-						<div class="form-check d-flex align-items-center gap-2">
-						  <input
-							class="form-check-input"
-							type="checkbox"
-							id="arg"
-							name="arg"
-							[(ngModel)]="isArgSelected"
-							(change)="filterStationData()"
-						  >
-						  <label class="form-check-label" for="arg">ARG</label>
-						</div>
-					  </div>
-					</div>
-				  </div>
-				</div>
-			  </div>
-
-			<mat-divider></mat-divider>
-			<div style="text-align: center; font-weight: bold;margin-top: 3%;">
-				<label>Day Statistics</label>
-			</div>
-
-
-
-			<div style="padding: 10px;">
-				<div style="display: inline-block; margin-bottom: 10px;">
-					<input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.zeroRainfallStations.isZeroStations" (change)="filterStationData()">
-					<div style="width: 20px; height: 10px; background-color: #4d4d4d; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
-					<span>Zero Rainfall Stations: {{dayStatistics.zeroRainfallStations.isZeroStations ? dayStatistics.zeroRainfallStations.count : ''}}</span>
-				  </div>
-				<div style="display: inline-block; margin-bottom: 10px;">
-				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.veryLightRainFallStations.isVeryLightRainFall" (change)="filterStationData()">
-				  <div style="width: 20px; height: 10px; background-color: #AAF200; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
-				  <span>Very Light Rainfall (0.1 to 2.4): {{dayStatistics.veryLightRainFallStations.isVeryLightRainFall ? dayStatistics.veryLightRainFallStations.count : ''}}</span>
-				</div>
-				<br>
-				<div style="display: inline-block; margin-bottom: 10px;">
-				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.lightRainfallStations.isLightRainfall" (change)="filterStationData()">
-				  <div style="width: 20px; height: 10px; background-color: #00FF00; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
-				  <span>Light Rainfall (2.4 to 15.5): {{dayStatistics.lightRainfallStations.isLightRainfall ? dayStatistics.lightRainfallStations.count : ''}}</span>
-				</div>
-				<br>
-				<div style="display: inline-block; margin-bottom: 10px;">
-				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.modrateRainFallStations.isModrateRainFall" (change)="filterStationData()">
-				  <div style="width: 20px; height: 10px; background-color: #00FFFF; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
-				  <span>Moderate Rainfall (15.5 to 64.4): {{dayStatistics.modrateRainFallStations.isModrateRainFall ? dayStatistics.modrateRainFallStations.count : ''}}</span>
-				</div>
-				<br>
-				<div style="display: inline-block; margin-bottom: 10px;">
-				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.heavyRainFallStations.isHeavyRainFall" (change)="filterStationData()">
-				  <div style="width: 20px; height: 10px; background-color: #FFFF00; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
-				  <span>Heavy Rainfall (64.4 to 115.5): {{dayStatistics.heavyRainFallStations.isHeavyRainFall ? dayStatistics.heavyRainFallStations.count : ''}}</span>
-				</div>
-				<br>
-				<div style="display: inline-block; margin-bottom: 10px;">
-				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.veryHeavyRainfallStations.isVeryHeavyRainfall" (change)="filterStationData()">
-				  <div style="width: 20px; height: 10px; background-color: #FF8C00; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
-				  <span>Very Heavy Rainfall (115.5 to 204.4): {{dayStatistics.veryHeavyRainfallStations.isVeryHeavyRainfall ? dayStatistics.veryHeavyRainfallStations.count : ''}}</span>
-				</div>
-				<br>
-				<div style="display: inline-block; margin-bottom: 10px;">
-				  <input style="margin-right: 7px;" type="checkbox" [(ngModel)]="dayStatistics.extremelyHeavyRainfallStations.isExtremelyHeavyRainfall" (change)="filterStationData()">
-				  <div style="width: 20px; height: 10px; background-color: #FF0000; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
-				  <span>Extremely Heavy Rainfall (>204.4): {{dayStatistics.extremelyHeavyRainfallStations.isExtremelyHeavyRainfall ? dayStatistics.extremelyHeavyRainfallStations.count : ''}}</span>
-				</div>
-				<br>
-
-			  </div>
-			  
-
-			<div class="my-3 d-flex justify-content-center">
-				<button mat-button type="button" class="mx-auto" [class.hidden]="!isSideNavOpen"
-					style="background-color:#4050b5; color:white" (click)="filterStationData()"> 
-					Submit
-				</button>
-
-
-			</div>
-
-			<mat-divider></mat-divider>
-
-		</div>
-	</div>
-
-	<div [ngStyle]="{'display': !isBottomNavOpen ? 'none' : 'flex'}" [class.station-data-container]="isBottomNavOpen"
-		class="flex-column border border-danger" style="height: auto;">
-
-		<div class="d-flex justify-content-center align-items-center" style="gap:2em;">
-			<div class="h5 align-self-center d-flex" [class.selected]="selectedOption === 'station_details'"
-				(click)="selectStationDataOption('station_details')" style="gap:0.2em;">
-				<mat-icon>graphic_eq</mat-icon>
-				<span>{{showSelectedStation}} STATION DETAILS</span>
-			</div>
-
-			<mat-icon (click)="closePopup()">close</mat-icon>
-
-		</div>
-
-
-
-		<mat-divider></mat-divider>
-		<div *ngIf="selectedOption === 'station_details'" class="d-flex" style="height:100%;">
-
-
-			
-
-			 <ng-container *ngIf="selectedOption === 'station_details'">
-				<div class="d-flex flex-column justify-content-center align-items-center p-2 mb-3"
-					style=" width:35%; max-height:50%;">
-					<!-- <Span class="h5">{{showSelectedStation}} DETAILS</Span> -->
-
-					<div style="overflow-y:scroll; width:100%; padding:1em;">
-
-						<div class="py-2 d-flex justify-content-between station-data-table w-100">
-							<span>Station Name</span>
-							<span>{{showSelectedStation}}, {{'furgfurgu'}}, {{showSelectedState_name}}</span>
-						</div>
-
-						<div class="py-2 d-flex justify-content-between station-data-table w-100">
-							<span>No of days - Data received</span>
-							<span>{{StationTotalEntries}}</span>
-						</div>
-
-						<div class="py-2 d-flex justify-content-between station-data-table w-100">
-							<span>No of days : Data missing</span>
-							<span>{{StationsMissingEntries}}</span>
-						</div>
-						<div class="py-2 d-flex justify-content-between station-data-table w-100">
-							<span>Highest Rainfall Record</span>
-							<span>{{StationHighestRecord}}, {{maxRecordedDataDateofSelectedStation}}</span>
-						</div>
-	
-						<div class="py-2 d-flex justify-content-between station-data-table w-100">
-							<span>Station - Activated from</span>
-							<span>{{StationFirstDate}}</span>
-						</div>
-
-						<br>
-						<br>
-							<!-- <span>Station - Activated from</span>
-							<span>{{StationFirstDate}}</span> -->
-
-					</div>
-				</div>
-
-				<div class="d-flex flex-column justify-content-center align-items-center p-2" style=" width:35%; max-height:80%;">
-
-					<div style="max-height:80%; margin-left: 90%;">	
-						<div *ngIf="chart" [chart]="chart" style="height: 232px; width:57em;" class="chart-container"></div>
-						<div class="station-data-options">
-							<div *ngFor="let weatherOptions of stationWeatherParametersnew" class="station-data-sub-options p-2"
-								[class.clicked]="toggleDataParameter(weatherOptions.text)"
-								(click)="updateChartNew(weatherOptions)">
-								{{ weatherOptions.text }}
-							</div>
-						</div>
-					</div>
-				</div>
-			</ng-container>
-
-		
-		</div>
-
-
-		<div *ngIf="selectedOption === 'custom_hand_polygon'" class="resizable-box border border-success d-flex flex-column">
-			
-			<div class="resizer" (mousedown)="onMouseDown($event)"></div>
-		
-		
-			<ng-container *ngIf="selectedOption === 'custom_hand_polygon'">
-				
-			  <div class="d-flex flex-row justify-content-between p-2 mb-3" style="width: 100%; height: 100%;">
-				<!-- Left side: Table -->
-				<div class="col-6" style="flex: 0 0 40%; max-width: 40%;">
-					<div class="table-container" style="overflow-y: auto; border: 1px solid #ddd; height: 100%;">
-					  <table class="table table-bordered" style="width: 100%;">
-						<thead>
-						  <tr>
-							<th style="width: 5%;">
-							  <input type="checkbox" [(ngModel)]="selectAllChecked" (change)="toggleSelectAll($event)">
-							</th>
-							<th><div><span>Station</span></div></th>
-							<th><div><span>State</span></div></th>
-							<th><div><span>Rainfall Data</span></div></th>
-						  </tr>
-						</thead>
-						<tbody>
-						  <tr *ngFor="let station of stationInsidethePolygon; let i = index">
-							<td style="width: 5%;">
-							  <input type="checkbox" [(ngModel)]="station.selected" (change)="onStationSelectChangeInPolygon(station)">
-							</td>
-							<td>{{ station.station_name }}</td>
-							<td>{{ station.state_name }}</td>
-							<td>{{ station.data }}</td>
-						  </tr>
-						</tbody>
-					  </table>
-					</div>
-				  </div>
-				  
-				  <div class="col-6" style="flex: 0 0 58%; max-width: 58%; padding-left: 10px;">
-					<div class="d-flex flex-column justify-content-center align-items-center p-2 mb-3" style="width: 100%; max-height:80%;">
-					  <div *ngIf="chartCompare" [chart]="chartCompare" [ngStyle]="{ 'height': chartHeight, 'width': '100%' }" class="chart-container"></div>
-					  <div class="station-data-options">
-						<div class="station-data-sub-options p-2">
-						  <button (click)="UpdatePolygonChart('Daily Data')" class="btn btn-primary mt-2" style="width: auto; height: auto;">
-							Update Chart
-						  </button>
-						</div>
-					  </div>
-					<span *ngIf="ischartInLoading" class="chartloader"></span>
-
-					</div>
-				  </div>
-				  
-			  </div>
-			</ng-container>
-		  </div>
-		  
-
-
-		  <div *ngIf="selectedOption === 'compare_charts'" class="resizable-box border border-success d-flex flex-column">
-			<div class="resizer" (mousedown)="onMouseDown($event)"></div>
-		  
-			<div class="Radius-Selection d-flex flex-column justify-content-center align-items-center p-2 mb-3">
-			  <div class="slider-container justify-content-center align-items-center" style="width: 100%;">
-				<label for="radius-slider" class="form-label" style="font-size: 18px;">Selected Radius: {{ selectedRadius }} Kilometers</label>
-				<br>
-				<input id="radius-slider" [(ngModel)]="selectedRadius" (input)="updateRadius()" type="range" min="1" max="500" value="50" class="custom-slider">
-			  </div>
-			</div>
-		  
-			<mat-divider style="border-top: 4px solid #333"></mat-divider>
-		  
-			<ng-container *ngIf="selectedOption === 'compare_charts' && showCompareData">
-			  <div class="d-flex flex-row justify-content-between p-2 mb-3" style="width:100%; height: 100%;">
-				<!-- Left side: Table -->
-				<div class="col-6" style="flex: 0 0 40%; max-width: 40%;">
-				  <div class="table-container">
-					<table class="table table-bordered" style="width: 100%; height: 100%;">
-					  <thead>
-						<tr>
-						  <th style="width: 5%;">
-							<input type="checkbox" [(ngModel)]="selectAllChecked" (change)="toggleSelectAll($event)">
-						  </th>
-						  <th><div><span>Station</span></div></th>
-						  <th><div><span>State</span></div></th>
-						  <th><div><span>Distance</span></div></th>
-						  <th><div><span>Rainfall Data</span></div></th>
-						</tr>
-					  </thead>
-					  <tbody *ngIf="stationsRadisuDataToDisplay && stationsRadisuDataToDisplay.length > 0">
-						<tr *ngFor="let station of stationsRadisuDataToDisplay; let i = index">
-						  <td style="width: 5%;">
-							<input type="checkbox" [(ngModel)]="station.selected" (change)="onStationSelectChange(station)">
-						  </td>
-						  <td>{{ station.station_name }}</td>
-						  <td>{{ station.state_name }}</td>
-						  <td>{{ station.distance }}</td>
-						  <td>{{ station.data }}</td>
-						</tr>
-					  </tbody>
-					</table>
-				  </div>
-				</div>
-		  
-				<!-- Right side: Search and Chart -->
-				<div class="col-6" style="flex: 0 0 58%; max-width: 58%; padding-left: 10px;">
-				  <div class="d-flex flex-column justify-content-center align-items-center p-2 mb-3" style="width: 100%; max-height:80%;">
-					<div *ngIf="chartCompare" [chart]="chartCompare" [ngStyle]="{ 'height': chartHeight, 'width': '100%' }" class="chart-container"></div>
-					<div class="station-data-options">
-					  <div class="station-data-sub-options p-2">
-						<button (click)="updateChartCompareNew('Daily Data')" class="btn btn-primary mt-2" style="width: auto; height: auto;">
-						  Update Chart
-						</button>
-					  </div>
-
-					</div>
-
-					<span *ngIf="ischartInLoading" class="chartloader"></span>
-
-				  </div>
-				</div>
-			  </div>
-			</ng-container>
-		  </div>
-		  
+<div class="ss-page">
+  <!-- ==================================================== LEFT — FILTERS ====
+       Everything that narrows the data set lives here, so the map centre and
+       the right rail stay purely about results. -->
+  <aside
+    id="ss-filters"
+    class="ss-panel ss-panel--left"
+    [class.ss-panel--collapsed]="!isFilterPanelOpen"
+    [attr.aria-hidden]="!isFilterPanelOpen">
+    <div class="ss-panel__scroll">
+      <section class="ss-card">
+        <h2 class="ss-card__title">Observation Date</h2>
+        <div class="ss-field">
+          <mat-icon class="ss-field__icon" aria-hidden="true">event</mat-icon>
+          <input
+            type="date"
+            id="observation-date"
+            class="ss-input"
+            [value]="selected_Date"
+            [max]="maxDate"
+            (change)="onDateChange($event)"
+            aria-label="Observation date" />
+        </div>
+      </section>
+
+      <section class="ss-card">
+        <h2 class="ss-card__title">Filters</h2>
+
+        <div class="ss-field-stack">
+          <ng-container *ngIf="currentUserType === 'hq' || currentUserType === 'sp'">
+            <p-multiSelect
+              [(ngModel)]="selectedRegion"
+              [options]="regions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="All Regions"
+              (onChange)="onRegionChange()"
+              [showToggleAll]="false"
+              styleClass="ss-multiselect"></p-multiSelect>
+
+            <p-multiSelect
+              [(ngModel)]="selectedMC"
+              [options]="centersMC1"
+              optionLabel="centre_name"
+              placeholder="All MCs"
+              (onChange)="onMcChange()"
+              [disabled]="mcDisabled"
+              [showToggleAll]="false"
+              styleClass="ss-multiselect"></p-multiSelect>
+
+            <p-multiSelect
+              [(ngModel)]="selectedRMC"
+              [options]="centersRMC1"
+              optionLabel="centre_name"
+              placeholder="All RMCs"
+              (onChange)="onRMcChange()"
+              [disabled]="rmcDisabled"
+              [showToggleAll]="false"
+              styleClass="ss-multiselect"></p-multiSelect>
+          </ng-container>
+
+          <p class="ss-scope-note" *ngIf="currentUserType !== 'hq' && currentUserType !== 'sp'">
+            Showing stations for <strong>{{ currentUserName }}</strong>
+          </p>
+
+          <p-multiSelect
+            [(ngModel)]="selectedState"
+            [options]="filterStates"
+            optionLabel="state_name"
+            placeholder="All States"
+            (onChange)="onStateChange()"
+            [showToggleAll]="false"
+            styleClass="ss-multiselect"></p-multiSelect>
+
+          <p-multiSelect
+            [(ngModel)]="selectedDistrict"
+            [options]="filterDistrict"
+            optionLabel="district_name"
+            placeholder="All Districts"
+            (onChange)="onDistrictChange()"
+            [showToggleAll]="false"
+            styleClass="ss-multiselect"></p-multiSelect>
+
+          <p-multiSelect
+            [(ngModel)]="selectedstations"
+            [options]="filteredStations"
+            optionLabel="station_name"
+            placeholder="All Stations"
+            [showToggleAll]="false"
+            styleClass="ss-multiselect"></p-multiSelect>
+        </div>
+
+        <fieldset class="ss-fieldset">
+          <legend>Station Type</legend>
+          <div class="ss-check-row">
+            <label class="ss-check">
+              <input type="checkbox" [(ngModel)]="isAwsSelected" (change)="filterStationData()" />
+              <span>AWS</span>
+            </label>
+            <label class="ss-check">
+              <input type="checkbox" [(ngModel)]="isOrgSelected" (change)="filterStationData()" />
+              <span>ORG</span>
+            </label>
+            <label class="ss-check">
+              <input type="checkbox" [(ngModel)]="isArgSelected" (change)="filterStationData()" />
+              <span>ARG</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <button type="button" class="ss-btn ss-btn--primary ss-btn--block" (click)="filterStationData()">
+          Apply Filters
+        </button>
+      </section>
+
+      <section class="ss-card">
+        <div class="ss-card__head">
+          <h2 class="ss-card__title">Rainfall Categories</h2>
+          <button type="button" class="ss-link-btn" (click)="toggleAllBands(!allBandsSelected)">
+            {{ allBandsSelected ? 'Clear all' : 'Select all' }}
+          </button>
+        </div>
+
+        <ul class="ss-legend">
+          <li *ngFor="let f of bandFilters; trackBy: trackByBandKey">
+            <label class="ss-legend__row" [class.ss-legend__row--off]="!f.selected">
+              <input type="checkbox" [(ngModel)]="f.selected" (change)="filterStationData()" />
+              <span class="ss-swatch" [style.background]="f.band.color" aria-hidden="true"></span>
+              <span class="ss-legend__text">
+                <span class="ss-legend__label">{{ f.band.label }}</span>
+                <span class="ss-legend__range">{{ f.band.range }}</span>
+              </span>
+              <span class="ss-legend__count">{{ f.count }}</span>
+            </label>
+          </li>
+          <li>
+            <label class="ss-legend__row" [class.ss-legend__row--off]="!showMissingStations">
+              <input type="checkbox" [(ngModel)]="showMissingStations" (change)="filterStationData()" />
+              <span class="ss-swatch ss-swatch--hollow" aria-hidden="true"></span>
+              <span class="ss-legend__text">
+                <span class="ss-legend__label">Not Reported</span>
+                <span class="ss-legend__range">no observation</span>
+              </span>
+              <span class="ss-legend__count">{{ TotalStationsPending }}</span>
+            </label>
+          </li>
+        </ul>
+      </section>
+    </div>
+  </aside>
+
+  <!-- ============================================================== MAP ==== -->
+  <section class="ss-map-pane">
+    <div id="map_observations" class="ss-map"></div>
+
+    <!-- Map controls, grouped into one cluster instead of percentage-positioned
+         floating buttons that overlapped each other at most viewport sizes. -->
+    <div class="ss-map-controls">
+      <button
+        type="button"
+        class="ss-map-btn ss-map-btn--primary"
+        (click)="plotArea()"
+        [disabled]="!stationInsidethePolygon?.length"
+        [attr.aria-disabled]="!stationInsidethePolygon?.length"
+        title="Compare the stations inside the polygon you drew">
+        <mat-icon aria-hidden="true">timeline</mat-icon>
+        <span>Plot Area</span>
+        <span class="ss-badge" *ngIf="stationInsidethePolygon?.length">
+          {{ stationInsidethePolygon?.length }}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        class="ss-map-btn"
+        (click)="clearPolygon()"
+        *ngIf="stationInsidethePolygon?.length"
+        title="Remove the drawn polygon">
+        <mat-icon aria-hidden="true">layers_clear</mat-icon>
+        <span>Clear Area</span>
+      </button>
+
+      <button
+        type="button"
+        class="ss-map-btn"
+        (click)="downloadMapSnapshot()"
+        [disabled]="isSnapshotting"
+        title="Save the current map view as a PNG image">
+        <mat-icon aria-hidden="true">photo_camera</mat-icon>
+        <span>{{ isSnapshotting ? 'Capturing…' : 'Snapshot' }}</span>
+      </button>
+
+      <button
+        type="button"
+        class="ss-map-btn"
+        [class.ss-map-btn--active]="basemap === 'satellite'"
+        (click)="toggleBasemap()"
+        [attr.aria-pressed]="basemap === 'satellite'"
+        title="Switch between the street map and satellite imagery">
+        <mat-icon aria-hidden="true">
+          {{ basemap === 'satellite' ? 'map' : 'satellite_alt' }}
+        </mat-icon>
+        <span>{{ basemap === 'satellite' ? 'Street' : 'Satellite' }}</span>
+      </button>
+
+      <button
+        type="button"
+        class="ss-map-btn"
+        [class.ss-map-btn--sim]="showRainClouds"
+        (click)="toggleRainClouds()"
+        [attr.aria-pressed]="showRainClouds"
+        title="Simulated cloud rendered from the rainfall readings on this map — not observed cloud">
+        <mat-icon aria-hidden="true">cloud</mat-icon>
+        <span>Rain Cloud</span>
+      </button>
+
+      <button
+        type="button"
+        class="ss-map-btn"
+        [class.ss-map-btn--hot]="showHeatLayer"
+        (click)="toggleHeatLayer()"
+        [attr.aria-pressed]="showHeatLayer"
+        title="Swap the station markers for a rainfall density surface">
+        <mat-icon aria-hidden="true">whatshot</mat-icon>
+        <span>{{ showHeatLayer ? 'Markers' : 'Heatmap' }}</span>
+      </button>
+
+      <div class="ss-map-btn-pair">
+        <button
+          type="button"
+          class="ss-map-btn ss-map-btn--half"
+          [class.ss-map-btn--active]="showFloatingCards"
+          (click)="toggleFloatingCards()"
+          [attr.aria-pressed]="showFloatingCards"
+          title="Show or hide the floating analytics cards">
+          <mat-icon aria-hidden="true">dashboard</mat-icon>
+          <span>Cards</span>
+        </button>
+
+        <button
+          type="button"
+          class="ss-map-btn ss-map-btn--half"
+          (click)="resetCardPositions()"
+          *ngIf="showFloatingCards && (cardOffset.distribution.x || cardOffset.distribution.y || cardOffset.coverage.x || cardOffset.coverage.y)"
+          title="Return both cards to their default positions">
+          <mat-icon aria-hidden="true">restart_alt</mat-icon>
+          <span>Reset</span>
+        </button>
+      </div>
+
+      <div class="ss-map-btn-pair">
+        <button
+          type="button"
+          class="ss-map-btn ss-map-btn--half"
+          (click)="toggleFilterPanel()"
+          [attr.aria-expanded]="isFilterPanelOpen"
+          aria-controls="ss-filters"
+          [title]="isFilterPanelOpen ? 'Hide the filter panel' : 'Show the filter panel'">
+          <mat-icon aria-hidden="true">{{ isFilterPanelOpen ? 'chevron_left' : 'chevron_right' }}</mat-icon>
+          <span>Filters</span>
+        </button>
+
+        <button
+          type="button"
+          class="ss-map-btn ss-map-btn--half"
+          (click)="toggleInsightPanel()"
+          [attr.aria-expanded]="isInsightPanelOpen"
+          aria-controls="ss-insights"
+          [title]="isInsightPanelOpen ? 'Hide the insights panel' : 'Show the insights panel'">
+          <span>Insights</span>
+          <mat-icon aria-hidden="true">{{ isInsightPanelOpen ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- ============================================ FLOATING ANALYTICS ====
+         Each card is anchored over the empty sea by CSS, then displaced by the
+         user's own drag offset. Drag from the grip; the title bar still folds.
+         The layer ignores pointer events so it never steals a map drag. -->
+    <div class="ss-float-layer" *ngIf="showFloatingCards">
+      <!-- ------------------------------------------ rainfall distribution -->
+      <article
+        class="ss-fcard ss-fcard--distribution"
+        [class.ss-fcard--folded]="!cardOpen.distribution"
+        [class.ss-fcard--dragging]="draggingCard === 'distribution'"
+        [style.transform]="'translate(' + cardOffset.distribution.x + 'px,' + cardOffset.distribution.y + 'px)'">
+        <div class="ss-fcard__head">
+          <span
+            class="ss-fcard__grip"
+            (mousedown)="startCardDrag($event, 'distribution')"
+            title="Drag to move this card"
+            aria-hidden="true">
+            <mat-icon>drag_indicator</mat-icon>
+          </span>
+          <button
+            type="button"
+            class="ss-fcard__toggle"
+            (click)="toggleCard('distribution')"
+            [attr.aria-expanded]="cardOpen.distribution">
+            <mat-icon aria-hidden="true">bar_chart</mat-icon>
+            <span class="ss-fcard__title">Distribution</span>
+            <span class="ss-fcard__hint">{{ filteredData.length }} shown</span>
+            <mat-icon class="ss-fcard__chev" aria-hidden="true">expand_more</mat-icon>
+          </button>
+        </div>
+
+        <div class="ss-fcard__body" *ngIf="cardOpen.distribution">
+          <div *ngIf="distributionChart" [chart]="distributionChart"></div>
+          <p class="ss-fcard__empty" *ngIf="!distributionChart">
+            No stations in the current selection.
+          </p>
+          <p class="ss-fcard__foot">Click a bar to isolate that category.</p>
+        </div>
+      </article>
+
+      <!-- -------------------------------------------- reporting coverage -->
+      <article
+        class="ss-fcard ss-fcard--coverage"
+        [class.ss-fcard--folded]="!cardOpen.coverage"
+        [class.ss-fcard--dragging]="draggingCard === 'coverage'"
+        [style.transform]="'translate(' + cardOffset.coverage.x + 'px,' + cardOffset.coverage.y + 'px)'">
+        <div class="ss-fcard__head">
+          <span
+            class="ss-fcard__grip"
+            (mousedown)="startCardDrag($event, 'coverage')"
+            title="Drag to move this card"
+            aria-hidden="true">
+            <mat-icon>drag_indicator</mat-icon>
+          </span>
+          <button
+            type="button"
+            class="ss-fcard__toggle"
+            (click)="toggleCard('coverage')"
+            [attr.aria-expanded]="cardOpen.coverage">
+            <mat-icon aria-hidden="true">cell_tower</mat-icon>
+            <span class="ss-fcard__title">Data Received</span>
+            <span class="ss-fcard__hint">{{ coverageReceived }} / {{ coverageTotal }}</span>
+            <mat-icon class="ss-fcard__chev" aria-hidden="true">expand_more</mat-icon>
+          </button>
+        </div>
+
+        <div class="ss-fcard__body" *ngIf="cardOpen.coverage">
+          <!-- Scrolls rather than truncating, so every centre is reachable. -->
+          <ul class="ss-cov">
+            <li *ngFor="let c of coverage; trackBy: trackByCentre">
+              <button
+                type="button"
+                class="ss-cov__row"
+                [class.ss-cov__row--clear]="!c.missing"
+                [class.ss-cov__row--on]="isCentreSelected(c.centre)"
+                [attr.aria-pressed]="isCentreSelected(c.centre)"
+                (click)="focusCentre(c.centre)"
+                [title]="
+                  c.centre + ' — ' + (c.total - c.missing) + ' of ' + c.total +
+                  ' stations received (' + c.pct + '%). ' +
+                  (isCentreSelected(c.centre)
+                    ? 'Click to clear this filter.'
+                    : 'Click to filter the map to this centre.')
+                ">
+                <span class="ss-cov__name">{{ c.centre }}</span>
+                <span class="ss-cov__meter" aria-hidden="true">
+                  <span class="ss-cov__fill" [style.width.%]="c.pct"></span>
+                </span>
+                <span class="ss-cov__num">
+                  {{ c.total - c.missing }}<span class="ss-cov__of">/{{ c.total }}</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+          <p class="ss-fcard__empty" *ngIf="!coverage.length">
+            No centres in the current selection.
+          </p>
+          <div class="ss-cov__key" *ngIf="coverage.length">
+            <span><i class="ss-cov__key-dot ss-cov__key-dot--got"></i>Received</span>
+            <span><i class="ss-cov__key-dot ss-cov__key-dot--gap"></i>Missing</span>
+          </div>
+          <p class="ss-fcard__foot" *ngIf="coverage.length">
+            {{ centresAwaiting }} of {{ coverage.length }} centres incomplete.
+          </p>
+        </div>
+      </article>
+    </div>
+
+    <!-- Heat scale. Only present while the layer is, and labelled in mm because
+         intensity is normalised to the day's peak rather than a fixed range. -->
+    <div class="ss-heat-legend" *ngIf="showHeatLayer && heatPeak">
+      <div class="ss-heat-legend__head">
+        <mat-icon aria-hidden="true">whatshot</mat-icon>
+        <span>Rainfall Density</span>
+      </div>
+      <div class="ss-heat-legend__bar" [style.background]="heatGradientCss"></div>
+      <div class="ss-heat-legend__ticks">
+        <span *ngFor="let t of heatLegendTicks" [style.left.%]="t.pct">{{ t.label }}</span>
+      </div>
+      <p class="ss-heat-legend__note">
+        mm · scaled to today's highest reading
+      </p>
+    </div>
+
+    <!-- Provenance badge. The synthetic layer looks enough like real cloud that
+         it must say so on the map itself, not only in a tooltip. -->
+    <div class="ss-sim-badge" *ngIf="showRainClouds" role="note">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>
+        <strong>Simulated cloud</strong> — rendered from station rainfall, not
+        observed satellite cloud
+      </span>
+    </div>
+
+    <!-- Legend pinned to the map so colours can be read without the left panel. -->
+    <div class="ss-map-legend" *ngIf="!isFilterPanelOpen">
+      <span class="ss-map-legend__item" *ngFor="let f of bandFilters; trackBy: trackByBandKey">
+        <span class="ss-swatch" [style.background]="f.band.color"></span>{{ f.band.label }}
+      </span>
+    </div>
+
+    <!-- Inline status strip; replaces the blocking alert() calls. -->
+    <div class="ss-status" *ngIf="isLoading || isloadingSurrondingStations" role="status">
+      <span class="ss-spinner" aria-hidden="true"></span>
+      {{ isloadingSurrondingStations ? 'Loading surrounding stations…' : 'Loading station data…' }}
+    </div>
+
+    <div class="ss-error" *ngIf="errorMessage" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ errorMessage }}</span>
+      <button type="button" class="ss-icon-btn" (click)="dismissError()" aria-label="Dismiss message">
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    </div>
+
+    <!-- ======================================================= DRAWER ==== -->
+    <div
+      class="ss-drawer"
+      *ngIf="isBottomNavOpen"
+      [style.height.px]="panelHeight"
+      role="region"
+      aria-label="Station detail panel">
+      <div
+        class="ss-drawer__resizer"
+        (mousedown)="onMouseDown($event)"
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize panel"></div>
+
+      <header class="ss-drawer__header">
+        <h2 class="ss-drawer__title">
+          <mat-icon aria-hidden="true">graphic_eq</mat-icon>
+          <ng-container [ngSwitch]="selectedOption">
+            <span *ngSwitchCase="'station_details'">{{ showSelectedStation }} — Station Details</span>
+            <span *ngSwitchCase="'compare_charts'">Stations near {{ showSelectedStation }}</span>
+            <span *ngSwitchCase="'polygon_compare'">Selected Area — {{ compareRows.length }} stations</span>
+          </ng-container>
+        </h2>
+        <button type="button" class="ss-icon-btn" (click)="closePopup()" aria-label="Close panel">
+          <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+      </header>
+
+      <!-- ------------------------------------------- single station detail -->
+      <div class="ss-drawer__body" *ngIf="selectedOption === 'station_details'">
+        <div class="ss-detail-facts">
+          <dl>
+            <div class="ss-fact">
+              <dt>Station</dt>
+              <dd>
+                {{ showSelectedStation }}<ng-container *ngIf="showSelectedDistrict_name">, {{ showSelectedDistrict_name }}</ng-container>, {{ showSelectedState_name }}
+              </dd>
+            </div>
+            <div class="ss-fact">
+              <dt>Days with data</dt>
+              <dd>{{ StationTotalEntries }}</dd>
+            </div>
+            <div class="ss-fact">
+              <dt>Days missing</dt>
+              <dd>{{ StationsMissingEntries }}</dd>
+            </div>
+            <div class="ss-fact">
+              <dt>Highest on record</dt>
+              <dd>
+                {{ StationHighestRecord }}
+                <small *ngIf="maxRecordedDataDateofSelectedStation">on {{ maxRecordedDataDateofSelectedStation }}</small>
+              </dd>
+            </div>
+            <div class="ss-fact">
+              <dt>Lowest on record</dt>
+              <dd>{{ StationLowestRecord }}</dd>
+            </div>
+            <div class="ss-fact">
+              <dt>Recording since</dt>
+              <dd>{{ StationFirstDate }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="ss-detail-chart">
+          <h3 class="ss-chart-caption">Daily rainfall — 30 days to {{ displayDate(selected_Date) }}</h3>
+          <div *ngIf="chart" [chart]="chart" class="ss-chart"></div>
+        </div>
+      </div>
+
+      <!-- ------------------------------- radius compare / polygon compare -->
+      <div
+        class="ss-drawer__body"
+        *ngIf="selectedOption === 'compare_charts' || selectedOption === 'polygon_compare'">
+        <div class="ss-compare-left">
+          <div class="ss-radius" *ngIf="selectedOption === 'compare_charts'">
+            <label for="radius-slider">
+              Search radius <strong>{{ selectedRadius }} km</strong>
+            </label>
+            <input
+              id="radius-slider"
+              type="range"
+              class="ss-slider"
+              min="1"
+              max="500"
+              [(ngModel)]="selectedRadius"
+              (change)="updateRadius()" />
+          </div>
+
+          <div class="ss-table-wrap">
+            <table class="ss-table">
+              <caption class="ss-visually-hidden">
+                Stations available for comparison. Tick a station to add it to the chart.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" class="ss-table__check">
+                    <input
+                      type="checkbox"
+                      id="select-all-compare"
+                      [checked]="selectAllChecked"
+                      (change)="toggleSelectAll($any($event.target).checked)" />
+                    <label for="select-all-compare" class="ss-visually-hidden">Select all stations</label>
+                  </th>
+                  <th scope="col">Station</th>
+                  <th scope="col">State</th>
+                  <th scope="col" *ngIf="selectedOption === 'compare_charts'">Distance</th>
+                  <th scope="col" class="ss-table__num">Rainfall</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  *ngFor="let row of compareRows; trackBy: trackByStationCode"
+                  [class.ss-row--selected]="row.selected">
+                  <td class="ss-table__check">
+                    <input
+                      type="checkbox"
+                      [id]="'cmp-' + row.station_code"
+                      [(ngModel)]="row.selected"
+                      (ngModelChange)="onCompareRowToggle()" />
+                    <label [for]="'cmp-' + row.station_code" class="ss-visually-hidden">
+                      Compare {{ row.station_name }}
+                    </label>
+                  </td>
+                  <td>{{ row.station_name }}</td>
+                  <td>{{ row.state_name }}</td>
+                  <td *ngIf="selectedOption === 'compare_charts'">{{ row.distance }}</td>
+                  <td class="ss-table__num">{{ formatReading(row.data) }}</td>
+                </tr>
+                <tr *ngIf="!compareRows.length && !isloadingSurrondingStations">
+                  <td [attr.colspan]="selectedOption === 'compare_charts' ? 5 : 4" class="ss-empty">
+                    No stations found.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="ss-compare-right">
+          <div class="ss-compare-actions">
+            <button
+              type="button"
+              class="ss-btn ss-btn--primary"
+              (click)="updateComparisonChart()"
+              [disabled]="!selectedCompareCount || ischartInLoading">
+              Plot {{ selectedCompareCount }} station{{ selectedCompareCount === 1 ? '' : 's' }}
+            </button>
+            <span class="ss-spinner" *ngIf="ischartInLoading" aria-label="Loading chart"></span>
+          </div>
+
+          <div *ngIf="chartCompare" [chart]="chartCompare" class="ss-chart"></div>
+          <p class="ss-empty" *ngIf="!chartCompare && !ischartInLoading">
+            Tick stations on the left, then choose <strong>Plot</strong> to compare their 30-day trends.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================== RIGHT — INSIGHTS ====
+       Results only: how complete the day is, and where the extremes are. -->
+  <aside
+    id="ss-insights"
+    class="ss-panel ss-panel--right"
+    [class.ss-panel--collapsed]="!isInsightPanelOpen"
+    [attr.aria-hidden]="!isInsightPanelOpen">
+    <div class="ss-panel__scroll">
+      <!-- ------------------------------------------------------ day summary -->
+      <section class="ss-card">
+        <h2 class="ss-card__title">Day Summary</h2>
+
+        <div class="ss-summary">
+          <div class="ss-summary__donut">
+            <div *ngIf="coverageDonut" [chart]="coverageDonut"></div>
+          </div>
+          <div class="ss-summary__tiles">
+            <div class="ss-stat">
+              <span class="ss-stat__value">{{ TotalStationsRecieved }}</span>
+              <span class="ss-stat__label">Received</span>
+            </div>
+            <div class="ss-stat ss-stat--muted">
+              <span class="ss-stat__value">{{ TotalStationsPending }}</span>
+              <span class="ss-stat__label">Pending</span>
+            </div>
+          </div>
+        </div>
+
+        <dl class="ss-mini-facts">
+          <div>
+            <dt>Highest today</dt>
+            <dd>
+              {{ maxStationRainfall }}
+              <small *ngIf="maxStationname">{{ maxStationname }}, {{ maxStationStatename }}</small>
+            </dd>
+          </div>
+          <div>
+            <dt>Season high <small>({{ currSeasonStartDate }} – {{ currentSeasonEndDate }})</small></dt>
+            <dd>
+              {{ maxSeasonalStationRainfall }}
+              <small *ngIf="maxSeasonalStationname">{{ maxSeasonalStationname }}</small>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- --------------------------------------------------- top stations -->
+      <section class="ss-card">
+        <div class="ss-card__head">
+          <h2 class="ss-card__title">Top {{ topN }} Stations</h2>
+          <div class="ss-topn">
+            <label for="topNSelect" class="ss-visually-hidden">
+              Number of stations to show, 1 to 50
+            </label>
+            <input
+              type="number"
+              id="topNSelect"
+              class="ss-input ss-input--num"
+              [ngModel]="topN"
+              (ngModelChange)="onTopNChange($event)"
+              min="1"
+              max="50" />
+          </div>
+        </div>
+
+        <span class="ss-spinner" *ngIf="topNstationsloader" aria-label="Loading"></span>
+
+        <div class="ss-topchart" *ngIf="topChart" [chart]="topChart"></div>
+
+        <ol class="ss-lead ss-lead--panel">
+          <li *ngFor="let s of topnStations; trackBy: trackByStationCode">
+            <button
+              type="button"
+              class="ss-lead__row"
+              (click)="focusStation(s)"
+              [title]="'Zoom to ' + s.station_name">
+              <span class="ss-lead__name">
+                {{ s.station_name }}
+                <small>
+                  {{ s.district_name }}<ng-container
+                    *ngIf="s.district_name && s.state_name">, </ng-container>{{ s.state_name }}
+                </small>
+              </span>
+              <span class="ss-lead__val">{{ formatReading(s.data) }}</span>
+            </button>
+          </li>
+        </ol>
+
+        <p class="ss-empty" *ngIf="!topnStations.length && !topNstationsloader">
+          No stations match the current filters.
+        </p>
+        <p class="ss-fcard__foot" *ngIf="topnStations.length">
+          Click a row or bar to zoom the map and open that station.
+        </p>
+      </section>
+    </div>
+  </aside>
 </div>

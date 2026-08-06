@@ -1,0 +1,319 @@
+/*
+  The RMU map sheet — the browser port of the products irainsmap2.0.py
+  prints. One layout serves every aggregation level (see rmu-map-levels.ts)
+  and every page that renders a sheet: the standalone map pages and the
+  ALL STATISTICS console both go through rmu-sheet.component.
+
+  The sheet is built at a fixed internal size (1000 x 1261 px, the 3958x4992
+  aspect of the printed product) and then scaled with a transform, so every
+  offset below can stay in the units the product was measured in. Do not
+  switch these to % / rem: the whole layout is a 1:1 trace of
+  PRODUCTS/District format/STATE_RAINFALL_MAP_COUNTRY_INDIA_d.jpg — the
+  numbers came from measuring that file, not from taste.
+*/
+
+
+
+.rmu-sheet-scaler {
+  display: flex;
+  justify-content: center;
+}
+
+/* the fixed-size sheet, scaled to whatever width the page gives it */
+.rmu-sheet {
+  position: relative;
+  width: 1000px;
+  height: 1261px; /* the RMU product's own proportions, 3958:4992 */
+  background: #ffffff;
+  transform-origin: top center;
+  flex: 0 0 auto;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #000000;
+  overflow: hidden;
+}
+
+.rmu-page {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1000px;
+  height: 1261px;
+}
+
+/* styles.css carries `* { font-family: "Mukta Malar" }`. A universal selector
+   applies to every element directly, so setting the family on .rmu-sheet alone
+   is not enough — the children take Mukta Malar and every measured width on
+   this sheet goes wide (the NOTES lines wrapped into each other). The
+   descendant selector out-specifies `*` and pins the whole sheet to Arial,
+   which is what the layout below was measured in. */
+.rmu-sheet,
+.rmu-sheet * {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* mpatches.Rectangle((0.008, 0.008), ...) drawn on top of everything */
+.rmu-border {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 22px;
+  bottom: 22px;
+  border: 1.5px solid #000000;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ---- the map itself ------------------------------------------------------
+   The python axes fill the whole figure and the logos are figimage overlays
+   on top of it, so the map layer is full bleed here too. The 8px inset /
+   984px width is the compensation for savefig(bbox_inches='tight'), which
+   crops the printed product a little tighter than the raw figure. */
+.rmu-map-layer {
+  position: absolute;
+  left: 7px;
+  top: 9px;
+  width: 984px;
+  height: 1241px;
+  z-index: 1;
+}
+
+.rmu-map-layer svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* stroke-width is a presentation attribute set per level (a css rule here
+   would win over it and flatten every level to the same outline weight);
+   0.7 units is matplotlib's linewidth 0.4 at dpi 500 */
+.rmu-map-layer path {
+  stroke: #000000;
+  stroke-linejoin: round;
+}
+
+.rmu-label {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: bold;
+  fill: #000000;
+  text-anchor: middle;
+}
+
+/* ---- header block --------------------------------------------------------
+   Six independently placed lines: the first four are the HEADER.png strip
+   (which is not one uniform size — line 4 is noticeably larger than line 2),
+   the last two are the plt.text() calls, both left anchored like the python. */
+.rmu-imd-logo {
+  position: absolute;
+  left: 30px;
+  top: 41px;
+  height: 189px;
+  z-index: 3;
+}
+
+.rmu-150-logo {
+  position: absolute;
+  left: 787px;
+  top: 58px;
+  width: 172px;
+  z-index: 3;
+}
+
+.rmu-header-line {
+  position: absolute;
+  left: 0;
+  width: 989px; /* centres the strip on 49.45% like the product */
+  text-align: center;
+  line-height: 1;
+  font-weight: bold;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.rmu-hdr-1 {
+  top: 37px;
+  font-size: 31px;
+}
+.rmu-hdr-2 {
+  top: 64px;
+  font-size: 28px;
+}
+.rmu-hdr-3 {
+  top: 95px;
+  font-size: 30px;
+}
+.rmu-hdr-4 {
+  top: 124px;
+  font-size: 31px;
+}
+
+/* The python left-anchors these two with a hand-tuned x per map
+   ("STATE RAINFALL MAP" at 0.330, "SUBDIVISIONAL RAINFALL MAP" at 0.260 ...)
+   which is just centring done by eye. Centring them on the same axis as the
+   header strip reproduces that for every title length — left-anchoring a
+   fixed x runs the longer titles into the 150 logo. */
+.rmu-title {
+  position: absolute;
+  left: 0;
+  width: 989px;
+  text-align: center;
+  top: 155px;
+  font-size: 29px;
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.rmu-period {
+  position: absolute;
+  left: 0;
+  width: 989px;
+  text-align: center;
+  top: 188px;
+  font-size: 22px;
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+/* ---- compass rose ------------------------------------------------------- */
+.rmu-compass {
+  position: absolute;
+  left: 851px;
+  top: 234px;
+  width: 63px;
+  text-align: center;
+  z-index: 3;
+}
+
+.rmu-compass .rmu-compass-n {
+  font-size: 18px;
+  line-height: 18px;
+  margin-bottom: 2px;
+}
+
+.rmu-compass svg {
+  width: 63px;
+  height: 76px;
+  display: block;
+}
+
+/* ---- ALL INDIA summary --------------------------------------------------
+   Three left-anchored plt.text() calls at axes x = 0.500 / 0.460 / 0.490.
+   The spacing inside the last two lines is literal spaces in the python, so
+   they are literal spaces here too (white-space: pre) rather than a table. */
+.rmu-ai-title {
+  position: absolute;
+  left: 502px;
+  top: 867px;
+  font-size: 32px;
+  font-weight: bold;
+  line-height: 1;
+  white-space: pre;
+  z-index: 3;
+}
+
+.rmu-ai-head {
+  position: absolute;
+  left: 460px;
+  top: 909px;
+  font-size: 24px;
+  line-height: 1;
+  white-space: pre;
+  z-index: 3;
+}
+
+.rmu-ai-values {
+  position: absolute;
+  left: 490px;
+  top: 949px;
+  font-size: 20px;
+  line-height: 1;
+  white-space: pre;
+  z-index: 3;
+}
+
+/* ---- legend strip ------------------------------------------------------- */
+.rmu-legend-label {
+  position: absolute;
+  left: 24px;
+  top: 1113px;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1;
+  z-index: 3;
+}
+
+.rmu-legend {
+  position: absolute;
+  left: 33px;
+  right: 79px;
+  top: 1133px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 3;
+}
+
+.rmu-legend .rmu-legend-item {
+  display: flex;
+  align-items: center;
+}
+
+.rmu-legend .rmu-swatch {
+  width: 6px;
+  height: 16px;
+  border: 0.5px solid #000000;
+  flex: 0 0 auto;
+}
+
+/* The actual-rainfall legend carries eight longer bands where the departure
+   legend has seven short ones, and at 10.5px it runs past the sheet border. */
+.rmu-legend.rmu-legend-dense .rmu-legend-text {
+  font-size: 9px;
+  margin-left: 3px;
+}
+
+.rmu-legend.rmu-legend-dense .rmu-swatch {
+  width: 5px;
+}
+
+.rmu-legend .rmu-legend-text {
+  font-size: 10.5px;
+  font-weight: bold;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+/* ---- notes -------------------------------------------------------------- */
+.rmu-notes {
+  position: absolute;
+  left: 30px;
+  top: 1178px;
+  font-size: 12.5px;
+  font-weight: bold;
+  line-height: 15px;
+  z-index: 3;
+}
+
+.rmu-notes div {
+  white-space: nowrap;
+}
+
+.rmu-notes div + div {
+  padding-left: 4px;
+}
+
+/* ---- chrome that is not part of the product ----------------------------- */
+.rmu-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 20px;
+  font-weight: bold;
+  z-index: 9;
+}

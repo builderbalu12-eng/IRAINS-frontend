@@ -19,6 +19,8 @@ import { StateInformationService } from "src/app/services/state/allStates.servic
 import { StateService } from "src/app/services/state/state.service";
 import { DownloadPdfStateDistrict } from "src/app/services/district/states/districtStatesDownload.service";
 import { Constants } from "src/app/services/constants";
+import { CalculationsModeService } from "src/app/services/calculationsMode.service";
+import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 @Component({
   selector: "app-all-states-map",
   templateUrl: "./all-states-map.component.html",
@@ -40,10 +42,33 @@ export class AllStatesMapComponent {
   fromDate: any = this.formatDate(new Date());
   toDate: any = this.formatDate(new Date());
 
+  // ==== RIGHT PANEL START =====================================
+  // Right-panel statistics (district-level table for the selected state
+  // only, via DownloadPdfStateDistrict's state-scoped queries), rendered
+  // by the shared <app-rainfall-stats-panel>. No category-breakdown
+  // sub-table (buildCategoryStats() N/A for district-level data). Loaded
+  // on initial load / Submit (from inside fetchBackend's district
+  // callback, once the default state has been filled in) and on state
+  // selection (onSelectChange). To
+  // revert to a map-only page: delete these fields, loadStats() below,
+  // and the two `this.loadStats();` call sites (search this file for
+  // "this.loadStats()") — plus the matching HTML "RIGHT PANEL" block.
+  statsLoading: boolean = false;
+  showStatsTable: boolean = false;
+  tableRows: any[][] = [];
+  dayLabel: string = '';
+  periodLabel: string = '';
+  // ==== RIGHT PANEL fields end ====
+
   async getSelectedStateCode() {
+    // Was this.selectedDate (unbound to any input, stuck at raw `new
+    // Date()` from page load) — that's "today" even when today's data is
+    // still held back pending publish, so the lookup below silently
+    // found nothing and selectedStateCode never got set. fromDate is the
+    // same effective/held-back date the map and date picker already use.
     const data = {
-      startDate: this.selectedDate,
-      endDate: this.selectedDate,
+      startDate: this.fromDate,
+      endDate: this.fromDate,
     };
   
     try {
@@ -126,37 +151,58 @@ export class AllStatesMapComponent {
     private countryService: CountryService,
     private stateinfoservice: StateInformationService,
     private stateService : StateService,
-    private constants : Constants
+    private constants : Constants,
+    private calcMode: CalculationsModeService,
+    private mapDataScheduleService: MapDataScheduleService
   ) {
-
-    const {startDate, endDate}  =  this.constants.getCurrentMonthSeasonFromAndToCurrentDate(new Date())
-    this.fromDate = startDate
-    this.EndDate = startDate
-
-    const currentDate = new Date();
-    const dd = String(currentDate.getDate()).padStart(2, "0");
-    const mon = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
-    const year = String(currentDate.getFullYear());
-    this.formatteddate = `${dd}-${mon}-${year}`;
+    // Zoom must stay synchronous — initMap() (called from ngOnInit) reads
+    // this.initialZoom immediately with no later correction, so it can't wait
+    // on the async date fetch below or the map builds at the hardcoded
+    // fallback zoom instead of the real window-size-based one.
+    this.calculateInitialZoom();
 
     let loggedInUser: any = localStorage.getItem("isAuthorised");
     this.loggedInUserObject = JSON.parse(loggedInUser);
 
-    this.dataService.fromAndToDate$.subscribe((value) => {
-      if (value) {
-        let fromAndToDates = JSON.parse(value);
-        this.StartDate = fromAndToDates.fromDate;
-        this.EndDate = fromAndToDates.toDate;
-        // console.log(this.previousWeekWeeklyStartDate, this.previousWeekWeeklyEndDate);
-      } else {
-        this.StartDate = `${year}-${mon}-${dd}`;
-        this.EndDate = `${year}-${mon}-${dd}`;
-      }
-      this.calculateInitialZoom();
-      this.fetchBackend();
-    });
+    // Effective latest date: today if this role's data is published,
+    // otherwise yesterday (today's data held back until published).
+    const initWithEffectiveDate = (effectiveDate: Date) => {
+      const { startDate } =
+        this.constants.getCurrentMonthSeasonFromAndToCurrentDate(effectiveDate);
+      this.fromDate = startDate;
+      this.EndDate = startDate;
+      this.toDate = this.formatDate(effectiveDate);
 
+      const dd = String(effectiveDate.getDate()).padStart(2, "0");
+      const mon = String(effectiveDate.getMonth() + 1).padStart(2, "0"); // Month is 0-indexed
+      const year = String(effectiveDate.getFullYear());
+      this.formatteddate = `${dd}-${mon}-${year}`;
 
+      this.dataService.fromAndToDate$.subscribe((value) => {
+        if (value) {
+          let fromAndToDates = JSON.parse(value);
+          this.StartDate = fromAndToDates.fromDate;
+          this.EndDate = fromAndToDates.toDate;
+          // console.log(this.previousWeekWeeklyStartDate, this.previousWeekWeeklyEndDate);
+        } else {
+          this.StartDate = `${year}-${mon}-${dd}`;
+          this.EndDate = `${year}-${mon}-${dd}`;
+        }
+        this.calculateInitialZoom();
+        this.fetchBackend();
+      });
+    };
+
+    const role = this.loggedInUserObject?.data?.[0]?.mcorhq;
+
+    if (role) {
+      this.mapDataScheduleService.getEffectiveLatestDate(role).subscribe({
+        next: (effectiveDate) => initWithEffectiveDate(effectiveDate),
+        error: () => initWithEffectiveDate(new Date())
+      });
+    } else {
+      initWithEffectiveDate(new Date());
+    }
   }
 
   resetMapSmallScreen(): void {
@@ -209,6 +255,13 @@ export class AllStatesMapComponent {
           this.loadGeoJSON(this.selectedUrl);
         }
         this.isLoading = false
+        // RIGHT PANEL — must fire here, not in the constructor: on first
+        // load selectedStateName is still "" and only gets defaulted to
+        // listOfmsRMCs[0] a few lines above, inside this callback. Calling
+        // loadStats() any earlier hits its `if (!this.selectedStateName)
+        // return;` guard and the panel stays blank until the user touches
+        // the dropdown. Remove this line if reverting to map-only.
+        this.loadStats();
       });
       
 
@@ -234,7 +287,7 @@ export class AllStatesMapComponent {
 
 
     else{
-      this.district.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe((res) => {
         this.districtdatacum = res.data;
         console.log("fbdudusdubsudbsud", res.data);
         // const url = this.stateinfoservice.getMcRMCsJson()[this.loggedInUserObject.data[0].name].url
@@ -246,14 +299,21 @@ export class AllStatesMapComponent {
         this.selectedUrl =
           this.stateinfoservice.getMcRMCsJson()[this.selectedStateName].url || null;
         this.onWindowResizer()
-        
+
         if (this.selectedUrl) {
           this.loadGeoJSON(this.selectedUrl);
         }
         this.isLoading = false
+        // RIGHT PANEL — must fire here, not in the constructor: on first
+        // load selectedStateName is still "" and only gets defaulted to
+        // listOfmsRMCs[0] a few lines above, inside this callback. Calling
+        // loadStats() any earlier hits its `if (!this.selectedStateName)
+        // return;` guard and the panel stays blank until the user touches
+        // the dropdown. Remove this line if reverting to map-only.
+        this.loadStats();
       });
 
-      this.countryService.fetchData(data).subscribe((res) => {
+      (this.calcMode.isAwsEnabled ? this.countryService.fetchDataWithAWS(data) : this.countryService.fetchData(data)).subscribe((res) => {
         this.countrydatacum = res.data;
         this.countryActual = this.constants.trimToOneDecimals(
           this.countrydatacum[0].actual_rainfall
@@ -274,6 +334,38 @@ export class AllStatesMapComponent {
 
 
   }
+
+  // ==== RIGHT PANEL: loadStats ====
+  async loadStats() {
+    if (!this.selectedStateName) {
+      return;
+    }
+    this.statsLoading = true;
+    this.showStatsTable = false;
+    try {
+      await this.getSelectedStateCode();
+      // Must branch on selectedMode exactly like downloadMapData() above —
+      // hardcoding the FromDataEntry variant here left the panel reading
+      // from the wrong data source (empty/mismatched) whenever the app is
+      // actually running in "Unified" (FTP) mode, even though the download
+      // button — which does branch correctly — showed real data.
+      if (this.selectedMode?.selectedMode == 'Unified') {
+        await this.downloadPdf$.updateandViewpdfCustom(this.fromDate, this.toDate, this.selectedStateCode);
+      } else {
+        await this.downloadPdf$.updateandViewpdfFromDataEntryCustom(this.fromDate, this.toDate, this.selectedStateCode);
+      }
+      const svc = this.downloadPdf$;
+      const convert = svc.convertToIndianDateFormat;
+      this.dayLabel = `${convert(svc.data.startDate)} to ${convert(svc.data.endDate)}`;
+      this.periodLabel = `${convert(svc.seasonPeriodDate.startDate)} to ${convert(svc.seasonPeriodDate.endDate)}`;
+      this.tableRows = svc.rows;
+      this.showStatsTable = this.tableRows.length > 0;
+    } catch (error) {
+      console.error('Error loading state-district statistics panel:', error);
+    }
+    this.statsLoading = false;
+  }
+  // ==== RIGHT PANEL: loadStats end ====
 
   filter = (node: HTMLElement) => {
     const exclusionClasses = [
@@ -554,10 +646,14 @@ export class AllStatesMapComponent {
     }
     this.onWindowResize()
     // this.resetMap()
+    this.loadStats(); // RIGHT PANEL — remove this line if reverting to map-only
   }
 
   onSubmit() {
     // console.log('Button clicked');
+    // RIGHT PANEL — fetchBackend() calls loadStats() once its district
+    // response lands, so no separate call here (it would just run the
+    // same four requests twice per Submit).
     this.fetchBackend()
     // Example usage of the button reference
     // this.submitButton.nativeElement.disabled = true;

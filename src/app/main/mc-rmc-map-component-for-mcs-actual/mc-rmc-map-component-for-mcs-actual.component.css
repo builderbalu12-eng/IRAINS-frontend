@@ -258,5 +258,46 @@ img {
 
   .custom-z-index {
     z-index: 1049;
-    position: relative; 
+    position: relative;
   }
+
+/* ==== RIGHT PANEL rules start — delete down to "RIGHT PANEL rules end"
+   if reverting to a map-only page. The table/skeleton styling itself lives
+   in the shared <app-rainfall-stats-panel>'s own CSS
+   (src/app/shared/rainfall-stats-panel) — this is just the layout glue
+   for the column it sits in. ==== */
+/* Deliberately NOT Bootstrap's .row/.col grid. Those classes carry
+   flex-wrap: wrap, so the map card (fixed 44rem) and the stats table
+   drop onto separate lines as soon as they don't both fit — which is
+   exactly the "panel ends up under the map" bug. This is a plain
+   self-contained flex row instead, so nothing in Bootstrap can put the
+   panel below the map. */
+.map-stats-wrap {
+  padding: 0 12px 2rem;
+  /* If the pair genuinely can't fit the viewport, scroll sideways rather
+     than letting the panel fall to the next line. */
+  overflow-x: auto;
+}
+
+.map-stats-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+}
+
+.map-col {
+  /* Map card keeps its intrinsic 44rem width — never shrink it. */
+  flex: 0 0 auto;
+}
+
+.stats-col {
+  /* Takes the remaining width. min-width keeps the table readable
+     instead of being crushed to nothing; the wrapper's overflow-x
+     handles anything narrower. */
+  flex: 1 1 0;
+  min-width: 420px;
+}
+/* ==== RIGHT PANEL rules end ==== */

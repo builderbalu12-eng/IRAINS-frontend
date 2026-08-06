@@ -1,32 +1,96 @@
 <div class="wholebody">
   <app-header></app-header>
-  <div class="align-items-center d-flex justify-content-center">
-    <div class="values container gap-4 margin w-75 justify-content-center d-flex align-it flex-column mx-auto">
-      <div class="row" style="align-items: center; justify-content: center; font-weight: bold; font-size: xx-large;">
-        DAILY {{ category }} STATISTICS
-      </div>
-      <hr />
-      <div class="row" style="align-items: center; justify-content: center">
-        <div class="col-md-5">
-          <label class="form-label fs-3">From Date :</label>
-          <input type="date" class="form-control" [(ngModel)]="fromDate" (ngModelChange)="validateDateRange()" placeholder="Select date"/>
+  <div class="page-title">DAILY {{ category }} STATISTICS</div>
+  <div class="d-flex justify-content-center align-items-center position-relative">
+    <div class="values rcontainer">
+      <div class="date-toolbar">
+        <div class="date-field">
+          <label class="form-label">From Date</label>
+          <input
+            type="date"
+            class="form-control"
+            [(ngModel)]="fromDate"
+            (ngModelChange)="validateDateRange()"
+            placeholder="Select date"
+            [max]="today"
+          />
         </div>
-        <div class="col-md-5">
-          <label class="form-label fs-3">To Date :</label>
-          <input type="date" class="form-control" [(ngModel)]="toDate" (ngModelChange)="validateDateRange()" placeholder="Select date"/>
+        <div class="date-field">
+          <label class="form-label">To Date</label>
+          <input
+            type="date"
+            class="form-control"
+            [(ngModel)]="toDate"
+            (ngModelChange)="validateDateRange()"
+            placeholder="Select date"
+            [max]="today"
+          />
         </div>
+        <button type="button" class="btn btn-primary action-btn" (click)="submit()" [disabled]="loading">
+          <i class="fa fa-spinner fa-spin" *ngIf="loading"></i> Submit
+        </button>
+        <button type="button" class="btn btn-outline-primary action-btn" (click)="downloadReport()" [disabled]="downloading">
+          <i class="fa fa-spinner fa-spin" *ngIf="downloading"></i>
+          <i class="fa fa-download" *ngIf="!downloading"></i> Download
+        </button>
       </div>
-      <div class="row w-100">
-        <div class="col-md-2 w-25 py-3 justify-content-center d-flex flex-column mx-auto">
-          <button type="button" class="btn btn-primary py-2 mx-auto w-100 fs-5" (click)="setFromAndToDateAndView()">
-            View
-            <span *ngIf="!loading"></span>
-          <span *ngIf="loading">
-            <i class="fa fa-spinner fa-spin"></i> 
-          </span>
-          </button>
-        </div>
-      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap mx-auto" *ngIf="showTable">
+    <div class="rf-table-scroll">
+      <table class="rf-table">
+        <thead>
+          <tr>
+            <th rowspan="2">S.No</th>
+            <th rowspan="2">{{ tableEntityLabel }}</th>
+            <th colspan="4">DAY: {{ dayLabel }}</th>
+            <th colspan="4">PERIOD: {{ periodLabel }}</th>
+          </tr>
+          <tr>
+            <th>Actual (mm)</th>
+            <th>Normal (mm)</th>
+            <th>%Dep.</th>
+            <th>Cat.</th>
+            <th>Actual (mm)</th>
+            <th>Normal (mm)</th>
+            <th>%Dep.</th>
+            <th>Cat.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of tableRows">
+            <td *ngFor="let cell of row" [ngStyle]="cellStyle(cell)">{{ cellContent(cell) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rf-table-scroll mt-4" *ngIf="categoryStats">
+      <table class="rf-table rf-category-table">
+        <thead>
+          <tr>
+            <th rowspan="2">Category</th>
+            <th colspan="2">Day</th>
+            <th colspan="2">Period</th>
+          </tr>
+          <tr>
+            <th>No. of {{ tableEntityLabel }}</th>
+            <th>% Area</th>
+            <th>No. of {{ tableEntityLabel }}</th>
+            <th>% Area</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let cat of categoryOrder">
+            <td class="text-start">{{ categoryLabels[cat] }}</td>
+            <td>{{ categoryStats.day[cat].count }}</td>
+            <td>{{ categoryStats.day[cat].area }}%</td>
+            <td>{{ categoryStats.period[cat].count }}</td>
+            <td>{{ categoryStats.period[cat].area }}%</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

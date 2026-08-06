@@ -1,65 +1,119 @@
-.full-width {
-  width: 45%;
-}
-
 ::ng-deep .mat-select-panel {
-  min-width: 300px; /* Adjust this value as needed */
+  min-width: 300px;
 }
 
+/* mat-form-field reserves invisible space below the box for hint/error text
+   even when unused — trim it so the visible dropdown height lines up with
+   the plain buttons next to it. */
+::ng-deep .week-select .mat-form-field-wrapper {
+  padding-bottom: 0;
+}
+::ng-deep .week-select .mat-form-field-subscript-wrapper {
+  display: none;
+}
+::ng-deep .week-select .mat-form-field-infix {
+  border-top: 0.4em solid transparent;
+}
 
-.custom-spinner {
+.wholebody {
+  background-color: #a2c5b6;
+  min-height: 100vh;
+  padding-bottom: 3rem;
+}
+
+.page-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.4rem;
+  color: #002467;
+  margin-top: 1.5rem;
+  margin-bottom: 4px;
+}
+
+.values.rcontainer {
+  margin: 10px auto;
+  background-color: white;
+  padding: 25px;
+  border-radius: 10px;
+  width: auto;
+  text-align: center;
   display: inline-block;
-  position: relative;
-  width: 50px;
-  height: 50px;
 }
 
-.spinner-circle {
-  border: 3px solid #f3f3f3; /* Light grey */
-  border-top: 3px solid #3498db; /* Blue */
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-
-.spinner-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+.date-toolbar {
   display: flex;
+  align-items: flex-end;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.date-field {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.date-field .form-label {
+  font-size: 14px;
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+.week-select {
+  width: 240px;
+}
+
+.action-btn {
+  height: 42px;
+  white-space: nowrap;
+  display: inline-flex;
   align-items: center;
-  z-index: 1000;
+  gap: 6px;
 }
 
-.spinner {
-  border: 16px solid #f3f3f3;
-  border-radius: 50%;
-  border-top: 16px solid blue;
-  border-right: 16px solid green;
-  border-bottom: 16px solid red;
-  border-left: 16px solid pink;
-  width: 120px;
-  height: 120px;
-  -webkit-animation: spin 2s linear infinite; /* Safari */
-  animation: spin 2s linear infinite;
+.fa-spinner {
+  font-size: 16px;
+  margin-right: 5px;
 }
 
-.mat-form-field {
-  margin-right: 10px; /* Add spacing between dropdowns */
+.table-wrap {
+  width: 92%;
+  max-width: 1200px;
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 0 auto 2rem;
 }
 
-.wholebody{
-  background-color: #a2c5b6 ;
-  height: 100vh;
+.rf-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.rf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.rf-table th,
+.rf-table td {
+  border: 1px solid #333;
+  padding: 4px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rf-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #dbe6ff;
+  color: #002467;
+  font-weight: 700;
+  z-index: 1;
+}
+
+.rf-category-table {
+  max-width: 600px;
 }

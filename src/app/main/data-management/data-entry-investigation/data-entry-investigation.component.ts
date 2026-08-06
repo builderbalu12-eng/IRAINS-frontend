@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FetchStationDataService } from 'src/app/services/station/station.service';
 import { DataEntryLockService } from 'src/app/services/dataEntryLock.service';
+import * as XLSX from 'xlsx';
+import * as FileSaver from 'file-saver';
 
 interface RevisionLogRow {
   revisionDate: string;
@@ -24,6 +26,12 @@ interface StationRevisionDetail {
   dataDate: string;
   updatedAt: string;
   backDated: boolean;
+  // From rainfalldataedits. editCount === 0 means the edit predates that log
+  // table, so there is no before/after to show for it.
+  oldValue: number | null;
+  newValue: number | null;
+  editType: string | null;
+  editCount: number;
 }
 
 interface McWiseRow {
@@ -60,6 +68,7 @@ export class DataEntryInvestigationComponent implements OnInit {
   singleDate: string = this.formatDateLocal(new Date());    // Day Wise tab
 
   loading: boolean = false;
+  downloading: boolean = false;
   message: string = '';
   messageType: 'success' | 'error' = 'success';
 
@@ -185,7 +194,11 @@ export class DataEntryInvestigationComponent implements OnInit {
             value: d.station_value,
             dataDate: d.data_date,
             updatedAt: d.updated_at,
-            backDated: d.back_dated
+            backDated: d.back_dated,
+            oldValue: d.old_value ?? null,
+            newValue: d.new_value ?? null,
+            editType: d.edit_type ?? null,
+            editCount: d.edit_count ?? 0
           }));
           row.loadingDetails = false;
         },
@@ -202,6 +215,140 @@ export class DataEntryInvestigationComponent implements OnInit {
     if (!row.details || !row.expandedFilter) return [];
     const wantBackDated = row.expandedFilter === 'back-dated';
     return row.details.filter(d => d.backDated === wantBackDated);
+  }
+
+  // ── Downloads ────────────────────────────────────────────────────────────
+  // Both workbooks come from one fetch of the flat station rows: the summary
+  // sheet is those rows grouped the way the on-screen table groups them, and
+  // the detail sheet is every row un-grouped. The on-screen tables only hold
+  // the inner rows of groups the user has expanded, so exporting from them
+  // would silently miss everything still collapsed — hence the extra fetch.
+
+  downloadRevisionLog(): void {
+    this.runExport('revision', 'Revision-Log');
+  }
+
+  downloadMcWiseLog(): void {
+    this.runExport('mcwise', 'MC-Wise-Reupdates');
+  }
+
+  private runExport(kind: 'revision' | 'mcwise', fileLabel: string): void {
+    this.downloading = true;
+    this.message = '';
+    this.stationService.fetchRevisionLogExport(this.currentParams()).subscribe({
+      next: (res) => {
+        const rows: any[] = res.data || [];
+        if (rows.length === 0) {
+          this.downloading = false;
+          this.messageType = 'error';
+          this.message = 'Nothing to download for the selected period.';
+          return;
+        }
+        const summary = kind === 'revision'
+          ? this.buildRevisionSummarySheet(rows)
+          : this.buildMcWiseSummarySheet(rows);
+        this.writeWorkbook(fileLabel, summary, this.buildDetailSheet(rows));
+        this.downloading = false;
+      },
+      error: () => {
+        this.downloading = false;
+        this.messageType = 'error';
+        this.message = 'Failed to prepare the download. Please try again.';
+      }
+    });
+  }
+
+  /** Parent rows of the Revision Log table: one per (revision date, data date). */
+  private buildRevisionSummarySheet(rows: any[]): any[] {
+    const groups = new Map<string, any>();
+    for (const r of rows) {
+      const key = `${r.revision_date}|${r.data_date}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = {
+          'Revision Date': r.revision_date,
+          'Data Date': r.data_date,
+          'Stations': 0,
+          'Type': r.back_dated ? 'Back-dated edit' : 'Same-day correction'
+        };
+        groups.set(key, g);
+      }
+      g['Stations']++;
+    }
+    return Array.from(groups.values());
+  }
+
+  /** Parent rows of the MC-Wise table: one per centre, with the same two counts. */
+  private buildMcWiseSummarySheet(rows: any[]): any[] {
+    const groups = new Map<string, any>();
+    for (const r of rows) {
+      const key = `${r.centre_type}|${r.centre_name}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = {
+          'MC / RMC': `${r.centre_type} ${r.centre_name}`,
+          'Same Day': 0,
+          'Backdate': 0,
+          'Stations': 0
+        };
+        groups.set(key, g);
+      }
+      if (r.back_dated) { g['Backdate']++; } else { g['Same Day']++; }
+      g['Stations']++;
+    }
+    return Array.from(groups.values());
+  }
+
+  /** Every inner row, flat, with its parent's columns repeated so it can be filtered/pivoted. */
+  private buildDetailSheet(rows: any[]): any[] {
+    return rows.map(r => ({
+      'Revision Date': r.revision_date,
+      'Data Date': r.data_date,
+      'Type': r.back_dated ? 'Back-dated edit' : 'Same-day correction',
+      'MC / RMC': `${r.centre_type} ${r.centre_name}`,
+      'Station Code': r.station_code,
+      'Station': r.station_name,
+      'State': r.state_name,
+      'District': r.district_name,
+      'Value (mm)': r.station_value,
+      'Old Value': r.edit_count > 0 ? this.formatEditValue(r.old_value) : '',
+      'New Value': r.edit_count > 0 ? this.formatEditValue(r.new_value) : '',
+      'Change Type': r.edit_count > 0 ? this.editTypeLabel(r.edit_type) : 'Not tracked',
+      'Edits': r.edit_count || 0,
+      'Updated At': r.updated_at
+    }));
+  }
+
+  private writeWorkbook(fileLabel: string, summary: any[], details: any[]): void {
+    const workbook: XLSX.WorkBook = {
+      Sheets: {
+        'Summary': XLSX.utils.json_to_sheet(summary),
+        'Station Details': XLSX.utils.json_to_sheet(details)
+      },
+      SheetNames: ['Summary', 'Station Details']
+    };
+    const buffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8'
+    });
+    const period = this.activeTab === 'daywise' ? this.singleDate : `last-${this.days}-days`;
+    FileSaver.saveAs(blob, `${fileLabel}_${period}.xlsx`);
+  }
+
+  /** -999.9 is the "no reading" sentinel — show it as such rather than as a number. */
+  formatEditValue(v: number | null): string {
+    if (v === null || v === undefined) return '—';
+    return v < 0 ? 'No data' : `${v}`;
+  }
+
+  /** Human label for the kind of change, used as the badge next to the old → new pair. */
+  editTypeLabel(editType: string | null): string {
+    switch (editType) {
+      case 'fill':       return 'Filled in';
+      case 'erase':      return 'Erased';
+      case 'correction': return 'Corrected';
+      default:           return '';
+    }
   }
 
   private computeAnalytics(): void {
@@ -229,7 +376,11 @@ export class DataEntryInvestigationComponent implements OnInit {
             value: d.station_value,
             dataDate: d.data_date,
             updatedAt: d.updated_at,
-            backDated: row.backDated
+            backDated: row.backDated,
+            oldValue: d.old_value ?? null,
+            newValue: d.new_value ?? null,
+            editType: d.edit_type ?? null,
+            editCount: d.edit_count ?? 0
           }));
           row.loadingDetails = false;
         },

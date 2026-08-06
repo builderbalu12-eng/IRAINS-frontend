@@ -1,0 +1,135 @@
+<div
+  class="rmu-sheet-scaler"
+  [style.height.px]="sheetHeight * scale"
+>
+  <div
+    #sheet
+    class="rmu-sheet"
+    [style.transform]="'scale(' + scale + ')'"
+  >
+    <!-- everything below is the product sheet proper; in A4 mode .rmu-page
+         is just nudged down inside a taller white sheet -->
+    <div class="rmu-page">
+      <!-- map layer: full bleed, exactly like the matplotlib axes -->
+      <div class="rmu-map-layer">
+        <svg [attr.viewBox]="viewBox" preserveAspectRatio="xMidYMid meet">
+          <g>
+            <path
+              *ngFor="let s of shapes"
+              [attr.d]="s.path"
+              [attr.fill]="s.fill"
+              [attr.stroke-width]="strokeWidth"
+            ></path>
+          </g>
+          <g *ngIf="showLabels">
+            <text
+              *ngFor="let s of shapes"
+              class="rmu-label"
+              [attr.x]="s.labelX"
+              [attr.y]="s.labelY"
+              [attr.font-size]="labelFont"
+              dominant-baseline="central"
+            >
+              <!-- prettier-ignore -->
+              <tspan [attr.x]="s.labelX" [attr.dy]="-labelLine">{{ actualLine(s) }}</tspan>
+              <!-- prettier-ignore -->
+              <tspan [attr.x]="s.labelX" [attr.dy]="labelLine">{{ s.abb }}</tspan>
+              <!-- prettier-ignore -->
+              <tspan *ngIf="showNormalLine" [attr.x]="s.labelX" [attr.dy]="labelLine">{{ s.normal }}</tspan>
+            </text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- IMD logo (figimage IMDlogo) -->
+      <img
+        class="rmu-imd-logo"
+        src="assets/images/IMDlogo_Ipart-iris.png"
+        alt="India Meteorological Department"
+      />
+
+      <!-- 150 years logo (figimage logo150) -->
+      <img
+        class="rmu-150-logo"
+        src="assets/images/IMD150(BGR).png"
+        alt="150 years of service to the nation"
+      />
+
+      <!-- header block (figimage HEADER.png + the two plt.text lines) -->
+      <div class="rmu-header-line rmu-hdr-1">भारत&nbsp; मौसम विज्ञान विभाग</div>
+      <div class="rmu-header-line rmu-hdr-2">India Meteorological Department</div>
+      <div class="rmu-header-line rmu-hdr-3">
+        जल&nbsp; मौसम विज्ञान प्रभाग, नई दिल्ली
+      </div>
+      <div class="rmu-header-line rmu-hdr-4">Hydromet Division, New Delhi</div>
+      <div class="rmu-title" [style.font-size.px]="titleFontSize">
+        {{ title }}
+      </div>
+      <div class="rmu-period">{{ periodLabel }}</div>
+
+      <!-- compass rose (figimage compass.JPG) -->
+      <div class="rmu-compass">
+        <div class="rmu-compass-n">N</div>
+        <svg viewBox="0 0 62 68">
+          <g stroke="#000000" stroke-width="0.5">
+            <!-- light half of every point -->
+            <g fill="#ffffff">
+              <polygon points="31,34 29.09,29.38 31,4" />
+              <polygon points="31,34 32.91,29.38 41.61,23.39" />
+              <polygon points="31,34 35.62,32.09 61,34" />
+              <polygon points="31,34 35.62,35.91 41.61,44.61" />
+              <polygon points="31,34 32.91,38.62 31,64" />
+              <polygon points="31,34 29.09,38.62 20.39,44.61" />
+              <polygon points="31,34 26.38,35.91 1,34" />
+              <polygon points="31,34 26.38,32.09 20.39,23.39" />
+            </g>
+            <!-- dark half of every point -->
+            <g fill="#000000">
+              <polygon points="31,34 31,4 32.91,29.38" />
+              <polygon points="31,34 41.61,23.39 35.62,32.09" />
+              <polygon points="31,34 61,34 35.62,35.91" />
+              <polygon points="31,34 41.61,44.61 32.91,38.62" />
+              <polygon points="31,34 31,64 29.09,38.62" />
+              <polygon points="31,34 20.39,44.61 26.38,35.91" />
+              <polygon points="31,34 1,34 26.38,32.09" />
+              <polygon points="31,34 20.39,23.39 29.09,29.38" />
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <!-- ALL INDIA summary (omitted on the dense levels, like the python) -->
+      <ng-container *ngIf="showAllIndia">
+        <div class="rmu-ai-title">ALL INDIA</div>
+        <div class="rmu-ai-head">Actual  Normal  %Dep</div>
+        <div class="rmu-ai-values">{{ allIndiaLine }}</div>
+      </ng-container>
+
+      <!-- legend strip (figimage Legend.jpg) -->
+      <div class="rmu-legend-label">Legend</div>
+      <div class="rmu-legend" [class.rmu-legend-dense]="legendItems.length > 7">
+        <div class="rmu-legend-item" *ngFor="let item of legendItems">
+          <div class="rmu-swatch" [style.background]="item.color"></div>
+          <div class="rmu-legend-text">{{ item.text }}</div>
+        </div>
+      </div>
+
+      <!-- notes -->
+      <div class="rmu-notes">
+        <div>NOTES :</div>
+        <div>a) RainFall figures are based on operation data.</div>
+        <div>
+          b) Small figures indicate actual rainfal (mm), while bold figures
+          indicate Normal rainfall (mm).
+        </div>
+        <div>c) Percentage Departures of rainfall are shown in brackets.</div>
+      </div>
+
+      <!-- page border, drawn last so it sits over everything -->
+      <div class="rmu-border"></div>
+    </div>
+    <!-- /.rmu-page -->
+
+    <div class="rmu-loader" *ngIf="loading">Loading...</div>
+  </div>
+</div>

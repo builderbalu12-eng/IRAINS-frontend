@@ -1,0 +1,552 @@
+/*
+  ALL STATISTICS console. Follows the data-management design language:
+  navy #002467 headers, light #f1f5f9 canvas, bootstrap cards + bi icons.
+*/
+
+.as-wrap {
+  padding: 14px 18px 24px;
+  max-width: 1500px;
+  margin: 0 auto;
+  background: #f1f5f9;
+  min-height: calc(100vh - 60px);
+}
+
+/* ── header ───────────────────────────────────────────────── */
+.as-header {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.as-header h4 {
+  font-weight: 700;
+  color: #002467;
+  font-size: 20px;
+}
+
+.as-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.as-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 3px;
+}
+
+.as-field input {
+  min-width: 150px;
+}
+
+.as-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.as-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.as-chip {
+  background: #eef2ff;
+  color: #002467;
+  border: 1px solid #dbe3ff;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.as-period {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.as-note {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+/* ── applied range banner ─────────────────────────────────── */
+.as-applied {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  background: #eef2ff;
+  border: 1px solid #dbe3ff;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 13px;
+  color: #002467;
+}
+
+.as-applied-label {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #64748b;
+}
+
+.as-applied strong {
+  font-weight: 700;
+}
+
+.as-applied-pending {
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* ── departure / actual tabs ──────────────────────────────── */
+.as-tabs {
+  display: flex;
+  gap: 4px;
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.as-tab {
+  background: #f0f4ff;
+  color: #002467;
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid #dee2e6;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 7px 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.as-tab:hover {
+  background: #dce8ff;
+}
+
+.as-tab.active {
+  background: #002467;
+  color: #fff;
+  border-color: #002467;
+}
+
+/* ── body split ───────────────────────────────────────────── */
+.as-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.as-list {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  /* Cards sharing a line match heights. Safe now that the odd-one-out (BRMS,
+     a single product) is full width on its own line — only DRMS and Regional
+     Districts pair up, and they are 5 rows against 4. */
+  align-items: stretch;
+  gap: 14px;
+}
+
+/* DRMS and BRMS are short, so they sit side by side instead of each
+   stretching across the page with a dead gap in the middle */
+.as-section {
+  flex: 1 1 100%;
+}
+
+/* DRMS (5 products) and Regional Districts (4) are close enough in height to
+   pair without leaving a void — BRMS and the state grid stay full width. */
+.as-section-half {
+  flex: 1 1 480px;
+  min-width: 460px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* the list area takes the slack so the shorter card ends level */
+.as-section-half .as-rows,
+.as-section-half .as-grid {
+  flex: 1;
+}
+
+
+
+/* ── section ──────────────────────────────────────────────── */
+.as-section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.as-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #002467;
+  color: #fff;
+  padding: 9px 12px;
+  flex-wrap: wrap;
+}
+
+.as-section-toggle {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.as-section-toggle:hover {
+  color: #fff;
+}
+
+.as-section-title {
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  flex: 1;
+  min-width: 120px;
+}
+
+.as-count {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 8px;
+  margin-left: 8px;
+}
+
+.as-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.as-selall {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  user-select: none;
+  margin: 0;
+}
+
+.as-selall:hover {
+  color: #fff;
+}
+
+.as-selall input {
+  cursor: pointer;
+}
+
+.as-section-dl {
+  --bs-btn-padding-y: 2px;
+  --bs-btn-padding-x: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.as-section-sub {
+  font-size: 12px;
+  color: #64748b;
+  margin: 8px 12px 4px;
+}
+
+/* ── rows ─────────────────────────────────────────────────── */
+.as-rows {
+  border-top: 1px solid #eef2f7;
+  /* long sections (36 states) scroll inside the card instead of stretching
+     the page — same treatment as data-management's file tables */
+  max-height: 430px;
+  overflow-y: auto;
+}
+
+.as-rows::-webkit-scrollbar {
+  width: 8px;
+}
+
+.as-rows::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+.as-rows thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* A full-width table pushed Output and Download to the far edge and left a
+   long empty run after the product name. Sizing to content keeps the columns
+   together; the card still spans the page. */
+.as-rows .table {
+  margin-bottom: 0;
+  width: auto;
+  min-width: 640px;
+}
+
+.as-rows thead th:nth-child(3),
+.as-rows tbody td:nth-child(3) {
+  min-width: 300px;
+}
+
+/* A full-width card (BRMS) has no neighbour to butt against, so its table
+   spans the card and the Output / Download columns sit at the right edge.
+   The paired half-width cards keep their columns grouped on the left. */
+.as-section:not(.as-section-half) .as-rows .table {
+  width: 100%;
+}
+
+.as-rows thead th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 7px 10px;
+}
+
+.as-rows tbody td {
+  font-size: 13px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.as-th-check,
+.as-td-check {
+  width: 40px;
+  text-align: center;
+}
+
+.as-th-output,
+.as-td-output {
+  width: 130px;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.as-th-actions,
+.as-row-actions {
+  width: 96px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.as-td-check input {
+  cursor: pointer;
+}
+
+.as-row-label {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.as-active > td {
+  background: #eff6ff;
+}
+
+.as-active .as-row-label {
+  color: #002467;
+}
+
+.as-eye {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.as-row-actions .btn {
+  --bs-btn-padding-y: 1px;
+  --bs-btn-padding-x: 8px;
+  font-size: 12px;
+}
+
+.as-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 26px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* ── compact tile grid (the 36 state sheets) ──────────────────
+   A 36 row table left most of the width empty; tiles pack three or four
+   to a row and remove the need for an inner scrollbar. */
+.as-grid {
+  display: grid;
+  /* same cap the tables use, so a 30 or 36 tile card scrolls inside itself
+     rather than stretching the page */
+  max-height: 430px;
+  overflow-y: auto;
+  /* narrower minimum than the full-width version used to need: State Maps and
+     MC / RMC Maps now share a row, so each grid gets about half the page */
+  grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+  gap: 6px;
+  padding: 10px 12px 14px;
+  border-top: 1px solid #eef2f7;
+}
+
+.as-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.as-grid::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+.as-tile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  /* a wrapped two-line name must not make its tile taller than its neighbours */
+  min-height: 34px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #fff;
+  min-width: 0;
+}
+
+.as-tile:hover {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.as-tile-check {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.as-tile-check input {
+  cursor: pointer;
+}
+
+/* Names are shown in full rather than clipped — "MC THIRVANTHAPURAM" and
+   "DADRA & NAGAR HAVELI AND DAMAN & DIU (UT)" both need more than one line at
+   this width, so the label wraps instead of ellipsing. */
+.as-tile-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.as-tile-busy {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.as-tile-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.as-tile-actions .btn {
+  --bs-btn-padding-y: 0px;
+  --bs-btn-padding-x: 6px;
+  font-size: 11px;
+}
+
+.as-tile.as-busy {
+  border-color: #fbbf24;
+  background: #fffbeb;
+}
+
+/* ── off-screen render stage ──────────────────────────────────
+   html-to-image cannot capture display:none, so the sheet has to be laid
+   out for real. Parking it far off-canvas keeps it out of the way while
+   still being rendered at full 1000px scale. */
+.as-capture {
+  position: fixed;
+  left: -20000px;
+  top: 0;
+  width: 1000px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.as-progress {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e40af;
+  display: flex;
+  align-items: center;
+}
+
+.as-busy > td {
+  background: #fffbeb;
+}
+
+/* ── toast ────────────────────────────────────────────────── */
+.as-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1080;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+}
