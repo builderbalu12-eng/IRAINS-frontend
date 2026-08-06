@@ -1,0 +1,926 @@
+<div class="rt">
+  <!-- ================================================== COMMAND BAR ======= -->
+  <header class="rt-bar">
+    <div class="rt-bar__id">
+      <span class="rt-bar__mark">ARG&nbsp;/&nbsp;AWS</span>
+      <div>
+        <h1 class="rt-bar__title">Cumulative &amp; Real-Time Station Console</h1>
+        <p class="rt-bar__sub">
+          State Government AWS daily accumulation joined to the 15-minute observation sources
+        </p>
+      </div>
+    </div>
+
+    <div class="rt-bar__ctl">
+      <label class="rt-field">
+        <span class="rt-field__label">AWS Day</span>
+        <input type="date" class="rt-input" [(ngModel)]="liveDate" [max]="maxDate"
+               (change)="loadTimeline()" />
+      </label>
+      <label class="rt-field">
+        <span class="rt-field__label">Live State</span>
+        <select class="rt-input" [(ngModel)]="liveStateFilter" (change)="loadTimeline()">
+          <option value="">All states</option>
+          <option *ngFor="let s of liveStateOptions" [value]="s">{{ s }}</option>
+        </select>
+      </label>
+      <button type="button" class="rt-btn rt-btn--primary" (click)="loadTimeline()"
+              [disabled]="liveLoading">
+        {{ liveLoading ? 'Loading…' : 'Refresh' }}
+      </button>
+    </div>
+  </header>
+
+  <!-- The AWS day is not the calendar day; saying so once here prevents the
+       "why does my 02:00 reading belong to yesterday" question. -->
+  <p class="rt-note" *ngIf="timeline">
+    AWS day <strong>{{ timeline.date }}</strong> spans
+    <strong>03:00 IST {{ timeline.date }}</strong> to <strong>03:00 IST the next morning</strong>
+    (21:30 UTC → 21:30 UTC), so the last twelve slots carry the following calendar date.
+  </p>
+
+  <!-- ============================== TAB RAIL + LIVE SLOT READOUT ============
+       The readout rides in the space left over beside the last tab rather than
+       claiming a row of its own — on the live tab every pixel it would take is
+       a pixel off the map. Every figure is measured AT the scrubbed slot, not
+       for the whole day, so they move with the timeline. -->
+  <div class="rt-topline">
+    <nav class="rt-tabs" role="tablist">
+      <button *ngFor="let t of tabs" type="button" role="tab"
+              class="rt-tab" [class.rt-tab--on]="activeTab === t.key"
+              [attr.aria-selected]="activeTab === t.key"
+              (click)="selectTab(t.key)">
+        <span class="rt-tab__label">{{ t.label }}</span>
+        <span class="rt-tab__hint">{{ t.hint }}</span>
+      </button>
+    </nav>
+
+    <div class="rt-stats" *ngIf="activeTab === 'live'">
+      <div class="rt-stat rt-stat--accent"
+           [title]="'Scrubbed slot ' + (slotIndex + 1) + ' of ' + slotCount + ' on ' + currentSlotDate">
+        <span class="rt-stat__label">Clock IST</span>
+        <span class="rt-stat__value">
+          {{ currentSlotLabel }}<small *ngIf="currentSlotIsNextDay">+1d</small>
+        </span>
+      </div>
+      <div class="rt-stat" title="Stations that have reported at least once by this slot">
+        <span class="rt-stat__label">Reporting</span>
+        <span class="rt-stat__value">
+          {{ slotStats.reporting }}<small>/ {{ timeline?.meta?.stations_plotted || 0 }}</small>
+        </span>
+      </div>
+      <div class="rt-stat" title="Stations with at least 0.1 mm accumulated by this slot">
+        <span class="rt-stat__label">With Rain</span>
+        <span class="rt-stat__value">{{ slotStats.raining }}</span>
+      </div>
+      <div class="rt-stat" title="Mean accumulation across reporting stations">
+        <span class="rt-stat__label">Mean Accum.</span>
+        <span class="rt-stat__value">{{ fmt(slotStats.avgDepth, 2) }}<small>mm</small></span>
+      </div>
+      <!-- The peak station's name goes in the label slot: it is the useful part
+           of this stat and it would otherwise need a third line. -->
+      <div class="rt-stat" [title]="'Wettest station so far: ' + (slotStats.peakStation || 'none')">
+        <span class="rt-stat__label">Peak · {{ slotStats.peakStation || '—' }}</span>
+        <span class="rt-stat__value">{{ fmt(slotStats.maxDepth) }}<small>mm</small></span>
+      </div>
+      <div class="rt-stat" [title]="slotStats.activeCells + ' stations recorded rain in this 15-minute slot'">
+        <span class="rt-stat__label">Peak Rate</span>
+        <span class="rt-stat__value">{{ fmt(slotStats.maxIntensity) }}<small>mm/hr</small></span>
+      </div>
+    </div>
+    <!-- The tab row has width to spare, and these control rows are short.
+         Running them inline keeps the results starting at the top of the panel
+         instead of a whole filter bar down. -->
+    <div class="rt-inlineform" *ngIf="activeTab === 'cumulative'">
+      <label class="rt-field">
+        <span class="rt-field__label">From</span>
+        <input type="date" class="rt-input" [(ngModel)]="cumStartDate" [max]="maxDate" />
+      </label>
+      <label class="rt-field">
+        <span class="rt-field__label">To</span>
+        <input type="date" class="rt-input" [(ngModel)]="cumEndDate" [max]="maxDate" />
+      </label>
+      <label class="rt-field">
+        <span class="rt-field__label">State</span>
+        <select class="rt-input" [(ngModel)]="cumStateCode" (change)="onCumStateChange()">
+          <option value="">All states</option>
+          <option *ngFor="let s of filters?.states" [value]="s.state_code">{{ s.state_name }}</option>
+        </select>
+      </label>
+      <label class="rt-field">
+        <span class="rt-field__label">District</span>
+        <select class="rt-input" [(ngModel)]="cumDistrictCode" [disabled]="!cumStateCode">
+          <option value="">All districts</option>
+          <option *ngFor="let d of cumDistrictOptions" [value]="d.district_code">
+            {{ d.district_name }}
+          </option>
+        </select>
+      </label>
+      <label class="rt-field">
+        <span class="rt-field__label">Type</span>
+        <select class="rt-input" [(ngModel)]="cumStationType">
+          <option value="">All types</option>
+          <option *ngFor="let t of filters?.station_types" [value]="t.station_type">
+            {{ t.station_type }} ({{ t.stations }})
+          </option>
+        </select>
+      </label>
+      <button type="button" class="rt-btn rt-btn--primary" (click)="loadCumulative()"
+              [disabled]="cumLoading">
+        {{ cumLoading ? 'Computing…' : 'Run Analysis' }}
+      </button>
+    </div>
+    <div class="rt-inlineform" *ngIf="activeTab === 'network'">
+      <label class="rt-field">
+        <span class="rt-field__label">History scanned</span>
+        <select class="rt-input" [(ngModel)]="networkLookback" (change)="loadNetwork()">
+          <option [ngValue]="1">1 day (fastest)</option>
+          <option [ngValue]="3">3 days</option>
+          <option [ngValue]="7">7 days (slow)</option>
+        </select>
+      </label>
+      <button type="button" class="rt-btn rt-btn--primary" (click)="loadNetwork()"
+              [disabled]="networkLoading">
+        {{ networkLoading ? 'Checking…' : 'Re-check Feeds' }}
+      </button>
+    </div>
+    <div class="rt-inlineform" *ngIf="activeTab === 'station'">
+      <label class="rt-field">
+        <span class="rt-field__label">Station code</span>
+        <input type="text" class="rt-input" [(ngModel)]="stationCodeInput"
+               placeholder="aws_station_details.station_code" (keyup.enter)="loadStation()" />
+      </label>
+      <label class="rt-field">
+        <span class="rt-field__label">From</span>
+        <input type="date" class="rt-input" [(ngModel)]="cumStartDate" [max]="maxDate" />
+      </label>
+      <label class="rt-field">
+        <span class="rt-field__label">To</span>
+        <input type="date" class="rt-input" [(ngModel)]="cumEndDate" [max]="maxDate" />
+      </label>
+      <button type="button" class="rt-btn rt-btn--primary" (click)="loadStation()"
+              [disabled]="stationLoading">
+        {{ stationLoading ? 'Loading…' : 'Load Station' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ================================================== LIVE 24-HOUR ======= -->
+  <!-- Hidden rather than *ngIf'd: Leaflet cannot survive having its container
+       removed from the DOM, and keeping it alive also saves rebuilding every
+       marker and refetching the boundaries each time this tab is opened. -->
+  <section class="rt-panel" [hidden]="activeTab !== 'live'">
+    <div class="rt-alert rt-alert--err" *ngIf="liveError">{{ liveError }}</div>
+
+    <!-- Source chips double as the source filter and as a live census. -->
+    <div class="rt-chips">
+      <span class="rt-chips__label">Sources</span>
+      <button *ngFor="let s of filters?.sources" type="button" class="rt-chip"
+              [class.rt-chip--on]="selectedSources[s.key]"
+              [class.rt-chip--empty]="liveSourceCount(s.key) === 0"
+              [class.rt-chip--solo]="isSolo(s.key)"
+              (click)="selectSource(s.key)"
+              [title]="isSolo(s.key)
+                ? 'Showing ' + s.label + ' only — click again for all sources'
+                : 'Show only ' + s.label"><span class="rt-chip__solo" *ngIf="isSolo(s.key)">●</span>
+        {{ s.short }}
+        <span class="rt-chip__n">{{ liveSourceCount(s.key) }}</span>
+      </button>
+      <button type="button" class="rt-chip rt-chip--ghost" (click)="allSources(true)">All</button>
+      <span class="rt-chips__spacer"></span>
+      <span class="rt-chips__meta" *ngIf="timeline">
+        {{ timeline.meta.stations_mapped }} mapped ·
+        <strong class="rt-warn">{{ timeline.meta.stations_unmapped }} unmapped</strong>
+        <span *ngIf="timeline.meta.stations_without_coordinates">
+          · {{ timeline.meta.stations_without_coordinates }} without coordinates
+        </span>
+      </span>
+      <button type="button" class="rt-btn rt-btn--ghost" (click)="exportTimelineCsv()"
+              [disabled]="!timeline">Export CSV</button>
+    </div>
+
+    <!-- ── Map + rail ──
+         The map is capped at India's own aspect, so the rail inherits the rest
+         of the row. It leads with the rain-rate strip, which is the one panel
+         that genuinely wants that width. -->
+    <div class="rt-live">
+      <div class="rt-live__map">
+        <!-- The overlays are positioned against this wrapper, not the card:
+             the card also contains the legend ribbon, so `bottom: 12px` there
+             put the settings button on top of the legend. -->
+        <div class="rt-map-wrap">
+          <div id="aws-rt-map" class="rt-map"></div>
+
+        <!-- Map settings live behind a gear at the bottom-right rather than as
+             three permanent control stacks: they covered a real corner of the
+             country, and none of them is touched often enough to earn that. -->
+        <div class="rt-mapset">
+          <div class="rt-mapset__panel" *ngIf="mapSettingsOpen" role="group"
+               aria-label="Map settings">
+            <div class="rt-mapset__group">
+              <span class="rt-mapset__label">Markers show</span>
+              <div class="rt-seg rt-seg--sm">
+                <button type="button" class="rt-seg__btn"
+                        [class.rt-seg__btn--on]="displayMode === 'cumulative'"
+                        (click)="setDisplayMode('cumulative')">Accumulated</button>
+                <button type="button" class="rt-seg__btn"
+                        [class.rt-seg__btn--on]="displayMode === 'intensity'"
+                        (click)="setDisplayMode('intensity')">Rain Rate</button>
+              </div>
+            </div>
+
+            <div class="rt-mapset__group">
+              <span class="rt-mapset__label">Basemap</span>
+              <div class="rt-seg rt-seg--sm">
+                <button type="button" class="rt-seg__btn"
+                        [class.rt-seg__btn--on]="basemap === 'street'"
+                        (click)="setBasemap('street')">Map</button>
+                <button type="button" class="rt-seg__btn"
+                        [class.rt-seg__btn--on]="basemap === 'satellite'"
+                        (click)="setBasemap('satellite')">Satellite</button>
+              </div>
+            </div>
+
+            <div class="rt-mapset__group">
+              <span class="rt-mapset__label">Dot size</span>
+              <div class="rt-seg rt-seg--sm">
+                <button type="button" class="rt-seg__btn"
+                        [class.rt-seg__btn--on]="markerSizing === 'scaled'"
+                        (click)="setMarkerSizing('scaled')"
+                        title="Dot size grows with the rainfall band">Sized by band</button>
+                <button type="button" class="rt-seg__btn"
+                        [class.rt-seg__btn--on]="markerSizing === 'uniform'"
+                        (click)="setMarkerSizing('uniform')"
+                        title="Every station drawn the same size; colour alone carries the band">Same size</button>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="rt-mapset__btn"
+                  [class.rt-mapset__btn--on]="mapSettingsOpen"
+                  (click)="mapSettingsOpen = !mapSettingsOpen"
+                  [attr.aria-expanded]="mapSettingsOpen"
+                  [title]="mapSettingsOpen ? 'Close map settings' : 'Map settings'">
+            <span class="rt-mapset__gear" aria-hidden="true">&#9881;</span>
+            <span class="rt-mapset__btntext">Settings</span>
+          </button>
+        </div>
+
+          <div class="rt-loading" *ngIf="liveLoading">
+            <span class="rt-spinner" aria-hidden="true"></span>
+            <span>Loading 15-minute observations…</span>
+          </div>
+        </div>
+
+        <!-- Flat ribbon along the foot of the map instead of a stacked panel
+             floating over its bottom-left corner: same seven bands, one line
+             instead of eight, and it stops hiding the peninsula. Each band's
+             numeric range moves to the tooltip. -->
+        <div class="rt-legendbar">
+          <span class="rt-legendbar__title">
+            {{ displayMode === 'cumulative' ? 'Accum. depth' : 'Rain rate' }}
+          </span>
+          <!-- Thresholds are shown outright rather than hidden behind a hover
+               or a toggle: a legend whose numbers you have to go looking for
+               is doing half its job. -->
+          <span class="rt-legendbar__item" *ngFor="let b of bandCounts; trackBy: trackByIndex">
+            <i class="rt-legendbar__sw" [style.background]="b.band.color"></i>
+            {{ b.band.label }}<em class="rt-legendbar__rng">{{ b.band.range }}</em><b>{{ b.count }}</b>
+          </span>
+          <span class="rt-legendbar__item rt-legendbar__item--muted"
+                title="Stations with no observation by the scrubbed slot">
+            <i class="rt-legendbar__sw rt-legendbar__sw--none"></i>
+            No report<b>{{ (timeline?.meta?.stations_plotted || 0) - slotStats.reporting }}</b>
+          </span>
+        </div>
+      </div>
+
+      <aside class="rt-live__rail">
+        <!-- The scrubber leads the rail: it drives the map, and sitting here it
+             shares the rail's width with the strip below, so their 96 columns
+             line up. -->
+        <section class="rt-scrub">
+          <div class="rt-scrub__head">
+            <div class="rt-scrub__transport">
+              <button type="button" class="rt-icon" (click)="stepSlot(-1)" title="Back 15 minutes">‹</button>
+              <button type="button" class="rt-icon rt-icon--play" (click)="togglePlay()"
+                      [title]="isPlaying ? 'Pause replay' : 'Play replay'">
+                {{ isPlaying ? '❚❚' : '▶' }}
+              </button>
+              <button type="button" class="rt-icon" (click)="stepSlot(1)" title="Forward 15 minutes">›</button>
+              <div class="rt-seg rt-seg--sm">
+                <button *ngFor="let s of [0.5, 1, 2, 4]" type="button" class="rt-seg__btn"
+                        [class.rt-seg__btn--on]="playSpeed === s" (click)="setSpeed(s)">{{ s }}×</button>
+              </div>
+            </div>
+
+            <div class="rt-scrub__readout" [class.rt-scrub__readout--live]="scrubbing">
+              <span class="rt-scrub__time">{{ currentSlotLabel }}</span>
+              <span class="rt-scrub__meta">
+                slot {{ slotIndex + 1 }}/{{ slotCount }} ·
+                {{ slotStats.reporting }} reporting ·
+                {{ fmt(slotStats.intensitySum) }} mm added network-wide this slot
+              </span>
+            </div>
+          </div>
+
+          <!-- Hovering anywhere on the track sets the slot; the backdrop shows the
+               network's own rain pulse so you can aim at the bursts. -->
+          <div #scrubTrack class="rt-track" (mousemove)="onScrubMove($event)"
+               (mouseleave)="onScrubLeave()">
+            <svg class="rt-track__svg" viewBox="0 0 100 100" preserveAspectRatio="none"
+                 aria-hidden="true">
+              <path class="rt-track__area" [attr.d]="pulsePath"></path>
+              <path class="rt-track__line" [attr.d]="reportingPath"></path>
+            </svg>
+            <div class="rt-track__cursor" [style.left.%]="scrubPercent"></div>
+            <div class="rt-track__ticks">
+              <span *ngFor="let t of hourTicks; trackBy: trackByIndex" class="rt-track__tick"
+                    [style.left.%]="t.percent">{{ t.label }}</span>
+            </div>
+          </div>
+
+          <input type="range" class="rt-range" min="0" [max]="slotCount - 1" step="1"
+                 [value]="slotIndex" (input)="onSliderChange($any($event.target).value)"
+                 aria-label="Timeline slot" />
+
+          <p class="rt-scrub__legend">
+            <span class="rt-swatch rt-swatch--area"></span> network rainfall added per 15 min
+            <span class="rt-swatch rt-swatch--line"></span> stations reporting
+          </p>
+        </section>
+
+        <section class="rt-card rt-card--flush">
+          <div class="rt-card__head">
+            <h2 class="rt-card__title">
+              Wettest stations
+              <small>
+                one cell per 15 min, 03:00 → 03:00 IST; the outlined column is the scrubbed slot<span
+                  *ngIf="selectedSourceKeys.length === 1"> · {{ sourceLabel(selectedSourceKeys[0]) }} only</span>
+              </small>
+            </h2>
+            <div class="rt-card__tools">
+              <select class="rt-input rt-input--mini" [(ngModel)]="heatTopN"
+                      (change)="applyHeatFilters()" title="How many stations to rank">
+                <option *ngFor="let n of heatTopNChoices; trackBy: trackByIndex" [ngValue]="n">
+                  {{ n > 0 ? 'Top ' + n : 'All stations' }}
+                </option>
+              </select>
+              <div class="rt-seg rt-seg--sm">
+                <button *ngFor="let m of heatModes; trackBy: trackByIndex" type="button"
+                        class="rt-seg__btn" [class.rt-seg__btn--on]="heatMode === m.key"
+                        (click)="setHeatMode(m.key)">{{ m.label }}</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Virtualised: only the rows in view exist in the DOM, so "All
+               stations" on a 1900-station source costs the same as Top 15
+               rather than ~185,000 cell elements. -->
+          <cdk-virtual-scroll-viewport class="rt-heat" [itemSize]="rowHeight"
+                                       *ngIf="heatRows.length">
+            <div class="rt-heat__row" [class.rt-heat__row--focus]="row.focused"
+                 *cdkVirtualFor="let row of heatRows; trackBy: trackByHeatRow">
+              <button type="button" class="rt-heat__name"
+                      (click)="zoomToStation(row.station)"
+                      [title]="'Zoom the map to ' + row.station.station_name">
+                {{ row.station.station_name }}
+              </button>
+              <span class="rt-heat__cells"
+                    (mousemove)="onHeatMove($event, row)"
+                    (mouseleave)="clearHeatHover()"
+                    (click)="onHeatClick($event, row)">
+                <i *ngFor="let c of row.cells; let k = index; trackBy: trackByIndex"
+                   class="rt-heat__cell" [class.rt-heat__cell--now]="k === slotIndex"
+                   [style.background]="c"></i>
+              </span>
+            </div>
+          </cdk-virtual-scroll-viewport>
+
+          <p class="rt-empty" *ngIf="!heatRows.length">
+            No stations reporting for this selection.
+          </p>
+
+          <p class="rt-heat__count" *ngIf="heatRows.length">
+            Showing {{ heatRows.length }}
+            {{ heatTopN > 0 ? 'of the wettest stations' : 'stations — the full selection' }}
+            <span *ngIf="focusedRow" class="rt-heat__pin">
+              · <strong>{{ focusedRow.station.station_name }}</strong>
+              {{ hoverKey ? 'under the pointer' : 'pinned from the map' }}
+              <button type="button" class="rt-heat__unpin" *ngIf="!hoverKey"
+                      (click)="clearFocus()">unpin</button>
+            </span>
+          </p>
+        </section>
+
+        <!-- Tiles, not a three-column table: the table left most of the rail's
+             width empty and ran twelve rows deep to say very little. -->
+        <section class="rt-card rt-card--flush">
+          <h2 class="rt-card__title">
+            Top movers
+            <small>rain added in the hour ending {{ currentSlotLabel }}</small>
+          </h2>
+          <ol class="rt-movers">
+            <li class="rt-mover" *ngFor="let m of topMovers; let i = index; trackBy: trackByMover"
+                [title]="m.station.station_name + ' · ' + m.station.source_label">
+              <span class="rt-mover__rank">{{ i + 1 }}</span>
+              <span class="rt-mover__body">
+                <span class="rt-mover__name">{{ m.station.station_name }}</span>
+                <span class="rt-mover__meta">
+                  {{ sourceShort(m.station.source_key) }} · total {{ fmt(m.total) }} mm
+                  <span *ngIf="!m.station.mapped" class="rt-tag rt-tag--warn">unmapped</span>
+                </span>
+              </span>
+              <span class="rt-mover__delta">+{{ fmt(m.hourDelta) }}</span>
+            </li>
+          </ol>
+          <p class="rt-empty" *ngIf="!topMovers.length">No observations at this slot.</p>
+        </section>
+      </aside>
+    </div>
+
+  </section>
+
+  <!-- ================================================== CUMULATIVE ========= -->
+  <section class="rt-panel" *ngIf="activeTab === 'cumulative'">
+    <div class="rt-alert rt-alert--err" *ngIf="cumError">{{ cumError }}</div>
+    <div class="rt-loading rt-loading--inline" *ngIf="cumLoading">
+      <span class="rt-spinner" aria-hidden="true"></span>
+      <span>Aggregating the stored daily series…</span>
+    </div>
+
+    <ng-container *ngIf="cumulative && !cumLoading">
+      <div class="rt-kpis">
+        <div class="rt-kpi rt-kpi--accent">
+          <span class="rt-kpi__label">Window</span>
+          <span class="rt-kpi__value">{{ cumulative.range.days }}<em>days</em></span>
+          <span class="rt-kpi__foot">{{ cumulative.range.startDate }} → {{ cumulative.range.endDate }}</span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Stations</span>
+          <span class="rt-kpi__value">{{ cumulative.summary.stations_reporting }}</span>
+          <span class="rt-kpi__foot">
+            of {{ cumulative.summary.stations_total }} registered ·
+            {{ fmt(cumulative.summary.network_reporting_pct) }}%
+          </span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Silent Stations</span>
+          <span class="rt-kpi__value rt-kpi__value--warn">{{ cumulative.summary.stations_silent }}</span>
+          <span class="rt-kpi__foot">no valid reading in the window</span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Mean Station Total</span>
+          <span class="rt-kpi__value">{{ fmt(cumulative.summary.mean_station_total) }}<em>mm</em></span>
+          <span class="rt-kpi__foot">
+            network volume {{ fmt(cumulative.summary.total_rainfall) }} mm
+          </span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Wettest Station</span>
+          <span class="rt-kpi__value">
+            {{ fmt(cumulative.summary.wettest_station?.total_rainfall) }}<em>mm</em>
+          </span>
+          <span class="rt-kpi__foot rt-kpi__foot--name">
+            {{ cumulative.summary.wettest_station?.station_name || '—' }}
+          </span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Heaviest Single Day</span>
+          <span class="rt-kpi__value">
+            {{ fmt(cumulative.summary.peak_station_day?.max_daily) }}<em>mm</em>
+          </span>
+          <span class="rt-kpi__foot rt-kpi__foot--name">
+            {{ cumulative.summary.peak_station_day?.station_name || '—' }}
+            <span *ngIf="cumulative.summary.peak_station_day?.peak_date">
+              · {{ cumulative.summary.peak_station_day?.peak_date }}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <div class="rt-grid rt-grid--2">
+        <section class="rt-card">
+          <h2 class="rt-card__title">
+            Daily network curve
+            <small>volume, mean per station, and reporting coverage behind them</small>
+          </h2>
+          <div [chart]="dailyChart" *ngIf="dailyChart"></div>
+        </section>
+        <section class="rt-card">
+          <h2 class="rt-card__title">
+            Station totals by depth band
+            <small>{{ cumulative.summary.stations_reporting }} reporting stations</small>
+          </h2>
+          <div [chart]="bandChart" *ngIf="bandChart"></div>
+        </section>
+      </div>
+
+      <div class="rt-grid rt-grid--2">
+        <section class="rt-card">
+          <h2 class="rt-card__title">
+            Statewise accumulation
+            <small>mean station total vs the state's wettest station</small>
+          </h2>
+          <div [chart]="stateChart" *ngIf="stateChart"></div>
+        </section>
+        <section class="rt-card">
+          <h2 class="rt-card__title">
+            Concentration profile
+            <small>total against rain days; bubble size is the wettest single day</small>
+          </h2>
+          <div [chart]="spreadChart" *ngIf="spreadChart && spreadPointCount"></div>
+          <p class="rt-empty" *ngIf="!spreadPointCount">
+            No station reported a valid daily total in this window, so there is
+            nothing to plot.
+          </p>
+        </section>
+      </div>
+
+      <section class="rt-card">
+        <div class="rt-card__head">
+          <h2 class="rt-card__title">
+            Station statistics
+            <small>{{ cumFilteredStations.length }} rows</small>
+          </h2>
+          <div class="rt-card__tools">
+            <input type="search" class="rt-input rt-input--search" placeholder="Search station, district, centre…"
+                   [(ngModel)]="cumSearch" (input)="applyCumFilter()" />
+            <button type="button" class="rt-btn rt-btn--ghost" (click)="exportCumulativeCsv()">
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="rt-tablewrap">
+          <table class="rt-table">
+            <thead>
+              <tr>
+                <th (click)="sortCum('station_name')">Station</th>
+                <th (click)="sortCum('state_name')">State</th>
+                <th (click)="sortCum('district_name')">District</th>
+                <th class="num" (click)="sortCum('total_rainfall')">Total</th>
+                <th class="num" (click)="sortCum('mean_daily')">Mean</th>
+                <th class="num" (click)="sortCum('median_daily')">Median</th>
+                <th class="num" (click)="sortCum('p95_daily')">P95</th>
+                <th class="num" (click)="sortCum('max_daily')">Max day</th>
+                <th class="num" (click)="sortCum('peak_share_pct')" title="Share of the window total that fell on the wettest day">Peak %</th>
+                <th class="num" (click)="sortCum('sd_daily')">SD</th>
+                <th class="num" (click)="sortCum('cv_pct')" title="Coefficient of variation — how erratic the daily series is">CV %</th>
+                <th class="num" (click)="sortCum('rain_days')">Rain d</th>
+                <th class="num" (click)="sortCum('dry_days')">Dry d</th>
+                <th class="num" (click)="sortCum('longest_wet_spell')" title="Longest run of consecutive rain days">Spell</th>
+                <th class="num" (click)="sortCum('reporting_pct')">Report %</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let s of cumPageStations; trackBy: trackByCode"
+                  class="rt-table__row" (click)="openStationFromRow(s)">
+                <td>
+                  <span class="rt-mini__name">{{ s.station_name }}</span>
+                  <span class="rt-mini__sub">{{ s.station_code }} · {{ s.station_type || '—' }}</span>
+                </td>
+                <td>{{ s.state_name || '—' }}</td>
+                <td>{{ s.district_name || '—' }}</td>
+                <td class="num rt-strong">{{ fmt(s.total_rainfall) }}</td>
+                <td class="num">{{ fmt(s.mean_daily, 2) }}</td>
+                <td class="num">{{ fmt(s.median_daily) }}</td>
+                <td class="num">{{ fmt(s.p95_daily) }}</td>
+                <td class="num">{{ fmt(s.max_daily) }}</td>
+                <td class="num">{{ fmt(s.peak_share_pct) }}</td>
+                <td class="num">{{ fmt(s.sd_daily, 2) }}</td>
+                <td class="num">{{ fmt(s.cv_pct) }}</td>
+                <td class="num">{{ s.rain_days }}</td>
+                <td class="num">{{ s.dry_days }}</td>
+                <td class="num">
+                  {{ s.longest_wet_spell }}
+                  <small *ngIf="s.longest_wet_spell > 0" class="rt-cell__sub">
+                    {{ fmt(s.longest_spell_total) }} mm
+                  </small>
+                </td>
+                <td class="num" [class.rt-warn]="s.reporting_pct < 80">{{ fmt(s.reporting_pct) }}</td>
+              </tr>
+              <tr *ngIf="!cumPageStations.length">
+                <td colspan="15" class="rt-empty">No stations match this filter.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="rt-pager">
+          <button type="button" class="rt-btn rt-btn--ghost" (click)="changeCumPage(-1)"
+                  [disabled]="cumPage === 0">Previous</button>
+          <span>Page {{ cumPage + 1 }} of {{ cumPageCount }}</span>
+          <button type="button" class="rt-btn rt-btn--ghost" (click)="changeCumPage(1)"
+                  [disabled]="cumPage >= cumPageCount - 1">Next</button>
+        </div>
+      </section>
+
+      <div class="rt-grid rt-grid--2">
+        <section class="rt-card">
+          <h2 class="rt-card__title">District rollup <small>top 20 by mean station total</small></h2>
+          <div class="rt-tablewrap rt-tablewrap--short">
+            <table class="rt-table">
+              <thead>
+                <tr>
+                  <th>District</th><th class="num">Stations</th><th class="num">Mean</th>
+                  <th class="num">Median</th><th class="num">Max</th><th class="num">Avg rain d</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let d of cumulative.districts.slice(0, 20); trackBy: trackByIndex">
+                  <td>{{ d.name }}</td>
+                  <td class="num">{{ d.stations_reporting }}/{{ d.stations }}</td>
+                  <td class="num rt-strong">{{ fmt(d.avg_rainfall) }}</td>
+                  <td class="num">{{ fmt(d.median_rainfall) }}</td>
+                  <td class="num">{{ fmt(d.max_rainfall) }}</td>
+                  <td class="num">{{ fmt(d.avg_rain_days) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="rt-card">
+          <h2 class="rt-card__title">Met centre rollup <small>reporting discipline by centre</small></h2>
+          <div class="rt-tablewrap rt-tablewrap--short">
+            <table class="rt-table">
+              <thead>
+                <tr>
+                  <th>Centre</th><th class="num">Stations</th><th class="num">Mean</th>
+                  <th class="num">Max</th><th class="num">Avg rain d</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let c of cumulative.centres; trackBy: trackByIndex">
+                  <td>{{ c.name }}</td>
+                  <td class="num">{{ c.stations_reporting }}/{{ c.stations }}</td>
+                  <td class="num rt-strong">{{ fmt(c.avg_rainfall) }}</td>
+                  <td class="num">{{ fmt(c.max_rainfall) }}</td>
+                  <td class="num">{{ fmt(c.avg_rain_days) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </ng-container>
+  </section>
+
+  <!-- ================================================== STATION PROFILE ==== -->
+  <section class="rt-panel" *ngIf="activeTab === 'station'">
+    <div class="rt-alert rt-alert--err" *ngIf="stationError">{{ stationError }}</div>
+    <p class="rt-hint" *ngIf="!stationSeries && !stationLoading && !stationError">
+      Pick a station from the Cumulative Stats table or a map popup, or type a station code above.
+    </p>
+
+    <ng-container *ngIf="stationSeries && !stationLoading">
+      <div class="rt-idcard">
+        <div>
+          <h2 class="rt-idcard__name">{{ stationSeries.station.station_name }}</h2>
+          <p class="rt-idcard__meta">
+            {{ stationSeries.station.station_code }} ·
+            {{ stationSeries.station.station_type || '—' }} ·
+            {{ stationSeries.station.block_name || '—' }},
+            {{ stationSeries.station.district_name || '—' }},
+            {{ stationSeries.station.state_name || '—' }}
+          </p>
+          <p class="rt-idcard__meta">
+            {{ stationSeries.station.region_name || '—' }} ·
+            {{ stationSeries.station.subdiv_name || '—' }} ·
+            MC {{ stationSeries.station.centre_name || '—' }} ·
+            {{ fmt(stationSeries.station.latitude, 4) }}, {{ fmt(stationSeries.station.longitude, 4) }}
+          </p>
+        </div>
+        <div class="rt-idcard__feeds">
+          <span class="rt-field__label">Live sources</span>
+          <ng-container *ngIf="stationSeries.station.live_sources.length; else noFeed">
+            <span class="rt-tag" *ngFor="let f of stationSeries.station.live_sources; trackBy: trackByIndex">
+              {{ f.source_label }} · {{ f.source_id }}
+            </span>
+          </ng-container>
+          <ng-template #noFeed>
+            <span class="rt-tag rt-tag--warn">No aws_mapping_id row — daily rows come from the no-data fill</span>
+          </ng-template>
+        </div>
+      </div>
+
+      <div class="rt-kpis rt-kpis--tight">
+        <div class="rt-kpi"><span class="rt-kpi__label">Total</span>
+          <span class="rt-kpi__value">{{ fmt(stationSeries.stats.total) }}<em>mm</em></span></div>
+        <div class="rt-kpi"><span class="rt-kpi__label">Mean / day</span>
+          <span class="rt-kpi__value">{{ fmt(stationSeries.stats.mean, 2) }}<em>mm</em></span></div>
+        <div class="rt-kpi"><span class="rt-kpi__label">Median</span>
+          <span class="rt-kpi__value">{{ fmt(stationSeries.stats.median) }}<em>mm</em></span></div>
+        <div class="rt-kpi"><span class="rt-kpi__label">P95</span>
+          <span class="rt-kpi__value">{{ fmt(stationSeries.stats.p95) }}<em>mm</em></span></div>
+        <div class="rt-kpi"><span class="rt-kpi__label">Max day</span>
+          <span class="rt-kpi__value">{{ fmt(stationSeries.stats.max) }}<em>mm</em></span></div>
+        <div class="rt-kpi"><span class="rt-kpi__label">Rain days</span>
+          <span class="rt-kpi__value">{{ stationSeries.stats.rain_days }}</span>
+          <span class="rt-kpi__foot">of {{ stationSeries.stats.days_reported }} reported</span></div>
+        <div class="rt-kpi"><span class="rt-kpi__label">Missing days</span>
+          <span class="rt-kpi__value" [class.rt-kpi__value--warn]="stationSeries.stats.days_missing > 0">
+            {{ stationSeries.stats.days_missing }}</span>
+          <span class="rt-kpi__foot">of {{ stationSeries.stats.days_total }}</span></div>
+      </div>
+
+      <section class="rt-card">
+        <h2 class="rt-card__title">
+          Daily rainfall and accumulation
+          <small>gaps are days stored as the −999.9 no-data sentinel</small>
+        </h2>
+        <div [chart]="stationChart" *ngIf="stationChart"></div>
+      </section>
+
+      <section class="rt-card" *ngIf="stationLiveChart && stationSeries.live">
+        <h2 class="rt-card__title">
+          15-minute accumulation · {{ stationSeries.live.date }}
+          <small>{{ stationSeries.live.source_label }} source, id {{ stationSeries.live.source_id }}</small>
+        </h2>
+        <div [chart]="stationLiveChart"></div>
+      </section>
+    </ng-container>
+  </section>
+
+  <!-- ================================================== NETWORK HEALTH ===== -->
+  <section class="rt-panel" *ngIf="activeTab === 'network'">
+    <div class="rt-alert rt-alert--err" *ngIf="networkError">{{ networkError }}</div>
+    <div class="rt-loading rt-loading--inline" *ngIf="networkLoading">
+      <span class="rt-spinner" aria-hidden="true"></span>
+      <span class="rt-loading__msg">
+        Checking all 10 observation tables for the last
+        {{ networkLookback }} day{{ networkLookback === 1 ? '' : 's' }} — this reads
+        every 15-minute record in that window, so it can take a few seconds.
+      </span>
+    </div>
+
+    <ng-container *ngIf="health && !networkLoading">
+      <p class="rt-note rt-note--lead">
+        Rainfall arrives in <strong>10 separate observation tables</strong>, one per
+        state or provider, every 15 minutes. A station only reaches the daily
+        cumulative store if its ID is listed in the <code>aws_mapping_id</code>
+        table, which ties it to an official station code. This page shows which
+        sources are still delivering, and which stations are sending data that
+        nothing is picking up.
+      </p>
+
+      <div class="rt-alert rt-alert--warn" *ngIf="sourcesWithoutMapping.length">
+        <strong>{{ sourcesWithoutMapping.length }}</strong> observation
+        {{ sourcesWithoutMapping.length === 1 ? 'table has' : 'tables have' }} no station codes in
+        <code>aws_mapping_id</code>, so none of their stations reach
+        <code>aws_station_daily_data</code>: {{ sourcesWithoutMapping.join(', ') }}.
+      </div>
+
+      <div class="rt-kpis">
+        <div class="rt-kpi rt-kpi--accent">
+          <span class="rt-kpi__label">Live Sources</span>
+          <span class="rt-kpi__value">{{ health.totals.sources_mapped }}/{{ health.totals.sources_total }}</span>
+          <span class="rt-kpi__foot">wired into the cumulative store</span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Stations Streaming</span>
+          <span class="rt-kpi__value">{{ health.totals.stations_window }}</span>
+          <span class="rt-kpi__foot">seen in the last {{ health.window.days }} days</span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Mapped</span>
+          <span class="rt-kpi__value">{{ health.totals.stations_mapped }}</span>
+          <span class="rt-kpi__foot">{{ fmt(health.totals.mapping_coverage_pct) }}% coverage</span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Unmapped</span>
+          <span class="rt-kpi__value rt-kpi__value--warn">{{ health.totals.stations_unmapped }}</span>
+          <span class="rt-kpi__foot">no station_code, invisible to daily products</span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Store Rows Today</span>
+          <span class="rt-kpi__value">{{ health.cumulative_store.rows_with_data }}</span>
+          <span class="rt-kpi__foot">
+            {{ health.cumulative_store.rows_no_data }} filled as no-data ·
+            {{ fmt(health.cumulative_store.store_completeness_pct) }}% complete
+          </span>
+        </div>
+        <div class="rt-kpi">
+          <span class="rt-kpi__label">Registered Stations</span>
+          <span class="rt-kpi__value">{{ health.cumulative_store.stations_registered }}</span>
+          <span class="rt-kpi__foot">active rows in aws_station_details</span>
+        </div>
+      </div>
+
+      <section class="rt-card">
+        <h2 class="rt-card__title">
+          Observation sources
+          <small>generated {{ health.generated_at_ist }} IST for AWS day {{ health.date }}</small>
+        </h2>
+        <div class="rt-tablewrap">
+          <table class="rt-table">
+            <thead>
+              <tr>
+                <th>Source</th><th>Table</th><th class="num">Stations</th>
+                <th class="num">Mapped</th><th class="num">Unmapped</th><th>Coverage</th>
+                <th class="num">Slots today</th><th class="num">Raining</th>
+                <th class="num">Peak</th><th>Last observation</th><th class="num">Lag</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let s of health.sources; trackBy: trackByIndex">
+                <td>
+                  <span class="rt-mini__name">{{ s.label }}</span>
+                  <span class="rt-mini__sub">
+                    rain column <code>{{ s.rain_column }}</code>
+                    <span *ngIf="!s.has_coordinates" class="rt-tag rt-tag--info">no lat/lon</span>
+                    <span *ngIf="!s.has_state" class="rt-tag rt-tag--info">no state</span>
+                  </span>
+                </td>
+                <td><code class="rt-code">{{ s.table }}</code></td>
+                <td class="num">{{ s.stations_window }}</td>
+                <td class="num">{{ s.stations_mapped }}</td>
+                <td class="num" [class.rt-warn]="s.stations_unmapped > 0">{{ s.stations_unmapped }}</td>
+                <td>
+                  <div class="rt-meter" [title]="fmt(s.mapping_coverage_pct) + '% of streaming stations have a station_code'">
+                    <span class="rt-meter__fill"
+                          [class.rt-meter__fill--bad]="(s.mapping_coverage_pct || 0) < 50"
+                          [style.width.%]="s.mapping_coverage_pct || 0"></span>
+                  </div>
+                  <small class="rt-cell__sub">{{ fmt(s.mapping_coverage_pct) }}%</small>
+                </td>
+                <td class="num">{{ s.slots_today }}/96</td>
+                <td class="num">{{ s.raining_today }}</td>
+                <td class="num">{{ fmt(s.max_rain_today) }}</td>
+                <td>{{ s.last_obs_ist || '—' }}</td>
+                <td class="num" [class.rt-warn]="(s.lag_minutes || 0) > 120">
+                  {{ s.lag_minutes === null ? '—' : s.lag_minutes + 'm' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="rt-cell__sub" *ngIf="danglingTotal > 0">
+          {{ danglingTotal }} mapping rows point at a station_code that is not in
+          <code>aws_station_details</code>; those stations stream but still never get a daily row.
+        </p>
+      </section>
+
+      <section class="rt-card">
+        <div class="rt-card__head">
+          <h2 class="rt-card__title">
+            Unmapped stations
+            <small>
+              streaming 15-minute data with no <code>aws_mapping_id</code> row
+              <span *ngIf="unmappedTruncated"> · list truncated</span>
+            </small>
+          </h2>
+          <div class="rt-card__tools">
+            <select class="rt-input" [(ngModel)]="unmappedSourceFilter">
+              <option value="">All sources ({{ unmapped.length }})</option>
+              <option *ngFor="let s of health.sources" [value]="s.key"
+                      [disabled]="!unmappedBySource[s.key]">
+                {{ s.label }} ({{ unmappedBySource[s.key] || 0 }})
+              </option>
+            </select>
+            <button type="button" class="rt-btn rt-btn--ghost" (click)="exportUnmappedCsv()">
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="rt-tablewrap">
+          <table class="rt-table">
+            <thead>
+              <tr>
+                <th>Source</th><th>Source ID</th><th>Station</th><th>District</th><th>State</th>
+                <th class="num">Obs</th><th class="num">Days</th><th class="num">Peak mm</th>
+                <th>Coordinates</th><th>Last observation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let s of filteredUnmapped; trackBy: trackByIndex">
+                <td>{{ s.source_label }}</td>
+                <td><code class="rt-code">{{ s.station_id }}</code></td>
+                <td>{{ s.station_name }}</td>
+                <td>{{ s.district_name || '—' }}</td>
+                <td>{{ s.state_name || '—' }}</td>
+                <td class="num">{{ s.observations }}</td>
+                <td class="num">{{ s.days_seen }}</td>
+                <td class="num rt-strong">{{ fmt(s.peak_rainfall) }}</td>
+                <td>
+                  <span *ngIf="s.latitude !== null && s.longitude !== null">
+                    {{ fmt(s.latitude, 3) }}, {{ fmt(s.longitude, 3) }}
+                  </span>
+                  <span *ngIf="s.latitude === null || s.longitude === null" class="rt-warn">none</span>
+                </td>
+                <td>{{ s.last_obs_ist || '—' }}</td>
+              </tr>
+              <tr *ngIf="!filteredUnmapped.length">
+                <td colspan="10" class="rt-empty">
+                  Every streaming station in this window resolves to a station code.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </ng-container>
+  </section>
+</div>
