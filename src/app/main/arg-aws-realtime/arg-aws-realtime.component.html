@@ -232,12 +232,9 @@
             <div class="rt-mapset__group">
               <span class="rt-mapset__label">Basemap</span>
               <div class="rt-seg rt-seg--sm">
-                <button type="button" class="rt-seg__btn"
-                        [class.rt-seg__btn--on]="basemap === 'street'"
-                        (click)="setBasemap('street')">Map</button>
-                <button type="button" class="rt-seg__btn"
-                        [class.rt-seg__btn--on]="basemap === 'satellite'"
-                        (click)="setBasemap('satellite')">Satellite</button>
+                <button *ngFor="let b of basemaps; trackBy: trackByIndex" type="button"
+                        class="rt-seg__btn" [class.rt-seg__btn--on]="basemap === b.key"
+                        (click)="setBasemap(b.key)">{{ b.label }}</button>
               </div>
             </div>
 
@@ -360,6 +357,14 @@
               </small>
             </h2>
             <div class="rt-card__tools">
+              <span class="rt-search">
+                <input type="search" class="rt-input rt-input--mini rt-search__input"
+                       [(ngModel)]="heatSearch" (input)="applyHeatFilters()"
+                       placeholder="Search station…"
+                       aria-label="Search stations in the strip" />
+                <button type="button" class="rt-search__clear" *ngIf="heatSearch"
+                        (click)="clearHeatSearch()" title="Clear search">&times;</button>
+              </span>
               <select class="rt-input rt-input--mini" [(ngModel)]="heatTopN"
                       (change)="applyHeatFilters()" title="How many stations to rank">
                 <option *ngFor="let n of heatTopNChoices; trackBy: trackByIndex" [ngValue]="n">
@@ -378,7 +383,8 @@
                stations" on a 1900-station source costs the same as Top 15
                rather than ~185,000 cell elements. -->
           <cdk-virtual-scroll-viewport class="rt-heat" [itemSize]="rowHeight"
-                                       *ngIf="heatRows.length">
+                                       *ngIf="heatRows.length"
+                                       (mouseleave)="clearHeatHover()">
             <div class="rt-heat__row" [class.rt-heat__row--focus]="row.focused"
                  *cdkVirtualFor="let row of heatRows; trackBy: trackByHeatRow">
               <button type="button" class="rt-heat__name"
@@ -397,13 +403,38 @@
             </div>
           </cdk-virtual-scroll-viewport>
 
+          <!-- Sibling of the viewport, not a child: it is position:fixed, and
+               anything inside a scrolling viewport gets clipped by it. -->
+          <div class="rt-heattip" *ngIf="heatHover"
+               [style.left.px]="heatHover.x" [style.top.px]="heatHover.y">
+            <div class="rt-heattip__head">
+              {{ heatHover.stationName }}
+              <span class="rt-heattip__src">{{ heatHover.source }}</span>
+            </div>
+            <div class="rt-heattip__time">
+              {{ heatHover.slotLabel }} &ndash; {{ heatHover.endLabel }}
+              <span *ngIf="heatHover.nextDay">+1d</span>
+              <small>15-minute slot {{ heatHover.slot + 1 }} of {{ slotCount }} · IST</small>
+            </div>
+            <dl class="rt-heattip__grid">
+              <dt>This slot</dt>
+              <dd>{{ heatHover.increment === null ? 'no report' : heatHover.increment + ' mm' }}</dd>
+              <dt>Rate</dt>
+              <dd>{{ heatHover.rate === null ? '—' : heatHover.rate + ' mm/hr' }}</dd>
+              <dt>Accumulated</dt>
+              <dd>{{ heatHover.cum === null ? '—' : heatHover.cum + ' mm' }}</dd>
+            </dl>
+            <div class="rt-heattip__hint">Click to move the map to this time</div>
+          </div>
+
           <p class="rt-empty" *ngIf="!heatRows.length">
             No stations reporting for this selection.
           </p>
 
           <p class="rt-heat__count" *ngIf="heatRows.length">
             Showing {{ heatRows.length }}
-            {{ heatTopN > 0 ? 'of the wettest stations' : 'stations — the full selection' }}
+            {{ heatTopN > 0 ? 'of the wettest stations' : 'stations — the full selection' }}<span
+              *ngIf="heatSearch"> matching “{{ heatSearch }}”</span>
             <span *ngIf="focusedRow" class="rt-heat__pin">
               · <strong>{{ focusedRow.station.station_name }}</strong>
               {{ hoverKey ? 'under the pointer' : 'pinned from the map' }}

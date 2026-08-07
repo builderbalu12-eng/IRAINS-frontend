@@ -64,8 +64,14 @@ interface TimelineDot {
 })
 export class DataEntryInvestigationComponent implements OnInit {
   activeTab: 'range' | 'daywise' = 'daywise';
-  days: number = 7;                                        // Range tab
   singleDate: string = this.formatDateLocal(new Date());    // Day Wise tab
+
+  // Range tab — explicit from/to, both inclusive. Seeded to the last week
+  // simply as a starting point; the user picks whatever range they want.
+  today: string = this.formatDateLocal(new Date());
+  fromDate: string = this.formatDateLocal(this.addDays(new Date(), -6));
+  toDate: string = this.formatDateLocal(new Date());
+  rangeError: string = '';
 
   loading: boolean = false;
   downloading: boolean = false;
@@ -118,9 +124,30 @@ export class DataEntryInvestigationComponent implements OnInit {
     }
   }
 
-  /** Which filter is currently active — { days } for Range, { date } for Day Wise — used by every fetch below. */
-  private currentParams(): { days?: number; date?: string } {
-    return this.activeTab === 'daywise' ? { date: this.singleDate } : { days: this.days };
+  /** Which filter is currently active — { fromDate, toDate } for Range, { date } for Day Wise — used by every fetch below. */
+  private currentParams(): { date?: string; fromDate?: string; toDate?: string } {
+    return this.activeTab === 'daywise'
+      ? { date: this.singleDate }
+      : { fromDate: this.fromDate, toDate: this.toDate };
+  }
+
+  /** Both ends required, and From must not sit after To — checked before any fetch on the Range tab. */
+  private validateRange(): boolean {
+    if (!this.fromDate || !this.toDate) {
+      this.rangeError = 'Please select both From date and To date.';
+      return false;
+    }
+    if (this.fromDate > this.toDate) {
+      this.rangeError = 'From date cannot be after To date.';
+      return false;
+    }
+    this.rangeError = '';
+    return true;
+  }
+
+  onRangeChange(): void {
+    if (!this.validateRange()) return;
+    this.loadLog();
   }
 
   onDayWiseDateChange(): void {
@@ -131,6 +158,7 @@ export class DataEntryInvestigationComponent implements OnInit {
   }
 
   loadLog(): void {
+    if (this.activeTab === 'range' && !this.validateRange()) return;
     this.loading = true;
     this.message = '';
     this.stationService.fetchRevisionLog(this.currentParams()).subscribe({
@@ -233,6 +261,7 @@ export class DataEntryInvestigationComponent implements OnInit {
   }
 
   private runExport(kind: 'revision' | 'mcwise', fileLabel: string): void {
+    if (this.activeTab === 'range' && !this.validateRange()) return;
     this.downloading = true;
     this.message = '';
     this.stationService.fetchRevisionLogExport(this.currentParams()).subscribe({
@@ -331,7 +360,7 @@ export class DataEntryInvestigationComponent implements OnInit {
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8'
     });
-    const period = this.activeTab === 'daywise' ? this.singleDate : `last-${this.days}-days`;
+    const period = this.activeTab === 'daywise' ? this.singleDate : `${this.fromDate}_to_${this.toDate}`;
     FileSaver.saveAs(blob, `${fileLabel}_${period}.xlsx`);
   }
 
@@ -451,6 +480,12 @@ export class DataEntryInvestigationComponent implements OnInit {
 
   resetZoom(): void {
     this.zoomLevel = 1;
+  }
+
+  private addDays(date: Date, delta: number): Date {
+    const d = new Date(date);
+    d.setDate(d.getDate() + delta);
+    return d;
   }
 
   private formatDateLocal(date: Date): string {

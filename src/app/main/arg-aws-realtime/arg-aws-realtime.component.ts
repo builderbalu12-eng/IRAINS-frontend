@@ -48,6 +48,49 @@ type DisplayMode = 'cumulative' | 'intensity';
 type HeatMode = 'slot' | 'rate' | 'cumulative';
 /** Whether map dots are all one size, or grow with the band they fall in. */
 type MarkerSizing = 'uniform' | 'scaled';
+type BasemapKey = 'street' | 'satellite' | 'terrain';
+
+/**
+ * The available basemaps. `dark` drives the out-of-India veil and every hairline
+ * over it: a white wash reads as fog on imagery, and dark borders vanish on it.
+ * All three are key-free tile services.
+ */
+const BASEMAPS: ReadonlyArray<{
+  key: BasemapKey;
+  label: string;
+  url: string;
+  attribution: string;
+  maxZoom: number;
+  dark: boolean;
+}> = [
+  {
+    key: 'street',
+    label: 'Map',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 18,
+    dark: false,
+  },
+  {
+    key: 'satellite',
+    label: 'Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
+    maxZoom: 18,
+    dark: true,
+  },
+  {
+    // Relief plus place names. Rainfall follows terrain closely in India — the
+    // Western Ghats and the Himalayan foothills explain a lot of what the map
+    // shows — and neither of the other two makes elevation legible.
+    key: 'terrain',
+    label: 'Terrain',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Esri, HERE, Garmin, USGS, NGA',
+    maxZoom: 19,
+    dark: false,
+  },
+];
 
 /**
  * A timeline station with the derived arrays the scrubber needs.
@@ -148,7 +191,8 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
    * than against road labels here, and the imagery makes the coastline and the
    * ghats obvious without the basemap competing for attention.
    */
-  basemap: 'street' | 'satellite' = 'satellite';
+  basemap: BasemapKey = 'satellite';
+  readonly basemaps = BASEMAPS;
   markerSizing: MarkerSizing = 'scaled';
   /**
    * Whether the map's settings popover is open. Closed by default: three
@@ -195,6 +239,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
   heatHover: HeatHover | null = null;
   heatMode: HeatMode = 'slot';
   /** 0 means every station in the current selection. */
+  heatSearch = '';
   heatTopN = 15;
   readonly heatTopNChoices = [15, 30, 60, 150, 500, 0];
   readonly heatModes: Array<{ key: HeatMode; label: string }> = [
@@ -227,8 +272,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
   private maskRenderer = L.canvas({ pane: 'rt-mask', padding: 0.1 });
   /** Extent of the India GeoJSON — the view the map opens on and cannot leave. */
   private indiaBounds: L.LatLngBounds | null = null;
-  private streetTiles: L.TileLayer | null = null;
-  private satelliteTiles: L.TileLayer | null = null;
+  private basemapLayers = new Map<BasemapKey, L.TileLayer>();
   /** Kept so the mask and borders can be restyled when the basemap changes. */
   private maskFill: L.Polygon | null = null;
   private maskRim: L.Polygon | null = null;
@@ -522,8 +566,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
       this.map = null;
       this.markerLayer = null;
       this.indiaBounds = null;
-      this.streetTiles = null;
-      this.satelliteTiles = null;
+      this.basemapLayers.clear();
       this.maskFill = null;
       this.maskRim = null;
       this.stateBorders = null;
@@ -548,24 +591,17 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
       attributionControl: false,
     });
 
-    // The same two basemaps Station Statistics offers, so the pages match.
-    this.streetTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 18,
-      crossOrigin: 'anonymous',
-    });
-
-    // Esri World Imagery — no API key required, unlike Mapbox or Google.
-    this.satelliteTiles = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      {
-        attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
-        maxZoom: 18,
-        crossOrigin: 'anonymous',
-      }
-    );
-
-    (this.basemap === 'satellite' ? this.satelliteTiles : this.streetTiles).addTo(this.map);
+    for (const b of BASEMAPS) {
+      this.basemapLayers.set(
+        b.key,
+        L.tileLayer(b.url, {
+          attribution: b.attribution,
+          maxZoom: b.maxZoom,
+          crossOrigin: 'anonymous',
+        })
+      );
+    }
+    this.basemapLayers.get(this.basemap)?.addTo(this.map);
 
     // Own pane for the dimming mask: above the tiles (200) but below the
     // markers (400), so it can never paint over a station.
@@ -708,33 +744,38 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
    * legible. Satellite needs a dark veil rather than a light one: a white wash
    * over imagery just looks like fog.
    */
+  private get isDarkBasemap(): boolean {
+    return BASEMAPS.find((b) => b.key === this.basemap)?.dark ?? false;
+  }
+
   private maskStyle(): L.PathOptions {
-    return this.basemap === 'satellite'
+    return this.isDarkBasemap
       ? { fillColor: '#0b1220', fillOpacity: 0.6 }
       : { fillColor: '#f5f7fa', fillOpacity: 0.55 };
   }
 
   private rimStyle(): L.PathOptions {
-    return this.basemap === 'satellite'
+    return this.isDarkBasemap
       ? { color: '#ffffff', weight: 1.4, opacity: 0.9 }
       : { color: '#1c2430', weight: 1.2, opacity: 0.75 };
   }
 
   /** Dark hairlines vanish on imagery, so the internal borders invert. */
   private borderStyle(): L.PathOptions {
-    return this.basemap === 'satellite'
+    return this.isDarkBasemap
       ? { weight: 0.7, opacity: 0.5, color: '#ffffff', fill: false }
       : { weight: 0.7, opacity: 0.55, color: '#3d4652', fill: false };
   }
 
-  setBasemap(mode: 'street' | 'satellite'): void {
+  setBasemap(mode: BasemapKey): void {
     if (this.basemap === mode || !this.map) return;
     this.basemap = mode;
 
-    const next = mode === 'satellite' ? this.satelliteTiles : this.streetTiles;
-    const prev = mode === 'satellite' ? this.streetTiles : this.satelliteTiles;
-    if (prev && this.map.hasLayer(prev)) this.map.removeLayer(prev);
-    if (next && !this.map.hasLayer(next)) next.addTo(this.map);
+    for (const [key, layer] of this.basemapLayers) {
+      const wanted = key === mode;
+      if (wanted && !this.map.hasLayer(layer)) layer.addTo(this.map);
+      if (!wanted && this.map.hasLayer(layer)) this.map.removeLayer(layer);
+    }
 
     // The veil and every hairline over it are basemap-dependent.
     this.maskFill?.setStyle(this.maskStyle());
@@ -1010,6 +1051,12 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     this.composeHeatRows();
   }
 
+  clearHeatSearch(): void {
+    if (!this.heatSearch) return;
+    this.heatSearch = '';
+    this.composeHeatRows();
+  }
+
   /** The IMD bands, whichever quantity the strip is showing. */
   get heatBands(): readonly Band[] {
     return DEPTH_BANDS;
@@ -1040,12 +1087,30 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
   private composeHeatRows(): void {
     const ranked = this.rankedMovers;
     const key = (m: Mover) => `${m.station.source_key}|${m.station.station_id}`;
+
+    // Search narrows the pool before the ranking is cut, so "Top 15" means the
+    // fifteen wettest matches rather than whichever matches survive the cut.
+    const q = this.heatSearch.trim().toLowerCase();
+    const matched = q
+      ? ranked.filter((m) =>
+          [
+            m.station.station_name,
+            m.station.station_id,
+            m.station.station_code,
+            m.station.district_name,
+            m.station.state_name,
+          ].some((f) => (f ?? '').toString().toLowerCase().includes(q))
+        )
+      : ranked;
+
     // 0 is "every station in the selection" — the strip is virtualised, so the
     // row count no longer decides how much DOM exists.
-    let shown = this.heatTopN > 0 ? ranked.slice(0, this.heatTopN) : ranked;
+    let shown = this.heatTopN > 0 ? matched.slice(0, this.heatTopN) : matched;
 
     // The focused station leads the list wherever it actually ranks, so a quiet
     // station picked off the map still appears.
+    // Looked up in the full ranking, not the matches: a station pinned from the
+    // map should not vanish because a search is active.
     const focus = this.activeFocusKey;
     if (focus) {
       const hit = ranked.find((m) => key(m) === focus);

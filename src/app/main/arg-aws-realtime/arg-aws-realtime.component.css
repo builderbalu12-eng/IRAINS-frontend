@@ -177,6 +177,36 @@
   cursor: not-allowed;
 }
 
+/* Search box with its own clear button, since a bare native search field on a
+   card header gives no affordance for getting back to the full list. */
+.rt-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rt-search__input {
+  width: 150px;
+  padding-right: 20px;
+}
+
+.rt-search__clear {
+  position: absolute;
+  right: 4px;
+  padding: 0 3px;
+  border: 0;
+  background: none;
+  color: var(--rt-ink-faint);
+  font-size: 14px;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.rt-search__clear:hover {
+  color: var(--rt-danger);
+}
+
 /* Compact selects for a card header, where a full-size field would push the
    mode buttons onto their own line. */
 .rt-input--mini {
@@ -1383,16 +1413,22 @@
   gap: 1px;
   height: 14px;
   cursor: crosshair;
-  /* The hairline frame gives the white "no rain" cells an edge to sit against,
-     so a dry run still reads as data rather than as empty space. */
-  border: 1px solid var(--rt-line);
+  border: 1px solid #aab4c2;
   border-radius: 3px;
   overflow: hidden;
+  /* Shows through the 1px gaps as gridlines, which is the only thing that makes
+     a Zero Rainfall cell visible: its fill is pure white, so against the white
+     card it and its neighbours merged into one blank run. The frame alone
+     bounded the strip, not the cells inside it. */
+  background: #aab4c2;
 }
 
 .rt-heat__cell {
   display: block;
   height: 100%;
+  /* Faint inner edge so a white cell still reads as a filled cell at the ends
+     of the row, where there is a gridline on one side only. */
+  box-shadow: inset 0 0 0 0.5px rgba(28, 36, 48, 0.12);
 }
 
 /* The scrubbed column is picked out across every row, tying the strip to the

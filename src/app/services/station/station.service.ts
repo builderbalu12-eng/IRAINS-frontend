@@ -173,7 +173,7 @@ export class FetchStationDataService {
     return this.http.get<any[]>(`${this.baseUrl}/api/v1/getAllStations`);
   }
 
-  fetchRevisionLog(params: { days?: number; date?: string }): Observable<any> {
+  fetchRevisionLog(params: { date?: string; fromDate?: string; toDate?: string }): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionLog`, params);
   }
 
@@ -181,11 +181,11 @@ export class FetchStationDataService {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionStationDetails`, { revisionDate, dataDate });
   }
 
-  fetchRevisionLogByCentre(params: { days?: number; date?: string }): Observable<any> {
+  fetchRevisionLogByCentre(params: { date?: string; fromDate?: string; toDate?: string }): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionLogByCentre`, params);
   }
 
-  fetchCentreRevisionDetails(centreType: string, centreName: string, params: { days?: number; date?: string }): Observable<any> {
+  fetchCentreRevisionDetails(centreType: string, centreName: string, params: { date?: string; fromDate?: string; toDate?: string }): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchCentreRevisionDetails`, { centreType, centreName, ...params });
   }
 
@@ -194,7 +194,7 @@ export class FetchStationDataService {
   }
 
   /** Flat station-level rows for the whole window — backs the Investigation page downloads. */
-  fetchRevisionLogExport(params: { days?: number; date?: string }): Observable<any> {
+  fetchRevisionLogExport(params: { date?: string; fromDate?: string; toDate?: string }): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionLogExport`, params);
   }
 }
