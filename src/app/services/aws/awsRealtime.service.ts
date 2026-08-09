@@ -106,9 +106,17 @@ export interface AwsUnmappedStation {
 
 export interface AwsSlot {
   index: number;
+  /** IST clock only, "HH:mm". */
   label: string;
-  /** True once the slot has rolled past midnight into the next calendar day. */
-  nextDay: boolean;
+  /** Absolute start of the slot, "YYYY-MM-DD HH:mm", in each zone. */
+  ist: string;
+  utc: string;
+  /**
+   * True from 00:00 IST onward — those slots carry the day's own label date.
+   * A rainfall day is named for the date it ENDS on, so the earlier slots
+   * (08:30 → 23:45) fall on the previous calendar day.
+   */
+  onLabelDate: boolean;
 }
 
 export interface AwsTimelineStation {

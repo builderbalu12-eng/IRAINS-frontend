@@ -18,6 +18,7 @@ import HighchartsMore from 'highcharts/highcharts-more';
 HighchartsMore(Highcharts);
 import * as L from 'leaflet';
 import { saveAs } from 'file-saver';
+import * as XLSXStyle from 'xlsx-js-style';
 import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, takeUntil } from 'rxjs/operators';
 
@@ -44,6 +45,9 @@ const MARKER_RADIUS = 5;
 type TabKey = 'live' | 'cumulative' | 'station' | 'network';
 /** What the map paints: accumulated depth, or how hard it is raining right now. */
 type DisplayMode = 'cumulative' | 'intensity';
+/** Which clock the Live tab reads in. Applies to that tab only.
+ *  Not named `Zone` — zone.js already owns that identifier globally. */
+type ClockZone = 'IST' | 'UTC';
 /** Which quantity the wettest-stations strip colours its cells by. */
 type HeatMode = 'slot' | 'rate' | 'cumulative';
 /** Whether map dots are all one size, or grow with the band they fall in. */
@@ -116,10 +120,11 @@ interface HeatHover {
   source: string;
   mapped: boolean;
   slot: number;
+  /** Clock at the slot's start, and at its end (15 min later). */
   slotLabel: string;
-  /** Label of the following slot — the cell covers [slotLabel, endLabel). */
   endLabel: string;
-  nextDay: boolean;
+  /** Calendar date the slot falls on, in the selected zone. */
+  slotDate: string;
   /** Rain in that single 15-minute cell, and the same figure as a rate. */
   increment: number | null;
   rate: number | null;
@@ -164,11 +169,21 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
   ];
 
   // ────────────────────────────────────────────────────────────────── dates
-  /** The AWS day being replayed. Its window is 03:00 IST → 03:00 IST. */
+  /** The AWS day being replayed. Its window is 08:30 IST → 08:30 IST. */
   liveDate = '';
   cumStartDate = '';
   cumEndDate = '';
+  /** Latest date the stored daily series can have — the last COMPLETED AWS day. */
   maxDate = '';
+  /**
+   * Latest date the Live tab can show: the AWS day currently in progress.
+   *
+   * A day is named for the date it ENDS on, so the window running right now
+   * carries tomorrow's label — at 10:30 IST on the 8th the live window is
+   * `aws_day 9 Aug`. Capping this at today's calendar date made the in-progress
+   * day unreachable for most of the day.
+   */
+  liveMaxDate = '';
 
   // ──────────────────────────────────────────────────────────────── filters
   filters: AwsFilters | null = null;
@@ -192,6 +207,11 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
    * ghats obvious without the basemap competing for attention.
    */
   basemap: BasemapKey = 'satellite';
+  /**
+   * The clock the Live tab is read in. The backend sends every slot's absolute
+   * start in both zones, so switching is a formatting change — no refetch.
+   */
+  clockZone: ClockZone = 'IST';
   readonly basemaps = BASEMAPS;
   markerSizing: MarkerSizing = 'scaled';
   /**
@@ -341,6 +361,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const today = new Date();
     this.maxDate = this.toIso(today);
+    this.liveMaxDate = this.addDays(this.maxDate, 1);
     this.liveDate = this.maxDate;
     this.cumEndDate = this.maxDate;
     this.cumStartDate = this.toIso(new Date(today.getTime() - 29 * 86400000));
@@ -354,8 +375,12 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
           this.sourceKeys = filters.sources.map((s) => s.key);
           for (const key of this.sourceKeys) this.selectedSources[key] = true;
           // The server's AWS day can be ahead of the browser's calendar date
-          // between 00:00 and 03:00 IST, and is the correct default.
-          if (filters.aws_today) this.liveDate = filters.aws_today;
+          // just after the 08:30 IST rollover, and is the correct default.
+          if (filters.aws_today) {
+            this.liveDate = filters.aws_today;
+            this.maxDate = filters.aws_today;
+            this.liveMaxDate = this.addDays(filters.aws_today, 1);
+          }
         }
         this.loadTimeline();
       });
@@ -468,6 +493,24 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
    * phantom "dry" flash in the replay.
    */
   private prepareLiveStations(data: AwsTimeline): void {
+    // The last slot at which ANY station has a real reading.
+    //
+    // An AWS day runs to 08:30 the next morning, so for a day still in progress
+    // most of it has not happened yet. Carrying each station's accumulation to
+    // slot 95 regardless made those future slots look populated — a station
+    // reported "Accumulated 17.6 mm" for a time six hours away, and the header
+    // counted it among the stations reporting. Everything past this point is
+    // blanked instead, so it reads as "no report" like any other gap.
+    let lastData = -1;
+    for (const s of data.stations) {
+      for (let i = SLOT_COUNT - 1; i > lastData; i--) {
+        if (s.cum[i] !== null) {
+          lastData = i;
+          break;
+        }
+      }
+    }
+
     this.liveStations = data.stations.map((s) => {
       const filled = new Float32Array(SLOT_COUNT).fill(NaN);
       const step = new Float32Array(SLOT_COUNT).fill(NaN);
@@ -479,12 +522,26 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
           running = Number.isNaN(running) ? Math.max(raw, 0) : Math.max(running, raw);
         }
         filled[i] = running;
+        // Read the value back out of the array before differencing it.
+        // `running` is a 64-bit JS number but the arrays are Float32, so 590.8
+        // goes in and 590.7999877929688 comes out. Subtracting the two left a
+        // residue of ~1.2e-5 on every slot after the last report — greater than
+        // zero, so bandIndex put it in Very Light and painted the whole tail
+        // green, while the tooltip's toFixed(1) still read "0.0 mm".
+        running = filled[i];
         const prev = i > 0 ? filled[i - 1] : NaN;
         step[i] = Number.isNaN(running)
           ? NaN
           : Number.isNaN(prev)
           ? running // first report of the day is itself the accumulation so far
           : Math.max(0, running - prev);
+      }
+
+      // Nothing is known past the network's last reading — not even a carried
+      // accumulation. Blank it rather than imply a value.
+      for (let i = lastData + 1; i < SLOT_COUNT; i++) {
+        filled[i] = NaN;
+        step[i] = NaN;
       }
 
       return { ...s, filled, step, marker: null, lastBand: -2 };
@@ -826,7 +883,6 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     const i = this.slotIndex;
     const depth = s.filled[i];
     const step = s.step[i];
-    const slot = this.timeline?.slots[i];
 
     const root = document.createElement('div');
     root.className = 'aws-popup';
@@ -837,7 +893,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
       ['Station code', s.station_code ?? 'not mapped'],
       ['District', s.district_name || '—'],
       ['State', s.state_name || '—'],
-      ['At ' + (slot ? slot.label : '—'), Number.isNaN(depth) ? 'no report yet' : `${depth.toFixed(1)} mm`],
+      ['At ' + this.slotClock(i) + ' ' + this.clockZone, Number.isNaN(depth) ? 'no report yet' : `${depth.toFixed(1)} mm`],
       ['15-min rate', Number.isNaN(step) ? '—' : `${(step * SLOTS_PER_HOUR).toFixed(1)} mm/hr`],
       ['Day total', s.day_total === null ? '—' : `${s.day_total.toFixed(1)} mm`],
       ['Slots reported', `${s.slots_reported} / ${SLOT_COUNT}`],
@@ -1166,18 +1222,19 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
 
     const step = st.step[slot];
     const cum = st.filled[slot];
-    const info = this.timeline?.slots[slot];
-    // The last cell has no following slot: the AWS day ends where it began.
-    const next = this.timeline?.slots[slot + 1];
+    // The last cell has no following slot; its window ends 15 minutes on.
+    const endStamp = slot + 1 < SLOT_COUNT
+      ? this.slotStamp(slot + 1)
+      : this.addQuarterHour(this.slotStamp(slot));
 
     this.heatHover = {
       stationName: st.station_name,
       source: st.source_label,
       mapped: st.mapped,
       slot,
-      slotLabel: info ? info.label : '--:--',
-      endLabel: next ? next.label : '03:00',
-      nextDay: info ? info.nextDay : false,
+      slotLabel: this.slotClock(slot),
+      endLabel: endStamp.slice(11),
+      slotDate: this.slotDate(slot),
       increment: Number.isNaN(step) ? null : Number(step.toFixed(1)),
       rate: Number.isNaN(step) ? null : Number((step * SLOTS_PER_HOUR).toFixed(1)),
       cum: Number.isNaN(cum) ? null : Number(cum.toFixed(1)),
@@ -1248,6 +1305,13 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     station.marker?.openPopup();
   }
 
+  /** "YYYY-MM-DD HH:mm" plus 15 minutes, without pulling in a date library. */
+  private addQuarterHour(stamp: string): string {
+    const d = new Date(stamp.replace(' ', 'T') + ':00Z');
+    d.setUTCMinutes(d.getUTCMinutes() + 15);
+    return d.toISOString().slice(0, 16).replace('T', ' ');
+  }
+
   clearHeatHover(): void {
     this.heatHover = null;
   }
@@ -1315,22 +1379,47 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
 
   // ─────────────────────────────────────────────────────── live — templating
 
+  setZone(z: ClockZone): void {
+    if (this.clockZone === z) return;
+    this.clockZone = z;
+    // Popups render their times once, at open; close so the next one is redrawn.
+    this.map?.closePopup();
+  }
+
+  /** Absolute start of a slot in the selected zone, "YYYY-MM-DD HH:mm". */
+  slotStamp(i: number): string {
+    const slot = this.timeline?.slots[i];
+    if (!slot) return '';
+    return this.clockZone === 'UTC' ? slot.utc : slot.ist;
+  }
+
+  /** Just the clock, "HH:mm". */
+  slotClock(i: number): string {
+    return this.slotStamp(i).slice(11) || '--:--';
+  }
+
+  /** Just the date, "YYYY-MM-DD". */
+  slotDate(i: number): string {
+    return this.slotStamp(i).slice(0, 10);
+  }
+
   get currentSlotLabel(): string {
-    const slot = this.timeline?.slots[this.slotIndex];
-    return slot ? slot.label : '--:--';
+    return this.slotClock(this.slotIndex);
   }
 
-  get currentSlotIsNextDay(): boolean {
-    return this.timeline?.slots[this.slotIndex]?.nextDay ?? false;
+  /** The day this page opens on, in the selected zone. */
+  get dayStartStamp(): string {
+    return this.slotStamp(0);
   }
 
-  /** Calendar date the scrubbed slot falls on, since the day rolls at 03:00. */
+  /**
+   * Calendar date the scrubbed slot falls on.
+   *
+   * The day is named for the date it ends on, so only the 00:00–02:45 tail
+   * carries the label date; everything earlier is the previous calendar day.
+   */
   get currentSlotDate(): string {
-    if (!this.timeline) return '';
-    if (!this.currentSlotIsNextDay) return this.timeline.date;
-    const d = new Date(`${this.timeline.date}T00:00:00`);
-    d.setDate(d.getDate() + 1);
-    return this.toIso(d);
+    return this.slotDate(this.slotIndex);
   }
 
   get scrubPercent(): number {
@@ -1344,7 +1433,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     for (let i = 0; i < SLOT_COUNT; i += SLOTS_PER_HOUR * 2) {
       ticks.push({
         index: i,
-        label: this.timeline.slots[i].label,
+        label: this.slotClock(i),
         percent: (i / (SLOT_COUNT - 1)) * 100,
       });
     }
@@ -1372,12 +1461,105 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     return [...set].sort();
   }
 
+  /**
+   * Downloads the strip as a styled workbook, split into two sheets.
+   *
+   * Mapped and unmapped stations are separated because they answer different
+   * questions: the first sheet can be joined back to aws_station_details by
+   * station_code, the second cannot — those are the stations streaming data that
+   * no cumulative product can see. The unmapped sheet keeps whatever geography
+   * its source happens to carry and leaves the rest blank rather than guessing.
+   *
+   * Every station in the current selection is exported, not just the Top N on
+   * screen — a download is for analysis — but the ranking is preserved by row
+   * order. Value cells carry the same band colours the strip uses.
+   */
+  exportWettestXlsx(): void {
+    if (!this.timeline || !this.liveStations.length) return;
+
+    const bands = this.heatBands;
+    const times = this.timeline.slots.map((_, i) => this.slotStamp(i));
+
+    // Same ranking the strip shows: wettest first, by accumulation at the slot.
+    const ranked = [...this.liveStations].sort((a, b) => {
+      const av = a.filled[this.slotIndex];
+      const bv = b.filled[this.slotIndex];
+      return (Number.isNaN(bv) ? -1 : bv) - (Number.isNaN(av) ? -1 : av);
+    });
+
+    const build = (rows: LiveStation[], withCode: boolean) => {
+      const head = withCode
+        ? ['State', 'District', 'Block', 'Station Name', 'Station Code', 'Latitude', 'Longitude']
+        : ['State', 'District', 'Block', 'Station Name', 'Latitude', 'Longitude'];
+      const aoa: any[][] = [[...head, ...times]];
+
+      for (const st of rows) {
+        const lead = withCode
+          ? [st.state_name ?? '', st.district_name ?? '', st.block_name ?? '', st.station_name,
+             st.station_code ?? '', st.latitude ?? '', st.longitude ?? '']
+          : [st.state_name ?? '', st.district_name ?? '', st.block_name ?? '', st.station_name,
+             st.latitude ?? '', st.longitude ?? ''];
+        const values = Array.from({ length: SLOT_COUNT }, (_, k) => {
+          const v = this.heatValue(st, k);
+          return Number.isNaN(v) ? '' : Number(v.toFixed(1));
+        });
+        aoa.push([...lead, ...values]);
+      }
+
+      const ws = XLSXStyle.utils.aoa_to_sheet(aoa);
+      const leadCols = head.length;
+
+      for (let c = 0; c < leadCols + SLOT_COUNT; c++) {
+        const ref = XLSXStyle.utils.encode_cell({ r: 0, c });
+        if (!ws[ref]) continue;
+        ws[ref].s = {
+          font: { bold: true, sz: 9 },
+          fill: { fgColor: { rgb: 'EAF0FA' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        };
+      }
+
+      for (let r = 1; r < aoa.length; r++) {
+        for (let k = 0; k < SLOT_COUNT; k++) {
+          const ref = XLSXStyle.utils.encode_cell({ r, c: leadCols + k });
+          const cell = ws[ref];
+          if (!cell) continue;
+          const v = typeof cell.v === 'number' ? cell.v : NaN;
+          const bi = Number.isNaN(v) ? -1 : bandIndex(bands, v);
+          cell.s = {
+            font: { sz: 9 },
+            alignment: { horizontal: 'center' },
+            // Grey where nothing was received, so a gap never reads as a zero.
+            fill: { fgColor: { rgb: bi >= 0 ? bands[bi].color.replace('#', '') : 'E9EDF2' } },
+          };
+        }
+      }
+
+      ws['!cols'] = [
+        ...head.map((h) => ({ wch: h === 'Station Name' ? 26 : 14 })),
+        ...times.map(() => ({ wch: 8 })),
+      ];
+      return ws;
+    };
+
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, build(ranked.filter((s) => s.mapped), true), 'With station code');
+    XLSXStyle.utils.book_append_sheet(wb, build(ranked.filter((s) => !s.mapped), false), 'Without station code');
+
+    const buf = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+    // Mode and zone go in the filename: the numbers mean different things in each.
+    saveAs(
+      new Blob([buf], { type: 'application/octet-stream' }),
+      `wettest_stations_${this.timeline.date}_${this.heatMode}_${this.clockZone}.xlsx`
+    );
+  }
+
   exportTimelineCsv(): void {
     if (!this.timeline) return;
     const header = [
       'source', 'station_id', 'station_code', 'station_name', 'state', 'district',
       'latitude', 'longitude', 'day_total_mm', 'slots_reported',
-      ...this.timeline.slots.map((s) => s.label + (s.nextDay ? '+1' : '')),
+      ...this.timeline.slots.map((_, i) => this.slotStamp(i) + ' ' + this.clockZone),
     ];
     const rows = this.liveStations.map((s) => [
       s.source_label, s.station_id, s.station_code ?? '', s.station_name,
@@ -1826,6 +2008,13 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
   }
 
   // ═══════════════════════════════════════════════════════════════════ utils
+
+  /** Shifts a "YYYY-MM-DD" by whole days, without dragging in a date library. */
+  private addDays(date: string, days: number): string {
+    const d = new Date(`${date}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    return this.toIso(d);
+  }
 
   private toIso(d: Date): string {
     const pad = (n: number) => String(n).padStart(2, '0');

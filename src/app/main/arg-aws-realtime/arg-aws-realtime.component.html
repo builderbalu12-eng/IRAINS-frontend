@@ -12,10 +12,25 @@
     </div>
 
     <div class="rt-bar__ctl">
+      <!-- Every clock on the Live tab follows this. First in the row because
+           "08:30" means two different moments depending on it. -->
+      <div class="rt-field">
+        <span class="rt-field__label">Time Zone</span>
+        <div class="rt-zone" role="group" aria-label="Time zone">
+          <button type="button" class="rt-zone__btn"
+                  [class.rt-zone__btn--on]="clockZone === 'IST'"
+                  (click)="setZone('IST')">IST</button>
+          <button type="button" class="rt-zone__btn"
+                  [class.rt-zone__btn--on]="clockZone === 'UTC'"
+                  (click)="setZone('UTC')">UTC</button>
+        </div>
+      </div>
+
       <label class="rt-field">
         <span class="rt-field__label">AWS Day</span>
-        <input type="date" class="rt-input" [(ngModel)]="liveDate" [max]="maxDate"
-               (change)="loadTimeline()" />
+        <input type="date" class="rt-input" [(ngModel)]="liveDate" [max]="liveMaxDate"
+               (change)="loadTimeline()"
+               title="An AWS day is named for the date it ends on, so the day running now carries tomorrow's date" />
       </label>
       <label class="rt-field">
         <span class="rt-field__label">Live State</span>
@@ -35,8 +50,9 @@
        "why does my 02:00 reading belong to yesterday" question. -->
   <p class="rt-note" *ngIf="timeline">
     AWS day <strong>{{ timeline.date }}</strong> spans
-    <strong>03:00 IST {{ timeline.date }}</strong> to <strong>03:00 IST the next morning</strong>
-    (21:30 UTC → 21:30 UTC), so the last twelve slots carry the following calendar date.
+    <strong>{{ dayStartStamp }} {{ clockZone }}</strong> onward for 24 hours — the same
+    08:30-to-08:30 IST window manual data entry uses, named for the date it ends on,
+    so most of its slots carry the previous calendar date.
   </p>
 
   <!-- ============================== TAB RAIL + LIVE SLOT READOUT ============
@@ -58,9 +74,9 @@
     <div class="rt-stats" *ngIf="activeTab === 'live'">
       <div class="rt-stat rt-stat--accent"
            [title]="'Scrubbed slot ' + (slotIndex + 1) + ' of ' + slotCount + ' on ' + currentSlotDate">
-        <span class="rt-stat__label">Clock IST</span>
+        <span class="rt-stat__label">Clock {{ clockZone }}</span>
         <span class="rt-stat__value">
-          {{ currentSlotLabel }}<small *ngIf="currentSlotIsNextDay">+1d</small>
+          {{ currentSlotLabel }}<small>{{ currentSlotDate }}</small>
         </span>
       </div>
       <div class="rt-stat" title="Stations that have reported at least once by this slot">
@@ -313,6 +329,7 @@
 
             <div class="rt-scrub__readout" [class.rt-scrub__readout--live]="scrubbing">
               <span class="rt-scrub__time">{{ currentSlotLabel }}</span>
+              <span class="rt-scrub__date">{{ currentSlotDate }} {{ clockZone }}</span>
               <span class="rt-scrub__meta">
                 slot {{ slotIndex + 1 }}/{{ slotCount }} ·
                 {{ slotStats.reporting }} reporting ·
@@ -352,7 +369,7 @@
             <h2 class="rt-card__title">
               Wettest stations
               <small>
-                one cell per 15 min, 03:00 → 03:00 IST; the outlined column is the scrubbed slot<span
+                15-min cells from {{ dayStartStamp }} {{ clockZone }}<span
                   *ngIf="selectedSourceKeys.length === 1"> · {{ sourceLabel(selectedSourceKeys[0]) }} only</span>
               </small>
             </h2>
@@ -376,6 +393,11 @@
                         class="rt-seg__btn" [class.rt-seg__btn--on]="heatMode === m.key"
                         (click)="setHeatMode(m.key)">{{ m.label }}</button>
               </div>
+              <button type="button" class="rt-btn rt-btn--ghost" (click)="exportWettestXlsx()"
+                      [disabled]="!liveStations.length"
+                      title="Excel workbook — two sheets, mapped and unmapped stations, cells coloured by value">
+                Download
+              </button>
             </div>
           </div>
 
@@ -413,8 +435,7 @@
             </div>
             <div class="rt-heattip__time">
               {{ heatHover.slotLabel }} &ndash; {{ heatHover.endLabel }}
-              <span *ngIf="heatHover.nextDay">+1d</span>
-              <small>15-minute slot {{ heatHover.slot + 1 }} of {{ slotCount }} · IST</small>
+              <small>{{ heatHover.slotDate }} · slot {{ heatHover.slot + 1 }} of {{ slotCount }} · {{ clockZone }}</small>
             </div>
             <dl class="rt-heattip__grid">
               <dt>This slot</dt>

@@ -375,7 +375,7 @@
 }
 
 .rt-stat__value small {
-  margin-left: 3px;
+  margin-left: 5px;
   color: var(--rt-ink-faint);
   font-size: 10px;
   font-weight: 500;
@@ -1008,6 +1008,42 @@
 @keyframes rt-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
+}
+
+/* The zone switch sits with the big clock, because that is the number it
+   changes the meaning of. Sized to be read at a glance, not hunted for. */
+.rt-zone {
+  display: inline-flex;
+  border: 1px solid var(--rt-brand);
+  border-radius: var(--rt-radius-sm);
+  overflow: hidden;
+}
+
+.rt-zone__btn {
+  padding: 7px 14px;
+  border: 0;
+  background: var(--rt-surface);
+  color: var(--rt-brand);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.rt-zone__btn:hover {
+  background: var(--rt-brand-tint);
+}
+
+.rt-zone__btn--on {
+  background: var(--rt-brand);
+  color: #fff;
+}
+
+.rt-scrub__date {
+  color: var(--rt-ink-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .rt-scrub__meta {

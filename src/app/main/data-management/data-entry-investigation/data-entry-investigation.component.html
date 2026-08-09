@@ -1,7 +1,45 @@
 <div class="di-page">
   <div class="di-header">
-    <h2><i class="bi bi-search me-2"></i>Data Entry Investigation</h2>
-    <p class="di-subtitle">Stations whose already-saved rainfall value was edited again after entry.</p>
+    <div class="di-header-title">
+      <h2><i class="bi bi-search me-2"></i>Data Entry Investigation</h2>
+      <p class="di-subtitle">Stations whose already-saved rainfall value was edited again after entry.</p>
+    </div>
+
+    <div class="di-header-actions">
+      <div class="di-search">
+        <i class="bi bi-search di-search-icon"></i>
+        <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+               placeholder="Search station, code, district, state or MC/RMC…">
+        <button type="button" class="di-search-clear" *ngIf="searchTerm" (click)="searchTerm = ''; onSearchChange()" title="Clear search">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="di-header-row">
+        <div class="di-segmented" role="group" aria-label="Filter by edit type">
+          <button type="button" [class.active]="typeFilter === 'all'" (click)="setTypeFilter('all')">All</button>
+          <button type="button" [class.active]="typeFilter === 'back-dated'" (click)="setTypeFilter('back-dated')"
+                  title="Show only edits made after the date the value is for.">Back-dated</button>
+          <button type="button" [class.active]="typeFilter === 'same-day'" (click)="setTypeFilter('same-day')"
+                  title="Show only edits made on the same day as the value's date.">Same-day</button>
+        </div>
+
+        <button type="button" class="di-icon-btn" (click)="refreshAll()" [disabled]="loading" title="Reload this page's data">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+
+      <div class="di-header-meta">
+        <span *ngIf="filtersActive" class="di-filter-summary">
+          Showing {{ filteredLogRows.length }} of {{ logRows.length }} log rows ·
+          {{ filteredMcWiseRows.length }} of {{ mcWiseRows.length }} centres
+          <a href="javascript:void(0)" (click)="clearFilters()">Clear</a>
+        </span>
+        <span *ngIf="!filtersActive && lastUpdated" class="di-last-updated">
+          Updated {{ lastUpdated | date: 'HH:mm:ss' }}
+        </span>
+      </div>
+    </div>
   </div>
 
   <div class="di-tabs">
@@ -9,23 +47,23 @@
     <button [class.active]="activeTab === 'range'" (click)="switchTab('range')">Range</button>
   </div>
 
-  <div *ngIf="activeTab === 'range'">
-    <div class="di-controls">
+  <!-- One control bar for both tabs: date pickers left, live lock status in the
+       middle, timeline zoom pushed to the right — these used to be three
+       separate rows, each leaving the right half of the page empty. -->
+  <div class="di-controls">
+    <ng-container *ngIf="activeTab === 'daywise'">
+      <label>Date</label>
+      <input type="date" [(ngModel)]="singleDate" (ngModelChange)="onDayWiseDateChange()">
+      <button (click)="onDayWiseDateChange()" [disabled]="loading">Refresh</button>
+    </ng-container>
+
+    <ng-container *ngIf="activeTab === 'range'">
       <label>From date</label>
       <input type="date" [(ngModel)]="fromDate" [max]="toDate || today" (ngModelChange)="onRangeChange()">
       <label>To date</label>
       <input type="date" [(ngModel)]="toDate" [min]="fromDate" [max]="today" (ngModelChange)="onRangeChange()">
       <button (click)="onRangeChange()" [disabled]="loading">Refresh</button>
-    </div>
-    <div *ngIf="rangeError" class="di-message error">{{ rangeError }}</div>
-  </div>
-
-  <div *ngIf="activeTab === 'daywise'">
-    <div class="di-controls">
-      <label>Date</label>
-      <input type="date" [(ngModel)]="singleDate" (ngModelChange)="onDayWiseDateChange()">
-      <button (click)="onDayWiseDateChange()" [disabled]="loading">Refresh</button>
-    </div>
+    </ng-container>
 
     <div class="di-lock-status" [class.locked]="isLocked" [class.unlocked]="!isLocked">
       <i class="bi" [ngClass]="isLocked ? 'bi-lock-fill' : 'bi-unlock-fill'"></i>
@@ -33,14 +71,18 @@
       <span *ngIf="!isLocked">Data Entry is <strong>Unlocked</strong> right now</span>
     </div>
 
-    <div class="di-timeline-toolbar">
+    <div class="di-timeline-toolbar" *ngIf="activeTab === 'daywise'">
+      <span class="di-zoom-hint" *ngIf="zoomLevel > 1">Scroll sideways to move through the day</span>
+      <button class="di-zoom-reset" (click)="resetZoom()" *ngIf="zoomLevel > 1">Reset</button>
       <button (click)="zoomOut()" [disabled]="zoomLevel <= 1" title="Zoom out"><i class="bi bi-dash-lg"></i></button>
       <span class="di-zoom-level">{{ zoomLevel }}x</span>
       <button (click)="zoomIn()" [disabled]="zoomLevel >= maxZoom" title="Zoom in"><i class="bi bi-plus-lg"></i></button>
-      <button class="di-zoom-reset" (click)="resetZoom()" *ngIf="zoomLevel > 1">Reset</button>
-      <span class="di-zoom-hint" *ngIf="zoomLevel > 1">Scroll sideways to move through the day</span>
     </div>
+  </div>
 
+  <div *ngIf="rangeError && activeTab === 'range'" class="di-message error">{{ rangeError }}</div>
+
+  <div *ngIf="activeTab === 'daywise'">
     <div class="di-timeline-scroll">
       <div class="di-timeline-zoomable" [style.width.%]="zoomLevel * 100">
         <div class="di-lock-timeline-wrap">
@@ -77,17 +119,23 @@
   <ng-container *ngIf="!loading">
     <div class="di-stat-row">
       <div class="di-stat-tile warn">
-        <div class="di-stat-value">{{ backDatedCount }}</div>
-        <div class="di-stat-label">
-          Back-dated Edits
-          <i class="bi bi-info-circle di-info-icon" title="Edits made on a day after the date the value is for — e.g. editing yesterday's rainfall today. The case worth watching most closely."></i>
+        <i class="bi bi-clock-history di-stat-icon"></i>
+        <div class="di-stat-body">
+          <div class="di-stat-value">{{ backDatedCount }}</div>
+          <div class="di-stat-label">
+            Back-dated Edits
+            <i class="bi bi-info-circle di-info-icon" title="Edits made on a day after the date the value is for — e.g. editing yesterday's rainfall today. The case worth watching most closely."></i>
+          </div>
         </div>
       </div>
       <div class="di-stat-tile">
-        <div class="di-stat-value">{{ sameDayCount }}</div>
-        <div class="di-stat-label">
-          Same-day Corrections
-          <i class="bi bi-info-circle di-info-icon" title="Edits made on the same day as the date the value is for — e.g. correcting today's entry a few minutes after typing it."></i>
+        <i class="bi bi-pencil-square di-stat-icon"></i>
+        <div class="di-stat-body">
+          <div class="di-stat-value">{{ sameDayCount }}</div>
+          <div class="di-stat-label">
+            Same-day Corrections
+            <i class="bi bi-info-circle di-info-icon" title="Edits made on the same day as the date the value is for — e.g. correcting today's entry a few minutes after typing it."></i>
+          </div>
         </div>
       </div>
     </div>
@@ -123,7 +171,7 @@
               </tr>
             </thead>
             <tbody>
-              <ng-container *ngFor="let r of logRows">
+              <ng-container *ngFor="let r of filteredLogRows">
                 <tr [class.back-dated]="r.backDated" [class.same-day]="!r.backDated" [title]="r.stationNames.join(', ')">
                   <td>{{ r.revisionDate }}</td>
                   <td>{{ r.dataDate }}</td>
@@ -157,7 +205,7 @@
                           </tr>
                         </thead>
                         <tbody>
-                          <tr *ngFor="let d of r.details">
+                          <tr *ngFor="let d of getFilteredDetails(r)">
                             <td>{{ d.stationName }}</td>
                             <td>{{ d.centreType }}</td>
                             <td>{{ d.centreName }}</td>
@@ -177,14 +225,16 @@
                             <td>{{ d.dataDate }}</td>
                             <td>{{ d.updatedAt | date: 'dd-MMM-yyyy HH:mm:ss' }}</td>
                           </tr>
-                          <tr *ngIf="r.details && r.details.length === 0"><td colspan="9">No station details found.</td></tr>
+                          <tr *ngIf="r.details && getFilteredDetails(r).length === 0"><td colspan="9">No station details found.</td></tr>
                         </tbody>
                       </table>
                     </div>
                   </td>
                 </tr>
               </ng-container>
-              <tr *ngIf="logRows.length === 0"><td colspan="4">No revisions in this window.</td></tr>
+              <tr *ngIf="filteredLogRows.length === 0">
+                <td colspan="4">{{ logRows.length ? 'No rows match the current search or filter.' : 'No revisions in this window.' }}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -207,7 +257,7 @@
               <tr><th>MC / RMC</th><th>Same Day</th><th>Backdate</th><th>Stations</th></tr>
             </thead>
             <tbody>
-              <ng-container *ngFor="let m of mcWiseRows">
+              <ng-container *ngFor="let m of filteredMcWiseRows">
                 <tr>
                   <td>{{ m.centreType }} {{ m.centreName }}</td>
                   <td>
@@ -269,7 +319,9 @@
                   </td>
                 </tr>
               </ng-container>
-              <tr *ngIf="mcWiseRows.length === 0"><td colspan="4">No reupdates in this window.</td></tr>
+              <tr *ngIf="filteredMcWiseRows.length === 0">
+                <td colspan="4">{{ mcWiseRows.length ? 'No centres match the current search or filter.' : 'No reupdates in this window.' }}</td>
+              </tr>
             </tbody>
           </table>
         </div>

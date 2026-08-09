@@ -9,6 +9,7 @@ interface RevisionLogRow {
   dataDate: string;
   stationCount: number;
   stationNames: string[];
+  centreNames: string[];
   backDated: boolean;
   expanded: boolean;
   loadingDetails: boolean;
@@ -40,6 +41,7 @@ interface McWiseRow {
   sameDayCount: number;
   backDatedCount: number;
   stationCount: number;
+  stationNames: string[];
   expandedFilter: 'same-day' | 'back-dated' | null;
   loadingDetails: boolean;
   details: StationRevisionDetail[] | null;
@@ -78,7 +80,16 @@ export class DataEntryInvestigationComponent implements OnInit {
   message: string = '';
   messageType: 'success' | 'error' = 'success';
 
+  // ── Header toolbar: search + type filter, applied client-side to whatever
+  // the current date window already loaded (no extra round trip). Both tables,
+  // their expanded detail rows, the stat tiles and the downloads all honour
+  // them, so what you export is what you're looking at.
+  searchTerm: string = '';
+  typeFilter: 'all' | 'back-dated' | 'same-day' = 'all';
+  lastUpdated: Date | null = null;
+
   logRows: RevisionLogRow[] = [];
+  filteredLogRows: RevisionLogRow[] = [];
 
   // ── Analytics derived client-side from logRows — no separate endpoint ──
   backDatedCount = 0;
@@ -87,6 +98,7 @@ export class DataEntryInvestigationComponent implements OnInit {
   // ── MC-Wise Reupdates panel (always visible, left of Revision Log) ──
   loadingMcWise: boolean = false;
   mcWiseRows: McWiseRow[] = [];
+  filteredMcWiseRows: McWiseRow[] = [];
 
   // ── Data Entry Lock status + Day Wise timeline ───────────────────────
   isLocked: boolean = false;
@@ -150,6 +162,79 @@ export class DataEntryInvestigationComponent implements OnInit {
     this.loadLog();
   }
 
+  // ── Header toolbar: search + type filter ─────────────────────────────────
+  // Purely client-side over the rows the current date window already returned,
+  // so typing is instant and costs no requests. Filtered lists are rebuilt into
+  // arrays (rather than computed by a template getter) so change detection
+  // isn't re-filtering on every cycle, and they hold the SAME row objects —
+  // expanded/details state survives a filter change.
+
+  get filtersActive(): boolean {
+    return this.searchTerm.trim().length > 0 || this.typeFilter !== 'all';
+  }
+
+  onSearchChange(): void {
+    this.applyFilters();
+  }
+
+  setTypeFilter(filter: 'all' | 'back-dated' | 'same-day'): void {
+    this.typeFilter = filter;
+    this.applyFilters();
+  }
+
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.typeFilter = 'all';
+    this.applyFilters();
+  }
+
+  /** Refresh icon in the header — reloads everything the active tab shows. */
+  refreshAll(): void {
+    this.loadLog();
+    this.loadLockStatus();
+    if (this.activeTab === 'daywise') {
+      this.loadLockTimeline();
+      this.loadTimelineDots();
+    }
+  }
+
+  private applyFilters(): void {
+    // Each table matches on the names it contains AND the names on the other
+    // side of the grouping, so one search term narrows both panels: searching a
+    // centre keeps the log groups that centre edited in, and searching a station
+    // keeps the centres that station belongs to.
+    this.filteredLogRows = this.logRows.filter(r =>
+      this.matchesType(r.backDated) &&
+      this.matchesSearch(r.revisionDate, r.dataDate, r.stationNames.join(' '), r.centreNames.join(' '))
+    );
+    // A centre stays visible under a type filter as long as it has at least one
+    // edit of that kind — the counts themselves are still shown in full.
+    this.filteredMcWiseRows = this.mcWiseRows.filter(m =>
+      (this.typeFilter === 'all'
+        || (this.typeFilter === 'back-dated' ? m.backDatedCount > 0 : m.sameDayCount > 0)) &&
+      this.matchesSearch(`${m.centreType} ${m.centreName}`, m.stationNames.join(' '))
+    );
+    this.computeAnalytics();
+  }
+
+  private matchesType(backDated: boolean): boolean {
+    if (this.typeFilter === 'all') return true;
+    return backDated === (this.typeFilter === 'back-dated');
+  }
+
+  private matchesSearch(...fields: (string | null | undefined)[]): boolean {
+    const q = this.searchTerm.trim().toLowerCase();
+    if (!q) return true;
+    return fields.some(f => (f || '').toLowerCase().includes(q));
+  }
+
+  /** Search applied to an inner station row — station, code, state, district or centre. */
+  private matchesDetail(d: StationRevisionDetail): boolean {
+    return this.matchesSearch(
+      d.stationName, d.stationCode, d.stateName, d.districtName, `${d.centreType} ${d.centreName}`
+    );
+  }
+
   onDayWiseDateChange(): void {
     this.resetZoom();
     this.loadLog();
@@ -168,12 +253,14 @@ export class DataEntryInvestigationComponent implements OnInit {
           dataDate: r.data_date,
           stationCount: r.station_count,
           stationNames: r.station_names || [],
+          centreNames: r.centre_names || [],
           backDated: r.data_date < r.revision_date,
           expanded: false,
           loadingDetails: false,
           details: null
         }));
-        this.computeAnalytics();
+        this.applyFilters();
+        this.lastUpdated = new Date();
         this.loading = false;
       },
       error: () => {
@@ -195,10 +282,12 @@ export class DataEntryInvestigationComponent implements OnInit {
           sameDayCount: m.same_day_count,
           backDatedCount: m.back_dated_count,
           stationCount: m.station_count,
+          stationNames: m.station_names || [],
           expandedFilter: null,
           loadingDetails: false,
           details: null
         }));
+        this.applyFilters();
         this.loadingMcWise = false;
       },
       error: () => { this.loadingMcWise = false; }
@@ -238,11 +327,17 @@ export class DataEntryInvestigationComponent implements OnInit {
     }
   }
 
-  /** Details for a centre row, filtered to whichever count (same-day / back-dated) is currently expanded. */
+  /** Details for a centre row, filtered to whichever count (same-day / back-dated) is currently expanded, then by the header search. */
   getFilteredMcDetails(row: McWiseRow): StationRevisionDetail[] {
     if (!row.details || !row.expandedFilter) return [];
     const wantBackDated = row.expandedFilter === 'back-dated';
-    return row.details.filter(d => d.backDated === wantBackDated);
+    return row.details.filter(d => d.backDated === wantBackDated && this.matchesDetail(d));
+  }
+
+  /** Inner station rows of a Revision Log group, narrowed by the header search. */
+  getFilteredDetails(row: RevisionLogRow): StationRevisionDetail[] {
+    if (!row.details) return [];
+    return row.details.filter(d => this.matchesDetail(d));
   }
 
   // ── Downloads ────────────────────────────────────────────────────────────
@@ -266,11 +361,15 @@ export class DataEntryInvestigationComponent implements OnInit {
     this.message = '';
     this.stationService.fetchRevisionLogExport(this.currentParams()).subscribe({
       next: (res) => {
-        const rows: any[] = res.data || [];
+        // Same search/type filter the tables are showing — the export should
+        // never contain rows the user has filtered off screen.
+        const rows: any[] = (res.data || []).filter((r: any) => this.exportRowMatches(r));
         if (rows.length === 0) {
           this.downloading = false;
           this.messageType = 'error';
-          this.message = 'Nothing to download for the selected period.';
+          this.message = this.filtersActive
+            ? 'Nothing to download — no rows match the current search or filter.'
+            : 'Nothing to download for the selected period.';
           return;
         }
         const summary = kind === 'revision'
@@ -285,6 +384,15 @@ export class DataEntryInvestigationComponent implements OnInit {
         this.message = 'Failed to prepare the download. Please try again.';
       }
     });
+  }
+
+  /** The header search/type filter applied to a flat export row (snake_case, straight from the API). */
+  private exportRowMatches(r: any): boolean {
+    if (!this.matchesType(!!r.back_dated)) return false;
+    return this.matchesSearch(
+      r.station_name, r.station_code, r.state_name, r.district_name,
+      `${r.centre_type} ${r.centre_name}`, r.revision_date, r.data_date
+    );
   }
 
   /** Parent rows of the Revision Log table: one per (revision date, data date). */
@@ -361,7 +469,8 @@ export class DataEntryInvestigationComponent implements OnInit {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8'
     });
     const period = this.activeTab === 'daywise' ? this.singleDate : `${this.fromDate}_to_${this.toDate}`;
-    FileSaver.saveAs(blob, `${fileLabel}_${period}.xlsx`);
+    const suffix = this.filtersActive ? '_filtered' : '';
+    FileSaver.saveAs(blob, `${fileLabel}_${period}${suffix}.xlsx`);
   }
 
   /** -999.9 is the "no reading" sentinel — show it as such rather than as a number. */
@@ -380,9 +489,10 @@ export class DataEntryInvestigationComponent implements OnInit {
     }
   }
 
+  /** Tiles track the filtered view, so they always agree with the table under them. */
   private computeAnalytics(): void {
-    const totalRevisionEvents = this.logRows.reduce((sum, r) => sum + r.stationCount, 0);
-    this.backDatedCount = this.logRows
+    const totalRevisionEvents = this.filteredLogRows.reduce((sum, r) => sum + r.stationCount, 0);
+    this.backDatedCount = this.filteredLogRows
       .filter(r => r.backDated)
       .reduce((sum, r) => sum + r.stationCount, 0);
     this.sameDayCount = totalRevisionEvents - this.backDatedCount;
