@@ -42,7 +42,7 @@
           <p class="kicker">Rainfall companion</p>
           <h2>Varsha</h2>
           <p class="status">
-            <span class="pulse"></span>
+            <span class="pulse" [class.offline]="ollamaReady === false"></span>
             Live · {{ dataMode }}
             <ng-container *ngIf="fromDate && toDate"> · {{ fromDate }} → {{ toDate }}</ng-container>
           </p>
@@ -59,19 +59,6 @@
     </div>
   </header>
 
-  <!-- Quick chips (only when few messages) -->
-  <div class="quick-row" *ngIf="messages.length <= 2">
-    <button
-      type="button"
-      class="quick-chip"
-      *ngFor="let p of quickPrompts"
-      (click)="usePrompt(p.query)"
-    >
-      <i class="bi" [ngClass]="p.icon"></i>
-      {{ p.label }}
-    </button>
-  </div>
-
   <div class="varsha-body">
     <div
       class="bubble"
@@ -84,19 +71,50 @@
       </div>
       <div class="bubble-meta user-meta" *ngIf="m.role === 'user'">You · {{ m.time }}</div>
 
-      <div class="bubble-text" *ngIf="m.role === 'assistant'" [innerHTML]="m.text"></div>
-      <div class="bubble-text" *ngIf="m.role === 'user'">{{ m.text }}</div>
-
-      <div class="inline-suggestions" *ngIf="m.suggestions?.length">
+      <div class="bubble-text" *ngIf="m.role === 'assistant'">
+        <div *ngIf="m.text" [innerHTML]="m.text"></div>
+        <ul class="rain-list" *ngIf="m.listItems?.length">
+          <li *ngFor="let item of visibleListItems(m)" [innerHTML]="item"></li>
+        </ul>
         <button
           type="button"
-          class="suggest"
-          *ngFor="let s of m.suggestions"
-          (click)="usePrompt(s)"
+          class="more-btn"
+          *ngIf="m.listItems && m.listItems.length > 5 && !m.listExpanded"
+          (click)="expandList(m)"
         >
-          {{ s }}
+          …more ({{ hiddenListCount(m) }})
         </button>
+        <button
+          type="button"
+          class="more-btn"
+          *ngIf="m.listItems && m.listItems.length > 5 && m.listExpanded"
+          (click)="collapseList(m)"
+        >
+          Show less
+        </button>
+        <button
+          type="button"
+          class="nav-open-btn"
+          *ngIf="m.navLink?.path"
+          (click)="openNavLink(m.navLink!.path)"
+          [title]="m.navLink!.path"
+        >
+          <i class="bi bi-box-arrow-up-right"></i>
+          {{ m.navLink!.label }}
+        </button>
+        <div class="clarify-choices" *ngIf="m.choices?.length">
+          <button
+            type="button"
+            class="clarify-btn"
+            *ngFor="let c of m.choices"
+            (click)="chooseClarification(c)"
+            [disabled]="isTyping"
+          >
+            {{ c.label }}
+          </button>
+        </div>
       </div>
+      <div class="bubble-text" *ngIf="m.role === 'user'">{{ m.text }}</div>
     </div>
 
     <div class="typing" *ngIf="isTyping">
@@ -104,7 +122,7 @@
       <span class="typing-dots">
         <i></i><i></i><i></i>
       </span>
-      <span class="typing-label">Varsha is gathering rainfall context…</span>
+      <span class="typing-label">Varsha is analyzing the data…</span>
     </div>
 
     <div #messagesEnd></div>
@@ -117,7 +135,7 @@
         rows="1"
         [(ngModel)]="inputText"
         (keydown)="onKeydown($event)"
-        placeholder="Ask about maps, legend, coverage…"
+        placeholder="Ask rainfall, or Where is monsoon activity?"
         [disabled]="isTyping"
       ></textarea>
       <button
@@ -130,7 +148,7 @@
         <i class="bi bi-send-fill"></i>
       </button>
     </div>
-    <p class="footer-note">Guided for All Maps · IMD rainfall products</p>
+    <p class="footer-note">iRAINS rainfall companion</p>
   </footer>
 </aside>
 

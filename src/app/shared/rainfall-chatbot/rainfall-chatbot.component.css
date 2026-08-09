@@ -232,6 +232,12 @@
   animation: pulse 1.8s ease-out infinite;
 }
 
+.pulse.offline {
+  background: #f59e0b;
+  box-shadow: none;
+  animation: none;
+}
+
 @keyframes pulse {
   70% { box-shadow: 0 0 0 8px rgba(94, 234, 212, 0); }
   100% { box-shadow: 0 0 0 0 rgba(94, 234, 212, 0); }
@@ -258,12 +264,47 @@
 }
 
 /* ─── Quick chips ───────────────────────────────────────────── */
+.quick-block {
+  padding: 0 0 6px;
+  flex-shrink: 0;
+}
+
+.prompt-tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 14px 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(0, 36, 103, 0.06);
+}
+
+.prompt-tab {
+  border: none;
+  background: transparent;
+  color: var(--rain-muted);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.prompt-tab.active {
+  background: #fff;
+  color: var(--rain-navy);
+  box-shadow: 0 1px 4px rgba(0, 36, 103, 0.12);
+}
+
 .quick-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 12px 14px 0;
+  padding: 8px 14px 4px;
   flex-shrink: 0;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
 .quick-chip {
@@ -291,6 +332,83 @@
 .quick-chip .bi {
   color: var(--rain-accent);
   font-size: 13px;
+}
+
+.nav-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, var(--rain-navy), var(--rain-accent));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 36, 103, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.nav-open-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 36, 103, 0.32);
+}
+
+.clarify-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.clarify-btn {
+  border: 1px solid rgba(0, 36, 103, 0.18);
+  background: #fff;
+  color: var(--rain-navy);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.clarify-btn:hover:not(:disabled) {
+  background: var(--rain-mist);
+  border-color: var(--rain-sky);
+  transform: translateY(-1px);
+}
+
+.clarify-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.bubble.assistant .bubble-text ::ng-deep .nav-path {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--rain-muted);
+}
+
+.bubble.assistant .bubble-text ::ng-deep .nav-path code {
+  font-size: 11px;
+  background: rgba(0, 36, 103, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.bubble.assistant .bubble-text ::ng-deep .source-page {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--rain-muted);
+  line-height: 1.4;
+}
+
+.bubble.assistant .bubble-text ::ng-deep .source-page strong {
+  color: var(--rain-navy);
+  font-weight: 650;
 }
 
 /* ─── Messages ──────────────────────────────────────────────── */
@@ -370,6 +488,38 @@
   margin-bottom: 5px;
 }
 
+.more-btn {
+  display: inline-block;
+  margin: 4px 0 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--rain-teal, #1a8fb8);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.more-btn:hover {
+  color: var(--rain-navy, #002467);
+}
+
+.bubble-text ::ng-deep .chat-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--rain-muted);
+}
+
+.bubble-text ::ng-deep p {
+  margin: 0 0 6px;
+}
+
+.bubble-text ::ng-deep p:last-child {
+  margin-bottom: 0;
+}
+
 .bubble-text ::ng-deep code {
   font-size: 11px;
   background: var(--rain-mist);
@@ -393,13 +543,31 @@
   border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
-.bubble-text ::ng-deep .s-le { background: #00cd5b; }
-.bubble-text ::ng-deep .s-e { background: #0096ff; }
-.bubble-text ::ng-deep .s-n { background: #ffff00; }
-.bubble-text ::ng-deep .s-d { background: #ff9900; }
-.bubble-text ::ng-deep .s-ld { background: #ff2700; }
-.bubble-text ::ng-deep .s-nr { background: #ffffff; }
-.bubble-text ::ng-deep .s-nd { background: #c0c0c0; }
+/* Map legend swatches (FAQ only) — same RGB as All Maps */
+.bubble-text ::ng-deep .s-le { background: rgb(0, 150, 255); }
+.bubble-text ::ng-deep .s-e { background: rgb(50, 192, 248); }
+.bubble-text ::ng-deep .s-n { background: rgb(0, 205, 91); }
+.bubble-text ::ng-deep .s-d { background: rgb(255, 39, 0); }
+.bubble-text ::ng-deep .s-ld { background: rgb(255, 255, 32); }
+.bubble-text ::ng-deep .s-nr { background: rgb(255, 255, 255); }
+.bubble-text ::ng-deep .s-nd { background: rgb(192, 192, 192); }
+
+.bubble-text ::ng-deep .cat-le { color: rgb(0, 150, 255); }
+.bubble-text ::ng-deep .cat-e { color: rgb(50, 192, 248); }
+.bubble-text ::ng-deep .cat-n { color: rgb(0, 160, 70); }
+.bubble-text ::ng-deep .cat-d { color: rgb(255, 39, 0); }
+/* Darker than map yellow/white so text stays readable on white bubbles */
+.bubble-text ::ng-deep .cat-ld { color: rgb(168, 140, 0); }
+.bubble-text ::ng-deep .cat-nr { color: rgb(90, 100, 112); }
+.bubble-text ::ng-deep .cat-nd { color: rgb(120, 120, 120); }
+
+.bubble.assistant .bubble-text ::ng-deep strong.cat-le { color: rgb(0, 150, 255); }
+.bubble.assistant .bubble-text ::ng-deep strong.cat-e { color: rgb(50, 192, 248); }
+.bubble.assistant .bubble-text ::ng-deep strong.cat-n { color: rgb(0, 160, 70); }
+.bubble.assistant .bubble-text ::ng-deep strong.cat-d { color: rgb(255, 39, 0); }
+.bubble.assistant .bubble-text ::ng-deep strong.cat-ld { color: rgb(168, 140, 0); }
+.bubble.assistant .bubble-text ::ng-deep strong.cat-nr { color: rgb(90, 100, 112); }
+.bubble.assistant .bubble-text ::ng-deep strong.cat-nd { color: rgb(120, 120, 120); }
 
 .inline-suggestions {
   display: flex;

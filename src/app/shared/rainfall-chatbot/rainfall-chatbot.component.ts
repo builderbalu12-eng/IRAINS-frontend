@@ -5,22 +5,264 @@ import {
   OnInit,
   ViewChild,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import { DataService } from 'src/app/data.service';
 import { Subscription } from 'rxjs';
+import {
+  RainfallChatService,
+  OllamaChatResponse,
+} from 'src/app/services/rainfall-chat/rainfall-chat.service';
 
 interface ChatMessage {
   id: number;
   role: 'user' | 'assistant';
   text: string;
   time: string;
-  suggestions?: string[];
+  /** District / row lines shown as a collapsible list. */
+  listItems?: string[];
+  listExpanded?: boolean;
+  /** Deep-link from a navigation answer. */
+  navLink?: { label: string; path: string } | null;
+  /** Clarification buttons (navigate vs data). */
+  choices?: ClarificationChoice[] | null;
+}
+
+interface ClarificationChoice {
+  id: 'navigate' | 'data';
+  label: string;
+}
+
+interface FormattedAnswer {
+  text: string;
+  listItems?: string[];
+  navLink?: { label: string; path: string } | null;
 }
 
 interface QuickPrompt {
   label: string;
   query: string;
   icon: string;
+  group: 'rainfall' | 'navigation';
 }
+
+interface PendingClarification {
+  topic: string;
+  productName: string;
+  path: string;
+  originalText: string;
+}
+
+/** Product / page keywords that are ambiguous without navigate vs data intent. */
+const PRODUCT_KEYWORDS: {
+  keywords: string[];
+  productName: string;
+  path: string;
+}[] = [
+  {
+    keywords: ['yearly statistics', 'yearly station statistics', 'yearly stats'],
+    productName: 'Yearly Station Statistics',
+    path: '/yearlystationstatistics',
+  },
+  {
+    keywords: ['all statistics', 'all stats'],
+    productName: 'All Statistics',
+    path: '/all-statistics',
+  },
+  {
+    keywords: [
+      'spatial distribution',
+      'spatial table',
+      'spatial map',
+      'spatial',
+    ],
+    productName: 'Spatial Distribution Table',
+    path: '/spatial-table',
+  },
+  {
+    keywords: ['monsoon activity', 'monsoon'],
+    productName: 'Monsoon Activity',
+    path: '/monsoon-activity',
+  },
+  {
+    keywords: ['station level data', 'station data'],
+    productName: 'Station Level Data',
+    path: '/station-level-data',
+  },
+  {
+    keywords: ['station statistics', 'station stats'],
+    productName: 'Station Statistics',
+    path: '/station-statistics',
+  },
+  {
+    keywords: ['block rainfall', 'block map'],
+    productName: 'Block Rainfall Map',
+    path: '/block-rainfall',
+  },
+  {
+    keywords: [
+      'annual seasonal monthly',
+      'annual–seasonal–monthly',
+      'annual seasonal',
+    ],
+    productName: 'Annual–Seasonal–Monthly Maps',
+    path: '/annual-seasonal-monthly-actual-maps',
+  },
+  {
+    keywords: ['data entry', 'verification'],
+    productName: 'Data Entry / Verification',
+    path: '/newverification',
+  },
+  {
+    keywords: ['email dissemination', 'send reports', 'email reports'],
+    productName: 'Email Dissemination',
+    path: '/new-email-dissemination',
+  },
+  {
+    keywords: ['pdf report', 'pdf download', 'pdf rainfall'],
+    productName: 'PDF Rainfall Report Download',
+    path: '/new-email-dissemination',
+  },
+  {
+    keywords: ['mc/rmc', 'mc rmc', 'regional maps'],
+    productName: 'MC/RMC Regional Maps',
+    path: '/state-map-mc-rmc',
+  },
+  {
+    keywords: ['all maps', 'maps overview'],
+    productName: 'All Maps Overview',
+    path: '/all-maps',
+  },
+  {
+    keywords: ['daily actual state', 'actual state map'],
+    productName: 'Daily Actual State Rainfall Map',
+    path: '/daily-actual-state-map',
+  },
+  {
+    keywords: ['pan india', 'departure district', 'district departure'],
+    productName: 'Daily Departure District (Pan India) Map',
+    path: '/pan-india-region',
+  },
+  {
+    keywords: ['weekly homogenous', 'weekly homogeneous'],
+    productName: 'Weekly Departure Homogenous Map',
+    path: '/weekly-departure-homogenous-map',
+  },
+  {
+    keywords: ['cumulative country', 'cummulative country'],
+    productName: 'Cumulative Departure Country Map',
+    path: '/cummulative-departure-country-map',
+  },
+];
+
+/** Row shape returned inside ollama-chat `api.data`. */
+interface ApiDataRow {
+  district_name?: string;
+  state_name?: string;
+  subdiv_name?: string;
+  name?: string;
+  product_name?: string;
+  route_path?: string;
+  departure?: number | null;
+  category?: string;
+  actual?: number | null;
+  actual_rainfall?: number | null;
+  actual_state_rainfall?: number | null;
+  actual_subdiv_rainfall?: number | null;
+  actual_country_rainfall?: number | null;
+  rainfall_normal_value?: number | null;
+  normal_rainfall?: number | null;
+  date?: string;
+}
+
+/**
+ * Backend catalog routes → real Angular paths in this app.
+ * Kept local so chat deep-links work even if catalog paths are placeholders.
+ */
+const ROUTE_ALIASES: Record<string, string> = {
+  '/daily-actual-state-map': '/daily-actual-state-map',
+  '/daily-departure-district-map': '/pan-india-region',
+  '/weekly-departure-homogenous': '/weekly-departure-homogenous-map',
+  '/cumulative-departure-country': '/cummulative-departure-country-map',
+  '/block-rainfall-map': '/block-rainfall',
+  '/monsoon-activity': '/monsoon-activity',
+  '/spatial-distribution-table': '/spatial-table',
+  '/station-level-data': '/station-level-data',
+  '/station-statistics': '/station-statistics',
+  '/data-entry-verification': '/newverification',
+  '/maps/annual-seasonal-monthly': '/annual-seasonal-monthly-actual-maps',
+  '/all-maps-overview': '/all-maps',
+  '/reports/pdf-download': '/new-email-dissemination',
+  '/email-dissemination': '/new-email-dissemination',
+  '/mc-rmc-regional-maps': '/state-map-mc-rmc',
+};
+
+/**
+ * Rainfall api_id → iRAINS page that visualizes the same product data.
+ * Used so every data answer can deep-link to its source map/page.
+ */
+const API_SOURCE_PAGES: Record<
+  string,
+  { label: string; path: string; weeklyPath?: string; seasonalPath?: string }
+> = {
+  fetch_district_data: {
+    label: 'Daily Departure District (Pan India) Map',
+    path: '/pan-india-region',
+    weeklyPath: '/weekly-departure-district-panindia-map',
+    seasonalPath: '/cummulative-departure-district-pan-map',
+  },
+  fetch_state_data: {
+    label: 'Daily Actual State Rainfall Map',
+    path: '/daily-actual-state-map',
+    weeklyPath: '/weekly-departure-state-map',
+    seasonalPath: '/cummulative-departure-state-map',
+  },
+  fetch_subdivision_data: {
+    label: 'Daily Actual Subdivision Map',
+    path: '/daily-actual-subdivision-map',
+    weeklyPath: '/weekly-departure-subdiv-map',
+    seasonalPath: '/cummulative-departure-subdiv-map',
+  },
+  fetch_region_data: {
+    label: 'Daily Homogeneous Region Map',
+    path: '/daily-actual-homogenous-map',
+    weeklyPath: '/weekly-departure-homogenous-map',
+    seasonalPath: '/cummulative-departure-region-map',
+  },
+  fetch_country_data: {
+    label: 'Daily Country Rainfall Map',
+    path: '/daily-actual-country-map',
+    weeklyPath: '/weekly-departure-country-map',
+    seasonalPath: '/cummulative-departure-country-map',
+  },
+  fetch_cumulative_country_data: {
+    label: 'Cumulative Departure Country Map',
+    path: '/cummulative-departure-country-map',
+  },
+  fetch_block_data: {
+    label: 'Block Rainfall Map',
+    path: '/block-rainfall',
+  },
+  fetch_block_rainfall_analysis: {
+    label: 'Block Rainfall Map',
+    path: '/block-rainfall',
+  },
+  top_rainfall_stations: {
+    label: 'Station Statistics',
+    path: '/station-statistics',
+  },
+  get_all_districts: {
+    label: 'All Maps Overview',
+    path: '/all-maps',
+  },
+  get_all_states: {
+    label: 'All Maps Overview',
+    path: '/all-maps',
+  },
+  get_all_subdivisions: {
+    label: 'All Maps Overview',
+    path: '/all-maps',
+  },
+};
 
 @Component({
   selector: 'app-rainfall-chatbot',
@@ -36,23 +278,195 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
   isTyping = false;
   messages: ChatMessage[] = [];
   rainDrops: { left: number; delay: number; duration: number; height: number }[] = [];
+  promptGroup: 'rainfall' | 'navigation' = 'rainfall';
 
   fromDate = '';
   toDate = '';
   dataMode = 'Departure';
+  ollamaReady: boolean | null = null;
+  ollamaModel = '';
 
   private msgId = 0;
   private typingTimer?: ReturnType<typeof setTimeout>;
+  private askSub?: Subscription;
   private subs: Subscription[] = [];
+  private pendingClarification: PendingClarification | null = null;
 
-  readonly quickPrompts: QuickPrompt[] = [
-    { label: 'Read the maps', query: 'What do these four maps show?', icon: 'bi-map' },
-    { label: 'Actual vs Departure', query: 'What is the difference between Actual and Departure?', icon: 'bi-arrow-left-right' },
-    { label: 'Coverage charts', query: 'How do I check station coverage?', icon: 'bi-bar-chart' },
-    { label: 'Colour legend', query: 'Explain the rainfall departure colours', icon: 'bi-palette' },
+  /** Mirrors backend SAMPLE_QUESTIONS (catalog Q1–Q25). */
+  quickPrompts: QuickPrompt[] = [
+    {
+      label: 'Today’s rainfall',
+      query: 'What is today’s rainfall for Maharashtra?',
+      icon: 'bi-cloud-rain',
+      group: 'rainfall',
+    },
+    {
+      label: 'MH departure',
+      query: 'What is the departure from normal for Maharashtra today?',
+      icon: 'bi-graph-up-arrow',
+      group: 'rainfall',
+    },
+    {
+      label: 'Actual vs Departure',
+      query: 'Show Actual vs Departure for Maharashtra from 2026-05-01 to 2026-05-10',
+      icon: 'bi-arrow-left-right',
+      group: 'rainfall',
+    },
+    {
+      label: 'Deficient districts',
+      query: 'Which districts are deficient / large deficient today?',
+      icon: 'bi-exclamation-triangle',
+      group: 'rainfall',
+    },
+    {
+      label: 'Excess districts',
+      query: 'Which districts are in excess / large excess today?',
+      icon: 'bi-droplet-fill',
+      group: 'rainfall',
+    },
+    {
+      label: 'All-India today',
+      query: 'What is country / all-India rainfall today?',
+      icon: 'bi-globe-asia-australia',
+      group: 'rainfall',
+    },
+    {
+      label: 'Last 7 days',
+      query: 'What is rainfall for last 7 days / this week?',
+      icon: 'bi-calendar-week',
+      group: 'rainfall',
+    },
+    {
+      label: 'Seasonal so far',
+      query: 'What is seasonal / cumulative rainfall so far?',
+      icon: 'bi-calendar-range',
+      group: 'rainfall',
+    },
+    {
+      label: 'Chennai range',
+      query: 'Give actual, normal and % departure for Chennai district from 01-Jul to 15-Jul.',
+      icon: 'bi-geo-alt',
+      group: 'rainfall',
+    },
+    {
+      label: 'TN vs Kerala',
+      query: 'Compare rainfall of Tamil Nadu vs Kerala for yesterday.',
+      icon: 'bi-bar-chart',
+      group: 'rainfall',
+    },
+    {
+      label: 'Daily actual state',
+      query: 'Where is the daily actual state rainfall map?',
+      icon: 'bi-map',
+      group: 'navigation',
+    },
+    {
+      label: 'Departure district',
+      query: 'Open daily departure district (Pan India) map.',
+      icon: 'bi-map',
+      group: 'navigation',
+    },
+    {
+      label: 'Weekly homogenous',
+      query: 'Where is weekly departure homogenous map?',
+      icon: 'bi-map',
+      group: 'navigation',
+    },
+    {
+      label: 'Cumulative country',
+      query: 'Where is cumulative departure country map?',
+      icon: 'bi-map',
+      group: 'navigation',
+    },
+    {
+      label: 'Block rainfall',
+      query: 'Where is block rainfall map (actual / AWS)?',
+      icon: 'bi-grid-3x3',
+      group: 'navigation',
+    },
+    {
+      label: 'Monsoon activity',
+      query: 'Where is monsoon activity?',
+      icon: 'bi-cloud-sun',
+      group: 'navigation',
+    },
+    {
+      label: 'Spatial table',
+      query: 'Where is spatial distribution / spatial table?',
+      icon: 'bi-table',
+      group: 'navigation',
+    },
+    {
+      label: 'Station data',
+      query: 'Where is station level data?',
+      icon: 'bi-broadcast-pin',
+      group: 'navigation',
+    },
+    {
+      label: 'Station stats',
+      query: 'Where is station statistics?',
+      icon: 'bi-graph-up',
+      group: 'navigation',
+    },
+    {
+      label: 'Data entry',
+      query: 'Where is data entry / verification?',
+      icon: 'bi-pencil-square',
+      group: 'navigation',
+    },
+    {
+      label: 'Annual–seasonal',
+      query: 'Where are annual–seasonal–monthly maps?',
+      icon: 'bi-calendar3',
+      group: 'navigation',
+    },
+    {
+      label: 'All Maps',
+      query: 'Where is All Maps home overview?',
+      icon: 'bi-house',
+      group: 'navigation',
+    },
+    {
+      label: 'PDF reports',
+      query: 'Where is PDF rainfall report download?',
+      icon: 'bi-file-earmark-pdf',
+      group: 'navigation',
+    },
+    {
+      label: 'Email reports',
+      query: 'Where is email dissemination / send reports?',
+      icon: 'bi-envelope',
+      group: 'navigation',
+    },
+    {
+      label: 'MC/RMC maps',
+      query: 'Where is MC/RMC state / subdiv / region map?',
+      icon: 'bi-geo',
+      group: 'navigation',
+    },
   ];
 
-  constructor(private dataService: DataService) {}
+  private dataSuggestions: string[] = this.quickPrompts
+    .filter((p) => p.group === 'rainfall')
+    .map((p) => p.query);
+  private navSuggestions: string[] = this.quickPrompts
+    .filter((p) => p.group === 'navigation')
+    .map((p) => p.query);
+  private readonly listPreviewCount = 5;
+
+  constructor(
+    private dataService: DataService,
+    private rainfallChat: RainfallChatService,
+    private router: Router
+  ) {}
+
+  get visiblePrompts(): QuickPrompt[] {
+    return this.quickPrompts.filter((p) => p.group === this.promptGroup);
+  }
+
+  get showQuickChips(): boolean {
+    return this.messages.length <= 2 && !this.isTyping;
+  }
 
   ngOnInit(): void {
     this.rainDrops = Array.from({ length: 28 }, () => ({
@@ -84,20 +498,20 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       })
     );
 
-    this.pushAssistant(
-      this.welcomeText(),
-      this.quickPrompts.map((p) => p.query)
-    );
+    this.pushAssistant(this.welcomeText());
+    this.checkOllamaHealth();
   }
 
   ngOnDestroy(): void {
     this.subs.forEach((s) => s.unsubscribe());
+    this.askSub?.unsubscribe();
     if (this.typingTimer) clearTimeout(this.typingTimer);
   }
 
   toggle(): void {
     this.open = !this.open;
     if (this.open) {
+      this.checkOllamaHealth();
       setTimeout(() => {
         this.scrollToBottom();
         this.chatInput?.nativeElement?.focus();
@@ -112,6 +526,25 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
   usePrompt(query: string): void {
     this.inputText = query;
     this.send();
+  }
+
+  setPromptGroup(group: 'rainfall' | 'navigation'): void {
+    this.promptGroup = group;
+  }
+
+  openNavLink(path: string): void {
+    if (!path) return;
+    this.close();
+    this.router.navigateByUrl(path);
+  }
+
+  /** User tapped a clarification choice button. */
+  chooseClarification(choice: ClarificationChoice): void {
+    if (!this.pendingClarification || this.isTyping) return;
+    const pending = this.pendingClarification;
+    this.clearChoicesFromMessages();
+    this.pushUser(choice.label);
+    this.resolveClarification(choice.id, pending);
   }
 
   onKeydown(event: KeyboardEvent): void {
@@ -130,26 +563,107 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     this.isTyping = true;
     this.scrollToBottom();
 
-    const delay = 650 + Math.min(1200, text.length * 18);
-    this.typingTimer = setTimeout(() => {
-      const reply = this.composeReply(text);
+    // Reply to an open navigate-vs-data clarification
+    if (this.pendingClarification) {
+      const pending = this.pendingClarification;
+      const intent = this.parseClarificationReply(text);
+      this.clearChoicesFromMessages();
+      if (intent) {
+        this.resolveClarification(intent, pending);
+        return;
+      }
+      // Unclear follow-up — re-ask briefly, keep pending
       this.isTyping = false;
-      this.pushAssistant(reply.text, reply.suggestions);
+      this.pushAssistant(
+        `Please choose one option for <strong>${this.escapeHtml(
+          pending.productName
+        )}</strong>:`,
+        undefined,
+        null,
+        [
+          { id: 'navigate', label: 'Open the page' },
+          { id: 'data', label: 'Ask about rainfall data' },
+        ]
+      );
       this.scrollToBottom();
-    }, delay);
+      return;
+    }
+
+    // Ambiguous product keyword → ask navigate vs data first
+    const ambiguous = this.detectAmbiguousProduct(text);
+    if (ambiguous) {
+      const delay = 350 + Math.min(500, text.length * 8);
+      this.typingTimer = setTimeout(() => {
+        this.isTyping = false;
+        this.pendingClarification = {
+          topic: ambiguous.topic,
+          productName: ambiguous.productName,
+          path: ambiguous.path,
+          originalText: text,
+        };
+        this.pushAssistant(
+          `I found <strong>${this.escapeHtml(
+            ambiguous.productName
+          )}</strong> in iRAINS.<br><br>` +
+            `Are you looking to <strong>navigate to that page</strong>, ` +
+            `or do you want <strong>rainfall data / statistics</strong> related to it?`,
+          undefined,
+          null,
+          [
+            { id: 'navigate', label: 'Open the page' },
+            { id: 'data', label: 'Ask about rainfall data' },
+          ]
+        );
+        this.scrollToBottom();
+      }, delay);
+      return;
+    }
+
+    if (this.isFaqOnlyQuestion(text)) {
+      const delay = 450 + Math.min(800, text.length * 12);
+      this.typingTimer = setTimeout(() => {
+        const reply = this.composeReply(text);
+        this.isTyping = false;
+        this.pushAssistant(reply.text);
+        this.scrollToBottom();
+      }, delay);
+      return;
+    }
+
+    this.askBackend(text);
   }
 
   clearChat(): void {
+    this.askSub?.unsubscribe();
+    this.isTyping = false;
+    this.pendingClarification = null;
     this.messages = [];
     this.msgId = 0;
-    this.pushAssistant(
-      this.welcomeText(),
-      this.quickPrompts.map((p) => p.query)
-    );
+    this.pushAssistant(this.welcomeText());
   }
 
   trackById(_: number, msg: ChatMessage): number {
     return msg.id;
+  }
+
+  visibleListItems(msg: ChatMessage): string[] {
+    const items = msg.listItems || [];
+    if (msg.listExpanded || items.length <= this.listPreviewCount) return items;
+    return items.slice(0, this.listPreviewCount);
+  }
+
+  expandList(msg: ChatMessage): void {
+    msg.listExpanded = true;
+    this.scrollToBottom();
+  }
+
+  collapseList(msg: ChatMessage): void {
+    msg.listExpanded = false;
+  }
+
+  hiddenListCount(msg: ChatMessage): number {
+    const n = (msg.listItems || []).length;
+    return Math.max(0, n - this.listPreviewCount);
   }
 
   private welcomeText(): string {
@@ -159,9 +673,95 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         : '';
     return (
       `Namaste — I'm <strong>Varsha</strong>, your iRAINS rainfall companion.` +
-      `<br><br>You're on the All Maps overview in <strong>${this.dataMode}</strong> mode${range}.` +
-      `<br>Ask me about the district, state, subdivision & region maps, legends, coverage, or how to navigate rainfall products.`
+      `<br><br>You're on All Maps in <strong>${this.dataMode}</strong> mode${range}.` +
+      `<br>Ask live rainfall (today, week, seasonal, compare states, deficient / excess), ` +
+      `or <em>Where is…?</em> to open a product page.`
     );
+  }
+
+  private checkOllamaHealth(): void {
+    this.rainfallChat.health().subscribe({
+      next: (res) => {
+        this.ollamaReady = Boolean(res?.success && res?.ollama?.up);
+        this.ollamaModel = res?.ollama?.model || '';
+        this.applySampleQuestionsFromHealth(res?.sample_questions);
+      },
+      error: () => {
+        this.ollamaReady = false;
+      },
+    });
+  }
+
+  /** Prefer backend SAMPLE_QUESTIONS so UI stays in sync with catalog training. */
+  private applySampleQuestionsFromHealth(sample?: {
+    rainfall?: string[];
+    navigation?: string[];
+  }): void {
+    if (!sample) return;
+    const rainfall = Array.isArray(sample.rainfall) ? sample.rainfall : [];
+    const navigation = Array.isArray(sample.navigation) ? sample.navigation : [];
+    if (!rainfall.length && !navigation.length) return;
+
+    const iconFor = (group: 'rainfall' | 'navigation', i: number): string => {
+      const rainIcons = [
+        'bi-cloud-rain',
+        'bi-graph-up-arrow',
+        'bi-arrow-left-right',
+        'bi-exclamation-triangle',
+        'bi-droplet-fill',
+        'bi-globe-asia-australia',
+        'bi-calendar-week',
+        'bi-calendar-range',
+        'bi-geo-alt',
+        'bi-bar-chart',
+      ];
+      const navIcons = [
+        'bi-map',
+        'bi-map',
+        'bi-map',
+        'bi-map',
+        'bi-grid-3x3',
+        'bi-cloud-sun',
+        'bi-table',
+        'bi-broadcast-pin',
+        'bi-graph-up',
+        'bi-pencil-square',
+        'bi-calendar3',
+        'bi-house',
+        'bi-file-earmark-pdf',
+        'bi-envelope',
+        'bi-geo',
+      ];
+      return group === 'rainfall'
+        ? rainIcons[i % rainIcons.length]
+        : navIcons[i % navIcons.length];
+    };
+
+    const shortLabel = (q: string, max = 22): string => {
+      const cleaned = q.replace(/^where is\s+/i, '').replace(/\?$/, '').trim();
+      return cleaned.length > max ? cleaned.slice(0, max - 1) + '…' : cleaned;
+    };
+
+    const next: QuickPrompt[] = [
+      ...rainfall.map((query, i) => ({
+        label: shortLabel(query),
+        query,
+        icon: iconFor('rainfall', i),
+        group: 'rainfall' as const,
+      })),
+      ...navigation.map((query, i) => ({
+        label: shortLabel(query),
+        query,
+        icon: iconFor('navigation', i),
+        group: 'navigation' as const,
+      })),
+    ];
+
+    if (next.length) {
+      this.quickPrompts = next;
+      this.dataSuggestions = rainfall.length ? rainfall : this.dataSuggestions;
+      this.navSuggestions = navigation.length ? navigation : this.navSuggestions;
+    }
   }
 
   private pushUser(text: string): void {
@@ -173,14 +773,226 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     });
   }
 
-  private pushAssistant(text: string, suggestions?: string[]): void {
+  private pushAssistant(
+    text: string,
+    listItems?: string[],
+    navLink?: { label: string; path: string } | null,
+    choices?: ClarificationChoice[] | null
+  ): void {
     this.messages.push({
       id: ++this.msgId,
       role: 'assistant',
       text,
       time: this.now(),
-      suggestions,
+      listItems: listItems?.length ? listItems : undefined,
+      listExpanded: false,
+      navLink: navLink || null,
+      choices: choices?.length ? choices : null,
     });
+  }
+
+  private askBackend(text: string): void {
+    const question = this.enrichQuestionWithDates(text);
+    this.askSub?.unsubscribe();
+    this.askSub = this.rainfallChat.ask({ question }).subscribe({
+      next: (res) => {
+        this.isTyping = false;
+        this.ollamaReady = true;
+        if (res?.answer) {
+          const formatted = this.formatApiAnswer(res);
+          this.pushAssistant(
+            formatted.text,
+            formatted.listItems,
+            formatted.navLink
+          );
+        } else {
+          const reply = this.composeReply(text);
+          if (!this.isGenericFaqFallback(reply.text)) {
+            this.pushAssistant(reply.text);
+          } else {
+            this.pushAssistant(
+              `I couldn’t map that to a rainfall API. Try asking about today’s rainfall, departure, deficient / excess districts, or <em>Where is…?</em> for a product page.`
+            );
+          }
+        }
+        this.scrollToBottom();
+      },
+      error: (err) => {
+        this.isTyping = false;
+        this.ollamaReady = false;
+        const status = err?.status || err?.name;
+        const isTimeout = err?.name === 'TimeoutError' || status === 0;
+        const isOllamaDown = status === 503;
+        const reply = this.composeReply(text);
+
+        if (!this.isGenericFaqFallback(reply.text)) {
+          this.pushAssistant(reply.text);
+        } else if (isOllamaDown) {
+          this.pushAssistant(
+            `Ollama is not running on the backend host.<br><br>` +
+              `Start it with <code>ollama serve</code>, then ` +
+              `<code>ollama pull llama3.2</code>, and ask again.` +
+              (err?.error?.meta?.model
+                ? `<br>Expected model: <strong>${this.escapeHtml(
+                    err.error.meta.model
+                  )}</strong>.`
+                : '')
+          );
+        } else if (isTimeout) {
+          this.pushAssistant(
+            `The Ollama reply took too long. The model may still be loading — try once more in a few seconds.`
+          );
+        } else {
+          this.pushAssistant(
+            `I couldn’t reach the iRAINS Ollama chat service.<br><br>` +
+              `Ensure the API is running and Ollama is healthy, then retry — e.g. ` +
+              `<em>departure for Maharashtra today</em>.`
+          );
+        }
+        this.scrollToBottom();
+      },
+    });
+  }
+
+  private resolveClarification(
+    intent: 'navigate' | 'data',
+    pending: PendingClarification
+  ): void {
+    this.pendingClarification = null;
+    this.isTyping = true;
+    this.scrollToBottom();
+
+    if (intent === 'navigate') {
+      const delay = 280;
+      this.typingTimer = setTimeout(() => {
+        this.isTyping = false;
+        const path = this.resolveAppRoute(pending.path) || pending.path;
+        this.pushAssistant(
+          `<p><strong>${this.escapeHtml(
+            pending.productName
+          )}</strong> is available in iRAINS.</p>` +
+            `<p class="nav-path">Route: <code>${this.escapeHtml(path)}</code></p>`,
+          undefined,
+          { label: `Open ${pending.productName}`, path }
+        );
+        this.scrollToBottom();
+      }, delay);
+      return;
+    }
+
+    // Data intent: if original already looks like a rainfall question, ask backend;
+    // otherwise guide the user to ask a concrete data question.
+    const original = pending.originalText;
+    if (this.hasClearDataIntent(original) && !this.isAmbiguousProductOnly(original)) {
+      this.askBackend(original);
+      return;
+    }
+
+    const delay = 320;
+    this.typingTimer = setTimeout(() => {
+      this.isTyping = false;
+      this.pushAssistant(
+        `Sure — ask me a rainfall question about <strong>${this.escapeHtml(
+          pending.productName
+        )}</strong>, for example:` +
+          `<ul class="rain-list">` +
+          `<li><em>What is today’s rainfall for Maharashtra?</em></li>` +
+          `<li><em>Which districts are deficient today?</em></li>` +
+          `<li><em>What is country / all-India rainfall today?</em></li>` +
+          `</ul>` +
+          `Or say <em>Where is ${this.escapeHtml(
+            pending.productName
+          )}?</em> if you want the page link instead.`
+      );
+      this.scrollToBottom();
+    }, delay);
+  }
+
+  private clearChoicesFromMessages(): void {
+    this.messages.forEach((m) => {
+      if (m.choices?.length) m.choices = null;
+    });
+  }
+
+  private parseClarificationReply(text: string): 'navigate' | 'data' | null {
+    const q = text.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (
+      /\b(open|navigate|go to|take me|show (me )?the )?page\b/.test(q) ||
+      /\b(navigate|open it|open page|go there|yes.? open|menu|route)\b/.test(q) ||
+      /^(open|navigate|page)\b/.test(q)
+    ) {
+      return 'navigate';
+    }
+    if (
+      /\b(data|rainfall|statistics|stats|numbers|values|ask about)\b/.test(q) ||
+      /^(data|rainfall)\b/.test(q)
+    ) {
+      return 'data';
+    }
+    return null;
+  }
+
+  /**
+   * Match short / keyword-only product mentions that need navigate-vs-data clarification.
+   * Skip when the user already said "where is" / "open" or asked a clear rainfall question.
+   */
+  private detectAmbiguousProduct(
+    text: string
+  ): { topic: string; productName: string; path: string } | null {
+    const q = text.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!q || q.length > 80) return null;
+    if (this.hasClearNavigateIntent(q) || this.hasClearDataIntent(q)) return null;
+
+    // Prefer longer keyword matches first
+    const ranked = [...PRODUCT_KEYWORDS].sort(
+      (a, b) =>
+        Math.max(...b.keywords.map((k) => k.length)) -
+        Math.max(...a.keywords.map((k) => k.length))
+    );
+
+    for (const product of ranked) {
+      const hit = product.keywords.find((k) => q.includes(k));
+      if (!hit) continue;
+      // Keyword-only / near keyword-only, or brief "about X" style
+      const stripped = q
+        .replace(hit, '')
+        .replace(/\b(about|regarding|for|the|a|an|please|show|me|info|information)\b/g, '')
+        .replace(/[?.!,]/g, '')
+        .trim();
+      if (stripped.length <= 12) {
+        return {
+          topic: hit,
+          productName: product.productName,
+          path: product.path,
+        };
+      }
+    }
+    return null;
+  }
+
+  private isAmbiguousProductOnly(text: string): boolean {
+    return Boolean(this.detectAmbiguousProduct(text));
+  }
+
+  private hasClearNavigateIntent(q: string): boolean {
+    return (
+      /\bwhere is\b/.test(q) ||
+      /^\s*open\b/.test(q) ||
+      /\b(take me to|go to|navigate to|find (the )?(map|page|menu|product))\b/.test(
+        q
+      )
+    );
+  }
+
+  private hasClearDataIntent(q: string): boolean {
+    return (
+      /\b(today|yesterday|last 7|this week|seasonal|cumulative|departure|deficient|excess|actual vs|compare|rainfall for|mm\b|%dep)\b/.test(
+        q
+      ) ||
+      /\b(maharashtra|kerala|tamil nadu|chennai|all-india|all india|country)\b/.test(
+        q
+      )
+    );
   }
 
   private now(): string {
@@ -193,18 +1005,461 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     }, 40);
   }
 
-  private composeReply(raw: string): { text: string; suggestions?: string[] } {
+  /** Inject header From/To when user asks about the selected range. */
+  private enrichQuestionWithDates(raw: string): string {
+    const q = raw.toLowerCase();
+    const wantsSelectedRange =
+      /\bselected date range\b|\bselected dates?\b|\bcurrent (date )?range\b|\bthis period\b|\bheader dates?\b/.test(
+        q
+      ) ||
+      (/\bactual\b/.test(q) && /\bdeparture\b/.test(q) && /\brange\b/.test(q));
+
+    if (wantsSelectedRange && this.fromDate && this.toDate) {
+      return `${raw.trim()} ${this.fromDate} to ${this.toDate}`;
+    }
+    return raw.trim();
+  }
+
+  private isFaqOnlyQuestion(raw: string): boolean {
+    const q = raw.toLowerCase();
+    // Product-location questions must hit the ollama-chat navigation module.
+    if (
+      /\bwhere is\b/.test(q) ||
+      /^\s*open\b/.test(q) ||
+      /\bfind (the )?(map|page|menu|product)\b/.test(q)
+    ) {
+      return false;
+    }
+    const strongFaq = [
+      'four maps',
+      'these maps',
+      'read the maps',
+      'what do these',
+      'legend',
+      'colour',
+      'color',
+      'palette',
+      'coverage',
+      'station count',
+      'bar chart',
+      'how to use',
+      'difference between actual',
+      'hello',
+      'namaste',
+      'good morning',
+      'good evening',
+      'thank',
+      'bye',
+      'goodbye',
+    ];
+    if (strongFaq.some((k) => q.includes(k))) return true;
+    if (/^(hi|hey)\b/.test(q)) return true;
+    return false;
+  }
+
+  private isGenericFaqFallback(text: string): boolean {
+    return text.includes("I didn't catch a precise match");
+  }
+
+  private formatApiAnswer(res: OllamaChatResponse): FormattedAnswer {
+    const answer = (res?.answer || res?.message || 'No answer returned.').trim();
+    const rows: ApiDataRow[] = Array.isArray(res?.api?.data) ? res.api!.data! : [];
+    const postProcess = res?.action?.post_process;
+    const isNav =
+      res?.action?.module === 'navigation' ||
+      res?.action?.api_id === 'resolve_product_route' ||
+      Boolean(res?.navigation?.route_path);
+
+    if (isNav) {
+      const product =
+        res.navigation?.product_name ||
+        res.action?.product_name ||
+        rows[0]?.product_name ||
+        'Product';
+      const catalogPath =
+        res.navigation?.route_path ||
+        res.action?.route_path ||
+        rows[0]?.route_path ||
+        '';
+      const path = this.resolveAppRoute(catalogPath);
+      const text =
+        `<p><strong>${this.escapeHtml(String(product))}</strong> is available in iRAINS.</p>` +
+        (path
+          ? `<p class="nav-path">Route: <code>${this.escapeHtml(path)}</code></p>`
+          : `<p>${this.escapeAndLightFormat(answer)}</p>`);
+      return {
+        text,
+        navLink: path
+          ? { label: `Open ${product}`, path }
+          : null,
+      };
+    }
+
+    const sourceLink = this.resolveDataSourceLink(res);
+    const withSource = (formatted: FormattedAnswer): FormattedAnswer => {
+      if (!sourceLink) return formatted;
+      return {
+        ...formatted,
+        text:
+          (formatted.text || '') +
+          `<p class="source-page">Data from: <strong>${this.escapeHtml(
+            sourceLink.label.replace(/^View on\s+/i, '')
+          )}</strong></p>`,
+        navLink: sourceLink,
+      };
+    };
+
+    // Prefer structured API rows for deficient / excess / multi-district lists
+    if (
+      rows.length > 1 ||
+      postProcess?.type === 'filter_by_departure_category'
+    ) {
+      const listItems = rows.map((d) => this.formatDistrictListItem(d));
+      const date =
+        res.api?.usedDate ||
+        (rows[0]?.date as string) ||
+        (res.action?.body?.['startDate'] as string) ||
+        '';
+      const cats = postProcess?.categories?.join(' / ');
+      const catClass = this.categoryTextClass(
+        postProcess?.categories?.[0] || cats || null
+      );
+      const isCompare = Array.isArray(
+        (res.action?.post_filter as { state_names?: string[] } | undefined)
+          ?.state_names
+      );
+      const intro = cats
+        ? `<p><strong>${rows.length}</strong> district(s)${
+            date ? ` on <strong>${this.escapeHtml(date)}</strong>` : ''
+          } in <strong class="${catClass}">${this.escapeHtml(cats)}</strong>.</p>`
+        : isCompare
+        ? `<p>Comparison for <strong>${rows.length}</strong> area(s)${
+            date ? ` on <strong>${this.escapeHtml(date)}</strong>` : ''
+          }:</p>`
+        : `<p><strong>${rows.length}</strong> result(s)${
+            date ? ` for <strong>${this.escapeHtml(date)}</strong>` : ''
+          }.</p>`;
+
+      return withSource({
+        text: intro,
+        listItems,
+      });
+    }
+
+    if (rows.length === 1) {
+      const row = rows[0];
+      const hasNums =
+        row.actual_state_rainfall != null ||
+        row.actual_rainfall != null ||
+        row.actual_subdiv_rainfall != null ||
+        row.actual_country_rainfall != null ||
+        row.departure != null;
+
+      if (hasNums) {
+        const name =
+          row.state_name ||
+          row.district_name ||
+          row.subdiv_name ||
+          row.name ||
+          'Selected area';
+        const date =
+          res.api?.usedDate ||
+          row.date ||
+          (res.action?.body?.['startDate'] as string) ||
+          '';
+        const intro =
+          `<p>For <strong>${this.escapeHtml(String(name))}</strong>` +
+          (date ? ` on <strong>${this.escapeHtml(String(date))}</strong>` : '') +
+          `:</p>`;
+        return withSource({ text: intro + this.formatRowSummaryList(row) });
+      }
+
+      return withSource({ text: this.escapeAndLightFormat(answer) });
+    }
+
+    // Parse long Ollama "* item * item" walls into a crisp expandable list
+    const parsed = this.parseAnswerBulletList(answer);
+    if (parsed.items.length > this.listPreviewCount) {
+      return withSource({
+        text: `<p>${this.escapeHtml(parsed.intro)}</p>`,
+        listItems: parsed.items.map((item) => this.formatParsedListItem(item)),
+      });
+    }
+
+    return withSource({ text: this.escapeAndLightFormat(answer) });
+  }
+
+  /** Map catalog route placeholders onto real Angular routes. */
+  private resolveAppRoute(catalogPath: string | null | undefined): string | null {
+    if (!catalogPath) return null;
+    const key = catalogPath.startsWith('/') ? catalogPath : `/${catalogPath}`;
+    return ROUTE_ALIASES[key] || key;
+  }
+
+  /**
+   * For rainfall answers, link to the product page that shows the same data.
+   * Prefers weekly / seasonal map variants when the planner used those date tokens.
+   */
+  private resolveDataSourceLink(
+    res: OllamaChatResponse
+  ): { label: string; path: string } | null {
+    const apiId = res?.action?.api_id;
+    if (!apiId || apiId === 'resolve_product_route') return null;
+
+    // Prefer an explicit route from the backend when present.
+    const explicitPath =
+      res.action?.route_path ||
+      res.navigation?.route_path ||
+      null;
+    if (explicitPath) {
+      const path = this.resolveAppRoute(explicitPath);
+      const label =
+        res.action?.product_name ||
+        res.navigation?.product_name ||
+        'Source page';
+      return path ? { label: `View on ${label}`, path } : null;
+    }
+
+    const source = API_SOURCE_PAGES[apiId];
+    if (!source) return null;
+
+    const span = this.inferDateSpan(res);
+    let path = source.path;
+    let label = source.label;
+    if (span === 'seasonal' && source.seasonalPath) {
+      path = source.seasonalPath;
+      label = label.replace(/^Daily\b/, 'Cumulative').replace(/\bActual\b/, 'Departure');
+    } else if (span === 'weekly' && source.weeklyPath) {
+      path = source.weeklyPath;
+      label = label.replace(/^Daily\b/, 'Weekly').replace(/\bActual\b/, 'Departure');
+    }
+
+    // Deficient / excess district lists always belong on the departure district map.
+    if (
+      apiId === 'fetch_district_data' &&
+      res.action?.post_process?.type === 'filter_by_departure_category'
+    ) {
+      path =
+        span === 'seasonal'
+          ? '/cummulative-departure-district-pan-map'
+          : span === 'weekly'
+          ? '/weekly-departure-district-panindia-map'
+          : '/pan-india-region';
+      label =
+        span === 'seasonal'
+          ? 'Cumulative Departure District (Pan India) Map'
+          : span === 'weekly'
+          ? 'Weekly Departure District (Pan India) Map'
+          : 'Daily Departure District (Pan India) Map';
+    }
+
+    return { label: `View on ${label}`, path };
+  }
+
+  /** Infer weekly / seasonal intent from planner date tokens or api_id. */
+  private inferDateSpan(res: OllamaChatResponse): 'daily' | 'weekly' | 'seasonal' {
+    if (res?.action?.api_id === 'fetch_cumulative_country_data') return 'seasonal';
+    const body = res?.action?.body || {};
+    const start = String(body['startDate'] || '').toUpperCase();
+    const end = String(body['endDate'] || '').toUpperCase();
+    const joined = `${start} ${end}`;
+    if (joined.includes('SEASON_START') || joined.includes('SEASONAL')) return 'seasonal';
+    if (joined.includes('LAST_7') || joined.includes('WEEK')) return 'weekly';
+    return 'daily';
+  }
+
+  private formatDistrictListItem(d: ApiDataRow): string {
+    const name = d.district_name || d.state_name || d.subdiv_name || d.name || 'Area';
+    const category = this.resolveCategory(d.category, d.departure);
+    const textClass = this.categoryTextClass(category);
+    const dep =
+      d.departure == null
+        ? null
+        : `${Number(d.departure) > 0 ? '+' : ''}${Number(d.departure).toFixed(1)}%`;
+    const actRaw = d.actual ?? d.actual_rainfall ?? d.actual_state_rainfall;
+    const act = actRaw != null ? `${Number(actRaw).toFixed(1)} mm` : null;
+    const bits = [
+      dep
+        ? `departure <span class="${textClass}">${dep}</span>`
+        : null,
+      category
+        ? `<span class="${textClass}">${this.escapeHtml(category)}</span>`
+        : null,
+      act ? `actual ${act}` : null,
+    ].filter(Boolean);
+    return (
+      `<strong class="${textClass}">${this.escapeHtml(String(name))}</strong>` +
+      (bits.length ? ` — ${bits.join(' · ')}` : '')
+    );
+  }
+
+  private resolveCategory(
+    category?: string | null,
+    departure?: number | null
+  ): string | null {
+    if (category && String(category).trim()) {
+      const c = String(category).trim().toLowerCase();
+      if (c === 'large excess') return 'Large Excess';
+      if (c === 'excess') return 'Excess';
+      if (c === 'normal') return 'Normal';
+      if (c === 'deficient') return 'Deficient';
+      if (c === 'large deficient') return 'Large Deficient';
+      if (c === 'no rain') return 'No Rain';
+      if (c === 'no data') return 'No Data';
+      return String(category).trim();
+    }
+    if (departure === null || departure === undefined || Number.isNaN(Number(departure))) {
+      return null;
+    }
+    const value = Number(departure);
+    if (value === -100) return 'No Rain';
+    if (value >= 60) return 'Large Excess';
+    if (value >= 20) return 'Excess';
+    if (value >= -19 && value <= 19) return 'Normal';
+    if (value >= -59 && value <= -20) return 'Deficient';
+    if (value >= -99 && value <= -60) return 'Large Deficient';
+    return 'No Data';
+  }
+
+  private categoryTextClass(category: string | null | undefined): string {
+    switch ((category || '').toLowerCase().split(' / ')[0].trim()) {
+      case 'large excess':
+        return 'cat-le';
+      case 'excess':
+        return 'cat-e';
+      case 'normal':
+        return 'cat-n';
+      case 'deficient':
+        return 'cat-d';
+      case 'large deficient':
+        return 'cat-ld';
+      case 'no rain':
+        return 'cat-nr';
+      default:
+        return 'cat-nd';
+    }
+  }
+
+  /** Colorize parsed Ollama list lines that mention a departure category. */
+  private formatParsedListItem(raw: string): string {
+    const categoryMatch = raw.match(
+      /\b(Large Excess|Large Deficient|Excess|Deficient|Normal|No Rain|No Data)\b/i
+    );
+    const depMatch = raw.match(/([+-]?\d+(?:\.\d+)?)\s*%/);
+    const category = categoryMatch ? categoryMatch[1] : null;
+    const departure = depMatch ? Number(depMatch[1]) : null;
+    const resolved = this.resolveCategory(category, departure);
+    const textClass = this.categoryTextClass(resolved);
+
+    let body = this.escapeHtml(raw);
+    if (resolved) {
+      const re = new RegExp(`(${resolved.replace(/\s+/g, '\\s+')})`, 'ig');
+      body = body.replace(re, `<span class="${textClass}">$1</span>`);
+      body = body.replace(
+        /([+-]?\d+(?:\.\d+)?%)/g,
+        `<span class="${textClass}">$1</span>`
+      );
+      body = body.replace(
+        /^([^—(]+)/,
+        `<strong class="${textClass}">$1</strong>`
+      );
+    }
+
+    return body;
+  }
+
+  /** Split Ollama walls like "Intro: * A * B * C" into intro + items. */
+  private parseAnswerBulletList(answer: string): { intro: string; items: string[] } {
+    const starred = answer
+      .split(/\s*\*\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (starred.length > this.listPreviewCount + 1) {
+      return { intro: starred[0].replace(/:\s*$/, ':'), items: starred.slice(1) };
+    }
+
+    const lines = answer
+      .split(/\n+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const bulletLines = lines.filter((l) => /^[-•*]\s+/.test(l) || /^\d+[\.)]\s+/.test(l));
+    if (bulletLines.length > this.listPreviewCount) {
+      const intro =
+        lines.find((l) => !/^[-•*]\s+/.test(l) && !/^\d+[\.)]\s+/.test(l)) ||
+        'Results:';
+      return {
+        intro: intro.replace(/:\s*$/, ':'),
+        items: bulletLines.map((l) => l.replace(/^[-•*]\s+/, '').replace(/^\d+[\.)]\s+/, '')),
+      };
+    }
+
+    return { intro: answer, items: [] };
+  }
+
+  private formatRowSummaryList(row: ApiDataRow): string {
+    const actual =
+      row.actual_state_rainfall ??
+      row.actual_rainfall ??
+      row.actual_subdiv_rainfall ??
+      row.actual_country_rainfall ??
+      null;
+    const normal = row.rainfall_normal_value ?? row.normal_rainfall ?? null;
+    const departure = row.departure ?? null;
+    const category = this.resolveCategory(row.category, departure);
+    const textClass = this.categoryTextClass(category);
+    return (
+      `<ul class="rain-list">` +
+      `<li><strong>Actual</strong> — ${this.fmtMm(actual)}</li>` +
+      `<li><strong>Normal</strong> — ${this.fmtMm(normal)}</li>` +
+      `<li><strong>Departure</strong> — ` +
+      `<span class="${textClass}">${this.fmtPct(departure)}</span>` +
+      (category
+        ? ` <span class="${textClass}">(${this.escapeHtml(category)})</span>`
+        : '') +
+      `</li></ul>`
+    );
+  }
+
+  private escapeAndLightFormat(text: string): string {
+    const escaped = this.escapeHtml(text);
+    // Split on sentence boundaries for readability when long
+    if (escaped.length > 180 && escaped.includes('. ')) {
+      const parts = escaped.split(/(?<=\.)\s+/);
+      if (parts.length > 1) {
+        return parts.map((p) => `<p>${p}</p>`).join('');
+      }
+    }
+    return `<p>${escaped}</p>`;
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  private fmtMm(value: number | null | undefined): string {
+    if (value === null || value === undefined) return 'No Data';
+    return `${Number(value).toFixed(1)} mm`;
+  }
+
+  private fmtPct(value: number | null | undefined): string {
+    if (value === null || value === undefined) return 'No Data';
+    const n = Number(value);
+    const sign = n > 0 ? '+' : '';
+    return `${sign}${n.toFixed(1)}%`;
+  }
+
+  private composeReply(raw: string): { text: string } {
     const q = raw.toLowerCase().replace(/\s+/g, ' ').trim();
 
     if (this.match(q, ['hello', 'hi', 'hey', 'namaste', 'good morning', 'good evening'])) {
       return {
         text:
           `Hello! Varsha here — your rainfall guide on All Maps.<br><br>` +
-          `I can walk you through this page: choropleths, departure vs actual rainfall, station coverage, and where to go next in iRAINS.`,
-        suggestions: [
-          'What do these four maps show?',
-          'Explain the rainfall departure colours',
-        ],
+          `Ask live numbers (e.g. Maharashtra departure today) or how to use the maps.`,
       };
     }
 
@@ -219,14 +1474,15 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
           `<li><strong>Region / Homogeneous</strong> — broad climatic regions</li>` +
           `</ul>` +
           `Use the date picker in the header to refresh all four together. Toggle <strong>Actual</strong> / <strong>Departure</strong> to switch rainfall product type.`,
-        suggestions: [
-          'What is the difference between Actual and Departure?',
-          'How do I check station coverage?',
-        ],
       };
     }
 
-    if (this.match(q, ['actual', 'departure', 'difference', 'vs', 'versus', 'mode'])) {
+    if (
+      this.match(q, ['difference between actual', 'actual and departure', 'vs departure mode']) ||
+      (this.match(q, ['actual', 'departure']) &&
+        this.match(q, ['difference', 'versus', 'mode', 'lens']) &&
+        !this.match(q, ['range', 'selected', 'today', 'maharashtra']))
+    ) {
       return {
         text:
           `Two rainfall lenses, same geography:` +
@@ -238,15 +1494,11 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
           (this.fromDate && this.toDate
             ? ` for <strong>${this.fromDate}</strong> to <strong>${this.toDate}</strong>.`
             : `.`) +
-          `<br><br>Departure maps use categorical colours (large excess → large deficient). Actual maps emphasise rainfall depth.`,
-        suggestions: [
-          'Explain the rainfall departure colours',
-          'How do I change the date range?',
-        ],
+          `<br><br>For live numbers, ask: <em>Show Actual vs Departure for the selected date range.</em>`,
       };
     }
 
-    if (this.match(q, ['legend', 'colour', 'color', 'category', 'excess', 'deficient', 'normal', 'palette'])) {
+    if (this.match(q, ['legend', 'colour', 'color', 'palette']) && !this.match(q, ['deficient', 'excess', 'today'])) {
       return {
         text:
           `Departure colour bands (IMD-style categories):` +
@@ -260,10 +1512,6 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
           `<li><span class="swatch s-nd"></span> <strong>No Data</strong></li>` +
           `</ul>` +
           `Hover a polygon on any map for the unit name, rainfall / normal / departure values.`,
-        suggestions: [
-          'What do these four maps show?',
-          'How do I download a map?',
-        ],
       };
     }
 
@@ -277,129 +1525,28 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
           `<li><strong>Region</strong> → districts, states & subdivisions summary</li>` +
           `</ul>` +
           `The left sidebar opens with a table + pie chart for the active date range — useful to spot sparse observation networks.`,
-        suggestions: [
-          'How do I change the date range?',
-          'What is the difference between Actual and Departure?',
-        ],
       };
     }
 
-    if (this.match(q, ['date', 'period', 'range', 'from', 'to', 'calendar', 'week'])) {
-      return {
-        text:
-          `Set the analysis window from the <strong>header date controls</strong> (From / To).` +
-          `<br><br>All four maps and coverage panels refresh together for that window.` +
-          (this.fromDate && this.toDate
-            ? `<br>Current selection: <strong>${this.fromDate}</strong> → <strong>${this.toDate}</strong>.`
-            : `<br>Pick dates above the maps if none are selected yet.`),
-        suggestions: [
-          'What do these four maps show?',
-          'How do I check station coverage?',
-        ],
-      };
-    }
-
-    if (this.match(q, ['download', 'export', 'png', 'image', 'save map', 'print'])) {
+    if (this.match(q, ['download', 'export', 'png', 'image', 'save map', 'print']) &&
+        !this.match(q, ['where is', 'pdf', 'email'])) {
       return {
         text:
           `On each map card, use the <strong>Download</strong> control (pill button) to export the current choropleth as an image.` +
           `<br>Fullscreen (if available on the card) is handy before capturing high-resolution figures for briefings.`,
-        suggestions: [
-          'Explain the rainfall departure colours',
-          'Where else can I see rainfall maps?',
-        ],
       };
     }
 
-    if (this.match(q, ['district'])) {
+    if (this.match(q, ['navigate', 'where else', 'other maps', 'go to', 'menu']) &&
+        !this.match(q, ['where is', 'open '])) {
       return {
         text:
-          `The <strong>District map</strong> is the highest-resolution panel on this page — each polygon is an administrative district coloured by ${this.dataMode.toLowerCase()} rainfall.` +
-          `<br><br>Open its coverage button to see how many stations feed each district for the selected dates.`,
-        suggestions: [
-          'How do I check station coverage?',
-          'Explain the rainfall departure colours',
-        ],
-      };
-    }
-
-    if (this.match(q, ['subdivision', 'sub-division', 'sub division'])) {
-      return {
-        text:
-          `<strong>Meteorological subdivisions</strong> are IMD's operational units (broader than states in some cases).` +
-          `<br>The subdivision map aggregates rainfall for those units — ideal for monsoon monitoring and regional summaries.`,
-        suggestions: [
-          'What do these four maps show?',
-          'Where is monsoon activity?',
-        ],
-      };
-    }
-
-    if (this.match(q, ['region', 'homogeneous', 'homogenous'])) {
-      return {
-        text:
-          `The <strong>Region / Homogeneous</strong> map shows large climatic regions (e.g. Northwest, Central India, South Peninsula, East & Northeast).` +
-          `<br>Use it for a country-scale narrative; drill into district/state maps for detail.`,
-        suggestions: [
-          'What do these four maps show?',
-          'Where else can I see rainfall maps?',
-        ],
-      };
-    }
-
-    if (this.match(q, ['state'])) {
-      return {
-        text:
-          `The <strong>State map</strong> rolls district rainfall up to state boundaries — good for interstate comparison and briefings.` +
-          `<br>Coverage shows how many districts within each state have data for the period.`,
-        suggestions: [
-          'What is the difference between Actual and Departure?',
-          'How do I check station coverage?',
-        ],
-      };
-    }
-
-    if (this.match(q, ['monsoon', 'activity'])) {
-      return {
-        text:
-          `For monsoon-focused views, open <strong>Monsoon Activity</strong> from the navigation (` +
-          `<code>/monsoon-activity</code>).` +
-          `<br>All Maps remains your daily / period overview across district → region scales.`,
-        suggestions: [
-          'Where else can I see rainfall maps?',
-          'What do these four maps show?',
-        ],
-      };
-    }
-
-    if (this.match(q, ['navigate', 'where else', 'other maps', 'daily', 'weekly', 'spatial', 'go to', 'menu'])) {
-      return {
-        text:
-          `Beyond All Maps, iRAINS has specialised products:` +
+          `Ask <em>Where is…?</em> for a direct product link, e.g.:` +
           `<ul class="rain-list">` +
-          `<li><strong>Daily / Weekly / Cumulative</strong> rainfall maps under Rainfall Maps nav</li>` +
-          `<li><strong>Spatial</strong> district views & distribution tables</li>` +
-          `<li><strong>Block rainfall</strong> for finer admin units</li>` +
-          `<li><strong>Station-level data</strong> & statistics for verification</li>` +
-          `<li><strong>Monsoon activity</strong> & river basin products</li>` +
-          `</ul>` +
-          `Use the top navbar to jump — All Maps is the home overview.`,
-        suggestions: [
-          'How do I change the date range?',
-          'What is the difference between Actual and Departure?',
-        ],
-      };
-    }
-
-    if (this.match(q, ['station', 'aws', 'arg', 'observ'])) {
-      return {
-        text:
-          `Rainfall on these maps is built from station observations aggregated to districts and higher units.` +
-          `<br>Use the <strong>coverage</strong> buttons here for counts, or open <strong>Station Level Data</strong> / <strong>Station Statistics</strong> for station-wise series and QC.`,
-        suggestions: [
-          'How do I check station coverage?',
-          'Where else can I see rainfall maps?',
-        ],
+          `<li>Where is monsoon activity?</li>` +
+          `<li>Where is the daily actual state rainfall map?</li>` +
+          `<li>Where is station level data?</li>` +
+          `</ul>`,
       };
     }
 
@@ -408,41 +1555,34 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         text:
           `I can help with:` +
           `<ul class="rain-list">` +
-          `<li>Understanding the four All Maps panels</li>` +
-          `<li>Actual vs Departure products</li>` +
-          `<li>Departure colour legend</li>` +
-          `<li>Station coverage sidebar</li>` +
-          `<li>Dates, download & navigation tips</li>` +
-          `</ul>` +
-          `Try a quick chip below, or ask in your own words.`,
-        suggestions: this.quickPrompts.map((p) => p.query),
+          `<li>Today’s / weekly / seasonal rainfall</li>` +
+          `<li>Departure, deficient & excess districts</li>` +
+          `<li>Compare states (e.g. Tamil Nadu vs Kerala)</li>` +
+          `<li><em>Where is…?</em> product navigation</li>` +
+          `<li>All Maps legend & coverage tips</li>` +
+          `</ul>`,
       };
     }
 
     if (this.match(q, ['thank', 'thanks', 'bye', 'goodbye'])) {
       return {
-        text: `You're welcome — stay weather-wise. Varsha is here whenever you need a rainfall briefing on All Maps.`,
+        text: `You're welcome — stay weather-wise. Varsha is here whenever you need a rainfall briefing.`,
       };
     }
 
     return {
       text:
-        `I didn't catch a precise match, but here's what usually helps on this page:` +
+        `I didn't catch a precise match, but here's what usually helps:` +
         `<ul class="rain-list">` +
-        `<li>Ask about <em>maps</em>, <em>Actual vs Departure</em>, <em>legend</em>, or <em>coverage</em></li>` +
+        `<li>Ask for <em>today’s rainfall</em>, <em>last 7 days</em>, or <em>seasonal</em></li>` +
+        `<li>Or <em>deficient / excess districts</em>, <em>compare states</em></li>` +
+        `<li>Or <em>Where is monsoon activity?</em> / other product pages</li>` +
         `<li>Current mode: <strong>${this.dataMode}</strong>` +
         (this.fromDate && this.toDate
           ? ` · dates <strong>${this.fromDate}</strong> → <strong>${this.toDate}</strong>`
           : '') +
         `</li>` +
-        `</ul>` +
-        `Pick a suggestion, or rephrase — I'm tuned for iRAINS rainfall workflows.`,
-      suggestions: [
-        'What do these four maps show?',
-        'Explain the rainfall departure colours',
-        'How do I check station coverage?',
-        'Where else can I see rainfall maps?',
-      ],
+        `</ul>`,
     };
   }
 

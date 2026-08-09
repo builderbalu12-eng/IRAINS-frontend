@@ -97,11 +97,6 @@
 
 </div>
 
-<!-- ─── Disclaimer (floating, bottom of page) ─────────────────────────────── -->
-<div class="realtime-disclaimer">
-    * Based on real-time rainfall data
-</div>
-
 <!-- ─── Coverage Stats Sidebar (slides in from left) ──────────────────────── -->
 <div class="coverage-sidebar" [class.open]="activePanelType !== null">
 
@@ -228,6 +223,3 @@
 
 <!-- Backdrop -->
 <div class="sidebar-backdrop" *ngIf="activePanelType !== null" (click)="closeCoveragePanel()"></div>
-
-<!-- Rainfall chatbot assistant -->
-<app-rainfall-chatbot></app-rainfall-chatbot>

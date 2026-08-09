@@ -1,5 +1,6 @@
-import { filter } from 'rxjs';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { NavigationEnd, Router } from '@angular/router';
+import { Subscription, filter } from 'rxjs';
 import { DataService } from './data.service';
 import { CalculationsModeService } from './services/calculationsMode.service';
 
@@ -8,13 +9,18 @@ import { CalculationsModeService } from './services/calculationsMode.service';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   title = 'CRIS';
   loadedFeature = 'Departure';
+  /** Hidden on Data Management shell and all of its child routes. */
+  showChatbot = true;
+
+  private routerSub?: Subscription;
 
   constructor(
     private dataService: DataService,
-    private calcMode: CalculationsModeService
+    private calcMode: CalculationsModeService,
+    private router: Router,
   ){
     this.calcMode.loadMode().subscribe();   // load IMD/AWS toggle from DB on startup
     this.scheduleFunction();
@@ -34,6 +40,19 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.updateChatbotVisibility(this.router.url);
+    this.routerSub = this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe((e) => this.updateChatbotVisibility(e.urlAfterRedirects));
+  }
+
+  ngOnDestroy(): void {
+    this.routerSub?.unsubscribe();
+  }
+
+  private updateChatbotVisibility(url: string): void {
+    const path = (url || '').split('?')[0].split('#')[0];
+    this.showChatbot = !path.startsWith('/data-management');
   }
 
   onNavigate(feature:string){
