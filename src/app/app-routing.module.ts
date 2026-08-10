@@ -32,6 +32,7 @@ import { VerificationComponent } from './main/verification/verification.componen
 import { YearlyStationStatisticsPageComponent } from './main/yearly-station-statistics-page/yearly-station-statistics-page.component';
 import { RainfallDataCmPageComponent } from './main/rainfall-data-cm-page/rainfall-data-cm-page.component';
 import { StationStatisticsPageComponent } from './main/station-statistics-page/station-statistics-page.component';
+import { ArgAwsRealtimeComponent } from './main/arg-aws-realtime/arg-aws-realtime.component';
 import { EmailDisseminationPageComponent } from './main/email-dissemination-page/email-dissemination-page.component';
 import { SendEmailPageComponent } from './main/send-email-page/send-email-page.component';
 import { AutoEmailSetupPageComponent } from './main/auto-email-setup-page/auto-email-setup-page.component';
@@ -243,6 +244,7 @@ export const routes: Routes = [
   {path: 'newverification', component: VerificationComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc'] }},
   { path: 'station-level-data', component: StationLevelDataComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
   { path: 'station-statistics', component: StationStatisticsPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
+  { path: 'arg-aws-realtime', component: ArgAwsRealtimeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
 
   { path: 'daily-state-rf-distribution', component: RainfallStatisticsComponent, data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'STATE'}, canActivate: [AuthGuard],  },
   { path: 'daily-subdivision-rf-distribution', component: RainfallStatisticsComponent,  data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'SUBDIVISION'},canActivate: [AuthGuard],  },

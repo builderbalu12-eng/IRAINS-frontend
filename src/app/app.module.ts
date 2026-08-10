@@ -70,6 +70,7 @@ import { HeaderComponent } from "./main/utils/header/header.component";
 import { YearlyStationStatisticsPageComponent } from "./main/yearly-station-statistics-page/yearly-station-statistics-page.component";
 import { RainfallDataCmPageComponent } from "./main/rainfall-data-cm-page/rainfall-data-cm-page.component";
 import { StationStatisticsPageComponent } from "./main/station-statistics-page/station-statistics-page.component";
+import { ArgAwsRealtimeComponent } from "./main/arg-aws-realtime/arg-aws-realtime.component";
 import { DefinedEmailGroupPageComponent } from "./main/defined-email-group-page/defined-email-group-page.component";
 import { EmailDisseminationPageComponent } from "./main/email-dissemination-page/email-dissemination-page.component";
 import { EmailLogPageComponent } from "./main/email-log-page/email-log-page.component";
@@ -198,6 +199,7 @@ import { CalculationModeComponent } from './main/data-management/calculation-mod
 import { ReviewAndPublishComponent } from './main/data-management/review-and-publish/review-and-publish.component';
 import { DataEntryInvestigationComponent } from './main/data-management/data-entry-investigation/data-entry-investigation.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { DataManagementComponent } from './main/data-management/data-management.component';
 import { GeojsonUploadComponent } from './main/data-management/geojson-upload/geojson-upload.component';
 import { GeojsonManagementComponent } from './main/data-management/geojson-management/geojson-management.component';
@@ -269,6 +271,7 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     YearlyStationStatisticsPageComponent,
     RainfallDataCmPageComponent,
     StationStatisticsPageComponent,
+    ArgAwsRealtimeComponent,
     DefinedEmailGroupPageComponent,
     EmailDisseminationPageComponent,
     EmailLogPageComponent,
@@ -416,6 +419,7 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
   imports: [
     MatCardModule,
     DragDropModule,
+    ScrollingModule,
     PdfViewerModule,
     HttpClientModule,
     LeafletModule,

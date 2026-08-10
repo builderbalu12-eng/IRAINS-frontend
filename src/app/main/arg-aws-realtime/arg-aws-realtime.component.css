@@ -1,0 +1,1825 @@
+/* ============================================================================
+   ARG / AWS Cumulative & Real-Time console.
+
+   Shares its token set with Station Statistics — same brand blue, same ink
+   scale, same surface/canvas split, same radii and shadows — so the two pages
+   in the STATION STATISTICS menu read as one product. What differs is the
+   layout: this page is a tabbed console built around a 24-hour scrubber rather
+   than a permanent filter rail, and the map is the widest thing on the screen.
+
+   Everything is scoped under `.rt`; Leaflet and Highcharts render outside view
+   encapsulation, so their overrides use ::ng-deep.
+   ========================================================================== */
+
+:host {
+  --rt-brand: #1a4fa0;
+  --rt-brand-dark: #143b78;
+  --rt-brand-tint: #eaf0fa;
+  --rt-ink: #1c2430;
+  --rt-ink-soft: #5b6675;
+  --rt-ink-faint: #8b96a5;
+  --rt-line: #dfe4ea;
+  --rt-line-soft: #eef1f5;
+  --rt-surface: #ffffff;
+  --rt-canvas: #f5f7fa;
+  --rt-danger: #c0392b;
+  --rt-danger-tint: #fdecea;
+  --rt-warn: #b06e00;
+  --rt-warn-tint: #fdf3e2;
+  /* Selection green, matching Station Statistics: never the brand blue, so a
+     highlighted value cannot be confused with a chart series. */
+  --rt-select: #1e7a45;
+
+  --rt-radius: 8px;
+  --rt-radius-sm: 5px;
+  --rt-shadow: 0 1px 3px rgba(16, 24, 40, 0.09), 0 4px 12px rgba(16, 24, 40, 0.06);
+
+  /* India's extent is 0.87 wide for every 1 tall, so at the map's ~780px height
+     it needs roughly 680px of width — past this the map only buys ocean and
+     neighbouring countries. Everything beyond goes to the rail. */
+  --rt-map-max-w: 780px;
+
+  display: block;
+  color: var(--rt-ink);
+  font-size: 14px;
+}
+
+.rt {
+  min-height: 100vh;
+  padding: 14px 18px 36px;
+  background: var(--rt-canvas);
+  font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 13px;
+}
+
+/* ─────────────────────────────────────────────────────────── command bar ── */
+
+.rt-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+}
+
+.rt-bar__id {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.rt-bar__mark {
+  padding: 7px 11px;
+  border: 1px solid var(--rt-brand);
+  border-radius: var(--rt-radius-sm);
+  background: var(--rt-brand-tint);
+  color: var(--rt-brand);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.rt-bar__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--rt-ink);
+}
+
+.rt-bar__sub {
+  margin: 2px 0 0;
+  color: var(--rt-ink-soft);
+  font-size: 12px;
+}
+
+.rt-bar__ctl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.rt-note {
+  margin: 9px 2px 0;
+  color: var(--rt-ink-soft);
+  font-size: 11.5px;
+}
+
+.rt-note strong {
+  color: var(--rt-ink);
+  font-weight: 600;
+}
+
+/* Standing explanation at the head of a panel, rather than a passing caption. */
+.rt-note--lead {
+  max-width: 96ch;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--rt-line);
+  border-left: 3px solid var(--rt-brand);
+  border-radius: var(--rt-radius-sm);
+  background: var(--rt-surface);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.rt-note--lead code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--rt-line-soft);
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+/* ───────────────────────────────────────────────────────────── form bits ── */
+
+.rt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.rt-field__label {
+  color: var(--rt-ink-faint);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rt-input {
+  padding: 7px 10px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius-sm);
+  background: var(--rt-surface);
+  color: var(--rt-ink);
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rt-input:focus {
+  border-color: var(--rt-brand);
+  box-shadow: 0 0 0 3px rgba(26, 79, 160, 0.12);
+}
+
+.rt-input:disabled {
+  background: var(--rt-line-soft);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Search box with its own clear button, since a bare native search field on a
+   card header gives no affordance for getting back to the full list. */
+.rt-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rt-search__input {
+  width: 150px;
+  padding-right: 20px;
+}
+
+.rt-search__clear {
+  position: absolute;
+  right: 4px;
+  padding: 0 3px;
+  border: 0;
+  background: none;
+  color: var(--rt-ink-faint);
+  font-size: 14px;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.rt-search__clear:hover {
+  color: var(--rt-danger);
+}
+
+/* Compact selects for a card header, where a full-size field would push the
+   mode buttons onto their own line. */
+.rt-input--mini {
+  max-width: 158px;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+.rt-input--search {
+  min-width: 240px;
+}
+
+.rt-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius-sm);
+  background: var(--rt-surface);
+  color: var(--rt-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.rt-btn:hover:not(:disabled) {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand-tint);
+}
+
+.rt-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rt-btn--primary {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand);
+  color: #fff;
+}
+
+.rt-btn--primary:hover:not(:disabled) {
+  border-color: var(--rt-brand-dark);
+  background: var(--rt-brand-dark);
+}
+
+.rt-btn--ghost {
+  background: var(--rt-surface);
+}
+
+/* ───────────────────────────────────────────────────────────────── tabs ── */
+
+/* Tabs and the live readout share one row. The readout is `flex: 1` so it
+   absorbs whatever width the tabs leave over, and wraps to its own line only
+   when there genuinely isn't room. */
+.rt-topline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: stretch;
+  margin: 12px 0 12px;
+}
+
+.rt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.rt-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  color: var(--rt-ink-soft);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rt-tab:hover {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand-tint);
+  color: var(--rt-ink);
+}
+
+.rt-tab--on {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand);
+  color: #fff;
+}
+
+.rt-tab--on .rt-tab__hint {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.rt-tab__label {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.rt-tab__hint {
+  color: var(--rt-ink-faint);
+  font-size: 10.5px;
+}
+
+/* ─────────────────────────────────────────────── live slot readout (inline) ─ */
+
+.rt-stats {
+  display: flex;
+  flex: 1 1 420px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 2px 4px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+}
+
+.rt-stat {
+  display: flex;
+  /* The stats share out the bar's spare width between them. Sizing them to
+     their content instead left the slack pooled at one end as a blank stretch
+     of panel, which read as a rendering fault rather than as spacing. */
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 4px 13px;
+  /* Hairline separators instead of six individual cards: the same information
+     in roughly a third of the height. */
+  border-left: 1px solid var(--rt-line-soft);
+}
+
+.rt-stat:first-child {
+  border-left: 0;
+}
+
+.rt-stat__label {
+  overflow: hidden;
+  /* Station names land here and can be long; clip rather than wrap, because a
+     wrapped label would push the row back to two lines. */
+  max-width: 190px;
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rt-stat__value {
+  color: var(--rt-ink);
+  font-size: 16px;
+  font-weight: 680;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-stat__value small {
+  margin-left: 5px;
+  color: var(--rt-ink-faint);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.rt-stat--accent .rt-stat__label {
+  color: var(--rt-brand);
+}
+
+.rt-stat--accent .rt-stat__value {
+  color: var(--rt-brand);
+}
+
+/* ────────────────────────────────────────── inline control row (per tab) ─── */
+
+/* Same slot as the live readout: whatever width the tabs leave over. These
+   rows are short enough to fit there, which saves the panel below starting a
+   full filter bar down the page. */
+.rt-inlineform {
+  display: flex;
+  flex: 1 1 560px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 6px 10px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+}
+
+/* Compact against the standalone version: the labels shrink and the fields
+   size to their content rather than to a 120px floor. */
+.rt-inlineform .rt-field {
+  min-width: 0;
+  gap: 2px;
+}
+
+.rt-inlineform .rt-field__label {
+  font-size: 9.5px;
+}
+
+.rt-inlineform .rt-input {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.rt-inlineform .rt-btn {
+  padding: 6px 14px;
+}
+
+/* Date fields size to their own text; the selects need a usable floor because
+   district names are long, but must still be free to shrink. */
+.rt-inlineform select.rt-input {
+  min-width: 128px;
+  max-width: 200px;
+}
+
+/* ───────────────────────────────────────────────────────────────── KPIs ── */
+
+.rt-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.rt-kpis--tight {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.rt-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 13px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+}
+
+.rt-kpi--accent {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand-tint);
+}
+
+.rt-kpi__label {
+  color: var(--rt-ink-faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.rt-kpi__value {
+  color: var(--rt-ink);
+  font-size: 22px;
+  font-weight: 680;
+  line-height: 1.15;
+  /* Tabular figures stop the KPI row from twitching as the scrubber runs. */
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-kpi--accent .rt-kpi__value {
+  color: var(--rt-brand);
+}
+
+.rt-kpi__value em {
+  margin-left: 4px;
+  color: var(--rt-ink-faint);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.rt-kpi__value--warn {
+  color: var(--rt-danger);
+}
+
+.rt-kpi__foot {
+  color: var(--rt-ink-soft);
+  font-size: 10.5px;
+}
+
+.rt-kpi__foot--name {
+  overflow: hidden;
+  color: var(--rt-select);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ──────────────────────────────────────────────────────────── source chips ─ */
+
+.rt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.rt-chips__label {
+  margin-right: 4px;
+  color: var(--rt-ink-faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.rt-chips__spacer {
+  flex: 1 1 auto;
+}
+
+.rt-chips__meta {
+  color: var(--rt-ink-soft);
+  font-size: 11.5px;
+}
+
+.rt-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 11px;
+  border: 1px solid var(--rt-line);
+  border-radius: 999px;
+  background: var(--rt-surface);
+  color: var(--rt-ink-soft);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rt-chip:hover {
+  border-color: var(--rt-brand);
+}
+
+.rt-chip--on {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand);
+  color: #fff;
+}
+
+/* A feed with nothing on this day stays clickable but stops competing for
+   attention with the feeds that actually have data. */
+.rt-chip--empty {
+  opacity: 0.5;
+}
+
+.rt-chip--ghost {
+  border-style: dashed;
+}
+
+/* A soloed source reads as a selection, not just an enabled toggle. */
+.rt-chip--solo {
+  border-color: var(--rt-brand-dark);
+  background: var(--rt-brand-dark);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(26, 79, 160, 0.18);
+}
+
+.rt-chip__solo {
+  font-size: 8px;
+  line-height: 1;
+}
+
+.rt-chip__n {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(28, 36, 48, 0.09);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-chip--on /* A soloed source reads as a selection, not just an enabled toggle. */
+.rt-chip--solo {
+  border-color: var(--rt-brand-dark);
+  background: var(--rt-brand-dark);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(26, 79, 160, 0.18);
+}
+
+.rt-chip__solo {
+  font-size: 8px;
+  line-height: 1;
+}
+
+.rt-chip__n {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/* ───────────────────────────────────────────────────────── live map layout ─ */
+
+/* The map column is capped; the rail takes every pixel beyond it. On a wide
+   monitor that makes the rail the thing that grows, which suits it — it holds
+   a 96-cell-per-row strip that was always short of width. */
+.rt-live {
+  display: grid;
+  grid-template-columns: minmax(0, var(--rt-map-max-w)) minmax(320px, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.rt-live__map {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+  overflow: hidden;
+}
+
+/* Positioning context for the map's own overlays. Without it they resolve
+   against .rt-live__map, which also holds the legend ribbon — that is what put
+   the settings button on top of the legend. */
+.rt-map-wrap {
+  position: relative;
+  /* Grows into whatever height the rail sets. The clamp is a floor now, not a
+     fixed size: since the timeline moved into the rail, the rail is the taller
+     column, and a fixed-height map left dead white space under the legend. */
+  flex: 1 1 auto;
+  min-height: clamp(560px, 72vh, 980px);
+}
+
+/* Tall enough that the whole country fits without pinching, and it grows with
+   the window instead of staying a fixed strip. The row the slot readout used
+   to occupy is given straight back to this. */
+.rt-map {
+  height: 100%;
+  /* Dark placeholder: the page opens on satellite, and a light grey panel
+     flashing before the imagery lands reads as a broken tile layer. */
+  background: #16202e;
+}
+
+.rt-live__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* The rail's own scroll keeps it from stretching the map row taller than the
+   map, which is what pushed the scrubber below the fold. */
+/* The rail spaces its children with `gap`; their own bottom margins would
+   double it. */
+.rt-live__rail .rt-card,
+.rt-live__rail .rt-scrub {
+  margin-bottom: 0;
+}
+
+/* The grid stretches the rail to the map's height, but its cards size to their
+   own content — the shortfall showed as bare canvas beside the map. The last
+   card absorbs it instead, so the rail ends flush with the map. Purely
+   cosmetic: the tiles still pack from the top. */
+.rt-live__rail .rt-card:last-child {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.rt-live__rail .rt-card:last-child .rt-movers {
+  align-content: start;
+}
+
+/* Map settings: a gear pinned to the bottom-right, its panel opening upward
+   from it. One anchored cluster, so the panel cannot drift away from the button
+   that owns it. Three permanent control stacks used to sit top-right and
+   covered a real corner of the country; none is touched often enough for that. */
+.rt-mapset {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.rt-mapset__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 8px 26px rgba(16, 24, 40, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+.rt-mapset__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rt-mapset__label {
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.rt-mapset__btn {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 7px 13px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius-sm);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+  color: var(--rt-ink-soft);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rt-mapset__btn:hover {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand-tint);
+  color: var(--rt-brand);
+}
+
+.rt-mapset__btn--on {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand);
+  color: #fff;
+}
+
+.rt-mapset__gear {
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+/* A small turn on open, so the gear reads as the thing that opened the panel. */
+.rt-mapset__btn--on .rt-mapset__gear {
+  transform: rotate(45deg);
+}
+
+.rt-seg {
+  display: inline-flex;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius-sm);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+  overflow: hidden;
+}
+
+.rt-seg__btn {
+  padding: 7px 13px;
+  border: 0;
+  background: transparent;
+  color: var(--rt-ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.rt-seg__btn:hover {
+  background: var(--rt-brand-tint);
+}
+
+.rt-seg__btn--on {
+  background: var(--rt-brand);
+  color: #fff;
+}
+
+.rt-seg__btn--on:hover {
+  background: var(--rt-brand-dark);
+}
+
+.rt-seg--sm .rt-seg__btn {
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
+/* Flat ribbon along the foot of the map. The stacked version floated over the
+   bottom-left corner, hid the peninsula, and spent eight rows on what fits in
+   one; each band's numeric range now lives in the tooltip. */
+.rt-legendbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  align-items: center;
+  padding: 7px 12px;
+  border-top: 1px solid var(--rt-line);
+  background: var(--rt-surface);
+}
+
+.rt-legendbar__title {
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Sits between the band name and its count, so the ribbon grows wider (and
+   wraps to a second line) rather than changing shape. */
+.rt-legendbar__rng {
+  margin-left: 5px;
+  color: var(--rt-ink-faint);
+  font-size: 10px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-legendbar__item {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--rt-ink-soft);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.rt-legendbar__item b {
+  margin-left: 5px;
+  color: var(--rt-ink);
+  font-weight: 680;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-legendbar__item--muted {
+  margin-left: auto;
+  color: var(--rt-ink-faint);
+}
+
+/* The hairline is what keeps the white "Zero" swatch visible on a white
+   ribbon — the same reason the map markers carry a stroke. */
+.rt-legendbar__sw {
+  width: 11px;
+  height: 11px;
+  border: 1px solid #3a4757;
+  border-radius: 2px;
+}
+
+.rt-legendbar__sw--none {
+  background: #c3cbd6;
+}
+
+/* Centred on both axes, with the spinner stacked over the message. The message
+   is centred as text too — it runs to three lines on the feeds tab, and a
+   centred block of left-aligned lines still reads as misaligned. */
+.rt-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--rt-brand);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* The inline variant has no parent to fill, so it carries its own height —
+   otherwise it collapses to a text-height sliver pinned at the top. */
+.rt-loading--inline {
+  position: static;
+  min-height: 260px;
+  padding: 24px;
+  border: 1px dashed var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+}
+
+.rt-loading__msg {
+  max-width: 52ch;
+  color: var(--rt-ink-soft);
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.rt-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--rt-brand-tint);
+  border-top-color: var(--rt-brand);
+  border-radius: 50%;
+  animation: rt-spin 0.8s linear infinite;
+}
+
+@keyframes rt-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Respect a reduced-motion preference: keep the ring, drop the rotation. */
+@media (prefers-reduced-motion: reduce) {
+  .rt-spinner {
+    animation: none;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────── the scrubber ─ */
+
+.rt-scrub {
+  padding: 11px 16px 13px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+  margin-bottom: 12px;
+}
+
+.rt-scrub__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rt-scrub__transport {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rt-icon {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius-sm);
+  background: var(--rt-surface);
+  color: var(--rt-ink);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.rt-icon:hover {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand-tint);
+}
+
+.rt-icon--play {
+  border-color: var(--rt-brand);
+  background: var(--rt-brand);
+  color: #fff;
+  font-size: 12px;
+}
+
+.rt-icon--play:hover {
+  background: var(--rt-brand-dark);
+}
+
+.rt-scrub__readout {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.rt-scrub__time {
+  color: var(--rt-brand);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* While the pointer is on the track the clock pulses, so it is obvious the
+   readout is following the cursor rather than a running clock. */
+.rt-scrub__readout--live .rt-scrub__time {
+  animation: rt-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes rt-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* The zone switch sits with the big clock, because that is the number it
+   changes the meaning of. Sized to be read at a glance, not hunted for. */
+.rt-zone {
+  display: inline-flex;
+  border: 1px solid var(--rt-brand);
+  border-radius: var(--rt-radius-sm);
+  overflow: hidden;
+}
+
+.rt-zone__btn {
+  padding: 7px 14px;
+  border: 0;
+  background: var(--rt-surface);
+  color: var(--rt-brand);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.rt-zone__btn:hover {
+  background: var(--rt-brand-tint);
+}
+
+.rt-zone__btn--on {
+  background: var(--rt-brand);
+  color: #fff;
+}
+
+.rt-scrub__date {
+  color: var(--rt-ink-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-scrub__meta {
+  color: var(--rt-ink-soft);
+  font-size: 11.5px;
+}
+
+.rt-track {
+  position: relative;
+  height: 78px;
+  margin-bottom: 4px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius-sm);
+  background: linear-gradient(180deg, #fbfcfe 0%, #f2f5f9 100%);
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.rt-track__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.rt-track__area {
+  fill: rgba(26, 79, 160, 0.18);
+  stroke: var(--rt-brand);
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+
+.rt-track__line {
+  fill: none;
+  stroke: var(--rt-select);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.rt-track__cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--rt-danger);
+  box-shadow: 0 0 6px rgba(192, 57, 43, 0.45);
+  pointer-events: none;
+}
+
+.rt-track__ticks {
+  position: absolute;
+  bottom: 3px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  pointer-events: none;
+}
+
+.rt-track__tick {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The range input is the keyboard-accessible twin of the hover track: the
+   track alone would leave the scrubber unusable without a mouse. */
+.rt-range {
+  width: 100%;
+  margin: 2px 0 6px;
+  accent-color: var(--rt-brand);
+}
+
+.rt-scrub__legend {
+  margin: 0;
+  color: var(--rt-ink-faint);
+  font-size: 10.5px;
+}
+
+.rt-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  margin: 0 5px 0 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.rt-swatch--area {
+  margin-left: 0;
+  border: 1px solid var(--rt-brand);
+  background: rgba(26, 79, 160, 0.2);
+}
+
+.rt-swatch--line {
+  height: 0;
+  border-top: 2px dashed var(--rt-select);
+}
+
+/* `[hidden]` is a UA rule, so any class-level `display` here would beat it.
+   Stated explicitly so the hidden live panel really is hidden. */
+.rt-panel[hidden] {
+  display: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────── cards ─ */
+
+.rt-card {
+  padding: 12px 14px 14px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.rt-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  /* Carries the gap itself, so a title sharing its row with a control keeps
+     the same breathing room below it as a title standing alone. */
+  margin-bottom: 10px;
+}
+
+.rt-card__head .rt-card__title {
+  margin-bottom: 0;
+}
+
+.rt-card__tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rt-card__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 10px;
+  color: var(--rt-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.rt-card__title small {
+  color: var(--rt-ink-soft);
+  font-size: 10.5px;
+  font-weight: 400;
+}
+
+.rt-card--flush {
+  margin-bottom: 0;
+}
+
+.rt-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.rt-grid--2 {
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+}
+
+/* ───────────────────────────────────────────────────────────────── tables ── */
+
+.rt-tablewrap {
+  /* Wide tables scroll inside their own card; the page never scrolls sideways. */
+  overflow-x: auto;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius-sm);
+}
+
+.rt-tablewrap--short {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.rt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.rt-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 9px;
+  background: var(--rt-brand-tint);
+  color: var(--rt-brand-dark);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rt-table td {
+  padding: 7px 9px;
+  border-top: 1px solid var(--rt-line-soft);
+  vertical-align: top;
+}
+
+.rt-table tbody tr:nth-child(even) {
+  background: #fafbfd;
+}
+
+.rt-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rt-table__row {
+  cursor: pointer;
+}
+
+.rt-table__row:hover {
+  background: var(--rt-brand-tint);
+}
+
+/* Two-line cell text: a bold primary line over a faint secondary one. Used by
+   the cumulative and network tables. */
+.rt-mini__name {
+  display: block;
+  overflow: hidden;
+  max-width: 170px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rt-mini__sub {
+  display: block;
+  color: var(--rt-ink-faint);
+  font-size: 10px;
+}
+
+.rt-cell__sub {
+  display: block;
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+}
+
+.rt-strong {
+  color: var(--rt-select);
+  font-weight: 650;
+}
+
+.rt-warn {
+  color: var(--rt-danger);
+  font-weight: 600;
+}
+
+.rt-empty {
+  padding: 18px 10px;
+  color: var(--rt-ink-faint);
+  text-align: center;
+}
+
+.rt-code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--rt-line-soft);
+  color: var(--rt-ink-soft);
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 10.5px;
+}
+
+.rt-pager {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 10px;
+  color: var(--rt-ink-soft);
+  font-size: 11.5px;
+}
+
+/* ────────────────────────────────────────────────────────── mover tiles ──── */
+
+/* A three-column table left most of the widened rail empty and ran twelve rows
+   deep. Tiles reflow to however many columns the rail can hold. */
+.rt-movers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rt-mover {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 9px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius-sm);
+  background: #fafbfd;
+  min-width: 0;
+}
+
+.rt-mover__rank {
+  flex: 0 0 auto;
+  width: 18px;
+  color: var(--rt-ink-faint);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-mover__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.rt-mover__name {
+  overflow: hidden;
+  color: var(--rt-ink);
+  font-size: 11.5px;
+  font-weight: 620;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rt-mover__meta {
+  overflow: hidden;
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rt-mover__delta {
+  flex: 0 0 auto;
+  color: var(--rt-select);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────────────── heat strip ──── */
+
+/* Fixed height with its own scroll, so the card stays the same size whether
+   the ranking is Top 10 or Top 50 — otherwise raising it pushed the movers card
+   down and re-flowed the whole rail. */
+/* A virtual-scroll viewport now: it needs an explicit height, and its rows
+   need a fixed one that matches [itemSize], or the scroller mis-measures. */
+.rt-heat {
+  height: 300px;
+}
+
+.rt-heat__row {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: 8px;
+  align-items: center;
+  /* Must equal `rowHeight` in the component — the scroller positions rows by
+     multiplying this, so a mismatch drifts the list out of alignment. */
+  height: 20px;
+}
+
+/* A button, so it is keyboard reachable — but styled as the label it replaced,
+   because a row of buttons here would shout louder than the strip itself. */
+.rt-heat__name {
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rt-ink-soft);
+  font-size: 10.5px;
+  font-family: inherit;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.rt-heat__name:hover,
+.rt-heat__name:focus-visible {
+  color: var(--rt-brand);
+  text-decoration: underline;
+}
+
+.rt-heat__cells {
+  display: grid;
+  grid-template-columns: repeat(96, 1fr);
+  gap: 1px;
+  height: 14px;
+  cursor: crosshair;
+  border: 1px solid #aab4c2;
+  border-radius: 3px;
+  overflow: hidden;
+  /* Shows through the 1px gaps as gridlines, which is the only thing that makes
+     a Zero Rainfall cell visible: its fill is pure white, so against the white
+     card it and its neighbours merged into one blank run. The frame alone
+     bounded the strip, not the cells inside it. */
+  background: #aab4c2;
+}
+
+.rt-heat__cell {
+  display: block;
+  height: 100%;
+  /* Faint inner edge so a white cell still reads as a filled cell at the ends
+     of the row, where there is a gridline on one side only. */
+  box-shadow: inset 0 0 0 0.5px rgba(28, 36, 48, 0.12);
+}
+
+/* The scrubbed column is picked out across every row, tying the strip to the
+   timeline underneath it. */
+/* The pinned row. The tint has to sit behind the cells without recolouring
+   them, so it goes on the row and the marker is a left rule. */
+.rt-heat__row--focus {
+  position: relative;
+  border-left: 3px solid var(--rt-brand);
+  padding-left: 5px;
+  margin-left: -8px;
+  background: var(--rt-brand-tint);
+  border-radius: 3px;
+}
+
+/* Rule dividing the pinned station from the ranked list below it.
+   Drawn as a pseudo-element rather than a border: the virtual scroller places
+   rows by multiplying a fixed height, so anything that changes a row's box
+   would drift the whole list out of alignment. */
+.rt-heat__row--focus::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--rt-brand);
+}
+
+.rt-heat__row--focus .rt-heat__name {
+  color: var(--rt-brand);
+  font-weight: 700;
+}
+
+.rt-heat__pin {
+  color: var(--rt-brand);
+}
+
+.rt-heat__unpin {
+  margin-left: 4px;
+  padding: 0 5px;
+  border: 1px solid var(--rt-line);
+  border-radius: 999px;
+  background: var(--rt-surface);
+  color: var(--rt-ink-soft);
+  font-size: 9px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.rt-heat__unpin:hover {
+  border-color: var(--rt-brand);
+  color: var(--rt-brand);
+}
+
+.rt-heat__count {
+  margin: 8px 0 0;
+  color: var(--rt-ink-faint);
+  font-size: 10px;
+}
+
+.rt-heat__cell--now {
+  outline: 1px solid var(--rt-danger);
+  outline-offset: -1px;
+}
+
+/* Hover readout for a single strip cell. Fixed positioning because the strip
+   lives in a card that scrolls and clips — an absolutely-positioned tip would
+   be cut off at the card edge. Pointer events are off so moving toward the
+   tooltip never makes it flicker away. */
+.rt-heattip {
+  position: fixed;
+  z-index: 900;
+  transform: translate(-50%, calc(-100% - 10px));
+  min-width: 190px;
+  padding: 8px 10px;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-radius-sm);
+  background: var(--rt-surface);
+  box-shadow: 0 6px 22px rgba(16, 24, 40, 0.18);
+  pointer-events: none;
+}
+
+.rt-heattip__head {
+  margin-bottom: 3px;
+  color: var(--rt-ink);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.rt-heattip__src {
+  display: block;
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+  font-weight: 500;
+}
+
+.rt-heattip__time {
+  margin-bottom: 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--rt-line-soft);
+  color: var(--rt-brand);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-heattip__time small {
+  display: block;
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+  font-weight: 500;
+}
+
+.rt-heattip__grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 0;
+}
+
+.rt-heattip__grid dt {
+  color: var(--rt-ink-faint);
+  font-size: 10px;
+}
+
+.rt-heattip__grid dd {
+  margin: 0;
+  color: var(--rt-ink);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-heattip__hint {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--rt-line-soft);
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+}
+
+/* ───────────────────────────────────────────────────────────── meters, tags ─ */
+
+.rt-meter {
+  width: 74px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--rt-line-soft);
+  overflow: hidden;
+}
+
+.rt-meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--rt-select);
+}
+
+.rt-meter__fill--bad {
+  background: var(--rt-danger);
+}
+
+.rt-tag {
+  display: inline-block;
+  margin: 0 4px 3px 0;
+  padding: 1px 7px;
+  border: 1px solid var(--rt-line);
+  border-radius: 999px;
+  background: var(--rt-surface);
+  color: var(--rt-ink-soft);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.rt-tag--warn {
+  border-color: #e8c48a;
+  background: var(--rt-warn-tint);
+  color: var(--rt-warn);
+}
+
+.rt-tag--info {
+  border-color: #b9cbe8;
+  background: var(--rt-brand-tint);
+  color: var(--rt-brand);
+}
+
+/* ─────────────────────────────────────────────────────── alerts and hints ── */
+
+.rt-alert {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--rt-line);
+  border-left-width: 3px;
+  border-radius: var(--rt-radius-sm);
+  font-size: 12px;
+}
+
+.rt-alert--err {
+  border-color: #f0c4bf;
+  border-left-color: var(--rt-danger);
+  background: var(--rt-danger-tint);
+  color: #8c261a;
+}
+
+.rt-alert--warn {
+  border-color: #e8c48a;
+  border-left-color: var(--rt-warn);
+  background: var(--rt-warn-tint);
+  color: #7a4d00;
+}
+
+.rt-alert code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+.rt-hint {
+  padding: 26px;
+  border: 1px dashed var(--rt-line);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  color: var(--rt-ink-soft);
+  text-align: center;
+}
+
+/* ─────────────────────────────────────────────────────────── station card ── */
+
+.rt-idcard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--rt-line);
+  border-left: 3px solid var(--rt-brand);
+  border-radius: var(--rt-radius);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow);
+}
+
+.rt-idcard__name {
+  margin: 0;
+  color: var(--rt-ink);
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.rt-idcard__meta {
+  margin: 3px 0 0;
+  color: var(--rt-ink-soft);
+  font-size: 11.5px;
+}
+
+.rt-idcard__feeds {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-width: 340px;
+}
+
+/* ───────────────────────────────────────────────── third-party overrides ─── */
+
+::ng-deep .rt .leaflet-container {
+  background: var(--rt-line-soft);
+  font-family: inherit;
+}
+
+::ng-deep .rt .leaflet-popup-content {
+  margin: 10px 12px;
+  font-size: 11.5px;
+}
+
+::ng-deep .aws-popup__title {
+  margin-bottom: 6px;
+  color: #1a4fa0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+::ng-deep .aws-popup__grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 0;
+}
+
+::ng-deep .aws-popup__grid dt {
+  color: #8b96a5;
+  font-size: 10.5px;
+}
+
+::ng-deep .aws-popup__grid dd {
+  margin: 0;
+  color: #1c2430;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+::ng-deep .aws-popup__btn {
+  width: 100%;
+  margin-top: 9px;
+  padding: 6px 10px;
+  border: 1px solid #1a4fa0;
+  border-radius: 5px;
+  background: #1a4fa0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+::ng-deep .aws-popup__btn:hover {
+  background: #143b78;
+}
+
+/* ──────────────────────────────────────────────────────────── responsive ─── */
+
+@media (max-width: 1240px) {
+  .rt-live {
+    grid-template-columns: 1fr;
+  }
+
+  .rt-map-wrap {
+    min-height: clamp(420px, 56vh, 720px);
+  }
+
+  .rt-stat {
+    padding: 4px 10px;
+  }
+
+  .rt-stat__label {
+    max-width: 140px;
+  }
+}
+
+@media (max-width: 700px) {
+  .rt {
+    padding: 12px 12px 32px;
+  }
+
+  .rt-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rt-heat__row {
+    grid-template-columns: 84px 1fr;
+  }
+}
