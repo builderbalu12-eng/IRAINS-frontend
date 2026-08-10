@@ -193,6 +193,11 @@ export class FetchStationDataService {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionEventsForDate`, { date });
   }
 
+  /** One row per station with coordinates + edit counts — backs the Investigation page map. */
+  fetchRevisionStationMap(params: { date?: string; fromDate?: string; toDate?: string }): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionStationMap`, params);
+  }
+
   /** Flat station-level rows for the whole window — backs the Investigation page downloads. */
   fetchRevisionLogExport(params: { date?: string; fromDate?: string; toDate?: string }): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/v1/fetchRevisionLogExport`, params);

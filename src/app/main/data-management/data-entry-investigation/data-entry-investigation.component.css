@@ -133,29 +133,12 @@
   cursor: not-allowed;
 }
 
-.di-header-meta {
-  min-height: 1rem;
-  font-size: 0.73rem;
-  color: #888;
-  text-align: right;
-}
-.di-filter-summary {
-  color: #b06a00;
-  font-weight: 600;
-}
-.di-filter-summary a {
-  color: #002467;
-  margin-left: 0.35rem;
-  text-decoration: underline;
-}
-
 @media (max-width: 900px) {
   .di-header-actions {
     align-items: stretch;
     width: 100%;
   }
   .di-search input { width: 100%; }
-  .di-header-meta { text-align: left; }
 }
 
 /* ── Tab bar (Range / Day Wise) ───────────────────────────────────────── */
@@ -360,9 +343,34 @@
 .di-controls .di-lock-status {
   margin-left: 0.6rem;
 }
-.di-controls .di-timeline-toolbar {
+/* Visualise sits immediately left of the "- 1x +" zoom group, and carries the
+   push-right so the pair stays on the far edge on both tabs. */
+.di-controls .di-visualise-btn {
   margin-left: auto;
+}
+.di-controls .di-timeline-toolbar {
   margin-top: 0;
+}
+.di-visualise-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #fff;
+  border: 1px solid #002467;
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #002467;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.di-visualise-btn:hover {
+  background: #eef2f8;
+}
+.di-visualise-btn.active {
+  background: #002467;
+  color: #fff;
 }
 .di-controls label {
   font-size: 0.85rem;
@@ -469,14 +477,100 @@
   margin-top: 0.3rem;
 }
 
+/* Map left, tables right. With the map closed the tables spread back out into
+   the original side-by-side pair across the full width. */
 .di-main-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+/* Map and the stacked tables split the row 50/50.
+   Both columns are pinned to the same viewport-driven height so neither leaves
+   a tail of empty page under it — the map grows to fill its side, and the two
+   tables share the other side 30/70, each scrolling inside its own box. */
+.di-main-columns.with-map {
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+}
+.di-main-columns.with-map .di-map-card,
+.di-main-columns.with-map .di-tables-col {
+  height: calc(100vh - 210px);
+  min-height: 660px;
+}
+.di-main-columns.with-map .di-map-card {
+  display: flex;
+  flex-direction: column;
+}
+.di-main-columns.with-map .di-map-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.di-main-columns.with-map .di-map-card .di-map {
+  height: 100%;
+}
+
+.di-main-columns.with-map .di-tables-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.di-main-columns.with-map .di-tables-col .di-tl {
+  flex: 0 0 auto;
+}
+/* 30/70, but with floors — at 30% of a short viewport the Revision Log
+   collapsed to about two visible rows, which just looked broken. */
+.di-main-columns.with-map .di-tables-col .di-log-panel {
+  flex: 3 1 0;
+  min-height: 230px;
+}
+.di-main-columns.with-map .di-tables-col .di-mc-panel {
+  flex: 7 1 0;
+  min-height: 300px;
+}
+/* The Range tab splits them evenly instead. The timeline card sits above the
+   pair and eats into the column, and under 30/70 the Revision Log was left
+   with about as many rows as its heading. The floors match too, or the taller
+   one wins back the difference on a short viewport. */
+.di-main-columns.with-map.tab-range .di-tables-col .di-log-panel,
+.di-main-columns.with-map.tab-range .di-tables-col .di-mc-panel {
+  flex: 1 1 0;
+  min-height: 260px;
+}
+.di-main-columns.with-map .di-tables-col .di-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+/* The card owns the height; the table scrolls inside whatever is left after
+   the heading, instead of the fixed 420px cap used in the no-map layout. */
+.di-main-columns.with-map .di-tables-col .di-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+.di-tables-col {
   display: grid;
   grid-template-columns: 1fr 1.6fr;
   gap: 1rem;
   align-items: start;
+  min-width: 0;
+}
+@media (max-width: 1200px) {
+  /* Stacked, so a shared viewport height would just push the tables off-screen. */
+  .di-main-columns.with-map { grid-template-columns: 1fr; }
+  .di-main-columns.with-map .di-map-card,
+  .di-main-columns.with-map .di-tables-col {
+    height: auto;
+    min-height: 0;
+  }
+  .di-main-columns.with-map .di-map-card .di-map { height: 520px; }
+  .di-main-columns.with-map .di-tables-col .di-table-wrap { max-height: 420px; }
 }
 @media (max-width: 900px) {
   .di-main-columns { grid-template-columns: 1fr; }
+  .di-tables-col { grid-template-columns: 1fr; }
   .di-stat-row { grid-template-columns: 1fr; }
   .di-controls .di-timeline-toolbar { margin-left: 0; }
 }
@@ -494,6 +588,770 @@
   font-size: 1.05rem;
   font-weight: 700;
   margin-bottom: 1rem;
+  flex: 0 0 auto;   /* never squeezed when the card is a fixed-height flex box */
+}
+
+/* ── Range tab timeline ──────────────────────────────────────────────── */
+.di-tl {
+  background: #fff;
+  border: 1px solid #e6eaf0;
+  border-radius: 12px;
+  padding: 0.75rem 1.2rem 0.55rem;
+  margin-bottom: 1.2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+/* The tables column is a flex column with the map open and a 1fr/1.6fr grid
+   without it; the chart spans the whole column either way rather than being
+   dealt into the narrow grid track. */
+.di-tables-col .di-tl {
+  margin-bottom: 0;
+  width: 100%;
+  grid-column: 1 / -1;
+}
+
+.di-tl-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+.di-tl-title strong {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #002467;
+  margin-right: 0.55rem;
+}
+.di-tl-title span {
+  font-size: 0.74rem;
+  color: #8a94a0;
+}
+
+.di-tl-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.di-tl-actions button {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  color: #002467;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.di-tl-actions button:hover {
+  background: #f1f4f9;
+  border-color: #cfd8e6;
+}
+.di-tl-reset {
+  width: auto !important;
+  padding: 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #5a6672 !important;
+}
+
+/* The scrubber is a chart of the range: a filled area for edits per day and a
+   line for stations touched, matching the realtime page's track. */
+.di-tl-chart {
+  position: relative;
+  padding-top: 22px;           /* room for the hover tooltip above the track */
+}
+.di-tl-track {
+  position: relative;
+  height: 96px;
+  border: 1px solid #e6eaf0;
+  border-radius: 8px;
+  /* Faint gridlines give the curve's height something to be read against. */
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 23px, #eaeef5 23px 24px),
+    #fdfefe;
+  cursor: crosshair;
+  overflow: hidden;
+  touch-action: none;          /* let a drag scrub instead of scrolling the page */
+}
+.di-tl-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* Flat fills rather than SVG gradients: `url(#id)` resolves against the
+   `<base href="/">`, so a gradient would drop out on every non-root route.
+   Both are kept light because the two areas overlap wherever back-dated and
+   same-day edits happened on the same day. */
+.di-tl-area {
+  stroke: none;
+}
+.di-tl-area--same {
+  fill: rgba(224, 161, 6, 0.14);
+}
+.di-tl-area--back {
+  fill: rgba(176, 42, 55, 0.12);
+}
+.di-tl-curve {
+  fill: none;
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  /* The viewBox is stretched to the card's width, so an ordinary stroke would
+     be drawn thin and uneven along the horizontal. */
+  vector-effect: non-scaling-stroke;
+}
+/* Same colours the map legend uses for the two kinds of edit. */
+.di-tl-curve--same {
+  stroke: #e0a106;
+}
+.di-tl-curve--back {
+  stroke: #b02a37;
+}
+
+.di-tl-marker {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+}
+.di-tl-marker--same {
+  border: 1.5px solid #e0a106;
+}
+.di-tl-marker--back {
+  border: 1.5px solid #b02a37;
+}
+
+.di-tl-peak {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  /* Sits over the plot, so it needs its own backing to stay readable when a
+     curve runs underneath it. */
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #9aa5b4;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+}
+
+.di-tl-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #c0392b;
+  box-shadow: 0 0 6px rgba(192, 57, 43, 0.4);
+  pointer-events: none;
+  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.di-tl-ticks {
+  position: relative;
+  height: 15px;
+  margin-top: 5px;
+}
+.di-tl-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: #8a94a0;
+  white-space: nowrap;
+}
+/* The end labels would otherwise hang off the card. */
+.di-tl-tick:first-child {
+  transform: none;
+}
+.di-tl-tick:last-child {
+  transform: translateX(-100%);
+}
+
+.di-tl-tip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #002467;
+  color: #fff;
+  font-size: 0.68rem;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.di-tl-tip strong {
+  margin-right: 0.5rem;
+  font-weight: 700;
+}
+.di-tl-tip-same,
+.di-tl-tip-back {
+  margin-left: 0.5rem;
+}
+/* Dots rather than words, so the tooltip stays one short line. */
+.di-tl-tip-same::before,
+.di-tl-tip-back::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 0.3rem;
+  border-radius: 50%;
+  vertical-align: baseline;
+}
+.di-tl-tip-same::before { background: #e0a106; }
+.di-tl-tip-back::before { background: #ef7683; }
+
+.di-tl-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(253, 254, 254, 0.86);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #7c8894;
+}
+/* Scrubbing a stale curve would pin the map to a day the chart no longer
+   means once the new range lands. */
+.di-tl-chart.is-loading .di-tl-track {
+  cursor: default;
+  pointer-events: none;
+}
+
+.di-tl-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: #a9b3c0;
+  pointer-events: none;
+}
+
+.di-tl-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.68rem;
+  color: #8a94a0;
+}
+.di-tl-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.di-tl-toggle:hover {
+  background: #f1f4f9;
+  border-color: #e1e6ee;
+}
+/* A switched-off series keeps its label but drops to an outline, so it reads
+   as available rather than missing. */
+.di-tl-toggle.is-off {
+  color: #b9c1cb;
+  text-decoration: line-through;
+}
+.di-tl-toggle.is-off .di-tl-swatch {
+  background: transparent !important;
+  border-color: #c8d0da !important;
+}
+
+.di-tl-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+.di-tl-swatch--same {
+  border: 1px solid #e0a106;
+  background: rgba(224, 161, 6, 0.22);
+}
+.di-tl-swatch--back {
+  border: 1px solid #b02a37;
+  background: rgba(176, 42, 55, 0.2);
+}
+.di-tl-hint {
+  margin-left: 6px;
+  font-style: italic;
+}
+
+/* ── India MC/RMC-wise station map ───────────────────────────────────── */
+.di-map-card {
+  margin-bottom: 1.5rem;
+}
+/* space-between rather than an auto margin on the controls: both put the
+   controls hard right while they share the line with the heading, but once
+   they wrap onto a line of their own the auto margin kept pushing them right
+   and left a band of dead space under the heading. */
+.di-map-card h3 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 0.8rem;
+  margin-bottom: 0.6rem;
+}
+.di-map-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.di-map-toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #555;
+}
+.di-base-switch button {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+}
+.di-fullscreen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #f1f3f5;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #002467;
+  cursor: pointer;
+}
+.di-fullscreen-btn:hover {
+  background: #e6e9ec;
+}
+.di-map-toggles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  margin: 0;
+}
+
+.di-map-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.72rem;
+  color: #666;
+  margin-bottom: 0.7rem;
+}
+.di-legend-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.di-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #9aa5b1;
+}
+.di-legend-dot.backdated { background: #b02a37; }
+.di-legend-dot.sameday   { background: #e0a106; }
+.di-legend-hint {
+  color: #9aa5b1;
+  font-style: italic;
+}
+.di-legend-count {
+  margin-left: auto;
+  font-weight: 700;
+  color: #444;
+}
+
+.di-map-shell {
+  position: relative;
+}
+
+/* Fullscreen is a class toggle on the card rather than the browser Fullscreen
+   API, so the legend and controls stay usable and it works inside the app
+   shell. invalidateSize() is called after the flip so Leaflet re-measures. */
+/* !important because the column rule above (.di-main-columns.with-map
+   .di-map-card) is more specific and would otherwise pin the height back. */
+.di-map-card.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  margin: 0;
+  border-radius: 0;
+  overflow: auto;
+  height: 100vh !important;
+  max-height: 100vh;
+}
+
+/* Dot-size and fullscreen buttons drawn into the map by addMapControls().
+   Leaflet owns this markup, hence ::ng-deep. */
+::ng-deep .di-map-control {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+}
+::ng-deep .di-map-control a {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  color: #002467;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+::ng-deep .di-map-control a:hover {
+  background: #eef2f8;
+}
+::ng-deep .di-dot-control .di-dot-value {
+  min-width: 22px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #444;
+  border-left: 1px solid #e3e7eb;
+  border-right: 1px solid #e3e7eb;
+  line-height: 28px;
+}
+.di-map {
+  height: 640px;
+  border: 1px solid #e3e7eb;
+  border-radius: 10px;
+  background: #eef3f8;   /* sea around the boundaries */
+}
+/* The fullscreen plugin promotes this element to the whole viewport, so the
+   fixed height has to give way or the map only paints the top 640px. */
+.di-map:-webkit-full-screen { height: 100% !important; border-radius: 0; }
+.di-map:fullscreen { height: 100% !important; border-radius: 0; }
+.di-map.leaflet-fullscreen-on { height: 100% !important; border-radius: 0; }
+/* Covers the whole map while it loads — a small pill in the corner was easy to
+   miss on a map that takes a moment to draw. */
+.di-map-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(1px);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #002467;
+  z-index: 600;
+}
+.di-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid #c9d4e4;
+  border-top-color: #002467;
+  border-radius: 50%;
+  animation: di-spin 0.8s linear infinite;
+}
+@keyframes di-spin {
+  to { transform: rotate(360deg); }
+}
+.di-spinner--sm {
+  width: 13px;
+  height: 13px;
+  border-width: 2px;
+  display: inline-block;
+  vertical-align: -2px;
+}
+.di-loading-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.di-empty-cell {
+  color: #8a94a0;
+  padding: 1rem 0.6rem !important;
+}
+
+/* Bottom-left is the one free corner: the dot sizer sits top-left, fullscreen
+   top-right, Leaflet's attribution bottom-right. Under the loading veil (600)
+   so a refresh still reads as loading, and click-through so it can never
+   swallow a map drag. */
+.di-map-datestamp {
+  position: absolute;
+  left: 0.7rem;
+  bottom: 0.7rem;
+  z-index: 500;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(0, 36, 103, 0.88);
+  color: #fff;
+  line-height: 1.25;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+.di-map-datestamp strong {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.di-map-datestamp span {
+  font-size: 0.64rem;
+  color: #b9c8e4;
+}
+
+.di-map-overlay {
+  position: absolute;
+  top: 0.7rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  color: #666;
+  z-index: 500;
+}
+.di-map-overlay.error {
+  border-color: #f5c6cb;
+  background: #f8d7da;
+  color: #721c24;
+}
+.di-map-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.73rem;
+  color: #8a94a0;
+}
+
+/* Popup contents are built as an HTML string in markerPopup(), so these rules
+   are global-ish by necessity — Leaflet renders them outside the component. */
+::ng-deep .di-map-popup {
+  font-size: 0.78rem;
+  min-width: 220px;
+}
+::ng-deep .di-map-popup-title {
+  font-weight: 700;
+  color: #002467;
+  font-size: 0.86rem;
+}
+::ng-deep .di-map-popup-title span {
+  font-weight: 400;
+  color: #8a94a0;
+}
+::ng-deep .di-map-popup-kind {
+  display: inline-block;
+  margin: 0.25rem 0 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 50px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+::ng-deep .di-map-popup-kind.backdated { background: #f8d7da; color: #721c24; }
+::ng-deep .di-map-popup-kind.sameday   { background: #fff3cd; color: #7a5b00; }
+/* Hover card. Leaflet's default tooltip is a one-line chip, so the padding and
+   width caps are reset to let the full station card sit inside it. */
+::ng-deep .leaflet-tooltip.di-map-tip {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #d7dee7;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  white-space: normal;
+  max-width: 300px;
+  pointer-events: none;
+}
+::ng-deep .di-map-tip-foot {
+  margin-top: 0.4rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed #e3e7eb;
+  font-size: 0.66rem;
+  color: #9aa5b1;
+}
+::ng-deep .di-map-why {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: #5a6672;
+}
+::ng-deep .di-map-swatch {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin-top: 0.2rem;
+  border-radius: 50%;
+  border: 1px solid #161c26;
+}
+::ng-deep .di-map-popup table {
+  width: 100%;
+  border-collapse: collapse;
+}
+::ng-deep .di-map-popup th {
+  text-align: left;
+  font-weight: 600;
+  color: #8a94a0;
+  padding: 0.1rem 0.6rem 0.1rem 0;
+  white-space: nowrap;
+}
+::ng-deep .di-map-popup td {
+  text-align: right;
+  color: #333;
+}
+
+/* The data-date list wraps to as many lines as it needs, so it can't sit on
+   the single right-aligned line the other rows use. */
+::ng-deep .di-map-popup td.di-map-dates {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px;
+  padding: 2px 0;
+}
+::ng-deep .di-map-date {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+::ng-deep .di-map-date small {
+  font-size: 0.62rem;
+  opacity: 0.75;
+}
+/* Same pairing the dots and the timeline use. */
+::ng-deep .di-map-date.backdated {
+  background: #f8d7da;
+  color: #721c24;
+}
+::ng-deep .di-map-date.sameday {
+  background: #fff3cd;
+  color: #7a5b00;
+}
+::ng-deep .di-map-date-more {
+  align-self: center;
+  font-size: 0.68rem;
+  color: #8a94a0;
+}
+
+/* ── Full-size table modal ───────────────────────────────────────────────── */
+.di-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid #d7dee9;
+  border-radius: 8px;
+  background: #fff;
+  color: #002467;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.di-expand-btn:hover {
+  background: #f1f4f9;
+  border-color: #cfd8e6;
+}
+
+.di-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  /* Above the map's own fullscreen (2000) so expanding a table still wins. */
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5vh 2vw;
+  background: rgba(6, 18, 40, 0.5);
+  backdrop-filter: blur(2px);
+}
+.di-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1500px;
+  height: 95vh;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.di-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.9rem 1.2rem;
+  border-bottom: 1px solid #e6eaf0;
+  flex: 0 0 auto;
+}
+.di-modal-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #002467;
+}
+.di-modal-sub {
+  font-size: 0.74rem;
+  color: #8a94a0;
+}
+.di-modal-close {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #002467;
+  cursor: pointer;
+}
+.di-modal-close:hover {
+  background: #f1f4f9;
+}
+/* The body owns the scrolling, so the sticky table head stays put. */
+.di-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 1.2rem 1.2rem;
 }
 
 .di-table-wrap {

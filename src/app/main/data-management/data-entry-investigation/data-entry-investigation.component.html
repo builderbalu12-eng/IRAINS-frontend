@@ -29,16 +29,6 @@
         </button>
       </div>
 
-      <div class="di-header-meta">
-        <span *ngIf="filtersActive" class="di-filter-summary">
-          Showing {{ filteredLogRows.length }} of {{ logRows.length }} log rows ·
-          {{ filteredMcWiseRows.length }} of {{ mcWiseRows.length }} centres
-          <a href="javascript:void(0)" (click)="clearFilters()">Clear</a>
-        </span>
-        <span *ngIf="!filtersActive && lastUpdated" class="di-last-updated">
-          Updated {{ lastUpdated | date: 'HH:mm:ss' }}
-        </span>
-      </div>
     </div>
   </div>
 
@@ -70,6 +60,12 @@
       <span *ngIf="isLocked">Data Entry is <strong>Locked</strong> right now</span>
       <span *ngIf="!isLocked">Data Entry is <strong>Unlocked</strong> right now</span>
     </div>
+
+    <button type="button" class="di-visualise-btn" [class.active]="showMap" (click)="toggleMap()"
+            title="Plot the edited stations on the India MC/RMC map">
+      <i class="bi" [ngClass]="showMap ? 'bi-x-lg' : 'bi-globe-asia-australia'"></i>
+      {{ showMap ? 'Hide map' : 'Visualise' }}
+    </button>
 
     <div class="di-timeline-toolbar" *ngIf="activeTab === 'daywise'">
       <span class="di-zoom-hint" *ngIf="zoomLevel > 1">Scroll sideways to move through the day</span>
@@ -140,105 +136,177 @@
       </div>
     </div>
 
-    <div class="di-main-columns">
-      <div class="di-card">
-        <h3>
-          Revision Log
-          <i class="bi bi-info-circle di-info-icon" title="Each row groups edits by the day they happened AND the date whose value was changed. Hover a row to see the station names."></i>
-          <button type="button" class="di-download-btn" (click)="downloadRevisionLog()" [disabled]="downloading"
-                  title="Download every Revision Log row plus all the station rows inside them, for the selected period.">
-            <i class="bi bi-download"></i>
-            {{ downloading ? 'Preparing…' : 'Download' }}
+  </ng-container>
+
+  <!-- Map left, both tables right. Rendered outside the *ngIf="!loading" blocks
+       so a refresh doesn't tear Leaflet's container out from under the map and
+       reset the user's pan/zoom. -->
+  <div class="di-main-columns" [class.with-map]="showMap" [class.tab-range]="activeTab === 'range'">
+
+  <div class="di-card di-map-card" *ngIf="showMap" [class.is-fullscreen]="mapFullscreen">
+    <h3>
+      <!-- Heading and icon travel together, so when the controls no longer fit
+           beside them they wrap as one block rather than being spread apart. -->
+      <span class="di-map-heading">
+        Where the edits happened
+        <i class="bi bi-info-circle di-info-icon" title="Every edited station in the selected window, plotted on the India MC/RMC map. Dot colour = back-dated or same-day, dot size = how many times that station was edited. Follows the search and filter above."></i>
+      </span>
+
+      <span class="di-map-toggles">
+        <label><input type="checkbox" [(ngModel)]="showStations" (ngModelChange)="onMapLayerToggle()"> Stations</label>
+
+        <!-- The same typeFilter the header segmented control drives, mirrored
+             here so the dots can be narrowed without leaving the map. -->
+        <span class="di-segmented di-type-switch" role="group" aria-label="Filter dots by edit type">
+          <button type="button" [class.active]="typeFilter === 'all'" (click)="setTypeFilter('all')"
+                  title="Plot both kinds of edit">Both</button>
+          <button type="button" [class.active]="typeFilter === 'back-dated'" (click)="setTypeFilter('back-dated')"
+                  title="Only stations that had a back-dated edit">Back-dated</button>
+          <button type="button" [class.active]="typeFilter === 'same-day'" (click)="setTypeFilter('same-day')"
+                  title="Only stations that had a same-day correction">Same-day</button>
+        </span>
+
+        <span class="di-segmented di-base-switch">
+          <button type="button" [class.active]="mapBase === 'satellite'" (click)="setMapBase('satellite')">Satellite</button>
+          <button type="button" [class.active]="mapBase === 'streets'" (click)="setMapBase('streets')">Streets</button>
+          <button type="button" [class.active]="mapBase === 'plain'" (click)="setMapBase('plain')">Plain</button>
+        </span>
+
+        <button type="button" class="di-fullscreen-btn" (click)="toggleMapFullscreen()">
+          <i class="bi" [ngClass]="mapFullscreen ? 'bi-fullscreen-exit' : 'bi-arrows-fullscreen'"></i>
+          {{ mapFullscreen ? 'Exit' : 'Fullscreen' }}
+        </button>
+      </span>
+    </h3>
+
+    <div class="di-map-legend">
+      <span class="di-legend-group">
+        <span class="di-legend-dot backdated"></span> Back-dated
+        <span class="di-legend-dot sameday"></span> Same-day
+      </span>
+      <span class="di-legend-group di-legend-hint">Use &minus;/+ on the map to resize the dots</span>
+      <span class="di-legend-count">{{ filteredMapPoints.length }} stations plotted</span>
+    </div>
+
+    <div class="di-map-shell">
+      <div #stationMap class="di-map"></div>
+
+      <!-- The map redraws under the timeline scrubber, so it states its own
+           date instead of leaving you to look back up at the chart. -->
+      <div class="di-map-datestamp">
+        <strong>{{ mapDateLabel }}</strong>
+        <span>{{ mapDateNote }}</span>
+      </div>
+
+      <div class="di-map-loading" *ngIf="loadingMap">
+        <span class="di-spinner"></span>
+        <span>Loading map…</span>
+      </div>
+      <div class="di-map-overlay error" *ngIf="mapError">{{ mapError }}</div>
+    </div>
+
+    <p class="di-map-note">
+      Edits are attributed to the station's own MC/RMC — the individual user isn't recorded against an edit,
+      so "who" is shown at centre level. Stations without coordinates can't be plotted; they still appear in the tables.
+    </p>
+  </div>
+
+  <div class="di-tables-col">
+    <!-- Range tab timeline. A rail of day dots with a sliding fill: click a
+         day, drag along the rail, step with the arrows, or play through. The
+         map follows; the tables stay on the whole range. -->
+    <!-- Kept on screen while loading even though rangeDays is still empty —
+         otherwise the card only appears once the data lands and the chart's
+         own loading state is never seen. -->
+    <div class="di-tl" *ngIf="activeTab === 'range' && showMap && (rangeDays.length > 1 || loadingMap)">
+      <div class="di-tl-top">
+        <div class="di-tl-title">
+          <strong>{{ scrubDay ? scrubDay.date : 'All days' }}</strong>
+          <span *ngIf="scrubDay">
+            {{ scrubDay.stations }} stations · {{ scrubDay.edits }} edits · {{ scrubDay.backDated }} back-dated
+          </span>
+          <span *ngIf="!scrubDay">{{ fromDate }} → {{ toDate }} · pick a day to filter the map</span>
+        </div>
+
+        <!-- Disabled while loading: rangeDays is empty until the fetch lands,
+             so stepping would scrub a range that isn't there yet. -->
+        <div class="di-tl-actions">
+          <button type="button" (click)="stepScrub(-1)" [disabled]="loadingMap" title="Previous day"><i class="bi bi-chevron-left"></i></button>
+          <button type="button" (click)="toggleScrubPlayback()" [disabled]="loadingMap" [title]="scrubPlaying ? 'Pause' : 'Play through the range'">
+            <i class="bi" [ngClass]="scrubPlaying ? 'bi-pause-fill' : 'bi-play-fill'"></i>
           </button>
-        </h3>
-        <div class="di-table-wrap">
-          <table class="di-table">
-            <thead>
-              <tr>
-                <th>
-                  Revision Date
-                  <i class="bi bi-info-circle di-info-icon" title="The day the edit actually happened — i.e. today, when someone went in and changed a value."></i>
-                </th>
-                <th>
-                  Data Date
-                  <i class="bi bi-info-circle di-info-icon" title="The date the rainfall value is for — the date whose number got changed."></i>
-                </th>
-                <th>Stations</th>
-                <th>
-                  Type
-                  <i class="bi bi-info-circle di-info-icon" title="Same-day correction: Data Date = Revision Date (tweaked shortly after entry). Back-dated edit: Data Date is earlier than Revision Date (an already-saved past value was changed)."></i>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <ng-container *ngFor="let r of filteredLogRows">
-                <tr [class.back-dated]="r.backDated" [class.same-day]="!r.backDated" [title]="r.stationNames.join(', ')">
-                  <td>{{ r.revisionDate }}</td>
-                  <td>{{ r.dataDate }}</td>
-                  <td>
-                    <a href="javascript:void(0)" class="di-station-count-link" (click)="toggleStationDetails(r)">
-                      {{ r.stationCount }}
-                      <i class="bi" [ngClass]="r.expanded ? 'bi-caret-up-fill' : 'bi-caret-down-fill'"></i>
-                    </a>
-                  </td>
-                  <td>{{ r.backDated ? 'Back-dated edit' : 'Same-day correction' }}</td>
-                </tr>
-                <tr class="di-detail-row" *ngIf="r.expanded">
-                  <td colspan="4">
-                    <div *ngIf="r.loadingDetails" class="di-loading">Loading stations…</div>
-                    <div class="di-detail-scroll" *ngIf="!r.loadingDetails">
-                      <table class="di-table di-detail-table">
-                        <thead>
-                          <tr>
-                            <th>Station</th>
-                            <th>Centre Type</th>
-                            <th>Centre Name</th>
-                            <th>State</th>
-                            <th>District</th>
-                            <th>Value (mm)</th>
-                            <th>
-                              Change (Old → New)
-                              <i class="bi bi-info-circle di-info-icon" title="What the value changed from and to on this day. Blank means the edit happened before change-tracking was switched on. 'No data' means -999.9, i.e. no reading."></i>
-                            </th>
-                            <th>Data Date</th>
-                            <th>Updated At</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr *ngFor="let d of getFilteredDetails(r)">
-                            <td>{{ d.stationName }}</td>
-                            <td>{{ d.centreType }}</td>
-                            <td>{{ d.centreName }}</td>
-                            <td>{{ d.stateName }}</td>
-                            <td>{{ d.districtName }}</td>
-                            <td>{{ d.value }}</td>
-                            <td>
-                              <span *ngIf="d.editCount > 0" class="di-change">
-                                <span class="di-change-old">{{ formatEditValue(d.oldValue) }}</span>
-                                <span class="di-change-arrow">→</span>
-                                <span class="di-change-new">{{ formatEditValue(d.newValue) }}</span>
-                                <span class="di-change-badge">{{ editTypeLabel(d.editType) }}</span>
-                                <span *ngIf="d.editCount > 1" class="di-change-count">{{ d.editCount }} edits</span>
-                              </span>
-                              <span *ngIf="d.editCount === 0" class="di-change-none" title="Not tracked — this edit predates the change log.">—</span>
-                            </td>
-                            <td>{{ d.dataDate }}</td>
-                            <td>{{ d.updatedAt | date: 'dd-MMM-yyyy HH:mm:ss' }}</td>
-                          </tr>
-                          <tr *ngIf="r.details && getFilteredDetails(r).length === 0"><td colspan="9">No station details found.</td></tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </td>
-                </tr>
-              </ng-container>
-              <tr *ngIf="filteredLogRows.length === 0">
-                <td colspan="4">{{ logRows.length ? 'No rows match the current search or filter.' : 'No revisions in this window.' }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <button type="button" (click)="stepScrub(1)" [disabled]="loadingMap" title="Next day"><i class="bi bi-chevron-right"></i></button>
+          <button type="button" class="di-tl-reset" *ngIf="scrubIndex !== null" (click)="showAllDays()">All days</button>
         </div>
       </div>
+
+      <!-- Drawn like the realtime scrubber: the shape is the range's own edit
+           volume, so the busy days are visible before you pick one. -->
+      <div class="di-tl-chart" [class.is-loading]="loadingMap">
+        <div class="di-tl-tip" *ngIf="hoverDay && !loadingMap" [style.left.%]="hoverTipPercent">
+          <strong>{{ hoverDay.date }}</strong>
+          <span class="di-tl-tip-same">{{ hoverDay.sameDay | number }} same-day</span>
+          <span class="di-tl-tip-back">{{ hoverDay.backDated | number }} back-dated</span>
+        </div>
+
+        <div #scrubTrack class="di-tl-track"
+             (pointerdown)="onRailDown($event)"
+             (pointermove)="onRailMove($event)"
+             (pointerup)="onRailUp()"
+             (pointercancel)="onRailUp()"
+             (pointerleave)="onRailLeave()">
+          <svg class="di-tl-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <path class="di-tl-area di-tl-area--same" [attr.d]="sameDayAreaPath"></path>
+            <path class="di-tl-area di-tl-area--back" [attr.d]="backDatedAreaPath"></path>
+            <path class="di-tl-curve di-tl-curve--same" [attr.d]="sameDayLinePath"></path>
+            <path class="di-tl-curve di-tl-curve--back" [attr.d]="backDatedLinePath"></path>
+          </svg>
+
+          <!-- Without a scale the curves' height means nothing, and a range where
+               every day is busy otherwise reads as one solid block. -->
+          <span class="di-tl-peak" *ngIf="anySeriesShown">peak {{ chartMax | number }} edits/day</span>
+
+          <ng-container *ngFor="let m of dayMarkers">
+            <span class="di-tl-marker di-tl-marker--same" *ngIf="showSameDay"
+                  [style.left.%]="m.x" [style.top.%]="m.sameDay"></span>
+            <span class="di-tl-marker di-tl-marker--back" *ngIf="showBackDated"
+                  [style.left.%]="m.x" [style.top.%]="m.backDated"></span>
+          </ng-container>
+
+          <span class="di-tl-empty" *ngIf="!anySeriesShown">
+            Switch a series on below to draw the chart
+          </span>
+
+          <div class="di-tl-cursor" *ngIf="scrubIndex !== null" [style.left.%]="scrubPercent"></div>
+
+          <!-- The curve underneath still belongs to the previous window until
+               the fetch lands, so it's covered rather than left to be read. -->
+          <div class="di-tl-loading" *ngIf="loadingMap">
+            <span class="di-spinner di-spinner--sm"></span>
+            <span>Loading the range…</span>
+          </div>
+        </div>
+
+        <div class="di-tl-ticks">
+          <span class="di-tl-tick" *ngFor="let t of dayTicks" [style.left.%]="t.percent">{{ t.label }}</span>
+        </div>
+      </div>
+
+      <!-- Legend doubles as the series switches. -->
+      <p class="di-tl-legend">
+        <button type="button" class="di-tl-toggle" [class.is-off]="!showSameDay"
+                (click)="toggleSameDay()"
+                [title]="(showSameDay ? 'Hide' : 'Show') + ' the same-day corrections line'">
+          <span class="di-tl-swatch di-tl-swatch--same"></span> same-day corrections
+        </button>
+        <button type="button" class="di-tl-toggle" [class.is-off]="!showBackDated"
+                (click)="toggleBackDated()"
+                [title]="(showBackDated ? 'Hide' : 'Show') + ' the back-dated edits line'">
+          <span class="di-tl-swatch di-tl-swatch--back"></span> back-dated edits
+        </button>
+        <span class="di-tl-hint">hover the chart to move the map through the range</span>
+      </p>
+    </div>
 
       <div class="di-card di-mc-panel">
         <h3>
@@ -249,83 +317,238 @@
             <i class="bi bi-download"></i>
             {{ downloading ? 'Preparing…' : 'Download' }}
           </button>
+          <button type="button" class="di-expand-btn" (click)="openTable('mc')"
+                  title="Open this table full size">
+            <i class="bi bi-arrows-angle-expand"></i>
+            Expand
+          </button>
         </h3>
-        <div *ngIf="loadingMcWise" class="di-loading">Loading…</div>
-        <div class="di-table-wrap" *ngIf="!loadingMcWise">
-          <table class="di-table">
-            <thead>
-              <tr><th>MC / RMC</th><th>Same Day</th><th>Backdate</th><th>Stations</th></tr>
-            </thead>
-            <tbody>
-              <ng-container *ngFor="let m of filteredMcWiseRows">
-                <tr>
-                  <td>{{ m.centreType }} {{ m.centreName }}</td>
-                  <td>
-                    <a href="javascript:void(0)" class="di-station-count-link" (click)="toggleMcDetails(m, 'same-day')">
-                      {{ m.sameDayCount }}
-                      <i class="bi" [ngClass]="m.expandedFilter === 'same-day' ? 'bi-caret-up-fill' : 'bi-caret-down-fill'"></i>
-                    </a>
-                  </td>
-                  <td>
-                    <a href="javascript:void(0)" class="di-station-count-link" (click)="toggleMcDetails(m, 'back-dated')">
-                      {{ m.backDatedCount }}
-                      <i class="bi" [ngClass]="m.expandedFilter === 'back-dated' ? 'bi-caret-up-fill' : 'bi-caret-down-fill'"></i>
-                    </a>
-                  </td>
-                  <td>{{ m.stationCount }}</td>
-                </tr>
-                <tr class="di-detail-row" *ngIf="m.expandedFilter">
-                  <td colspan="4">
-                    <div *ngIf="m.loadingDetails" class="di-loading">Loading stations…</div>
-                    <div class="di-detail-scroll" *ngIf="!m.loadingDetails">
-                      <table class="di-table di-detail-table">
-                        <thead>
-                          <tr>
-                            <th>Station</th>
-                            <th>State</th>
-                            <th>District</th>
-                            <th>Value (mm)</th>
-                            <th>
-                              Change (Old → New)
-                              <i class="bi bi-info-circle di-info-icon" title="What the value changed from and to. Blank means the edit happened before change-tracking was switched on. 'No data' means -999.9, i.e. no reading."></i>
-                            </th>
-                            <th>Data Date</th>
-                            <th>Updated At</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr *ngFor="let d of getFilteredMcDetails(m)">
-                            <td>{{ d.stationName }}</td>
-                            <td>{{ d.stateName }}</td>
-                            <td>{{ d.districtName }}</td>
-                            <td>{{ d.value }}</td>
-                            <td>
-                              <span *ngIf="d.editCount > 0" class="di-change">
-                                <span class="di-change-old">{{ formatEditValue(d.oldValue) }}</span>
-                                <span class="di-change-arrow">→</span>
-                                <span class="di-change-new">{{ formatEditValue(d.newValue) }}</span>
-                                <span class="di-change-badge">{{ editTypeLabel(d.editType) }}</span>
-                                <span *ngIf="d.editCount > 1" class="di-change-count">{{ d.editCount }} edits</span>
-                              </span>
-                              <span *ngIf="d.editCount === 0" class="di-change-none" title="Not tracked — this edit predates the change log.">—</span>
-                            </td>
-                            <td>{{ d.dataDate }}</td>
-                            <td>{{ d.updatedAt | date: 'dd-MMM-yyyy HH:mm:ss' }}</td>
-                          </tr>
-                          <tr *ngIf="getFilteredMcDetails(m).length === 0"><td colspan="7">No station details found.</td></tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </td>
-                </tr>
-              </ng-container>
-              <tr *ngIf="filteredMcWiseRows.length === 0">
-                <td colspan="4">{{ mcWiseRows.length ? 'No centres match the current search or filter.' : 'No reupdates in this window.' }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div *ngIf="loadingMcWise" class="di-loading di-loading-inline">
+          <span class="di-spinner di-spinner--sm"></span> Loading…
         </div>
+        <div class="di-table-wrap" *ngIf="!loadingMcWise">
+          <ng-container *ngTemplateOutlet="mcTableTpl"></ng-container>
+        </div>
+
+        <!-- Declared outside the *ngIf above: a ref var inside an
+             embedded view is not reachable from the modal outlet. -->
+        <ng-template #mcTableTpl>
+            <table class="di-table">
+              <thead>
+                <tr><th>MC / RMC</th><th>Same Day</th><th>Backdate</th><th>Stations</th></tr>
+              </thead>
+              <tbody>
+                <ng-container *ngFor="let m of filteredMcWiseRows">
+                  <tr>
+                    <td>{{ m.centreType }} {{ m.centreName }}</td>
+                    <td>
+                      <a href="javascript:void(0)" class="di-station-count-link" (click)="toggleMcDetails(m, 'same-day')">
+                        {{ m.sameDayCount }}
+                        <i class="bi" [ngClass]="m.expandedFilter === 'same-day' ? 'bi-caret-up-fill' : 'bi-caret-down-fill'"></i>
+                      </a>
+                    </td>
+                    <td>
+                      <a href="javascript:void(0)" class="di-station-count-link" (click)="toggleMcDetails(m, 'back-dated')">
+                        {{ m.backDatedCount }}
+                        <i class="bi" [ngClass]="m.expandedFilter === 'back-dated' ? 'bi-caret-up-fill' : 'bi-caret-down-fill'"></i>
+                      </a>
+                    </td>
+                    <td>{{ m.stationCount }}</td>
+                  </tr>
+                  <tr class="di-detail-row" *ngIf="m.expandedFilter">
+                    <td colspan="4">
+                      <div *ngIf="m.loadingDetails" class="di-loading">Loading stations…</div>
+                      <div class="di-detail-scroll" *ngIf="!m.loadingDetails">
+                        <table class="di-table di-detail-table">
+                          <thead>
+                            <tr>
+                              <th>Station</th>
+                              <th>State</th>
+                              <th>District</th>
+                              <th>Value (mm)</th>
+                              <th>
+                                Change (Old → New)
+                                <i class="bi bi-info-circle di-info-icon" title="What the value changed from and to. Blank means the edit happened before change-tracking was switched on. 'No data' means -999.9, i.e. no reading."></i>
+                              </th>
+                              <th>Data Date</th>
+                              <th>Updated At</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr *ngFor="let d of getFilteredMcDetails(m)">
+                              <td>{{ d.stationName }}</td>
+                              <td>{{ d.stateName }}</td>
+                              <td>{{ d.districtName }}</td>
+                              <td>{{ d.value }}</td>
+                              <td>
+                                <span *ngIf="d.editCount > 0" class="di-change">
+                                  <span class="di-change-old">{{ formatEditValue(d.oldValue) }}</span>
+                                  <span class="di-change-arrow">→</span>
+                                  <span class="di-change-new">{{ formatEditValue(d.newValue) }}</span>
+                                  <span class="di-change-badge">{{ editTypeLabel(d.editType) }}</span>
+                                  <span *ngIf="d.editCount > 1" class="di-change-count">{{ d.editCount }} edits</span>
+                                </span>
+                                <span *ngIf="d.editCount === 0" class="di-change-none" title="Not tracked — this edit predates the change log.">—</span>
+                              </td>
+                              <td>{{ d.dataDate }}</td>
+                              <td>{{ d.updatedAt | date: 'dd-MMM-yyyy HH:mm:ss' }}</td>
+                            </tr>
+                            <tr *ngIf="getFilteredMcDetails(m).length === 0"><td colspan="7">No station details found.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+                <tr *ngIf="filteredMcWiseRows.length === 0">
+                  <td colspan="4" class="di-empty-cell">
+                    {{ mcWiseRows.length ? 'No centres match the current search or filter.' : 'No reupdates in this window.' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+        </ng-template>
+      </div>
+
+      <div class="di-card di-log-panel">
+        <h3>
+          Revision Log
+          <i class="bi bi-info-circle di-info-icon" title="Each row groups edits by the day they happened AND the date whose value was changed. Hover a row to see the station names."></i>
+          <button type="button" class="di-download-btn" (click)="downloadRevisionLog()" [disabled]="downloading"
+                  title="Download every Revision Log row plus all the station rows inside them, for the selected period.">
+            <i class="bi bi-download"></i>
+            {{ downloading ? 'Preparing…' : 'Download' }}
+          </button>
+          <button type="button" class="di-expand-btn" (click)="openTable('log')"
+                  title="Open this table full size">
+            <i class="bi bi-arrows-angle-expand"></i>
+            Expand
+          </button>
+        </h3>
+        <div class="di-table-wrap">
+          <ng-container *ngTemplateOutlet="logTableTpl"></ng-container>
+        </div>
+
+        <ng-template #logTableTpl>
+            <table class="di-table">
+              <thead>
+                <tr>
+                  <th>
+                    Revision Date
+                    <i class="bi bi-info-circle di-info-icon" title="The day the edit actually happened — i.e. today, when someone went in and changed a value."></i>
+                  </th>
+                  <th>
+                    Data Date
+                    <i class="bi bi-info-circle di-info-icon" title="The date the rainfall value is for — the date whose number got changed."></i>
+                  </th>
+                  <th>Stations</th>
+                  <th>
+                    Type
+                    <i class="bi bi-info-circle di-info-icon" title="Same-day correction: Data Date = Revision Date (tweaked shortly after entry). Back-dated edit: Data Date is earlier than Revision Date (an already-saved past value was changed)."></i>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <ng-container *ngFor="let r of filteredLogRows">
+                  <tr [class.back-dated]="r.backDated" [class.same-day]="!r.backDated" [title]="r.stationNames.join(', ')">
+                    <td>{{ r.revisionDate }}</td>
+                    <td>{{ r.dataDate }}</td>
+                    <td>
+                      <a href="javascript:void(0)" class="di-station-count-link" (click)="toggleStationDetails(r)">
+                        {{ r.stationCount }}
+                        <i class="bi" [ngClass]="r.expanded ? 'bi-caret-up-fill' : 'bi-caret-down-fill'"></i>
+                      </a>
+                    </td>
+                    <td>{{ r.backDated ? 'Back-dated edit' : 'Same-day correction' }}</td>
+                  </tr>
+                  <tr class="di-detail-row" *ngIf="r.expanded">
+                    <td colspan="4">
+                      <div *ngIf="r.loadingDetails" class="di-loading">Loading stations…</div>
+                      <div class="di-detail-scroll" *ngIf="!r.loadingDetails">
+                        <table class="di-table di-detail-table">
+                          <thead>
+                            <tr>
+                              <th>Station</th>
+                              <th>Centre Type</th>
+                              <th>Centre Name</th>
+                              <th>State</th>
+                              <th>District</th>
+                              <th>Value (mm)</th>
+                              <th>
+                                Change (Old → New)
+                                <i class="bi bi-info-circle di-info-icon" title="What the value changed from and to on this day. Blank means the edit happened before change-tracking was switched on. 'No data' means -999.9, i.e. no reading."></i>
+                              </th>
+                              <th>Data Date</th>
+                              <th>Updated At</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr *ngFor="let d of getFilteredDetails(r)">
+                              <td>{{ d.stationName }}</td>
+                              <td>{{ d.centreType }}</td>
+                              <td>{{ d.centreName }}</td>
+                              <td>{{ d.stateName }}</td>
+                              <td>{{ d.districtName }}</td>
+                              <td>{{ d.value }}</td>
+                              <td>
+                                <span *ngIf="d.editCount > 0" class="di-change">
+                                  <span class="di-change-old">{{ formatEditValue(d.oldValue) }}</span>
+                                  <span class="di-change-arrow">→</span>
+                                  <span class="di-change-new">{{ formatEditValue(d.newValue) }}</span>
+                                  <span class="di-change-badge">{{ editTypeLabel(d.editType) }}</span>
+                                  <span *ngIf="d.editCount > 1" class="di-change-count">{{ d.editCount }} edits</span>
+                                </span>
+                                <span *ngIf="d.editCount === 0" class="di-change-none" title="Not tracked — this edit predates the change log.">—</span>
+                              </td>
+                              <td>{{ d.dataDate }}</td>
+                              <td>{{ d.updatedAt | date: 'dd-MMM-yyyy HH:mm:ss' }}</td>
+                            </tr>
+                            <tr *ngIf="r.details && getFilteredDetails(r).length === 0"><td colspan="9">No station details found.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+                <!-- The tables render during a refresh (they sit outside the
+                     *ngIf="!loading" block so Leaflet keeps its container), so
+                     the empty state has to distinguish "still loading" from
+                     "genuinely nothing" — it used to claim "No revisions" while
+                     the request was still in flight. -->
+                <tr *ngIf="filteredLogRows.length === 0">
+                  <td colspan="4" class="di-empty-cell">
+                    <ng-container *ngIf="loading">
+                      <span class="di-spinner di-spinner--sm"></span> Loading…
+                    </ng-container>
+                    <ng-container *ngIf="!loading">
+                      {{ logRows.length ? 'No rows match the current search or filter.' : 'No revisions in this window.' }}
+                    </ng-container>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+        </ng-template>
+      </div>
+  </div><!-- /di-tables-col -->
+
+  </div><!-- /di-main-columns -->
+
+  <!-- Either table, full size. The same ng-template renders here and in the
+       card, so the two never drift and row state stays shared. -->
+  <div class="di-modal-backdrop" *ngIf="expandedTable" (click)="closeTable()">
+    <div class="di-modal" (click)="$event.stopPropagation()">
+      <div class="di-modal-head">
+        <h3>{{ expandedTable === 'mc' ? 'MC / RMC-Wise Reupdates' : 'Revision Log' }}</h3>
+        <span class="di-modal-sub">
+          {{ activeTab === 'daywise' ? singleDate : fromDate + ' → ' + toDate }}
+        </span>
+        <button type="button" class="di-modal-close" (click)="closeTable()" title="Close (Esc)">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="di-modal-body">
+        <ng-container *ngTemplateOutlet="expandedTable === 'mc' ? mcTableTpl : logTableTpl"></ng-container>
       </div>
     </div>
-  </ng-container>
+  </div>
 </div>
