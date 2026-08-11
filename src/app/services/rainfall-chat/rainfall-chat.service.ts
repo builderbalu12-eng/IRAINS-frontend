@@ -59,6 +59,10 @@ export interface OllamaChatResponse {
   message?: string;
   llm_plan_raw?: string;
   meta?: any;
+  /** Question fell outside the rainfall / navigation catalog. */
+  out_of_scope?: boolean;
+  /** Example questions to offer when out_of_scope. */
+  suggestions?: string[];
 }
 
 export interface SampleQuestions {

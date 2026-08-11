@@ -819,33 +819,38 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.isTyping = false;
-        this.ollamaReady = false;
         const status = err?.status || err?.name;
         const isTimeout = err?.name === 'TimeoutError' || status === 0;
         const isOllamaDown = status === 503;
+        const body: OllamaChatResponse | null = err?.error ?? null;
+        // 422 = Ollama answered, the question just isn't in the API catalog.
+        this.ollamaReady = !isOllamaDown && !isTimeout;
         const reply = this.composeReply(text);
+
+        if (body?.out_of_scope && body.answer) {
+          this.pushAssistant(
+            `<p>${this.escapeHtml(body.answer)}</p>`,
+            (body.suggestions || []).map((s) => this.escapeHtml(s))
+          );
+          this.scrollToBottom();
+          return;
+        }
 
         if (!this.isGenericFaqFallback(reply.text)) {
           this.pushAssistant(reply.text);
         } else if (isOllamaDown) {
           this.pushAssistant(
-            `Ollama is not running on the backend host.<br><br>` +
-              `Start it with <code>ollama serve</code>, then ` +
-              `<code>ollama pull llama3.2</code>, and ask again.` +
-              (err?.error?.meta?.model
-                ? `<br>Expected model: <strong>${this.escapeHtml(
-                    err.error.meta.model
-                  )}</strong>.`
-                : '')
+            `I can't answer right now — the iRAINS rainfall service is temporarily ` +
+              `unavailable.<br><br>Please try again in a little while.`
           );
         } else if (isTimeout) {
           this.pushAssistant(
-            `The Ollama reply took too long. The model may still be loading — try once more in a few seconds.`
+            `That's taking me longer than usual. Please ask once more in a few seconds.`
           );
         } else {
           this.pushAssistant(
-            `I couldn’t reach the iRAINS Ollama chat service.<br><br>` +
-              `Ensure the API is running and Ollama is healthy, then retry — e.g. ` +
+            `I couldn't fetch that from iRAINS just now.<br><br>` +
+              `Please try again in a moment — e.g. ` +
               `<em>departure for Maharashtra today</em>.`
           );
         }
