@@ -112,19 +112,21 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    const stored = this.activityLog.getStoredUser(this.pageRoute);
-    if (this.activityLog.isCompleteUser(stored)) {
-      this.activityUser = stored;
-      this.prefillEmployeeForm();
-      this.showEmpModal = false;
-      this.adminRealtime.onOfficerIdentified(this.pageRoute, stored!);
-      this.initPage();
-      // Audit this visit without asking for details again.
-      this.calcMode.recordOfficerAccess(this.activityLog.toApiPayload(stored!)).subscribe({
-        error: () => undefined,
-      });
-      this.bindRealtime();
-      return;
+    // First entry this session → show popup. After Continue once → skip.
+    if (this.activityLog.hasConfirmedIdentification(this.pageRoute)) {
+      const stored = this.activityLog.getStoredUser(this.pageRoute);
+      if (this.activityLog.isCompleteUser(stored)) {
+        this.activityUser = stored;
+        this.prefillEmployeeForm();
+        this.showEmpModal = false;
+        this.adminRealtime.onOfficerIdentified(this.pageRoute, stored!);
+        this.initPage();
+        this.calcMode.recordOfficerAccess(this.activityLog.toApiPayload(stored!)).subscribe({
+          error: () => undefined,
+        });
+        this.bindRealtime();
+        return;
+      }
     }
 
     this.activityUser = null;
@@ -191,7 +193,7 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
     this.calcMode.recordOfficerAccess(this.activityLog.toApiPayload(this.activityUser)).subscribe({
       next: () => {
         this.empSubmitting = false;
-        this.activityLog.storeUser(this.activityUser!, this.pageRoute);
+        this.activityLog.markIdentified(this.activityUser!, this.pageRoute);
         this.adminRealtime.onOfficerIdentified(this.pageRoute, this.activityUser!);
         this.showEmpModal = false;
         this.initPage();

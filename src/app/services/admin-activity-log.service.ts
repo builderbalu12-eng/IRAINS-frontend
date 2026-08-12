@@ -117,6 +117,8 @@ export interface ActivityLogQuery {
 export class AdminActivityLogService {
   private readonly baseUrl = environment.baseUrl;
   private readonly storageKeyPrefix = 'adminActivityUser';
+  /** Set only after the officer clicks Continue — used to skip the popup on revisit. */
+  private readonly confirmedKey = 'adminOfficerIdentifiedConfirmed';
   private readonly activityLogUrl = `${this.baseUrl}/api/v1/admin/activity-log`;
   private readonly officerIdentifiedSubject = new Subject<{
     routePath: string;
@@ -141,12 +143,10 @@ export class AdminActivityLogService {
       const routeUser = this.readStoredUser(this.getStorageKey(routePath));
       if (routeUser) return routeUser;
     }
-    // Session-wide fallback so the ID popup is only asked once.
     return this.readStoredUser(this.storageKeyPrefix);
   }
 
   storeUser(user: AdminActivityUser, routePath?: string): void {
-    // Always keep a session-wide copy so revisiting / other admin pages can skip the popup.
     sessionStorage.setItem(this.storageKeyPrefix, JSON.stringify(user));
     if (routePath) {
       sessionStorage.setItem(this.getStorageKey(routePath), JSON.stringify(user));
@@ -154,9 +154,24 @@ export class AdminActivityLogService {
     }
   }
 
-  /** True when officer details were already captured this browser session. */
-  hasIdentifiedUser(routePath?: string): boolean {
+  /**
+   * Persist officer details and mark this browser session as identified
+   * so the popup is not asked again until the tab/session ends.
+   */
+  markIdentified(user: AdminActivityUser, routePath?: string): void {
+    this.storeUser(user, routePath);
+    sessionStorage.setItem(this.confirmedKey, '1');
+  }
+
+  /** True only after the officer has successfully submitted the ID form once this session. */
+  hasConfirmedIdentification(routePath?: string): boolean {
+    if (sessionStorage.getItem(this.confirmedKey) !== '1') return false;
     return this.isCompleteUser(this.getStoredUser(routePath));
+  }
+
+  /** @deprecated Prefer hasConfirmedIdentification() */
+  hasIdentifiedUser(routePath?: string): boolean {
+    return this.hasConfirmedIdentification(routePath);
   }
 
   isCompleteUser(user: AdminActivityUser | null | undefined): boolean {
@@ -278,7 +293,7 @@ export class AdminActivityLogService {
     };
     return this.http.post<any>(`${this.baseUrl}/api/v1/review-and-publish/officer-access`, body).pipe(
       tap(() => {
-        if (routePath) this.storeUser(user, routePath);
+        if (routePath) this.markIdentified(user, routePath);
       }),
     );
   }
@@ -351,7 +366,7 @@ export class AdminActivityLogService {
       ...extra,
     }).pipe(
       tap(() => {
-        if (routePath) this.storeUser(user, routePath);
+        if (routePath) this.markIdentified(user, routePath);
       }),
     );
   }

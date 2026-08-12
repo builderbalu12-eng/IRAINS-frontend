@@ -29,7 +29,7 @@ export class OfficerIdentificationModalComponent implements OnInit {
   @Output() identified = new EventEmitter<AdminActivityUser>();
 
   submitting = false;
-  /** Hide popup when officer details already exist in this session. */
+  /** Hide popup only after a confirmed Continue (or a later revisit in the same session). */
   skipModal = false;
   formError = '';
   form: FormGroup;
@@ -49,18 +49,29 @@ export class OfficerIdentificationModalComponent implements OnInit {
 
   ngOnInit(): void {
     const stored = this.activityLog.getStoredUser(this.routePath);
-    if (!this.activityLog.isCompleteUser(stored)) return;
 
-    this.form.patchValue({
-      emp_name: stored!.emp_name,
-      emp_designation: stored!.emp_designation,
-      emp_phone_number: stored!.emp_phone_number,
-      remark: stored!.remark ?? '',
-    });
+    // Prefill if we have previous details, but still show the popup on first entry.
+    if (stored) {
+      this.form.patchValue({
+        emp_name: stored.emp_name,
+        emp_designation: stored.emp_designation,
+        emp_phone_number: stored.emp_phone_number,
+        remark: stored.remark ?? '',
+      });
+    }
 
-    // Already identified this session — unlock page without showing the popup again.
-    this.skipModal = true;
-    queueMicrotask(() => this.resumeFromStoredUser(stored!));
+    // Skip only when the officer already clicked Continue once this session.
+    if (
+      this.activityLog.hasConfirmedIdentification(this.routePath) &&
+      this.activityLog.isCompleteUser(stored)
+    ) {
+      this.skipModal = true;
+      queueMicrotask(() => this.resumeFromStoredUser(stored!));
+      return;
+    }
+
+    // First visit → always show the identification popup.
+    this.skipModal = false;
   }
 
   submit(): void {
@@ -97,15 +108,22 @@ export class OfficerIdentificationModalComponent implements OnInit {
   }
 
   private resumeFromStoredUser(user: AdminActivityUser): void {
-    this.finishIdentified(user);
-    // Still record PAGE_ACCESS for this visit, but do not block the UI.
+    this.finishIdentified(user, { alreadyConfirmed: true });
+    // Audit this visit without showing the form again.
     this.recordPageAccess(user).subscribe({ error: () => undefined });
   }
 
-  private finishIdentified(user: AdminActivityUser): void {
+  private finishIdentified(
+    user: AdminActivityUser,
+    options: { alreadyConfirmed?: boolean } = {},
+  ): void {
     this.skipModal = true;
     this.visible = false;
-    this.activityLog.storeUser(user, this.routePath || undefined);
+    if (!options.alreadyConfirmed) {
+      this.activityLog.markIdentified(user, this.routePath || undefined);
+    } else {
+      this.activityLog.storeUser(user, this.routePath || undefined);
+    }
     if (this.routePath) {
       this.adminRealtime.onOfficerIdentified(this.routePath, user);
     }
