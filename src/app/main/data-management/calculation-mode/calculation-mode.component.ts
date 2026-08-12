@@ -112,10 +112,28 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    const stored = this.activityLog.getStoredUser(this.pageRoute);
+    if (this.activityLog.isCompleteUser(stored)) {
+      this.activityUser = stored;
+      this.prefillEmployeeForm();
+      this.showEmpModal = false;
+      this.adminRealtime.onOfficerIdentified(this.pageRoute, stored!);
+      this.initPage();
+      // Audit this visit without asking for details again.
+      this.calcMode.recordOfficerAccess(this.activityLog.toApiPayload(stored!)).subscribe({
+        error: () => undefined,
+      });
+      this.bindRealtime();
+      return;
+    }
+
     this.activityUser = null;
     this.prefillEmployeeForm();
     this.showEmpModal = true;
+    this.bindRealtime();
+  }
 
+  private bindRealtime(): void {
     const calcRoute = backendRoutePath(this.pageRoute);
     this.realtimeSub = this.adminRealtime.pageStateChanged$.subscribe(event => {
       if (event.route_path !== calcRoute || event.state_type !== 'calculation_mode') return;

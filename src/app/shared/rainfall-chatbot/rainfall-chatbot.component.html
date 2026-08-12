@@ -76,39 +76,47 @@
         <ul class="rain-list" *ngIf="m.listItems?.length">
           <li *ngFor="let item of visibleListItems(m)" [innerHTML]="item"></li>
         </ul>
-        <button
-          type="button"
-          class="more-btn"
-          *ngIf="m.listItems && m.listItems.length > 5 && !m.listExpanded"
-          (click)="expandList(m)"
-        >
-          …more ({{ hiddenListCount(m) }})
-        </button>
-        <button
-          type="button"
-          class="more-btn"
-          *ngIf="m.listItems && m.listItems.length > 5 && m.listExpanded"
-          (click)="collapseList(m)"
-        >
-          Show less
-        </button>
-        <button
-          type="button"
-          class="nav-open-btn"
-          *ngIf="m.navLink?.path"
-          (click)="openNavLink(m.navLink!.path)"
-          [title]="m.navLink!.path"
-        >
-          <i class="bi bi-box-arrow-up-right"></i>
-          {{ m.navLink!.label }}
-        </button>
-        <div class="clarify-choices" *ngIf="m.choices?.length">
+        <div class="list-actions" *ngIf="(m.listItems && m.listItems.length > 5) || m.navLink?.path">
+          <button
+            type="button"
+            class="more-btn"
+            *ngIf="m.listItems && m.listItems.length > 5 && !m.listExpanded"
+            (click)="expandList(m)"
+          >
+            …more ({{ hiddenListCount(m) }})
+          </button>
+          <button
+            type="button"
+            class="more-btn"
+            *ngIf="m.listItems && m.listItems.length > 5 && m.listExpanded"
+            (click)="collapseList(m)"
+          >
+            Show less
+          </button>
+          <button
+            type="button"
+            class="nav-open-btn"
+            *ngIf="m.navLink?.path"
+            (click)="openNavLink(m.navLink!.path)"
+            [title]="m.navLink!.path"
+          >
+            <i class="bi bi-box-arrow-up-right"></i>
+            <span>{{ m.navLink!.label }}</span>
+          </button>
+        </div>
+        <div class="clarify-choices" *ngIf="m.choices?.length" [attr.data-clarify-count]="m.choices!.length">
           <button
             type="button"
             class="clarify-btn"
             *ngFor="let c of m.choices"
             (click)="chooseClarification(c)"
-            [disabled]="isTyping"
+            [disabled]="isTyping || c.available === false"
+            [class.unavailable]="c.available === false"
+            [class.clarify-month]="c.variant === 'month'"
+            [class.clarify-year]="c.variant === 'year'"
+            [class.clarify-action]="c.variant === 'action'"
+            [class.clarify-primary]="c.emphasize === true"
+            [title]="c.available === false ? 'Not available yet' : c.label"
           >
             {{ c.label }}
           </button>

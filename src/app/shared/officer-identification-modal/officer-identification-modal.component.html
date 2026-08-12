@@ -1,4 +1,4 @@
-<div class="oid-modal-backdrop" *ngIf="visible">
+<div class="oid-modal-backdrop" *ngIf="visible && !skipModal">
   <div class="oid-modal" (click)="$event.stopPropagation()">
     <div class="oid-modal-header">
       <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Officer Identification</h5>

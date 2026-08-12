@@ -29,6 +29,8 @@ export class OfficerIdentificationModalComponent implements OnInit {
   @Output() identified = new EventEmitter<AdminActivityUser>();
 
   submitting = false;
+  /** Hide popup when officer details already exist in this session. */
+  skipModal = false;
   formError = '';
   form: FormGroup;
 
@@ -47,13 +49,18 @@ export class OfficerIdentificationModalComponent implements OnInit {
 
   ngOnInit(): void {
     const stored = this.activityLog.getStoredUser(this.routePath);
-    if (!stored) return;
+    if (!this.activityLog.isCompleteUser(stored)) return;
+
     this.form.patchValue({
-      emp_name: stored.emp_name,
-      emp_designation: stored.emp_designation,
-      emp_phone_number: stored.emp_phone_number,
-      remark: stored.remark ?? '',
+      emp_name: stored!.emp_name,
+      emp_designation: stored!.emp_designation,
+      emp_phone_number: stored!.emp_phone_number,
+      remark: stored!.remark ?? '',
     });
+
+    // Already identified this session — unlock page without showing the popup again.
+    this.skipModal = true;
+    queueMicrotask(() => this.resumeFromStoredUser(stored!));
   }
 
   submit(): void {
@@ -78,11 +85,7 @@ export class OfficerIdentificationModalComponent implements OnInit {
     this.recordPageAccess(user).subscribe({
       next: () => {
         this.submitting = false;
-        this.visible = false;
-        if (this.routePath) {
-          this.adminRealtime.onOfficerIdentified(this.routePath, user);
-        }
-        this.identified.emit(user);
+        this.finishIdentified(user);
       },
       error: (err) => {
         this.submitting = false;
@@ -91,6 +94,22 @@ export class OfficerIdentificationModalComponent implements OnInit {
           : 'Failed to save your details. Please try again.';
       },
     });
+  }
+
+  private resumeFromStoredUser(user: AdminActivityUser): void {
+    this.finishIdentified(user);
+    // Still record PAGE_ACCESS for this visit, but do not block the UI.
+    this.recordPageAccess(user).subscribe({ error: () => undefined });
+  }
+
+  private finishIdentified(user: AdminActivityUser): void {
+    this.skipModal = true;
+    this.visible = false;
+    this.activityLog.storeUser(user, this.routePath || undefined);
+    if (this.routePath) {
+      this.adminRealtime.onOfficerIdentified(this.routePath, user);
+    }
+    this.identified.emit(user);
   }
 
   private recordPageAccess(user: AdminActivityUser): Observable<unknown> {

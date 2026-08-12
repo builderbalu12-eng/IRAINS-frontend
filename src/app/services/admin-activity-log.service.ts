@@ -137,22 +137,35 @@ export class AdminActivityLogService {
   }
 
   getStoredUser(routePath?: string): AdminActivityUser | null {
-    const key = routePath ? this.getStorageKey(routePath) : this.storageKeyPrefix;
-    const raw = sessionStorage.getItem(key);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as AdminActivityUser;
-    } catch {
-      return null;
+    if (routePath) {
+      const routeUser = this.readStoredUser(this.getStorageKey(routePath));
+      if (routeUser) return routeUser;
     }
+    // Session-wide fallback so the ID popup is only asked once.
+    return this.readStoredUser(this.storageKeyPrefix);
   }
 
   storeUser(user: AdminActivityUser, routePath?: string): void {
-    const key = routePath ? this.getStorageKey(routePath) : this.storageKeyPrefix;
-    sessionStorage.setItem(key, JSON.stringify(user));
+    // Always keep a session-wide copy so revisiting / other admin pages can skip the popup.
+    sessionStorage.setItem(this.storageKeyPrefix, JSON.stringify(user));
     if (routePath) {
+      sessionStorage.setItem(this.getStorageKey(routePath), JSON.stringify(user));
       this.officerIdentifiedSubject.next({ routePath, user });
     }
+  }
+
+  /** True when officer details were already captured this browser session. */
+  hasIdentifiedUser(routePath?: string): boolean {
+    return this.isCompleteUser(this.getStoredUser(routePath));
+  }
+
+  isCompleteUser(user: AdminActivityUser | null | undefined): boolean {
+    if (!user) return false;
+    return Boolean(
+      user.emp_name?.trim() &&
+        user.emp_designation?.trim() &&
+        String(user.emp_phone_number || '').trim()
+    );
   }
 
   buildUserFromForm(form: {
@@ -357,6 +370,16 @@ export class AdminActivityLogService {
     try {
       const parsed = JSON.parse(raw);
       return parsed?.data?.[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private readStoredUser(key: string): AdminActivityUser | null {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as AdminActivityUser;
     } catch {
       return null;
     }

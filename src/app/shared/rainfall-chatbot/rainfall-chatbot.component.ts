@@ -11,6 +11,7 @@ import { Subscription } from 'rxjs';
 import {
   RainfallChatService,
   OllamaChatResponse,
+  OllamaClarifyOption,
 } from 'src/app/services/rainfall-chat/rainfall-chat.service';
 
 interface ChatMessage {
@@ -23,13 +24,25 @@ interface ChatMessage {
   listExpanded?: boolean;
   /** Deep-link from a navigation answer. */
   navLink?: { label: string; path: string } | null;
-  /** Clarification buttons (navigate vs data). */
+  /** Clarification buttons (local navigate/data or backend clarify). */
   choices?: ClarificationChoice[] | null;
 }
 
 interface ClarificationChoice {
-  id: 'navigate' | 'data';
+  id: string;
   label: string;
+  /** Local keyword clarify only (open page vs ask data). */
+  localIntent?: 'navigate' | 'data';
+  /** Backend option value used to rewrite the follow-up question. */
+  value?: string | number;
+  /** Backend which_map / product route. */
+  path?: string | null;
+  /** False = show but not selectable (e.g. Temperature). */
+  available?: boolean;
+  /** Visual group for chip styling (month / year / action). */
+  variant?: 'default' | 'month' | 'year' | 'action';
+  /** For Yes/No styling when variant is action. */
+  emphasize?: boolean;
 }
 
 interface FormattedAnswer {
@@ -50,6 +63,18 @@ interface PendingClarification {
   productName: string;
   path: string;
   originalText: string;
+}
+
+/** Backend clarify waiting on a chip / follow-up. */
+interface PendingBackendClarify {
+  type: string;
+  originalQuestion: string;
+  suggestion?: string | null;
+  input?: string;
+  originalValue?: string | number;
+  location?: string;
+  from?: string;
+  to?: string;
 }
 
 /** Product / page keywords that are ambiguous without navigate vs data intent. */
@@ -291,6 +316,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
   private askSub?: Subscription;
   private subs: Subscription[] = [];
   private pendingClarification: PendingClarification | null = null;
+  private pendingBackendClarify: PendingBackendClarify | null = null;
 
   /** Mirrors backend SAMPLE_QUESTIONS (catalog Q1–Q25). */
   quickPrompts: QuickPrompt[] = [
@@ -540,11 +566,22 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
 
   /** User tapped a clarification choice button. */
   chooseClarification(choice: ClarificationChoice): void {
-    if (!this.pendingClarification || this.isTyping) return;
-    const pending = this.pendingClarification;
-    this.clearChoicesFromMessages();
-    this.pushUser(choice.label);
-    this.resolveClarification(choice.id, pending);
+    if (this.isTyping) return;
+    if (choice.available === false) return;
+
+    // Local navigate-vs-data chips
+    if (choice.localIntent && this.pendingClarification) {
+      const pending = this.pendingClarification;
+      this.clearChoicesFromMessages();
+      this.pushUser(choice.label);
+      this.resolveClarification(choice.localIntent, pending);
+      return;
+    }
+
+    // Backend clarify chips (which map, place, timeframe, …)
+    if (this.pendingBackendClarify) {
+      this.resolveBackendClarify(choice);
+    }
   }
 
   onKeydown(event: KeyboardEvent): void {
@@ -581,10 +618,32 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         undefined,
         null,
         [
-          { id: 'navigate', label: 'Open the page' },
-          { id: 'data', label: 'Ask about rainfall data' },
+          { id: 'navigate', label: 'Open the page', localIntent: 'navigate' },
+          { id: 'data', label: 'Ask about rainfall data', localIntent: 'data' },
         ]
       );
+      this.scrollToBottom();
+      return;
+    }
+
+    // Free-text while backend clarify chips are open → try to match Yes/No or a period chip
+    if (this.pendingBackendClarify) {
+      const pending = this.pendingBackendClarify;
+      const matched = this.matchBackendClarifyFreeText(text, pending);
+      if (matched) {
+        this.clearChoicesFromMessages();
+        // User bubble already pushed above; resolve without duplicating the label
+        this.resolveBackendClarify(matched, { skipUserBubble: true });
+        return;
+      }
+      this.isTyping = false;
+      const hint =
+        pending.type === 'did_you_mean'
+          ? `Please tap <strong>Yes</strong> or <strong>No</strong>.`
+          : pending.type === 'which_month'
+          ? `Please tap a month, a year, or type one like <em>March 2023</em>.`
+          : `Please tap one of the options above.`;
+      this.pushAssistant(hint);
       this.scrollToBottom();
       return;
     }
@@ -610,8 +669,8 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
           undefined,
           null,
           [
-            { id: 'navigate', label: 'Open the page' },
-            { id: 'data', label: 'Ask about rainfall data' },
+            { id: 'navigate', label: 'Open the page', localIntent: 'navigate' },
+            { id: 'data', label: 'Ask about rainfall data', localIntent: 'data' },
           ]
         );
         this.scrollToBottom();
@@ -637,6 +696,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     this.askSub?.unsubscribe();
     this.isTyping = false;
     this.pendingClarification = null;
+    this.pendingBackendClarify = null;
     this.messages = [];
     this.msgId = 0;
     this.pushAssistant(this.welcomeText());
@@ -798,6 +858,13 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.isTyping = false;
         this.ollamaReady = true;
+
+        if (this.isClarifyResponse(res)) {
+          this.handleClarifyResponse(res, text);
+          this.scrollToBottom();
+          return;
+        }
+
         if (res?.answer) {
           const formatted = this.formatApiAnswer(res);
           this.pushAssistant(
@@ -826,6 +893,12 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         // 422 = Ollama answered, the question just isn't in the API catalog.
         this.ollamaReady = !isOllamaDown && !isTimeout;
         const reply = this.composeReply(text);
+
+        if (body && this.isClarifyResponse(body)) {
+          this.handleClarifyResponse(body, text);
+          this.scrollToBottom();
+          return;
+        }
 
         if (body?.out_of_scope && body.answer) {
           this.pushAssistant(
@@ -857,6 +930,456 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         this.scrollToBottom();
       },
     });
+  }
+
+  private isClarifyResponse(res: OllamaChatResponse | null | undefined): boolean {
+    if (!res) return false;
+    return (
+      res.needs_clarification === true ||
+      res.mode === 'clarify' ||
+      res.answer_mode === 'clarify' ||
+      Boolean(res.clarify?.options?.length) ||
+      res.action?.module === 'clarify'
+    );
+  }
+
+  private handleClarifyResponse(
+    res: OllamaChatResponse,
+    originalQuestion: string
+  ): void {
+    const clarify = res.clarify || {};
+    this.pendingClarification = null;
+    this.pendingBackendClarify = {
+      type: clarify.type || res.action?.reason || 'clarify',
+      originalQuestion,
+      suggestion: clarify.suggestion ?? clarify.to ?? null,
+      input: clarify.input ?? clarify.from,
+      originalValue: clarify.original_value,
+      location: clarify.location,
+      from: clarify.from ?? clarify.input,
+      to: clarify.to ?? clarify.suggestion ?? undefined,
+    };
+
+    const clarifyType = this.pendingBackendClarify.type;
+    const answer =
+      res.answer ||
+      clarify.prompt ||
+      'Please choose an option so I can continue.';
+    const choices = this.mapBackendClarifyOptions(res, clarifyType);
+
+    this.pushAssistant(
+      this.formatClarifyAnswer(answer, clarifyType),
+      undefined,
+      null,
+      choices.length ? choices : null
+    );
+  }
+
+  /** Structured, professional clarify copy (no pipe lists / raw HTML). */
+  private formatClarifyAnswer(answer: string, clarifyType: string): string {
+    const lines = String(answer || '')
+      .replace(/<\/?em>/gi, '')
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      // Drop legacy pipe-option lines — chips render options instead
+      .filter((l) => !(/\|/.test(l) && l.split('|').length >= 3));
+
+    if (!lines.length) {
+      return `<p class="clarify-title">Please choose an option to continue.</p>`;
+    }
+
+    const [title, ...rest] = lines;
+    let html = `<p class="clarify-title">${this.escapeHtml(title)}</p>`;
+    if (rest.length) {
+      html += rest
+        .map((line) => `<p class="clarify-hint">${this.escapeHtml(line)}</p>`)
+        .join('');
+    } else if (clarifyType === 'which_month') {
+      html += `<p class="clarify-hint">Select a month or year below, or type one like March 2023.</p>`;
+    } else if (clarifyType === 'ambiguous_timeframe') {
+      html += `<p class="clarify-hint">Choose a period below to continue.</p>`;
+    } else if (clarifyType === 'did_you_mean') {
+      html += `<p class="clarify-hint">Confirm to continue with this location.</p>`;
+    }
+    return html;
+  }
+
+  private mapBackendClarifyOptions(
+    res: OllamaChatResponse,
+    clarifyType?: string
+  ): ClarificationChoice[] {
+    const options: OllamaClarifyOption[] = Array.isArray(res.clarify?.options)
+      ? res.clarify!.options!
+      : [];
+
+    return options.map((opt, i) => {
+      const product = opt.product_name || '';
+      const label =
+        opt.label || product || (opt.value != null ? String(opt.value) : `Option ${i + 1}`);
+      const path = this.resolveAppRoute(opt.route_path);
+      let variant: ClarificationChoice['variant'] = 'default';
+      let emphasize = false;
+      if (clarifyType === 'which_month') {
+        variant = /^year\s+/i.test(label) ? 'year' : 'month';
+      } else if (clarifyType === 'did_you_mean') {
+        const v = String(opt.value ?? label).toLowerCase();
+        variant = 'action';
+        emphasize = v === 'yes' || /^yes\b/i.test(label);
+      }
+      return {
+        id: `${res.clarify?.type || 'opt'}_${i}`,
+        label,
+        value: opt.value ?? product ?? label,
+        path,
+        available: opt.available !== false,
+        variant,
+        emphasize,
+      };
+    });
+  }
+
+  private resolveBackendClarify(
+    choice: ClarificationChoice,
+    opts?: { skipUserBubble?: boolean }
+  ): void {
+    const pending = this.pendingBackendClarify;
+    if (!pending) return;
+
+    this.clearChoicesFromMessages();
+    if (!opts?.skipUserBubble) {
+      this.pushUser(choice.label);
+    }
+    this.pendingBackendClarify = null;
+
+    if (choice.available === false) {
+      this.isTyping = false;
+      this.pushAssistant(
+        `That option isn’t available in Varsha yet. Please pick another choice, or ask about rainfall.`
+      );
+      this.scrollToBottom();
+      return;
+    }
+
+    // which_map (and any option that carries a product route) → open page
+    if (pending.type === 'which_map' || choice.path) {
+      const path = choice.path || '';
+      const product = choice.label;
+      this.isTyping = true;
+      this.scrollToBottom();
+      this.typingTimer = setTimeout(() => {
+        this.isTyping = false;
+        this.pushAssistant(
+          `<p><strong>${this.escapeHtml(product)}</strong> is available in iRAINS.</p>` +
+            (path
+              ? `<p class="nav-path">Route: <code>${this.escapeHtml(path)}</code></p>`
+              : ''),
+          undefined,
+          path ? { label: `Open ${product}`, path } : null
+        );
+        this.scrollToBottom();
+      }, 280);
+      return;
+    }
+
+    // mixed_concept → temperature not supported
+    if (pending.type === 'mixed_concept' && String(choice.value).toLowerCase() === 'temperature') {
+      this.isTyping = false;
+      this.pushAssistant(
+        `Temperature isn’t available in this chat yet. Ask me about <strong>rainfall</strong> for that place instead.`
+      );
+      this.scrollToBottom();
+      return;
+    }
+
+    // Did you mean Chennai? → Yes continues with corrected place; No asks to rephrase
+    if (pending.type === 'did_you_mean') {
+      const confirmed = String(choice.value).toLowerCase() === 'yes';
+      if (!confirmed) {
+        this.isTyping = false;
+        this.pushAssistant(
+          `Okay — please type the correct place name and ask again ` +
+            `(for example: <em>Chennai</em>, <em>Madurai</em>, or <em>Maharashtra</em>).`
+        );
+        this.scrollToBottom();
+        return;
+      }
+      const nextQuestion = this.buildClarifiedQuestion(pending, choice);
+      this.isTyping = true;
+      this.scrollToBottom();
+      this.askBackend(nextQuestion);
+      return;
+    }
+
+    const nextQuestion = this.buildClarifiedQuestion(pending, choice);
+    this.isTyping = true;
+    this.scrollToBottom();
+    this.askBackend(nextQuestion);
+  }
+
+  private matchBackendClarifyFreeText(
+    text: string,
+    pending: PendingBackendClarify
+  ): ClarificationChoice | null {
+    const t = text.trim().toLowerCase().replace(/[?.!,]+$/g, '');
+    if (!t) return null;
+
+    if (pending.type === 'did_you_mean') {
+      if (/^(y|yes|yeah|yep|correct|confirm|ok|okay|sure)$/i.test(t)) {
+        return {
+          id: 'did_you_mean_yes',
+          label: 'Yes',
+          value: 'yes',
+        };
+      }
+      if (/^(n|no|nope|wrong|cancel)$/i.test(t)) {
+        return {
+          id: 'did_you_mean_no',
+          label: 'No',
+          value: 'no',
+        };
+      }
+      return null;
+    }
+
+    if (pending.type === 'suspicious_rainfall_value') {
+      const suggested = pending.suggestion != null ? Number(pending.suggestion) : NaN;
+      const original = pending.originalValue != null ? Number(pending.originalValue) : NaN;
+      if (
+        /^(y|yes|yeah|yep|correct|ok|okay|sure)(\s*,?\s*\d+(\.\d+)?\s*mm)?$/i.test(t) ||
+        (Number.isFinite(suggested) &&
+          new RegExp(`^(yes[,\\s]*)?${suggested}(\\s*mm)?$`, 'i').test(t))
+      ) {
+        return {
+          id: 'sus_yes',
+          label: Number.isFinite(suggested) ? `Yes, ${suggested} mm` : 'Yes',
+          value: Number.isFinite(suggested) ? suggested : 'yes',
+        };
+      }
+      if (
+        /^(n|no|nope|keep|keep\s+it)$/i.test(t) ||
+        (Number.isFinite(original) &&
+          new RegExp(`^(keep[,\\s]*)?${original}(\\s*mm)?$`, 'i').test(t))
+      ) {
+        return {
+          id: 'sus_keep',
+          label: Number.isFinite(original) ? `Keep ${original} mm` : 'Keep',
+          value: Number.isFinite(original) ? original : 'keep',
+        };
+      }
+      return null;
+    }
+
+    if (pending.type === 'ambiguous_timeframe' || pending.type === 'which_month') {
+      const map: Array<{ re: RegExp; label: string; value: string }> = [
+        { re: /^today$/, label: 'Today', value: 'today' },
+        { re: /^yesterday$/, label: 'Yesterday', value: 'yesterday' },
+        {
+          re: /^(last\s*7\s*days?|this\s*week|past\s*7\s*days?)$/,
+          label: 'Last 7 days',
+          value: 'last 7 days',
+        },
+        { re: /^this\s*month$/, label: 'This month', value: 'this month' },
+        { re: /^last\s*month$/, label: 'Last month', value: 'last month' },
+        {
+          re: /^(specific\s*month|pick\s*a\s*month|choose\s*month)$/,
+          label: 'Specific month',
+          value: 'specific_month',
+        },
+        { re: /^historical$/, label: 'Season so far', value: 'season so far' },
+        { re: /^season(\s+so\s+far)?$/, label: 'Season so far', value: 'season so far' },
+        { re: /^monthly$/, label: 'This month', value: 'this month' },
+      ];
+      for (const item of map) {
+        if (item.re.test(t)) {
+          return { id: `tf_${item.value}`, label: item.label, value: item.value };
+        }
+      }
+      // "July 2026" / "month of July"
+      if (
+        /\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(
+          t
+        )
+      ) {
+        return { id: 'tf_month', label: text.trim(), value: text.trim() };
+      }
+    }
+
+    return null;
+  }
+
+  private buildClarifiedQuestion(
+    pending: PendingBackendClarify,
+    choice: ClarificationChoice
+  ): string {
+    const original = pending.originalQuestion.trim();
+    const value = choice.value != null ? String(choice.value) : choice.label;
+    const base = original.replace(/[?.!]+$/, '').trim();
+
+    switch (pending.type) {
+      case 'did_you_mean': {
+        const from = pending.from || pending.input;
+        const to = pending.to || pending.suggestion || value;
+        if (from && to) {
+          const replaced = original.replace(
+            new RegExp(`\\b${this.escapeRegExp(String(from))}\\b`, 'ig'),
+            String(to)
+          );
+          if (replaced !== original) return replaced;
+        }
+        return to ? `${base.replace(/\bchenai\b/gi, String(to))}`.trim() : base;
+      }
+      case 'ambiguous_timeframe':
+      case 'which_month': {
+        // Drop picker tokens / bare months before appending the chosen period
+        const cleaned = base
+          .replace(/\bspecific[_\s-]?month\b/gi, ' ')
+          .replace(/\byear\s+20\d{2}\b/gi, ' ')
+          .replace(
+            /\b(?:at|in|for|during)\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+\d{4})?\b/gi,
+            ' '
+          )
+          .replace(
+            /\bmonth\s+of\s+(january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/gi,
+            ' '
+          )
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        let period = String(value || '').trim();
+
+        // Year shortcut → ask backend to show that year's months
+        if (/^specific_month\s+20\d{2}$/i.test(period) || /^year\s+20\d{2}$/i.test(period)) {
+          const y = (period.match(/20\d{2}/) || [])[0];
+          return `${cleaned} specific_month ${y}`.trim();
+        }
+
+        // Normalize chip values so they stay period cues, not part of the place name
+        const periodAliases: Record<string, string> = {
+          monthly: 'this month',
+          historical: 'season so far',
+          history: 'season so far',
+          seasonal: 'season so far',
+          today: 'today',
+          yesterday: 'yesterday',
+          'last 7 days': 'last 7 days',
+          'this month': 'this month',
+          'last month': 'last month',
+          'season so far': 'season so far',
+        };
+        const aliasKey = period.toLowerCase();
+        if (periodAliases[aliasKey]) {
+          period = periodAliases[aliasKey];
+        }
+
+        // Normalize free-typed / chip "March 2024" → "month of March 2024"
+        if (
+          /^(january|february|march|april|may|june|july|august|september|october|november|december)(\s+\d{4})?$/i.test(
+            period
+          )
+        ) {
+          period = `month of ${period}`;
+        }
+        if (
+          /^month\s+of\s+(january|february|march|april|may|june|july|august|september|october|november|december)(\s+\d{4})?$/i.test(
+            period
+          ) === false &&
+          /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}$/i.test(
+            period
+          )
+        ) {
+          period = `month of ${period}`;
+        }
+
+        // Prefer "this month rainfall in goa" style when the base already has a place
+        if (
+          /^(today|yesterday|historical|this month|last month|last 7 days|season so far)$/i.test(
+            period
+          )
+        ) {
+          if (/\b(rain|rainfall)\b/i.test(cleaned)) {
+            return cleaned.replace(
+              /\b(rain|rainfall)\b/i,
+              `${period} $1`
+            );
+          }
+          return `${cleaned} ${period}`.trim();
+        }
+
+        return `${cleaned} ${period}`.trim();
+      }
+      case 'ambiguous_location':
+        if (/^all[- ]?india$/i.test(value)) {
+          return /\b(all[- ]?india|country|pan[- ]?india)\b/i.test(original)
+            ? original
+            : `${base} all-India`;
+        }
+        return `${base} for ${value}`;
+      case 'invalid_location': {
+        const input = pending.input;
+        if (input) {
+          const replaced = original.replace(new RegExp(this.escapeRegExp(input), 'ig'), value);
+          if (replaced !== original) return replaced;
+        }
+        if (pending.suggestion && choice.label === pending.suggestion) {
+          return original.replace(
+            new RegExp(this.escapeRegExp(pending.suggestion), 'ig'),
+            value
+          );
+        }
+        return `${value} rainfall today`;
+      }
+      case 'suspicious_rainfall_value': {
+        const origVal = pending.originalValue;
+        const chosen = String(value).trim();
+        const chosenNum = Number(chosen);
+        const origNum = origVal != null ? Number(origVal) : NaN;
+
+        // Replace "4000mm" / "4000 mm" / "4000 millimetres" (word-boundary alone fails on 4000mm)
+        if (origVal != null && Number.isFinite(chosenNum)) {
+          const replaced = original.replace(
+            new RegExp(
+              `\\b${this.escapeRegExp(String(origVal))}\\s*(mm|millimet(?:er|re)s?)\\b`,
+              'i'
+            ),
+            `${chosenNum} mm`
+          );
+          if (replaced !== original) {
+            // Keeping the same high value → mark confirmed so backend won't re-ask
+            if (Number.isFinite(origNum) && chosenNum === origNum) {
+              return `${replaced} confirmed_rainfall_mm`.trim();
+            }
+            return replaced;
+          }
+          // Fallback: bare number without unit glued
+          const bare = original.replace(
+            new RegExp(`\\b${this.escapeRegExp(String(origVal))}\\b`),
+            chosen
+          );
+          if (bare !== original) {
+            if (Number.isFinite(origNum) && chosenNum === origNum) {
+              return `${bare} confirmed_rainfall_mm`.trim();
+            }
+            return bare;
+          }
+        }
+        return original;
+      }
+      case 'mixed_concept':
+        return base
+          .replace(
+            /\b(temp|temperature|hot|cold|celsius|fahrenheit|°c|°f)\b/gi,
+            ''
+          )
+          .replace(/\s+/g, ' ')
+          .trim();
+      default:
+        return `${base} ${value}`.trim();
+    }
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private resolveClarification(
@@ -1066,8 +1589,39 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     return text.includes("I didn't catch a precise match");
   }
 
+  /** Banner when backend soft-corrected a place name (chenai → Chennai). */
+  private formatDidYouMeanBanner(res: OllamaChatResponse): string {
+    const prompt =
+      res?.did_you_mean?.prompt ||
+      (res?.did_you_mean?.to
+        ? `Did you mean ${res.did_you_mean.to}?`
+        : res?.location_correction?.to
+        ? `Did you mean ${res.location_correction.to}?`
+        : '');
+    if (!prompt) return '';
+    return `<p class="did-you-mean"><em>${this.escapeHtml(prompt)}</em></p>`;
+  }
+
+  /** Drop a leading "Did you mean …?" from answer text when the banner already shows it. */
+  private stripLeadingDidYouMean(answer: string, res: OllamaChatResponse): string {
+    if (!res?.did_you_mean?.prompt && !res?.did_you_mean?.to && !res?.location_correction?.to) {
+      return answer;
+    }
+    return String(answer || '')
+      .replace(/^\s*did you mean[^\n?]*\??\s*/i, '')
+      .trim();
+  }
+
   private formatApiAnswer(res: OllamaChatResponse): FormattedAnswer {
-    const answer = (res?.answer || res?.message || 'No answer returned.').trim();
+    const rawAnswer = (res?.answer || res?.message || 'No answer returned.').trim();
+    const didYouMean = this.formatDidYouMeanBanner(res);
+    const answer = this.stripLeadingDidYouMean(rawAnswer, res);
+
+    // Clarify payloads are handled separately — never invent a nav / data card.
+    if (this.isClarifyResponse(res)) {
+      return { text: this.escapeAndLightFormat(answer) };
+    }
+
     const rows: ApiDataRow[] = Array.isArray(res?.api?.data) ? res.api!.data! : [];
     const postProcess = res?.action?.post_process;
     const isNav =
@@ -1088,6 +1642,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         '';
       const path = this.resolveAppRoute(catalogPath);
       const text =
+        didYouMean +
         `<p><strong>${this.escapeHtml(String(product))}</strong> is available in iRAINS.</p>` +
         (path
           ? `<p class="nav-path">Route: <code>${this.escapeHtml(path)}</code></p>`
@@ -1115,6 +1670,53 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     };
 
     // Prefer structured API rows for deficient / excess / multi-district lists
+    if (postProcess?.type === 'filter_by_departure_category' && rows.length === 0) {
+      const cats = postProcess.categories?.join(' / ') || 'that category';
+      const place =
+        (res.action?.post_filter as { district_name?: string; state_name?: string } | undefined)
+          ?.district_name ||
+        (res.action?.post_filter as { state_name?: string } | undefined)?.state_name ||
+        (res.api as { category_miss?: { name?: string } } | undefined)?.category_miss
+          ?.name ||
+        'the selected area';
+      const start = (res.action?.body?.['startDate'] as string) || '';
+      const end = (res.action?.body?.['endDate'] as string) || '';
+      const date =
+        res.api?.usedDate ||
+        (start && end && start !== end ? `${start} to ${end}` : start) ||
+        '';
+      const miss = (res.api as { category_miss?: { category?: string; departure?: number } } | undefined)
+        ?.category_miss;
+
+      let text = didYouMean;
+      if (miss?.category) {
+        const dep =
+          miss.departure != null
+            ? ` (departure ${miss.departure > 0 ? '+' : ''}${Number(miss.departure).toFixed(1)}%)`
+            : '';
+        text +=
+          `<p><strong>${this.escapeHtml(String(place))}</strong> was not in ` +
+          `<strong class="${this.categoryTextClass(cats)}">${this.escapeHtml(cats)}</strong>` +
+          (date ? ` for <strong>${this.escapeHtml(String(date))}</strong>` : '') +
+          `.</p>` +
+          `<p>It was <strong class="${this.categoryTextClass(miss.category)}">${this.escapeHtml(
+            miss.category
+          )}</strong>${dep}.</p>` +
+          `<p class="clarify-hint">Rainfall data is available — it just was not ${this.escapeHtml(
+            cats
+          )}.</p>`;
+      } else {
+        text +=
+          `<p>No <strong class="${this.categoryTextClass(cats)}">${this.escapeHtml(
+            cats
+          )}</strong> for <strong>${this.escapeHtml(String(place))}</strong>` +
+          (date ? ` on <strong>${this.escapeHtml(String(date))}</strong>` : '') +
+          `.</p>` +
+          `<p class="clarify-hint">Rainfall data for this place/date was not found.</p>`;
+      }
+      return withSource({ text });
+    }
+
     if (
       rows.length > 1 ||
       postProcess?.type === 'filter_by_departure_category'
@@ -1146,7 +1748,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
           }.</p>`;
 
       return withSource({
-        text: intro,
+        text: didYouMean + intro,
         listItems,
       });
     }
@@ -1176,22 +1778,24 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
           `<p>For <strong>${this.escapeHtml(String(name))}</strong>` +
           (date ? ` on <strong>${this.escapeHtml(String(date))}</strong>` : '') +
           `:</p>`;
-        return withSource({ text: intro + this.formatRowSummaryList(row) });
+        return withSource({
+          text: didYouMean + intro + this.formatRowSummaryList(row),
+        });
       }
 
-      return withSource({ text: this.escapeAndLightFormat(answer) });
+      return withSource({ text: didYouMean + this.escapeAndLightFormat(answer) });
     }
 
     // Parse long Ollama "* item * item" walls into a crisp expandable list
     const parsed = this.parseAnswerBulletList(answer);
     if (parsed.items.length > this.listPreviewCount) {
       return withSource({
-        text: `<p>${this.escapeHtml(parsed.intro)}</p>`,
+        text: didYouMean + `<p>${this.escapeHtml(parsed.intro)}</p>`,
         listItems: parsed.items.map((item) => this.formatParsedListItem(item)),
       });
     }
 
-    return withSource({ text: this.escapeAndLightFormat(answer) });
+    return withSource({ text: didYouMean + this.escapeAndLightFormat(answer) });
   }
 
   /** Map catalog route placeholders onto real Angular routes. */
@@ -1426,7 +2030,16 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
   }
 
   private escapeAndLightFormat(text: string): string {
-    const escaped = this.escapeHtml(text);
+    const escaped = this.escapeHtml(text).replace(/\r\n/g, '\n');
+    // Preserve multi-line clarify / backend answers
+    if (escaped.includes('\n')) {
+      return escaped
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => `<p>${line}</p>`)
+        .join('');
+    }
     // Split on sentence boundaries for readability when long
     if (escaped.length > 180 && escaped.includes('. ')) {
       const parts = escaped.split(/(?<=\.)\s+/);
