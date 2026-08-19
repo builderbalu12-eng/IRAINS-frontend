@@ -1,5 +1,4 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
@@ -23,10 +22,7 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
   messageType: 'success' | 'error' = 'success';
 
   // Employee identification modal
-  showEmpModal = false;
-  empSubmitting = false;
-  empFormError = '';
-  empIdentificationForm: FormGroup;
+  showEmpModal = true;
 
   // Station data — flat across the whole [fromDate, toDate] range, each row
   // carries its own collection_date; pivoted into station-rows × date-columns
@@ -91,7 +87,7 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
 
   private baseUrl = environment.baseUrl;
   private activityUser: AdminActivityUser | null = null;
-  private readonly pageRoute = '/data-management/calculation-mode';
+  readonly pageRoute = '/data-management/calculation-mode';
   /** Prevents programmatic checkbox revert from firing a second POST */
   private suppressToggleChange = false;
   private realtimeSub?: Subscription;
@@ -101,38 +97,16 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private activityLog: AdminActivityLogService,
     private adminRealtime: AdminRealtimeService,
-    private fb: FormBuilder,
-  ) {
-    this.empIdentificationForm = this.fb.group({
-      emp_name: ['', Validators.required],
-      emp_designation: ['', Validators.required],
-      emp_phone_number: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
-      remark: ['', Validators.required],
-    });
-  }
+  ) {}
 
   ngOnInit(): void {
-    // First entry this session → show popup. After Continue once → skip.
-    if (this.activityLog.hasConfirmedIdentification(this.pageRoute)) {
-      const stored = this.activityLog.getStoredUser(this.pageRoute);
-      if (this.activityLog.isCompleteUser(stored)) {
-        this.activityUser = stored;
-        this.prefillEmployeeForm();
-        this.showEmpModal = false;
-        this.adminRealtime.onOfficerIdentified(this.pageRoute, stored!);
-        this.initPage();
-        this.calcMode.recordOfficerAccess(this.activityLog.toApiPayload(stored!)).subscribe({
-          error: () => undefined,
-        });
-        this.bindRealtime();
-        return;
-      }
-    }
-
-    this.activityUser = null;
-    this.prefillEmployeeForm();
-    this.showEmpModal = true;
     this.bindRealtime();
+  }
+
+  onOfficerIdentified(user: AdminActivityUser): void {
+    this.activityUser = user;
+    this.showEmpModal = false;
+    this.initPage();
   }
 
   private bindRealtime(): void {
@@ -158,59 +132,11 @@ export class CalculationModeComponent implements OnInit, OnDestroy {
     this.realtimeSub?.unsubscribe();
   }
 
-  private prefillEmployeeForm(): void {
-    const stored = this.activityLog.getStoredUser(this.pageRoute);
-    if (!stored) return;
-    this.empIdentificationForm.patchValue({
-      emp_name: stored.emp_name,
-      emp_designation: stored.emp_designation,
-      emp_phone_number: stored.emp_phone_number,
-      remark: stored.remark ?? '',
-    });
-  }
-
-  submitEmployeeForm(): void {
-    if (this.empSubmitting) return;
-
-    this.empFormError = '';
-
-    if (this.empIdentificationForm.invalid) {
-      this.empIdentificationForm.markAllAsTouched();
-      this.empFormError = 'Please fill in all required fields correctly.';
-      return;
-    }
-
-    this.empSubmitting = true;
-
-    const { emp_name, emp_designation, emp_phone_number, remark } = this.empIdentificationForm.getRawValue();
-    this.activityUser = this.activityLog.buildUserFromForm({
-      emp_name: emp_name.trim(),
-      emp_designation: emp_designation.trim(),
-      emp_phone_number: String(emp_phone_number).replace(/\D/g, ''),
-      remark: remark.trim(),
-    });
-
-    this.calcMode.recordOfficerAccess(this.activityLog.toApiPayload(this.activityUser)).subscribe({
-      next: () => {
-        this.empSubmitting = false;
-        this.activityLog.markIdentified(this.activityUser!, this.pageRoute);
-        this.adminRealtime.onOfficerIdentified(this.pageRoute, this.activityUser!);
-        this.showEmpModal = false;
-        this.initPage();
-      },
-      error: () => {
-        this.empSubmitting = false;
-        this.empFormError = 'Failed to save your details. Please try again.';
-      },
-    });
-  }
-
   onToggleChange(): void {
     if (this.suppressToggleChange || this.saving) return;
 
     if (!this.activityUser) {
       this.showEmpModal = true;
-      this.empFormError = 'Please enter your officer details before changing calculation mode.';
       this.revertToggle();
       return;
     }

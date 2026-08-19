@@ -82,6 +82,10 @@ export class AdminPageActivityPanelComponent implements OnInit, OnChanges, OnDes
     this.loadLogs();
   }
 
+  openPassKeyLogin(): void {
+    this.activityLog.requestPassKeyLogin(this.angularPath);
+  }
+
   get recentCount(): number {
     return this.logs.length;
   }

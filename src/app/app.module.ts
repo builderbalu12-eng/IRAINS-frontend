@@ -222,6 +222,7 @@ import { NewRegisterComponent } from './main/permissions/new-register/new-regist
 import { RoleManagementComponent } from './main/permissions/role-management/role-management.component';
 import { RouteManagementComponent } from './main/permissions/route-management/route-management.component';
 import { SchedulerManagementComponent } from './main/data-management/scheduler-management/scheduler-management.component';
+import { OfficerPassKeyManagementComponent } from './main/data-management/officer-pass-key-management/officer-pass-key-management.component';
 
 // import { DistrictMapComponent } from './app';
 // import { AppDistrictMapComponent } from './app-district-map/app-district-map.component';
@@ -415,6 +416,7 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     RoleManagementComponent,
     RouteManagementComponent,
     SchedulerManagementComponent,
+    OfficerPassKeyManagementComponent,
   ],
   imports: [
     MatCardModule,

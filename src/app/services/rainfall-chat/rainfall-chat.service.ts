@@ -20,6 +20,10 @@ export interface OllamaChatAction {
   post_process?: {
     type?: string;
     categories?: string[];
+    activities?: string[];
+    limit?: number;
+    order?: string;
+    min_mm?: number;
   } | null;
   product_name?: string;
   route_path?: string;
@@ -38,6 +42,7 @@ export interface OllamaChatApiResult {
   row_count?: number | null;
   note?: string | null;
   usedDate?: string | null;
+  truncated?: boolean;
   category_miss?: {
     name?: string | null;
     departure?: number | null;
@@ -121,6 +126,8 @@ export interface OllamaChatResponse {
 
 export interface SampleQuestions {
   rainfall?: string[];
+  /** Rankings + spatial + monsoon sample questions from backend catalog. */
+  spatial_monsoon?: string[];
   navigation?: string[];
 }
 

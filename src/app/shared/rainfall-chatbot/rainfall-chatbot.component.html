@@ -5,7 +5,7 @@
   [class.open]="open"
   (click)="toggle()"
   [attr.aria-expanded]="open"
-  aria-label="Open Varsha rainfall assistant"
+  aria-label="Open IRAINS rainfall assistant"
 >
   <span class="fab-orb" aria-hidden="true">
     <span class="fab-ripple"></span>
@@ -14,12 +14,12 @@
   </span>
   <span class="fab-copy">
     <span class="fab-kicker">iRAINS</span>
-    <span class="fab-title">{{ open ? 'Close' : 'Ask Varsha' }}</span>
+    <span class="fab-title">{{ open ? 'Close' : 'Ask IRAINS' }}</span>
   </span>
 </button>
 
 <!-- Panel -->
-<aside class="varsha-panel" [class.open]="open" role="dialog" aria-label="Varsha rainfall assistant">
+<aside class="varsha-panel" [class.open]="open" role="dialog" aria-label="IRAINS rainfall assistant">
   <header class="varsha-header">
     <div class="rain-sky" aria-hidden="true">
       <span
@@ -40,7 +40,7 @@
         </div>
         <div>
           <p class="kicker">Rainfall companion</p>
-          <h2>Varsha</h2>
+          <h2>IRAINS</h2>
           <p class="status">
             <span class="pulse" [class.offline]="ollamaReady === false"></span>
             Live · {{ dataMode }}
@@ -67,7 +67,7 @@
       [class.assistant]="m.role === 'assistant'"
     >
       <div class="bubble-meta" *ngIf="m.role === 'assistant'">
-        <i class="bi bi-droplet-half"></i> Varsha · {{ m.time }}
+        <i class="bi bi-droplet-half"></i> IRAINS · {{ m.time }}
       </div>
       <div class="bubble-meta user-meta" *ngIf="m.role === 'user'">You · {{ m.time }}</div>
 
@@ -130,7 +130,7 @@
       <span class="typing-dots">
         <i></i><i></i><i></i>
       </span>
-      <span class="typing-label">Varsha is analyzing the data…</span>
+      <span class="typing-label">IRAINS is analyzing the data…</span>
     </div>
 
     <div #messagesEnd></div>
@@ -143,7 +143,7 @@
         rows="1"
         [(ngModel)]="inputText"
         (keydown)="onKeydown($event)"
-        placeholder="Ask rainfall, or Where is monsoon activity?"
+        placeholder="Ask rainfall, rankings, monsoon, or Where is…?"
         [disabled]="isTyping"
       ></textarea>
       <button

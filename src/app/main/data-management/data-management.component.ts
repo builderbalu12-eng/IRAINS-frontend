@@ -110,6 +110,7 @@ export class DataManagementComponent implements OnInit, OnDestroy {
         { label: 'Role Management',  icon: 'bi bi-person-badge-fill',  route: '/data-management/role-management' },
         { label: 'Route Management', icon: 'bi bi-signpost-2-fill',    route: '/data-management/route-management' },
         { label: 'New Register',     icon: 'bi bi-person-plus-fill',   route: '/data-management/new-register' },
+        { label: 'Officer Pass Keys', icon: 'bi bi-key-fill',          route: '/data-management/officer-pass-keys' },
       ]
     },
   ];

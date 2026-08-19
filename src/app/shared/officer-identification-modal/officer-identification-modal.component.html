@@ -1,43 +1,195 @@
-<div class="oid-modal-backdrop" *ngIf="visible && !skipModal">
+<div class="oid-modal-backdrop" *ngIf="showBackdrop">
   <div class="oid-modal" (click)="$event.stopPropagation()">
     <div class="oid-modal-header">
-      <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Officer Identification</h5>
+      <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>{{ title }}</h5>
     </div>
     <div class="oid-modal-body">
-      <p class="oid-modal-desc">
-        Please enter your details before accessing {{ pageLabel }}. This information is recorded in the admin activity log.
-      </p>
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <fieldset [disabled]="submitting">
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Employee Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" formControlName="emp_name"
-                   placeholder="Enter your full name" autocomplete="name" />
+
+      <!-- Login: Pass Key + Remarks -->
+      <ng-container *ngIf="view === 'login'">
+        <p class="oid-modal-desc">
+          Enter your 4-digit Pass Key and Reason/Remarks to access {{ pageLabel }}.
+        </p>
+        <form [formGroup]="loginForm" (ngSubmit)="submitLogin()">
+          <fieldset [disabled]="submitting">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Pass Key <span class="text-danger">*</span></label>
+              <input type="text" class="form-control oid-passkey-input" formControlName="pass_key"
+                     placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="one-time-code"
+                     (input)="onPassKeyInput($event)" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Reason / Remarks <span class="text-danger">*</span></label>
+              <textarea class="form-control" formControlName="remark" rows="3"
+                        placeholder="Enter reason for accessing this page"></textarea>
+            </div>
+          </fieldset>
+          <div *ngIf="formError" class="alert alert-danger py-2 small mb-3">
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ formError }}
+            <button *ngIf="formError.includes('Forgot Pass Key')" type="button"
+                    class="btn btn-link btn-sm p-0 ms-1 align-baseline" (click)="goToForgotFromError()">
+              Recover it
+            </button>
           </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Employee Designation <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" formControlName="emp_designation"
-                   placeholder="e.g. Scientist, Meteorologist" autocomplete="organization-title" />
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Employee Phone Number <span class="text-danger">*</span></label>
-            <input type="tel" class="form-control" formControlName="emp_phone_number"
-                   placeholder="10-digit mobile number" maxlength="10" autocomplete="tel" />
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Remarks <span class="text-danger">*</span></label>
-            <textarea class="form-control" formControlName="remark" rows="3"
-                      placeholder="Enter reason for accessing this page"></textarea>
-          </div>
-        </fieldset>
-        <div *ngIf="formError" class="alert alert-danger py-2 small mb-3">
-          <i class="bi bi-exclamation-triangle me-1"></i>{{ formError }}
+          <button type="submit" class="btn btn-primary w-100" [disabled]="submitting">
+            <span *ngIf="submitting" class="spinner-border spinner-border-sm me-1"></span>
+            {{ submitting ? 'Verifying...' : 'Continue' }}
+          </button>
+        </form>
+        <div class="oid-links">
+          <button type="button" class="btn btn-link btn-sm px-0" (click)="setView('create')">Create Pass Key</button>
+          <span class="oid-link-sep">·</span>
+          <button type="button" class="btn btn-link btn-sm px-0" (click)="setView('forgot')">Forgot Pass Key</button>
+          <span class="oid-link-sep">·</span>
+          <button type="button" class="btn btn-link btn-sm px-0" (click)="setView('reset')">Reset Pass Key</button>
         </div>
-        <button type="submit" class="btn btn-primary w-100" [disabled]="submitting">
-          <span *ngIf="submitting" class="spinner-border spinner-border-sm me-1"></span>
-          {{ submitting ? 'Saving...' : 'Continue' }}
+      </ng-container>
+
+      <!-- Create Pass Key -->
+      <ng-container *ngIf="view === 'create'">
+        <p class="oid-modal-desc">
+          Fill in your officer details once. HQ will review your request and email you a 4-digit Pass Key after approval.
+          You cannot enter Data Management until HQ approves.
+        </p>
+        <form [formGroup]="createForm" (ngSubmit)="submitCreate()">
+          <fieldset [disabled]="submitting">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Employee Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="emp_name"
+                     placeholder="Enter your full name" autocomplete="name" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Employee Designation <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="emp_designation"
+                     placeholder="e.g. Scientist, Meteorologist" autocomplete="organization-title" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Employee Phone Number <span class="text-danger">*</span></label>
+              <input type="tel" class="form-control" formControlName="emp_phone_number"
+                     placeholder="10-digit mobile number" maxlength="10" autocomplete="tel" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Email</label>
+              <input type="email" class="form-control" formControlName="emp_email"
+                     placeholder="Optional — used to email your Pass Key" autocomplete="email" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Reason / Remarks <span class="text-danger">*</span></label>
+              <textarea class="form-control" formControlName="remark" rows="3"
+                        placeholder="Enter reason for accessing this page"></textarea>
+            </div>
+          </fieldset>
+          <div *ngIf="formError" class="alert alert-danger py-2 small mb-3">
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ formError }}
+            <button *ngIf="formError.includes('Forgot Pass Key')" type="button"
+                    class="btn btn-link btn-sm p-0 ms-1 align-baseline" (click)="goToForgotFromError()">
+              Recover it
+            </button>
+          </div>
+          <button type="submit" class="btn btn-primary w-100" [disabled]="submitting">
+            <span *ngIf="submitting" class="spinner-border spinner-border-sm me-1"></span>
+            {{ submitting ? 'Submitting...' : 'Submit for HQ Approval' }}
+          </button>
+        </form>
+        <button type="button" class="btn btn-link btn-sm px-0 mt-2" (click)="setView('login')">
+          ← Back to Pass Key login
         </button>
-      </form>
+      </ng-container>
+
+      <!-- Forgot / Reset -->
+      <ng-container *ngIf="view === 'forgot' || view === 'reset'">
+        <p class="oid-modal-desc" *ngIf="view === 'forgot'">
+          Enter your name and registered phone number or email to recover your Pass Key.
+        </p>
+        <p class="oid-modal-desc" *ngIf="view === 'reset'">
+          Enter your name and registered phone number or email. HQ must approve before a new Pass Key is issued.
+          Your current Pass Key stays valid until HQ approves the reset.
+        </p>
+        <form [formGroup]="recoverForm" (ngSubmit)="submitRecover()">
+          <fieldset [disabled]="submitting">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Employee Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="emp_name"
+                     placeholder="Name used when the Pass Key was created" autocomplete="name" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Phone Number</label>
+              <input type="tel" class="form-control" formControlName="emp_phone_number"
+                     placeholder="10-digit mobile number" maxlength="10" autocomplete="tel" />
+            </div>
+            <div class="mb-2 text-center text-muted small">or</div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Email</label>
+              <input type="email" class="form-control" formControlName="emp_email"
+                     placeholder="Registered email" autocomplete="email" />
+            </div>
+          </fieldset>
+          <div *ngIf="formError" class="alert alert-danger py-2 small mb-3">
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ formError }}
+          </div>
+          <button type="submit" class="btn btn-primary w-100" [disabled]="submitting">
+            <span *ngIf="submitting" class="spinner-border spinner-border-sm me-1"></span>
+            {{ submitting ? 'Please wait...' : (view === 'reset' ? 'Submit Reset for HQ Approval' : 'Recover Pass Key') }}
+          </button>
+        </form>
+        <button type="button" class="btn btn-link btn-sm px-0 mt-2" (click)="setView('login')">
+          ← Back to Pass Key login
+        </button>
+      </ng-container>
+
+      <!-- HQ approval pending (after Create — do not enter Data Management) -->
+      <ng-container *ngIf="view === 'pending'">
+        <div class="alert alert-warning py-3 mb-3">
+          <i class="bi bi-hourglass-split me-2"></i>
+          <strong>Waiting for HQ approval</strong>
+        </div>
+        <p class="oid-modal-desc mb-3">{{ formSuccess }}</p>
+        <ol class="oid-pending-steps small text-muted">
+          <li>HQ receives an email with <strong>Approve</strong> and <strong>Reject</strong> links.</li>
+          <li *ngIf="pendingIsReset">Until HQ approves, your <strong>current Pass Key still works</strong>.</li>
+          <li *ngIf="!pendingIsReset">After approval, your 4-digit Pass Key is generated and emailed to you.</li>
+          <li *ngIf="pendingIsReset">After approval, a <strong>new</strong> 4-digit Pass Key is emailed — the old one stops working.</li>
+          <li>Return here and use <strong>Pass Key login</strong> with the approved code + remarks.</li>
+        </ol>
+        <button type="button" class="btn btn-primary w-100" (click)="backToLoginFromPending()">
+          Back to Pass Key login
+        </button>
+        <p class="oid-modal-desc small mt-3 mb-0 text-center">
+          Do not close this tab if you are waiting — you will need to log in with your Pass Key once HQ approves.
+        </p>
+      </ng-container>
+
+      <!-- Revealed Pass Key (Forgot / Reset only) -->
+      <ng-container *ngIf="view === 'revealed'">
+        <div *ngIf="formSuccess" class="alert alert-success py-2 small mb-3">
+          <i class="bi bi-check-circle me-1"></i>{{ formSuccess }}
+        </div>
+        <div class="oid-key-card">
+          <span class="oid-key-label">Your 4-digit Pass Key</span>
+          <div class="oid-key-value">{{ revealedKey }}</div>
+          <button type="button" class="btn btn-sm btn-outline-primary mt-2" (click)="copyPassKey()">
+            <i class="bi" [ngClass]="copied ? 'bi-check2' : 'bi-clipboard'"></i>
+            {{ copied ? 'Copied' : 'Copy' }}
+          </button>
+        </div>
+        <form [formGroup]="loginForm" (ngSubmit)="continueAfterReveal()">
+          <fieldset [disabled]="submitting">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Reason / Remarks <span class="text-danger">*</span></label>
+              <textarea class="form-control" formControlName="remark" rows="3"
+                        placeholder="Enter reason for accessing this page"></textarea>
+            </div>
+          </fieldset>
+          <div *ngIf="formError" class="alert alert-danger py-2 small mb-3">
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ formError }}
+          </div>
+          <button type="submit" class="btn btn-primary w-100" [disabled]="submitting">
+            <span *ngIf="submitting" class="spinner-border spinner-border-sm me-1"></span>
+            {{ submitting ? 'Saving...' : 'Continue' }}
+          </button>
+        </form>
+      </ng-container>
+
     </div>
   </div>
 </div>

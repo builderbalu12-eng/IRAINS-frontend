@@ -1,0 +1,176 @@
+<div class="page-wrap">
+  <div class="page-header mb-4 d-flex justify-content-between align-items-center">
+    <div>
+      <h4 class="mb-1"><i class="bi bi-key-fill me-2 text-purple"></i>Officer Pass Keys</h4>
+      <small class="text-muted">Manage Pass Key requests — HQ approves via email link before a 4-digit code is issued</small>
+    </div>
+    <button class="btn btn-primary" (click)="openAdd()">
+      <i class="bi bi-plus-circle me-1"></i>Create Pass Key
+    </button>
+  </div>
+
+  <div class="alert alert-success d-flex justify-content-between align-items-center" *ngIf="revealedKey">
+    <div>
+      <strong>{{ revealedName || 'Officer' }}</strong> — Pass Key
+      <span class="pk-reveal">{{ revealedKey }}</span>
+    </div>
+    <div>
+      <button class="btn btn-sm btn-outline-success me-2" (click)="copyKey(revealedKey)">Copy</button>
+      <button class="btn btn-sm btn-close" (click)="dismissReveal()" aria-label="Dismiss"></button>
+    </div>
+  </div>
+  <div class="alert alert-warning py-2" *ngIf="actionSuccess && !revealedKey && pendingNotice">{{ actionSuccess }}</div>
+  <div class="alert alert-success py-2" *ngIf="actionSuccess && !revealedKey && !pendingNotice">{{ actionSuccess }}</div>
+
+  <div class="card shadow-sm">
+    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <input type="text" class="form-control form-control-sm"
+               style="width: 240px"
+               placeholder="Search name, phone, email, key..."
+               [(ngModel)]="searchText"
+               (keyup.enter)="load(true)" />
+        <select class="form-select form-select-sm" style="width: 140px"
+                [(ngModel)]="activeFilter" (change)="load(true)">
+          <option value="">All statuses</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+        <button class="btn btn-sm btn-outline-secondary" (click)="load(true)">
+          <i class="bi bi-search"></i> Search
+        </button>
+      </div>
+      <span class="text-muted small">{{ total }} officer(s)</span>
+    </div>
+    <div class="card-body p-0">
+      <div *ngIf="isLoading" class="text-center text-muted py-4">
+        <span class="spinner-border spinner-border-sm me-2"></span>Loading Pass Keys...
+      </div>
+      <div *ngIf="loadError" class="alert alert-danger m-3">{{ loadError }}</div>
+
+      <div class="table-responsive" *ngIf="!isLoading && !loadError">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>Officer</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Pass Key</th>
+              <th>Approval</th>
+              <th>Last used</th>
+              <th>Active</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of officers">
+              <td>
+                <div class="fw-semibold">{{ row.emp_name }}</div>
+                <div class="text-muted small">{{ row.emp_designation }}</div>
+              </td>
+              <td>{{ phone(row.emp_phone_number) }}</td>
+              <td>{{ row.emp_email || '—' }}</td>
+              <td>
+                <ng-container *ngIf="row.pass_key && row.approval_status !== 'pending'; else noKey">
+                  <code class="pk-code">{{ row.pass_key }}</code>
+                  <button class="btn btn-link btn-sm p-0 ms-1" title="Copy"
+                          (click)="copyKey(row.pass_key)">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </ng-container>
+                <ng-template #noKey>
+                  <span class="text-muted small">Not issued yet</span>
+                </ng-template>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="approvalBadgeClass(row.approval_status, row.pending_request_type)">
+                  {{ approvalLabel(row.approval_status, row.pending_request_type) }}
+                </span>
+              </td>
+              <td>
+                <span *ngIf="row.last_used_at">{{ row.last_used_at | date:'medium' }}</span>
+                <span *ngIf="!row.last_used_at" class="text-muted">Never</span>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="row.is_active ? 'bg-success' : 'bg-secondary'">
+                  {{ row.is_active ? 'Yes' : 'No' }}
+                </span>
+              </td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-outline-primary me-1" title="Edit"
+                        [disabled]="busyId === row.id" (click)="openEdit(row)">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-warning me-1" title="Request HQ reset approval"
+                        [disabled]="busyId === row.id || !row.is_active || row.approval_status !== 'approved' || row.pending_request_type === 'reset'" (click)="regenerate(row)">
+                  <i class="bi bi-arrow-repeat"></i>
+                </button>
+                <button *ngIf="row.is_active" class="btn btn-sm btn-outline-secondary me-1" title="Deactivate"
+                        [disabled]="busyId === row.id" (click)="deactivate(row)">
+                  <i class="bi bi-pause-circle"></i>
+                </button>
+                <button *ngIf="!row.is_active" class="btn btn-sm btn-outline-success me-1" title="Activate"
+                        [disabled]="busyId === row.id" (click)="activate(row)">
+                  <i class="bi bi-play-circle"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" title="Delete permanently"
+                        [disabled]="busyId === row.id" (click)="remove(row)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="!officers.length">
+              <td colspan="8" class="text-center text-muted py-4">No Pass Keys found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center" *ngIf="total > limit">
+      <span class="small text-muted">Page {{ page }} of {{ totalPages }}</span>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary me-1" [disabled]="offset === 0" (click)="prevPage()">Previous</button>
+        <button class="btn btn-sm btn-outline-secondary" [disabled]="offset + limit >= total" (click)="nextPage()">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop-custom" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="bi bi-key me-2"></i>{{ isEditing ? 'Edit officer details' : 'Create Pass Key' }}
+      </h5>
+      <button class="btn-close btn-close-white" (click)="closeModal()"></button>
+    </div>
+    <div class="modal-card-body">
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Employee Name <span class="text-danger">*</span></label>
+          <input class="form-control" formControlName="emp_name" placeholder="Full name" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Designation <span class="text-danger">*</span></label>
+          <input class="form-control" formControlName="emp_designation" placeholder="e.g. Scientist" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Phone Number <span class="text-danger">*</span></label>
+          <input class="form-control" formControlName="emp_phone_number" maxlength="10" placeholder="10-digit mobile" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Email</label>
+          <input class="form-control" formControlName="emp_email" placeholder="Optional — used for recovery email" />
+        </div>
+        <div *ngIf="actionError" class="alert alert-danger py-2 small">{{ actionError }}</div>
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline-secondary" (click)="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSaving">
+            <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+            {{ isEditing ? 'Save changes' : 'Create Pass Key' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

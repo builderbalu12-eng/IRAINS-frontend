@@ -131,6 +131,7 @@ import { RegionManagementComponent } from './main/data-management/region-managem
 import { CountryManagementComponent } from './main/data-management/country-management/country-management.component';
 import { DbInfoComponent } from './main/data-management/db-info/db-info.component';
 import { SchedulerManagementComponent } from './main/data-management/scheduler-management/scheduler-management.component';
+import { OfficerPassKeyManagementComponent } from './main/data-management/officer-pass-key-management/officer-pass-key-management.component';
 import { PermissionsComponent } from './main/permissions/permissions.component';
 import { RbacComponent } from './main/permissions/rbac/rbac.component';
 import { NewRegisterComponent } from './main/permissions/new-register/new-register.component';
@@ -192,6 +193,7 @@ export const routes: Routes = [
     { path: 'new-register',     component: NewRegisterComponent },
     { path: 'role-management',  component: RoleManagementComponent },
     { path: 'route-management', component: RouteManagementComponent },
+    { path: 'officer-pass-keys', component: OfficerPassKeyManagementComponent },
     { path: 'activity-log', component: LogInfoAdminActivityComponent, data: { embeddedInDataManagement: true } },
     { path: '', redirectTo: 'calculation-exclusion', pathMatch: 'full' }
   ]

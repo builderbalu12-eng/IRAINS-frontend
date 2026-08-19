@@ -158,6 +158,11 @@ const PRODUCT_KEYWORDS: {
     path: '/all-maps',
   },
   {
+    keywords: ['calculation mode', 'imd+aws', 'imd only', 'imd or aws'],
+    productName: 'Calculation Mode',
+    path: '/data-management/calculation-mode',
+  },
+  {
     keywords: ['daily actual state', 'actual state map'],
     productName: 'Daily Actual State Rainfall Map',
     path: '/daily-actual-state-map',
@@ -184,19 +189,50 @@ interface ApiDataRow {
   district_name?: string;
   state_name?: string;
   subdiv_name?: string;
+  subdivision_name?: string;
+  block_name?: string;
+  region_name?: string;
+  station_name?: string;
+  station_code?: string;
+  station_type?: string;
+  centre_name?: string;
+  centre_type?: string;
   name?: string;
+  code?: string;
   product_name?: string;
   route_path?: string;
   departure?: number | null;
   category?: string;
+  activity?: string;
+  spatial?: string;
+  percentage?: number | null;
   actual?: number | null;
   actual_rainfall?: number | null;
   actual_state_rainfall?: number | null;
   actual_subdiv_rainfall?: number | null;
   actual_country_rainfall?: number | null;
+  rainfall?: number | null;
+  avg_actual?: number | null;
+  data?: number | null;
+  station_count?: number | null;
   rainfall_normal_value?: number | null;
   normal_rainfall?: number | null;
   date?: string;
+  days?: Array<{ date?: string; activity?: string }>;
+  /** Centre station summary (quoted SQL aliases). */
+  'MC or RMC'?: string;
+  DATE?: string;
+  'TOTAL STATIONS'?: number;
+  'UPDATED STATIONS'?: number;
+  'NOT UPDATED STATIONS'?: number;
+  'VERIFIED STATIONS'?: number;
+  'NOT VERIFIED STATIONS'?: number;
+  use_aws?: number | boolean;
+  use_aws_label?: string;
+  min_actual?: number | null;
+  max_actual?: number | null;
+  avg_actual_rainfall?: number | null;
+  total_actual?: number | null;
 }
 
 /**
@@ -213,12 +249,15 @@ const ROUTE_ALIASES: Record<string, string> = {
   '/spatial-distribution-table': '/spatial-table',
   '/station-level-data': '/station-level-data',
   '/station-statistics': '/station-statistics',
+  '/yearlystationstatistics': '/yearlystationstatistics',
+  '/all-statistics': '/all-statistics',
   '/data-entry-verification': '/newverification',
   '/maps/annual-seasonal-monthly': '/annual-seasonal-monthly-actual-maps',
   '/all-maps-overview': '/all-maps',
   '/reports/pdf-download': '/new-email-dissemination',
   '/email-dissemination': '/new-email-dissemination',
   '/mc-rmc-regional-maps': '/state-map-mc-rmc',
+  '/data-management/calculation-mode': '/data-management/calculation-mode',
 };
 
 /**
@@ -274,6 +313,89 @@ const API_SOURCE_PAGES: Record<
   top_rainfall_stations: {
     label: 'Station Statistics',
     path: '/station-statistics',
+  },
+  fetch_station_with_max_rainfall: {
+    label: 'Station Level Data',
+    path: '/station-level-data',
+  },
+  fetch_district_station_count: {
+    label: 'All Maps Overview',
+    path: '/all-maps',
+  },
+  fetch_centre_station_summary: {
+    label: 'Data Entry / Verification',
+    path: '/newverification',
+  },
+  fetch_district_data_with_aws: {
+    label: 'Daily Departure District (Pan India) Map',
+    path: '/pan-india-region',
+  },
+  fetch_state_data_with_aws: {
+    label: 'Daily Actual State Rainfall Map',
+    path: '/daily-actual-state-map',
+  },
+  fetch_subdivision_data_with_aws: {
+    label: 'Daily Actual Subdivision Map',
+    path: '/daily-actual-subdivision-map',
+  },
+  fetch_country_data_with_aws: {
+    label: 'Daily Country Rainfall Map',
+    path: '/daily-actual-country-map',
+  },
+  get_calculations_mode: {
+    label: 'Calculation Mode',
+    path: '/data-management/calculation-mode',
+  },
+  fetch_district_range_statistics: {
+    label: 'Daily Departure District (Pan India) Map',
+    path: '/pan-india-region',
+    seasonalPath: '/cummulative-departure-district-pan-map',
+  },
+  fetch_state_range_statistics: {
+    label: 'Daily Actual State Rainfall Map',
+    path: '/daily-actual-state-map',
+    seasonalPath: '/cummulative-departure-state-map',
+  },
+  fetch_subdivision_range_statistics: {
+    label: 'Daily Actual Subdivision Map',
+    path: '/daily-actual-subdivision-map',
+    seasonalPath: '/cummulative-departure-subdiv-map',
+  },
+  get_latest_five_year_district: {
+    label: 'Annual–Seasonal–Monthly Maps',
+    path: '/annual-seasonal-monthly-actual-maps',
+  },
+  get_spatial_distribution_data: {
+    label: 'Spatial Distribution Table',
+    path: '/spatial-table',
+  },
+  get_spatial_distribution_data_state: {
+    label: 'Spatial Distribution (State)',
+    path: '/spatial-table',
+  },
+  get_monsoon_activity: {
+    label: 'Monsoon Activity',
+    path: '/monsoon-activity',
+  },
+  get_monsoon_activity_district: {
+    label: 'Monsoon Activity (District)',
+    path: '/monsoon-activity',
+  },
+  get_monsoon_activity_subdiv_last7: {
+    label: 'Monsoon Activity (Last 7 days)',
+    path: '/monsoon-activity',
+  },
+  get_monsoon_activity_subdiv_last30: {
+    label: 'Monsoon Activity (Last 30 days)',
+    path: '/monsoon-activity',
+  },
+  get_monsoon_activity_district_last7: {
+    label: 'Monsoon Activity (District, Last 7 days)',
+    path: '/monsoon-activity',
+  },
+  get_monsoon_activity_district_last30: {
+    label: 'Monsoon Activity (District, Last 30 days)',
+    path: '/monsoon-activity',
   },
   get_all_districts: {
     label: 'All Maps Overview',
@@ -378,6 +500,96 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       label: 'TN vs Kerala',
       query: 'Compare rainfall of Tamil Nadu vs Kerala for yesterday.',
       icon: 'bi-bar-chart',
+      group: 'rainfall',
+    },
+    {
+      label: 'Top wettest',
+      query: 'Top 10 wettest districts today.',
+      icon: 'bi-trophy',
+      group: 'rainfall',
+    },
+    {
+      label: 'Top states week',
+      query: 'Top 5 wettest states this week.',
+      icon: 'bi-award',
+      group: 'rainfall',
+    },
+    {
+      label: 'Highest yesterday',
+      query: 'Which place recorded the highest rainfall yesterday?',
+      icon: 'bi-arrow-up-circle',
+      group: 'rainfall',
+    },
+    {
+      label: 'Above 100 mm',
+      query: 'List districts with rainfall above 100 mm today.',
+      icon: 'bi-moisture',
+      group: 'rainfall',
+    },
+    {
+      label: 'Heaviest stations',
+      query: 'Which stations recorded the heaviest rain last week?',
+      icon: 'bi-broadcast-pin',
+      group: 'rainfall',
+    },
+    {
+      label: 'District + AWS',
+      query: 'District rainfall including AWS for yesterday.',
+      icon: 'bi-hdd-network',
+      group: 'rainfall',
+    },
+    {
+      label: 'IMD or AWS?',
+      query: 'Are we publishing IMD-only or IMD+AWS?',
+      icon: 'bi-toggles',
+      group: 'rainfall',
+    },
+    {
+      label: 'Station coverage',
+      query: 'How many stations reported per district today?',
+      icon: 'bi-pie-chart',
+      group: 'rainfall',
+    },
+    {
+      label: 'MCs missing',
+      query: 'Which MCs still have stations missing today?',
+      icon: 'bi-exclamation-circle',
+      group: 'rainfall',
+    },
+    {
+      label: 'State monsoon summary',
+      query: 'Give me one-line state summary for the monsoon so far.',
+      icon: 'bi-card-text',
+      group: 'rainfall',
+    },
+    {
+      label: 'Spatial Kerala',
+      query: 'What is the spatial distribution for Kerala subdivision today?',
+      icon: 'bi-grid-3x3-gap',
+      group: 'rainfall',
+    },
+    {
+      label: 'Monsoon Kerala',
+      query: 'Is monsoon Weak / Normal / Active / Vigorous over Kerala today?',
+      icon: 'bi-cloud-sun',
+      group: 'rainfall',
+    },
+    {
+      label: 'Monsoon last 7',
+      query: 'Monsoon activity for last 7 days.',
+      icon: 'bi-calendar-week',
+      group: 'rainfall',
+    },
+    {
+      label: 'Monsoon district',
+      query: 'Monsoon activity at district level for today.',
+      icon: 'bi-geo',
+      group: 'rainfall',
+    },
+    {
+      label: 'Active monsoon',
+      query: 'Which subdivisions are under active / vigorous monsoon?',
+      icon: 'bi-lightning',
       group: 'rainfall',
     },
     {
@@ -636,16 +848,23 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         this.resolveBackendClarify(matched, { skipUserBubble: true });
         return;
       }
-      this.isTyping = false;
-      const hint =
-        pending.type === 'did_you_mean'
-          ? `Please tap <strong>Yes</strong> or <strong>No</strong>.`
-          : pending.type === 'which_month'
-          ? `Please tap a month, a year, or type one like <em>March 2023</em>.`
-          : `Please tap one of the options above.`;
-      this.pushAssistant(hint);
-      this.scrollToBottom();
-      return;
+      // User started a new question (product name / rainfall ask) — drop stuck Yes/No
+      if (this.looksLikeFreshQuestion(text)) {
+        this.pendingBackendClarify = null;
+        this.clearChoicesFromMessages();
+        // fall through to product / backend handling below
+      } else {
+        this.isTyping = false;
+        const hint =
+          pending.type === 'did_you_mean'
+            ? `Please tap <strong>Yes</strong> or <strong>No</strong>.`
+            : pending.type === 'which_month'
+            ? `Please tap a month, a year, or type one like <em>March 2023</em>.`
+            : `Please tap one of the options above.`;
+        this.pushAssistant(hint);
+        this.scrollToBottom();
+        return;
+      }
     }
 
     // Ambiguous product keyword → ask navigate vs data first
@@ -732,10 +951,10 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         ? ` for <strong>${this.fromDate}</strong> → <strong>${this.toDate}</strong>`
         : '';
     return (
-      `Namaste — I'm <strong>Varsha</strong>, your iRAINS rainfall companion.` +
+      `Namaste — I'm <strong>IRAINS</strong>, your rainfall companion.` +
       `<br><br>You're on All Maps in <strong>${this.dataMode}</strong> mode${range}.` +
-      `<br>Ask live rainfall (today, week, seasonal, compare states, deficient / excess), ` +
-      `or <em>Where is…?</em> to open a product page.`
+      `<br>Ask live rainfall, rankings (top wettest), spatial distribution, monsoon activity, ` +
+      `deficient / excess, or <em>Where is…?</em> to open a product page.`
     );
   }
 
@@ -755,10 +974,14 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
   /** Prefer backend SAMPLE_QUESTIONS so UI stays in sync with catalog training. */
   private applySampleQuestionsFromHealth(sample?: {
     rainfall?: string[];
+    spatial_monsoon?: string[];
     navigation?: string[];
   }): void {
     if (!sample) return;
-    const rainfall = Array.isArray(sample.rainfall) ? sample.rainfall : [];
+    const rainfall = [
+      ...(Array.isArray(sample.rainfall) ? sample.rainfall : []),
+      ...(Array.isArray(sample.spatial_monsoon) ? sample.spatial_monsoon : []),
+    ];
     const navigation = Array.isArray(sample.navigation) ? sample.navigation : [];
     if (!rainfall.length && !navigation.length) return;
 
@@ -774,6 +997,11 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         'bi-calendar-range',
         'bi-geo-alt',
         'bi-bar-chart',
+        'bi-trophy',
+        'bi-moisture',
+        'bi-grid-3x3-gap',
+        'bi-cloud-sun',
+        'bi-lightning',
       ];
       const navIcons = [
         'bi-map',
@@ -1001,6 +1229,8 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       html += `<p class="clarify-hint">Choose a period below to continue.</p>`;
     } else if (clarifyType === 'did_you_mean') {
       html += `<p class="clarify-hint">Confirm to continue with this location.</p>`;
+    } else if (clarifyType === 'which_map') {
+      html += `<p class="clarify-hint">Pick a map product below, or type its name.</p>`;
     }
     return html;
   }
@@ -1055,7 +1285,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     if (choice.available === false) {
       this.isTyping = false;
       this.pushAssistant(
-        `That option isn’t available in Varsha yet. Please pick another choice, or ask about rainfall.`
+        `That option isn’t available in IRAINS yet. Please pick another choice, or ask about rainfall.`
       );
       this.scrollToBottom();
       return;
@@ -1419,15 +1649,24 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     const delay = 320;
     this.typingTimer = setTimeout(() => {
       this.isTyping = false;
+      const isYearly =
+        /yearly/i.test(pending.productName) || /yearly/i.test(pending.topic || '');
+      const examples = isYearly
+        ? `<ul class="rain-list">` +
+          `<li><em>State rainfall summary for 2026</em></li>` +
+          `<li><em>District range statistics for this year</em></li>` +
+          `<li><em>Where is Yearly Station Statistics?</em></li>` +
+          `</ul>`
+        : `<ul class="rain-list">` +
+          `<li><em>What is today’s rainfall for Maharashtra?</em></li>` +
+          `<li><em>Which districts are deficient today?</em></li>` +
+          `<li><em>What is country / all-India rainfall today?</em></li>` +
+          `</ul>`;
       this.pushAssistant(
         `Sure — ask me a rainfall question about <strong>${this.escapeHtml(
           pending.productName
         )}</strong>, for example:` +
-          `<ul class="rain-list">` +
-          `<li><em>What is today’s rainfall for Maharashtra?</em></li>` +
-          `<li><em>Which districts are deficient today?</em></li>` +
-          `<li><em>What is country / all-India rainfall today?</em></li>` +
-          `</ul>` +
+          examples +
           `Or say <em>Where is ${this.escapeHtml(
             pending.productName
           )}?</em> if you want the page link instead.`
@@ -1512,12 +1751,37 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     );
   }
 
+  /** True when free text is a new ask, not a Yes/No reply to a stuck clarify. */
+  private looksLikeFreshQuestion(text: string): boolean {
+    const q = text.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!q || /^(yes|no|y|n|yeah|yep|nope|ok|okay)$/i.test(q)) return false;
+    if (this.detectAmbiguousProduct(text)) return true;
+    if (this.hasClearNavigateIntent(q) || this.hasClearDataIntent(q)) return true;
+    if (/\b(yearly|statistics|stats|maps?|rainfall|monsoon|spatial|station)\b/i.test(q)) {
+      return true;
+    }
+    // Any multi-word / longer phrase is treated as a new question
+    return q.length >= 8 || /\s/.test(q);
+  }
+
   private hasClearDataIntent(q: string): boolean {
     return (
       /\b(today|yesterday|last 7|this week|seasonal|cumulative|departure|deficient|excess|actual vs|compare|rainfall for|mm\b|%dep)\b/.test(
         q
       ) ||
       /\b(maharashtra|kerala|tamil nadu|chennai|all-india|all india|country)\b/.test(
+        q
+      ) ||
+      /\b(top\s+\d+|wettest|highest rainfall|above\s+\d+\s*mm|more than\s+\d+\s*mm)\b/.test(
+        q
+      ) ||
+      /\b(spatial distribution|isolated|scattered|fairly widespread|widespread)\b/.test(
+        q
+      ) ||
+      /\b(monsoon\s+(activity|weak|normal|active|vigorous|subdued)|active\s+\/\s+vigorous|vigorous monsoon)\b/.test(
+        q
+      ) ||
+      /\b(heaviest|stations reported|stations missing|imd\+?aws|imd-only|including aws|one-line|state summary)\b/.test(
         q
       )
     );
@@ -1717,6 +1981,240 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       return withSource({ text });
     }
 
+    // Rankings (top wettest) / threshold (above X mm)
+    if (
+      postProcess?.type === 'rank_by_actual' ||
+      postProcess?.type === 'filter_by_actual_min'
+    ) {
+      const date = this.resolveAnswerDate(res, rows);
+      const listItems = rows.map((d, i) => this.formatRankListItem(d, i));
+      const hasRowDates = rows.some((d) => !!d.date);
+      const total =
+        typeof res.api?.row_count === 'number' && res.api.row_count > rows.length
+          ? res.api.row_count
+          : rows.length;
+      const countLabel =
+        total > rows.length
+          ? `showing <strong>${rows.length}</strong> of <strong>${total}</strong> result(s)`
+          : `<strong>${rows.length}</strong> result(s)`;
+      const intro =
+        postProcess.type === 'rank_by_actual'
+          ? `<p>Top wettest` +
+            (date ? ` for <strong>${this.escapeHtml(date)}</strong>` : '') +
+            ` — <strong>${rows.length}</strong> place(s):</p>`
+          : `<p>Places with rainfall ≥ <strong>${Number(
+              postProcess.min_mm || 0
+            )} mm</strong>` +
+            (date
+              ? hasRowDates
+                ? ` from <strong>${this.escapeHtml(date)}</strong> (date shown per district)`
+                : ` on <strong>${this.escapeHtml(date)}</strong>`
+              : '') +
+            ` — ${countLabel}:</p>` +
+            (total > rows.length
+              ? `<p class="clarify-hint">Narrow with a specific date (e.g. today / yesterday) or a higher threshold to see fewer rows.</p>`
+              : '');
+      if (!rows.length) {
+        return withSource({
+          text:
+            didYouMean +
+            (postProcess.type === 'rank_by_actual'
+              ? `<p>No ranking data available${
+                  date ? ` for <strong>${this.escapeHtml(date)}</strong>` : ''
+                }.</p>`
+              : `<p>No places with rainfall ≥ <strong>${Number(
+                  postProcess.min_mm || 0
+                )} mm</strong>${
+                  date ? ` on <strong>${this.escapeHtml(date)}</strong>` : ''
+                }.</p>`),
+        });
+      }
+      return withSource({ text: didYouMean + intro, listItems });
+    }
+
+    // Monsoon activity
+    const apiId = String(res?.action?.api_id || '');
+    if (
+      postProcess?.type === 'filter_by_monsoon_activity' ||
+      apiId.startsWith('get_monsoon_activity')
+    ) {
+      const date = this.resolveAnswerDate(res, rows);
+      const acts = postProcess?.activities?.join(' / ');
+      const listItems = rows.map((d) => this.formatMonsoonListItem(d));
+      const intro = acts
+        ? `<p><strong>${rows.length}</strong> area(s)` +
+          (date ? ` on <strong>${this.escapeHtml(date)}</strong>` : '') +
+          ` under <strong>${this.escapeHtml(acts)}</strong> monsoon:</p>`
+        : `<p>Monsoon activity` +
+          (date ? ` for <strong>${this.escapeHtml(date)}</strong>` : '') +
+          ` — <strong>${rows.length}</strong> result(s):</p>`;
+      if (!rows.length) {
+        return withSource({
+          text:
+            didYouMean +
+            `<p>No monsoon activity rows${
+              date ? ` for <strong>${this.escapeHtml(date)}</strong>` : ''
+            }.</p>`,
+        });
+      }
+      return withSource({ text: didYouMean + intro, listItems });
+    }
+
+    // Spatial distribution
+    if (
+      apiId.startsWith('get_spatial_distribution') ||
+      postProcess?.type === 'filter_by_spatial_category'
+    ) {
+      const date = this.resolveAnswerDate(res, rows);
+      const listItems = rows.map((d) => this.formatSpatialListItem(d));
+      const intro =
+        `<p>Spatial distribution` +
+        (date ? ` for <strong>${this.escapeHtml(date)}</strong>` : '') +
+        ` — <strong>${rows.length}</strong> result(s):</p>`;
+      if (!rows.length) {
+        return withSource({
+          text:
+            didYouMean +
+            `<p>No spatial distribution data${
+              date ? ` for <strong>${this.escapeHtml(date)}</strong>` : ''
+            }.</p>`,
+        });
+      }
+      return withSource({ text: didYouMean + intro, listItems });
+    }
+
+    // Heaviest stations
+    if (
+      apiId === 'fetch_station_with_max_rainfall' ||
+      apiId === 'top_rainfall_stations'
+    ) {
+      const date = this.resolveAnswerDate(res, rows);
+      const listItems = rows.map((d, i) => this.formatStationRainListItem(d, i));
+      if (!rows.length) {
+        return withSource({
+          text:
+            didYouMean +
+            `<p>No station rainfall rows${
+              date ? ` for <strong>${this.escapeHtml(date)}</strong>` : ''
+            }.</p>`,
+        });
+      }
+      return withSource({
+        text:
+          didYouMean +
+          `<p>Heaviest stations` +
+          (date ? ` for <strong>${this.escapeHtml(date)}</strong>` : '') +
+          ` — <strong>${rows.length}</strong>:</p>`,
+        listItems,
+      });
+    }
+
+    // Station coverage per district
+    if (apiId === 'fetch_district_station_count') {
+      const date = this.resolveAnswerDate(res, rows);
+      const listItems = rows.map((d) => this.formatStationCountListItem(d));
+      if (!rows.length) {
+        return withSource({
+          text:
+            didYouMean +
+            `<p>No district station counts${
+              date ? ` for <strong>${this.escapeHtml(date)}</strong>` : ''
+            }.</p>`,
+        });
+      }
+      return withSource({
+        text:
+          didYouMean +
+          `<p>Stations reporting` +
+          (date ? ` on <strong>${this.escapeHtml(date)}</strong>` : '') +
+          ` — <strong>${rows.length}</strong> district(s):</p>`,
+        listItems,
+      });
+    }
+
+    // MC / RMC missing stations
+    if (apiId === 'fetch_centre_station_summary') {
+      const date = this.resolveAnswerDate(res, rows);
+      const missing = rows
+        .map((d) => ({
+          row: d,
+          notUpdated: Number(
+            d['NOT UPDATED STATIONS'] ?? (d as any).not_updated_stations ?? 0
+          ),
+        }))
+        .filter((x) => x.notUpdated > 0)
+        .sort((a, b) => b.notUpdated - a.notUpdated);
+      const listSource = missing.length ? missing.map((m) => m.row) : rows;
+      const listItems = listSource.map((d) => this.formatCentreSummaryListItem(d));
+      if (!rows.length) {
+        return withSource({
+          text:
+            didYouMean +
+            `<p>No MC/RMC station summary${
+              date ? ` for <strong>${this.escapeHtml(date)}</strong>` : ''
+            }.</p>`,
+        });
+      }
+      return withSource({
+        text:
+          didYouMean +
+          (missing.length
+            ? `<p><strong>${missing.length}</strong> MC/RMC centre(s) still have stations missing` +
+              (date ? ` on <strong>${this.escapeHtml(date)}</strong>` : '') +
+              `:</p>`
+            : `<p>MC/RMC station summary` +
+              (date ? ` for <strong>${this.escapeHtml(date)}</strong>` : '') +
+              ` — all centres look complete.</p>`),
+        listItems,
+      });
+    }
+
+    // IMD vs AWS publishing mode
+    if (apiId === 'get_calculations_mode') {
+      const modeRow = this.extractCalculationsMode(res, rows);
+      const label =
+        modeRow?.use_aws_label ||
+        (modeRow?.use_aws ? 'IMD + AWS' : 'IMD only');
+      return withSource({
+        text:
+          didYouMean +
+          `<p>Publishing mode is currently <strong>${this.escapeHtml(
+            String(label)
+          )}</strong>.</p>` +
+          `<p class="clarify-hint">Open Calculation Mode to review or change IMD / AWS blending.</p>`,
+      });
+    }
+
+    // Range statistics (period summary)
+    if (
+      apiId === 'fetch_district_range_statistics' ||
+      apiId === 'fetch_state_range_statistics' ||
+      apiId === 'fetch_subdivision_range_statistics' ||
+      apiId === 'get_latest_five_year_district'
+    ) {
+      const date = this.resolveAnswerDate(res, rows);
+      const listItems = rows.map((d) => this.formatRangeStatsListItem(d));
+      if (!rows.length) {
+        return withSource({
+          text:
+            didYouMean +
+            (answer
+              ? this.escapeAndLightFormat(answer)
+              : `<p>No range statistics${
+                  date ? ` for <strong>${this.escapeHtml(date)}</strong>` : ''
+                }.</p>`),
+        });
+      }
+      return withSource({
+        text:
+          didYouMean +
+          `<p>Period summary` +
+          (date ? ` for <strong>${this.escapeHtml(date)}</strong>` : '') +
+          ` — <strong>${rows.length}</strong> result(s):</p>`,
+        listItems,
+      });
+    }
+
     if (
       rows.length > 1 ||
       postProcess?.type === 'filter_by_departure_category'
@@ -1875,6 +2373,187 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     if (joined.includes('SEASON_START') || joined.includes('SEASONAL')) return 'seasonal';
     if (joined.includes('LAST_7') || joined.includes('WEEK')) return 'weekly';
     return 'daily';
+  }
+
+  private resolveAnswerDate(res: OllamaChatResponse, rows: ApiDataRow[]): string {
+    const start =
+      (res.action?.body?.['startDate'] as string) ||
+      (res.action?.query?.['startDate'] as string) ||
+      (res.action?.body?.['date'] as string) ||
+      '';
+    const end =
+      (res.action?.body?.['endDate'] as string) ||
+      (res.action?.query?.['endDate'] as string) ||
+      '';
+    return (
+      res.api?.usedDate ||
+      (rows[0]?.date as string) ||
+      (start && end && start !== end ? `${start} to ${end}` : start) ||
+      ''
+    );
+  }
+
+  private rowPlaceName(d: ApiDataRow): string {
+    return (
+      d.district_name ||
+      d.state_name ||
+      d.subdiv_name ||
+      d.subdivision_name ||
+      d.block_name ||
+      d.region_name ||
+      d.station_name ||
+      d.name ||
+      d.code ||
+      'Area'
+    );
+  }
+
+  private formatRankListItem(d: ApiDataRow, index: number): string {
+    const name = this.rowPlaceName(d);
+    const actRaw =
+      d.actual ??
+      d.actual_rainfall ??
+      d.actual_state_rainfall ??
+      d.rainfall ??
+      d.avg_actual;
+    const act = actRaw != null ? `${Number(actRaw).toFixed(1)} mm` : null;
+    const rowDate = d.date ? this.escapeHtml(String(d.date)) : null;
+    return (
+      `<strong>${index + 1}. ${this.escapeHtml(String(name))}</strong>` +
+      (rowDate ? ` — <strong>${rowDate}</strong>` : '') +
+      (act ? ` — ${act}` : '')
+    );
+  }
+
+  private formatMonsoonListItem(d: ApiDataRow): string {
+    const name = this.rowPlaceName(d);
+    if (Array.isArray(d.days) && d.days.length) {
+      const recent = d.days
+        .slice(-3)
+        .map(
+          (day) =>
+            `${this.escapeHtml(String(day.date || '?'))}: <strong>${this.escapeHtml(
+              String(day.activity || 'n/a')
+            )}</strong>`
+        )
+        .join(' · ');
+      return `<strong>${this.escapeHtml(String(name))}</strong> — ${recent}`;
+    }
+    const activity = d.activity || 'n/a';
+    const spatial = d.spatial ? ` · spatial ${this.escapeHtml(String(d.spatial))}` : '';
+    return (
+      `<strong>${this.escapeHtml(String(name))}</strong> — ` +
+      `<strong>${this.escapeHtml(String(activity))}</strong>${spatial}`
+    );
+  }
+
+  private formatSpatialListItem(d: ApiDataRow): string {
+    const name = this.rowPlaceName(d);
+    const cat = d.category || d.spatial || 'n/a';
+    const pct =
+      d.percentage != null ? `${Number(d.percentage).toFixed(1)}%` : null;
+    return (
+      `<strong>${this.escapeHtml(String(name))}</strong> — ` +
+      `${this.escapeHtml(String(cat))}` +
+      (pct ? ` (${pct})` : '')
+    );
+  }
+
+  private formatStationRainListItem(d: ApiDataRow, index: number): string {
+    const name =
+      d.station_name ||
+      d.name ||
+      d.station_code ||
+      this.rowPlaceName(d);
+    const rain = d.data ?? d.actual ?? d.actual_rainfall ?? d.rainfall;
+    const placeBits = [
+      d.district_name,
+      d.state_name,
+      d.date,
+    ].filter(Boolean);
+    return (
+      `<strong>${index + 1}. ${this.escapeHtml(String(name))}</strong>` +
+      (rain != null ? ` — ${Number(rain).toFixed(1)} mm` : '') +
+      (placeBits.length
+        ? ` <span class="clarify-hint">(${this.escapeHtml(
+            placeBits.map(String).join(' · ')
+          )})</span>`
+        : '')
+    );
+  }
+
+  private formatStationCountListItem(d: ApiDataRow): string {
+    const name = this.rowPlaceName(d);
+    const count = d.station_count;
+    return (
+      `<strong>${this.escapeHtml(String(name))}</strong>` +
+      (count != null ? ` — <strong>${Number(count)}</strong> stations` : '')
+    );
+  }
+
+  private formatCentreSummaryListItem(d: ApiDataRow): string {
+    const centre =
+      d['MC or RMC'] ||
+      d.centre_name ||
+      d.name ||
+      'Centre';
+    const total = d['TOTAL STATIONS'];
+    const updated = d['UPDATED STATIONS'];
+    const missing = d['NOT UPDATED STATIONS'];
+    const bits = [
+      missing != null ? `missing <strong>${Number(missing)}</strong>` : null,
+      updated != null ? `updated ${Number(updated)}` : null,
+      total != null ? `total ${Number(total)}` : null,
+    ].filter(Boolean);
+    return (
+      `<strong>${this.escapeHtml(String(centre))}</strong>` +
+      (bits.length ? ` — ${bits.join(' · ')}` : '')
+    );
+  }
+
+  private formatRangeStatsListItem(d: ApiDataRow): string {
+    const name = this.rowPlaceName(d);
+    const actual =
+      d.actual_rainfall ??
+      d.actual_state_rainfall ??
+      d.actual ??
+      d.total_actual ??
+      null;
+    const normal = d.normal_rainfall ?? d.rainfall_normal_value ?? null;
+    const departure = d.departure ?? null;
+    const bits = [
+      actual != null ? `actual ${Number(actual).toFixed(1)} mm` : null,
+      normal != null ? `normal ${Number(normal).toFixed(1)} mm` : null,
+      departure != null
+        ? `dep ${Number(departure) > 0 ? '+' : ''}${Number(departure).toFixed(1)}%`
+        : null,
+      d.date ? String(d.date) : null,
+    ].filter(Boolean);
+    return (
+      `<strong>${this.escapeHtml(String(name))}</strong>` +
+      (bits.length ? ` — ${bits.join(' · ')}` : '')
+    );
+  }
+
+  private extractCalculationsMode(
+    res: OllamaChatResponse,
+    rows: ApiDataRow[]
+  ): { use_aws?: number | boolean; use_aws_label?: string } | null {
+    const fromRow = rows.find(
+      (r) => r.use_aws_label != null || r.use_aws != null
+    );
+    if (fromRow) {
+      return {
+        use_aws: fromRow.use_aws,
+        use_aws_label: fromRow.use_aws_label,
+      };
+    }
+    const raw = res?.api?.data;
+    if (raw && !Array.isArray(raw) && typeof raw === 'object') {
+      const obj = raw as { use_aws?: number | boolean; use_aws_label?: string };
+      if (obj.use_aws_label != null || obj.use_aws != null) return obj;
+    }
+    return null;
   }
 
   private formatDistrictListItem(d: ApiDataRow): string {
@@ -2076,7 +2755,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     if (this.match(q, ['hello', 'hi', 'hey', 'namaste', 'good morning', 'good evening'])) {
       return {
         text:
-          `Hello! Varsha here — your rainfall guide on All Maps.<br><br>` +
+          `Hello! IRAINS here — your rainfall guide on All Maps.<br><br>` +
           `Ask live numbers (e.g. Maharashtra departure today) or how to use the maps.`,
       };
     }
@@ -2175,6 +2854,9 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
           `<ul class="rain-list">` +
           `<li>Today’s / weekly / seasonal rainfall</li>` +
           `<li>Departure, deficient & excess districts</li>` +
+          `<li>Top wettest / rainfall above X mm / heaviest stations</li>` +
+          `<li>IMD+AWS mode, station coverage & MC missing counts</li>` +
+          `<li>Spatial distribution & monsoon activity</li>` +
           `<li>Compare states (e.g. Tamil Nadu vs Kerala)</li>` +
           `<li><em>Where is…?</em> product navigation</li>` +
           `<li>All Maps legend & coverage tips</li>` +
@@ -2184,7 +2866,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
 
     if (this.match(q, ['thank', 'thanks', 'bye', 'goodbye'])) {
       return {
-        text: `You're welcome — stay weather-wise. Varsha is here whenever you need a rainfall briefing.`,
+        text: `You're welcome — stay weather-wise. IRAINS is here whenever you need a rainfall briefing.`,
       };
     }
 

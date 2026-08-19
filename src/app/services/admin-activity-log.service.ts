@@ -42,6 +42,7 @@ export interface AdminActivityUser {
   emp_designation: string;
   emp_phone_number: string;
   remark?: string;
+  pass_key?: string;
   login_id?: number | null;
   emp_email?: string | null;
   mcorhq_type?: string | null;
@@ -125,6 +126,9 @@ export class AdminActivityLogService {
     user: AdminActivityUser;
   }>();
   readonly officerIdentified$ = this.officerIdentifiedSubject.asObservable();
+  private readonly requestPassKeyLoginSubject = new Subject<string>();
+  /** Emits angular routePath — open Pass Key modal on the active Data Management page. */
+  readonly requestPassKeyLogin$ = this.requestPassKeyLoginSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
@@ -174,6 +178,12 @@ export class AdminActivityLogService {
     return this.hasConfirmedIdentification(routePath);
   }
 
+  /** Re-open the Pass Key login modal (e.g. Forgot Pass Key) on the current page. */
+  requestPassKeyLogin(routePath = ''): void {
+    sessionStorage.removeItem(this.confirmedKey);
+    this.requestPassKeyLoginSubject.next(routePath);
+  }
+
   isCompleteUser(user: AdminActivityUser | null | undefined): boolean {
     if (!user) return false;
     return Boolean(
@@ -188,22 +198,53 @@ export class AdminActivityLogService {
     emp_designation: string;
     emp_phone_number: string;
     remark: string;
+    pass_key?: string;
   }): AdminActivityUser {
     const auth = this.getAuthUser();
+    const passKey = String(form.pass_key ?? '').replace(/\D/g, '').slice(0, 4);
     return {
       emp_name: form.emp_name.trim(),
       emp_designation: form.emp_designation.trim(),
       emp_phone_number: form.emp_phone_number.trim(),
       remark: form.remark.trim(),
+      ...(passKey.length === 4 ? { pass_key: passKey } : {}),
       login_id: auth?.userid ?? null,
       emp_email: auth?.username ?? null,
       mcorhq_type: auth?.mcorhq ?? null,
     };
   }
 
+  buildUserFromPassKeyOfficer(
+    officer: {
+      emp_name: string;
+      emp_designation: string;
+      emp_phone_number: string | number;
+      emp_email?: string | null;
+      login_id?: number | null;
+      mcorhq_type?: string | null;
+      pass_key?: string | number;
+    },
+    remark: string,
+    passKey?: string | number,
+  ): AdminActivityUser {
+    const auth = this.getAuthUser();
+    const key = String(passKey ?? officer.pass_key ?? '').replace(/\D/g, '').padStart(4, '0').slice(-4);
+    return {
+      emp_name: String(officer.emp_name ?? '').trim(),
+      emp_designation: String(officer.emp_designation ?? '').trim(),
+      emp_phone_number: String(officer.emp_phone_number ?? '').replace(/\D/g, ''),
+      remark: remark.trim(),
+      ...(key.length === 4 ? { pass_key: key } : {}),
+      login_id: officer.login_id ?? auth?.userid ?? null,
+      emp_email: officer.emp_email ?? auth?.username ?? null,
+      mcorhq_type: officer.mcorhq_type ?? auth?.mcorhq ?? null,
+    };
+  }
+
   /** Payload fields expected by admin activity-log APIs */
   toApiPayload(user: AdminActivityUser | null | undefined): Partial<AdminActivityUser> {
     if (!user) return {};
+    const passKey = String(user.pass_key ?? '').replace(/\D/g, '').slice(0, 4);
     return {
       emp_name: user.emp_name,
       emp_designation: user.emp_designation,
@@ -212,6 +253,7 @@ export class AdminActivityLogService {
       login_id: user.login_id ?? null,
       emp_email: user.emp_email ?? null,
       mcorhq_type: user.mcorhq_type ?? null,
+      ...(passKey.length === 4 ? { pass_key: passKey } : {}),
     };
   }
 
