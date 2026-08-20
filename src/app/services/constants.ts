@@ -602,8 +602,7 @@ export class Constants {
    */
   excelNumericCell(
     item: any,
-    decimals: number,
-    suffix: string = ""
+    decimals: number
   ): { v: number; t: "n"; z: string } | null {
     const raw =
       item !== null && typeof item === "object" ? item.xlRaw : undefined;
@@ -620,7 +619,12 @@ export class Constants {
     if (!Number.isFinite(rounded)) return null;
     if (rounded.toFixed(decimals) !== num.toFixed(decimals)) return null;
 
+    // Never put a "%" in the format code. Excel treats the percent sign as an
+    // operator that multiplies the value by 100, and quoting it as "%" does not
+    // disable that -- a departure of 201.443863108 came back as 20144.3863108.
+    // The value stays the true departure and the "% DEP." header carries the
+    // unit, exactly as the PDF prints it.
     const pattern = decimals > 0 ? `0.${"0".repeat(decimals)}` : "0";
-    return { v: num, t: "n", z: suffix ? `${pattern}"${suffix}"` : pattern };
+    return { v: num, t: "n", z: pattern };
   }
 }

@@ -325,7 +325,7 @@ export class DownloadPdf {
         }
         // Blocks print departure to one decimal, so keep that in the sheet too.
         const isDep = colIdx === 4 || colIdx === 8;
-        const numeric = this.constants.excelNumericCell(item, 1, isDep ? '%' : '');
+        const numeric = this.constants.excelNumericCell(item, 1);
         if (numeric) return { ...numeric, s: cellStyle };
         return { v: String(content ?? ''), t: 's', s: cellStyle };
       });
