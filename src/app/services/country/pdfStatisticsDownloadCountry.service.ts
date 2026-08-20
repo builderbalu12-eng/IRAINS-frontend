@@ -381,15 +381,16 @@ export class CountryDownloadStatistics {
         const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
         const fillHex   = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
         const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
-        return {
-          v: String(content ?? ''), t: 's',
-          s: {
-            fill: { fgColor: { rgb: fillHex } },
-            border: thinBlack,
-            font: { bold: true, sz: 9, color: { rgb: '000000' } },
-            alignment: { horizontal: hAlign, vertical: 'middle' as const },
-          },
+        const cellStyle = {
+          fill: { fgColor: { rgb: fillHex } },
+          border: thinBlack,
+          font: { bold: true, sz: 9, color: { rgb: '000000' } },
+          alignment: { horizontal: hAlign, vertical: 'middle' as const },
         };
+        const isDep = colIdx === 4 || colIdx === 8;
+        const numeric = this.constants.excelNumericCell(item, isDep ? 0 : 1, isDep ? '%' : '');
+        if (numeric) return { ...numeric, s: cellStyle };
+        return { v: String(content ?? ''), t: 's', s: cellStyle };
       });
     });
 
@@ -539,13 +540,13 @@ export class CountryDownloadStatistics {
     this.rows.push([
         { content: index++, styles: { fillColor: countryColorCode } },
         { content: `${countryDate.name.toUpperCase()}`, styles: { fillColor: countryColorCode } },
-        { content: countryDate.actual_rainfall != null ? this.constants.trimToOneDecimals(countryDate.actual_rainfall) : ' ', styles: { fillColor: countryColorCode } },
-        { content: countryDate.rainfall_normal_value, styles: { fillColor: countryColorCode } },
-        { content: countryDate.departure != null ? this.constants.trimToZeroDecimals(countryDate.departure) : ' ', styles: { fillColor: countryColorCode } },
+        { content: countryDate.actual_rainfall != null ? this.constants.trimToOneDecimals(countryDate.actual_rainfall) : ' ', xlRaw: countryDate.actual_rainfall, styles: { fillColor: countryColorCode } },
+        { content: countryDate.rainfall_normal_value, xlRaw: countryDate.rainfall_normal_value, styles: { fillColor: countryColorCode } },
+        { content: countryDate.departure != null ? this.constants.trimToZeroDecimals(countryDate.departure) : ' ', xlRaw: countryDate.departure, styles: { fillColor: countryColorCode } },
         { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
-        { content: countrySeason.actual_rainfall != null ? this.constants.trimToOneDecimals(countrySeason.actual_rainfall) : ' ', styles: { fillColor: countryColorCode } },
-        { content: countrySeason.rainfall_normal_value, styles: { fillColor: countryColorCode } },
-        { content: countrySeason.departure != null ? this.constants.trimToZeroDecimals(countrySeason.departure) : ' ', styles: { fillColor: countryColorCode } },
+        { content: countrySeason.actual_rainfall != null ? this.constants.trimToOneDecimals(countrySeason.actual_rainfall) : ' ', xlRaw: countrySeason.actual_rainfall, styles: { fillColor: countryColorCode } },
+        { content: countrySeason.rainfall_normal_value, xlRaw: countrySeason.rainfall_normal_value, styles: { fillColor: countryColorCode } },
+        { content: countrySeason.departure != null ? this.constants.trimToZeroDecimals(countrySeason.departure) : ' ', xlRaw: countrySeason.departure, styles: { fillColor: countryColorCode } },
         { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
     ]);
     

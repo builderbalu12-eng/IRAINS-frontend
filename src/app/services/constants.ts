@@ -587,4 +587,40 @@ export class Constants {
     }
     return Math.sign(num) * Math.round(Math.abs(num));
   }
+
+  /**
+   * Excel payload for a statistics cell that carries an `xlRaw` value.
+   *
+   * The PDF keeps printing the rounded `content`, while the sheet stores the
+   * unrounded number and leans on a display format for the rounding. So a
+   * value of 12 shows as "12.0" and 0 shows as "0.0" instead of collapsing to
+   * "12"/"0", and clicking the cell in any spreadsheet app reveals the full
+   * precision in the formula bar.
+   *
+   * Returns null when there is no usable number (blank / "ND" rows), which
+   * tells the caller to fall back to writing the cell as text.
+   */
+  excelNumericCell(
+    item: any,
+    decimals: number,
+    suffix: string = ""
+  ): { v: number; t: "n"; z: string } | null {
+    const raw =
+      item !== null && typeof item === "object" ? item.xlRaw : undefined;
+    if (raw === null || raw === undefined || raw === "") return null;
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return null;
+
+    // The sheet must never display a different figure from the PDF. The
+    // rounding here is done by Excel's display format, so bail out to text
+    // wherever that disagrees with the value the caller already rounded --
+    // notably trimToZeroDecimals, which clamps (-100, -99) up to -99 to keep
+    // "no rain" distinct, while a plain "0" format would render -100.
+    const rounded = Number(item.content);
+    if (!Number.isFinite(rounded)) return null;
+    if (rounded.toFixed(decimals) !== num.toFixed(decimals)) return null;
+
+    const pattern = decimals > 0 ? `0.${"0".repeat(decimals)}` : "0";
+    return { v: num, t: "n", z: suffix ? `${pattern}"${suffix}"` : pattern };
+  }
 }

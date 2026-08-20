@@ -307,7 +307,7 @@ export const routes: Routes = [
   { path: 'rmu-north-west-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'REGION_NW' } },
   { path: 'rmu-south-peninsula-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'REGION_SP' } },
   { path: 'rmu-statewise-district-map', component: RmuStatewiseMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'all-statistics', component: AllStatisticsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
+  { path: 'all-statistics', component: AllStatisticsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq'] } },
 
   //Inside district of Rainfall Map Module
   {path: 'daily-east-north-east-region', component: EastNorthEastRegionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},

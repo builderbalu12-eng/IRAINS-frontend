@@ -352,7 +352,11 @@ export class MCRMCDownloadStatistics {
         const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
         const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
         const fillHex = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
-        return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
+        const cellStyle = { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } };
+        const isDep = colIdx === 4 || colIdx === 8;
+        const numeric = this.constants.excelNumericCell(item, isDep ? 0 : 1, isDep ? '%' : '');
+        if (numeric) return { ...numeric, s: cellStyle };
+        return { v: String(content ?? ''), t: 's', s: cellStyle };
       });
     });
 
@@ -467,13 +471,13 @@ export class MCRMCDownloadStatistics {
       this.rows.push([
         i + 1,
         districtDate.district_name,
-        districtDate.actual_rainfall != null ? parseFloat(districtDate.actual_rainfall).toFixed(1) : ' ',
-        parseFloat(districtDate.normal_rainfall).toFixed(1),
-        districtDate.departure != null ? Math.round(parseFloat(districtDate.departure)) : ' ',
+        { content: districtDate.actual_rainfall != null ? parseFloat(districtDate.actual_rainfall).toFixed(1) : ' ', xlRaw: districtDate.actual_rainfall },
+        { content: parseFloat(districtDate.normal_rainfall).toFixed(1), xlRaw: districtDate.normal_rainfall },
+        { content: districtDate.departure != null ? Math.round(parseFloat(districtDate.departure)) : ' ', xlRaw: districtDate.departure },
         { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
-        districtSeason?.actual_rainfall != null ? parseFloat(districtSeason.actual_rainfall).toFixed(1) : ' ',
-        parseFloat(districtSeason?.normal_rainfall || '0').toFixed(1),
-        districtSeason?.departure != null ? Math.round(parseFloat(districtSeason.departure)) : ' ',
+        { content: districtSeason?.actual_rainfall != null ? parseFloat(districtSeason.actual_rainfall).toFixed(1) : ' ', xlRaw: districtSeason?.actual_rainfall },
+        { content: parseFloat(districtSeason?.normal_rainfall || '0').toFixed(1), xlRaw: districtSeason?.normal_rainfall ?? 0 },
+        { content: districtSeason?.departure != null ? Math.round(parseFloat(districtSeason.departure)) : ' ', xlRaw: districtSeason?.departure },
         { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
       ]);
     }
