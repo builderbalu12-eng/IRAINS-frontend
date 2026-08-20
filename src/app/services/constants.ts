@@ -619,12 +619,37 @@ export class Constants {
     if (!Number.isFinite(rounded)) return null;
     if (rounded.toFixed(decimals) !== num.toFixed(decimals)) return null;
 
-    // Never put a "%" in the format code. Excel treats the percent sign as an
-    // operator that multiplies the value by 100, and quoting it as "%" does not
-    // disable that -- a departure of 201.443863108 came back as 20144.3863108.
-    // The value stays the true departure and the "% DEP." header carries the
-    // unit, exactly as the PDF prints it.
     const pattern = decimals > 0 ? `0.${"0".repeat(decimals)}` : "0";
+
+    // Departure columns print a "%" beside the number. It cannot be carried as
+    // literal text in the format code: Excel treats the percent sign as an
+    // operator and multiplies by 100 even when it is quoted as "%", which is
+    // what turned a departure of 201.443863108 into 20144.3863108. Storing the
+    // value as a true fraction under a real percent format is the one
+    // representation every spreadsheet app agrees on -- the cell reads "201%"
+    // and the formula bar reads "201.443863108%".
+    if (item.xlPct) return { v: num / 100, t: "n", z: `${pattern}%` };
+
     return { v: num, t: "n", z: pattern };
+  }
+
+  /**
+   * Appends the "%" sign to the departure cells of a table on its way to the
+   * PDF. The PDF is plain text and has none of Excel's percent-operator
+   * problem, so the sign is simply concatenated here.
+   *
+   * Returns a new array rather than mutating: this.rows must keep the bare
+   * rounded number, because excelNumericCell compares against it to decide
+   * whether the sheet would display something different from the PDF.
+   */
+  withDeparturePercent(rows: any[][]): any[][] {
+    return rows.map((row) =>
+      row.map((cell) => {
+        if (cell === null || typeof cell !== "object" || !cell.xlPct) return cell;
+        const text = String(cell.content ?? "").trim();
+        if (text === "" || text.endsWith("%")) return cell;
+        return { ...cell, content: `${cell.content}%` };
+      })
+    );
   }
 }

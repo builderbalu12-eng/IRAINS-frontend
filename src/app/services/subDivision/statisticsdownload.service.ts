@@ -703,7 +703,7 @@ export class SubdivDownloadStatistics {
     doc.text(headingText1, marginLeft + 100, marginTop + 28);
     autoTable(doc, {
       head: [columns1, columns],
-      body: this.rows,
+      body: this.constants.withDeparturePercent(this.rows),
       theme: "striped",
       startY: marginTop + cellHeight + 25, // Adjust the vertical position below the image and heading
       margin: { left: marginLeft },
@@ -1144,7 +1144,7 @@ export class SubdivDownloadStatistics {
             regionDate.departure != null
               ? this.constants.trimToZeroDecimals(regionDate.departure)
               : " ",
-          xlRaw: regionDate.departure,
+          xlRaw: regionDate.departure, xlPct: true,
           styles: { fillColor: subdivColorCode },
         },
         { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
@@ -1168,7 +1168,7 @@ export class SubdivDownloadStatistics {
             regionSeason.departure != null
               ? this.constants.trimToZeroDecimals(regionSeason.departure)
               : " ",
-          xlRaw: regionSeason.departure,
+          xlRaw: regionSeason.departure, xlPct: true,
           styles: { fillColor: subdivColorCode },
         },
         { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } },
@@ -1228,7 +1228,7 @@ export class SubdivDownloadStatistics {
               subdivDate.departure != null
                 ? this.constants.trimToZeroDecimals(subdivDate.departure)
                 : " ",
-            xlRaw: subdivDate.departure,
+            xlRaw: subdivDate.departure, xlPct: true,
             styles: { fillColor: stateColorCode },
           },
           { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
@@ -1254,7 +1254,7 @@ export class SubdivDownloadStatistics {
               subdivSeason.departure != null
                 ? this.constants.trimToZeroDecimals(subdivSeason.departure)
                 : " ",
-            xlRaw: subdivSeason.departure,
+            xlRaw: subdivSeason.departure, xlPct: true,
             styles: { fillColor: stateColorCode },
           },
           { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } },
@@ -1274,11 +1274,11 @@ export class SubdivDownloadStatistics {
         { content: 'COUNTRY AS A WHOLE', styles: { fillColor: countryColorCode, fontStyle: 'bold' } },
         { content: countryDate.actual_rainfall != null ? this.constants.trimToOneDecimals(countryDate.actual_rainfall) : ' ', xlRaw: countryDate.actual_rainfall, styles: { fillColor: countryColorCode } },
         { content: this.constants.trimToOneDecimals(parseFloat(countryDate.rainfall_normal_value)), xlRaw: countryDate.rainfall_normal_value, styles: { fillColor: countryColorCode } },
-        { content: countryDate.departure != null ? this.constants.trimToZeroDecimals(countryDate.departure) : ' ', xlRaw: countryDate.departure, styles: { fillColor: countryColorCode } },
+        { content: countryDate.departure != null ? this.constants.trimToZeroDecimals(countryDate.departure) : ' ', xlRaw: countryDate.departure, xlPct: true, styles: { fillColor: countryColorCode } },
         { content: cDateCat.Cat,   styles: { fillColor: cDateCat.color } },
         { content: countrySeason.actual_rainfall != null ? this.constants.trimToOneDecimals(countrySeason.actual_rainfall) : ' ', xlRaw: countrySeason.actual_rainfall, styles: { fillColor: countryColorCode } },
         { content: this.constants.trimToOneDecimals(parseFloat(countrySeason.rainfall_normal_value)), xlRaw: countrySeason.rainfall_normal_value, styles: { fillColor: countryColorCode } },
-        { content: countrySeason.departure != null ? this.constants.trimToZeroDecimals(countrySeason.departure) : ' ', xlRaw: countrySeason.departure, styles: { fillColor: countryColorCode } },
+        { content: countrySeason.departure != null ? this.constants.trimToZeroDecimals(countrySeason.departure) : ' ', xlRaw: countrySeason.departure, xlPct: true, styles: { fillColor: countryColorCode } },
         { content: cSeasonCat.Cat, styles: { fillColor: cSeasonCat.color } },
       ]);
     }

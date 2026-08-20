@@ -351,7 +351,7 @@ export class DownloadPdf {
     doc.text(headingText1, marginLeft + 100, marginTop + 28);
     autoTable(doc, {
       head: [columns1, columns],
-      body: this.rows,
+      body: this.constants.withDeparturePercent(this.rows),
       theme: 'striped',
       startY: marginTop + cellHeight + 25,
       margin: { left: marginLeft },
@@ -618,11 +618,11 @@ export class DownloadPdf {
             blockDate.block_name,
             { content: blockDate.actual_rainfall != null ? this.constants.trimToOneDecimals(blockDate.actual_rainfall) : '', xlRaw: blockDate.actual_rainfall },
             { content: blockDate.normal_rainfall != null ? this.constants.trimToOneDecimals(blockDate.normal_rainfall) : '', xlRaw: blockDate.normal_rainfall },
-            { content: blockDate.departure != null ? this.constants.trimToOneDecimals(blockDate.departure) : '', xlRaw: blockDate.departure },
+            { content: blockDate.departure != null ? this.constants.trimToOneDecimals(blockDate.departure) : '', xlRaw: blockDate.departure, xlPct: true },
             { content: dateCat.Cat, styles: { fillColor: dateCat.color } },
             { content: blockSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(blockSeason.actual_rainfall) : '', xlRaw: blockSeason?.actual_rainfall },
             { content: blockSeason?.normal_rainfall != null ? this.constants.trimToOneDecimals(blockSeason.normal_rainfall) : '', xlRaw: blockSeason?.normal_rainfall },
-            { content: blockSeason?.departure != null ? this.constants.trimToOneDecimals(blockSeason.departure) : '', xlRaw: blockSeason?.departure },
+            { content: blockSeason?.departure != null ? this.constants.trimToOneDecimals(blockSeason.departure) : '', xlRaw: blockSeason?.departure, xlPct: true },
             { content: seasonCat.Cat, styles: { fillColor: seasonCat.color } }
           ]);
         }

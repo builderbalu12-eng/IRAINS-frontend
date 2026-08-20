@@ -457,7 +457,7 @@ export class DownloadPdf {
     doc.text(headingText1, marginLeft + 100, marginTop + 28);
     autoTable(doc, {
       head: [columns1, columns],
-      body: this.rows,
+      body: this.constants.withDeparturePercent(this.rows),
       theme: 'striped',
       startY: marginTop + cellHeight + 25, // Adjust the vertical position below the image and heading
       margin: { left: marginLeft },
@@ -725,11 +725,11 @@ export class DownloadPdf {
           { content: pgName, styles: { fillColor: stateColorCode, fontStyle: 'bold' } },
           { content: pgStateDate?.actual_state_rainfall != null ? this.constants.trimToOneDecimals(pgStateDate.actual_state_rainfall) : ' ', xlRaw: pgStateDate?.actual_state_rainfall, styles: { fillColor: stateColorCode } },
           { content: pgStateDate ? this.constants.trimToOneDecimals(parseFloat(pgStateDate.rainfall_normal_value)) : ' ', xlRaw: pgStateDate?.rainfall_normal_value, styles: { fillColor: stateColorCode } },
-          { content: pgStateDate?.departure != null ? this.constants.trimToZeroDecimals(pgStateDate.departure) : ' ', xlRaw: pgStateDate?.departure, styles: { fillColor: stateColorCode } },
+          { content: pgStateDate?.departure != null ? this.constants.trimToZeroDecimals(pgStateDate.departure) : ' ', xlRaw: pgStateDate?.departure, xlPct: true, styles: { fillColor: stateColorCode } },
           { content: pgDateCat.Cat, styles: { fillColor: pgDateCat.color } },
           { content: pgStateSeason?.actual_state_rainfall != null ? this.constants.trimToOneDecimals(pgStateSeason.actual_state_rainfall) : ' ', xlRaw: pgStateSeason?.actual_state_rainfall, styles: { fillColor: stateColorCode } },
           { content: pgStateSeason ? this.constants.trimToOneDecimals(parseFloat(pgStateSeason.rainfall_normal_value)) : ' ', xlRaw: pgStateSeason?.rainfall_normal_value, styles: { fillColor: stateColorCode } },
-          { content: pgStateSeason?.departure != null ? this.constants.trimToZeroDecimals(pgStateSeason.departure) : ' ', xlRaw: pgStateSeason?.departure, styles: { fillColor: stateColorCode } },
+          { content: pgStateSeason?.departure != null ? this.constants.trimToZeroDecimals(pgStateSeason.departure) : ' ', xlRaw: pgStateSeason?.departure, xlPct: true, styles: { fillColor: stateColorCode } },
           { content: pgSeasonCat.Cat, styles: { fillColor: pgSeasonCat.color } },
         ]);
       }
@@ -747,11 +747,11 @@ export class DownloadPdf {
           { content: subdivisionDate.subdiv_name, styles: { fillColor: subdivColorCode } },
           { content: subdivisionDate.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionDate.actual_subdiv_rainfall) : ' ', xlRaw: subdivisionDate.actual_subdiv_rainfall, styles: { fillColor: subdivColorCode } },
           { content: this.constants.trimToOneDecimals(parseFloat(subdivisionDate.rainfall_normal_value)), xlRaw: subdivisionDate.rainfall_normal_value, styles: { fillColor: subdivColorCode } },
-          { content: subdivisionDate.departure != null ? this.constants.trimToZeroDecimals(subdivisionDate.departure) : ' ', xlRaw: subdivisionDate.departure, styles: { fillColor: subdivColorCode } },
+          { content: subdivisionDate.departure != null ? this.constants.trimToZeroDecimals(subdivisionDate.departure) : ' ', xlRaw: subdivisionDate.departure, xlPct: true, styles: { fillColor: subdivColorCode } },
           { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
           { content: subdivisionSeason.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionSeason.actual_subdiv_rainfall) : ' ', xlRaw: subdivisionSeason.actual_subdiv_rainfall, styles: { fillColor: subdivColorCode } },
           { content: this.constants.trimToOneDecimals(parseFloat(subdivisionSeason.rainfall_normal_value)), xlRaw: subdivisionSeason.rainfall_normal_value, styles: { fillColor: subdivColorCode } },
-          { content: subdivisionSeason.departure != null ? this.constants.trimToZeroDecimals(subdivisionSeason.departure) : ' ', xlRaw: subdivisionSeason.departure, styles: { fillColor: subdivColorCode } },
+          { content: subdivisionSeason.departure != null ? this.constants.trimToZeroDecimals(subdivisionSeason.departure) : ' ', xlRaw: subdivisionSeason.departure, xlPct: true, styles: { fillColor: subdivColorCode } },
           { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } },
         ]);
 
@@ -780,11 +780,11 @@ export class DownloadPdf {
               { content: stateDate.state_name, styles: { fillColor: stateColorCode } },
               { content: stateDate.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateDate.actual_state_rainfall) : ' ', xlRaw: stateDate.actual_state_rainfall, styles: { fillColor: stateColorCode } },
               { content: this.constants.trimToOneDecimals(parseFloat(stateDate.rainfall_normal_value)), xlRaw: stateDate.rainfall_normal_value, styles: { fillColor: stateColorCode } },
-              { content: stateDate.departure != null ? this.constants.trimToZeroDecimals(stateDate.departure) : ' ', xlRaw: stateDate.departure, styles: { fillColor: stateColorCode } },
+              { content: stateDate.departure != null ? this.constants.trimToZeroDecimals(stateDate.departure) : ' ', xlRaw: stateDate.departure, xlPct: true, styles: { fillColor: stateColorCode } },
               { content: sDateCat.Cat, styles: { fillColor: sDateCat.color } },
               { content: stateSeason.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateSeason.actual_state_rainfall) : ' ', xlRaw: stateSeason.actual_state_rainfall, styles: { fillColor: stateColorCode } },
               { content: this.constants.trimToOneDecimals(parseFloat(stateSeason.rainfall_normal_value)), xlRaw: stateSeason.rainfall_normal_value, styles: { fillColor: stateColorCode } },
-              { content: stateSeason.departure != null ? this.constants.trimToZeroDecimals(stateSeason.departure) : ' ', xlRaw: stateSeason.departure, styles: { fillColor: stateColorCode } },
+              { content: stateSeason.departure != null ? this.constants.trimToZeroDecimals(stateSeason.departure) : ' ', xlRaw: stateSeason.departure, xlPct: true, styles: { fillColor: stateColorCode } },
               { content: sSeasonCat.Cat, styles: { fillColor: sSeasonCat.color } },
             ]);
           }
@@ -807,11 +807,11 @@ export class DownloadPdf {
               districtDate.district_name,
               { content: districtDate.actual_rainfall != null ? this.constants.trimToOneDecimals(districtDate.actual_rainfall) : ' ', xlRaw: districtDate.actual_rainfall },
               { content: this.constants.trimToOneDecimals(parseFloat(districtDate.normal_rainfall)), xlRaw: districtDate.normal_rainfall },
-              { content: districtDate.departure != null ? this.constants.trimToZeroDecimals(districtDate.departure) : ' ', xlRaw: districtDate.departure },
+              { content: districtDate.departure != null ? this.constants.trimToZeroDecimals(districtDate.departure) : ' ', xlRaw: districtDate.departure, xlPct: true },
               { content: dDateCat.Cat, styles: { fillColor: dDateCat.color } },
               { content: districtSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(districtSeason.actual_rainfall) : ' ', xlRaw: districtSeason?.actual_rainfall },
               { content: this.constants.trimToOneDecimals(parseFloat(districtSeason?.normal_rainfall)), xlRaw: districtSeason?.normal_rainfall },
-              { content: districtSeason?.departure != null ? this.constants.trimToZeroDecimals(districtSeason.departure) : ' ', xlRaw: districtSeason?.departure },
+              { content: districtSeason?.departure != null ? this.constants.trimToZeroDecimals(districtSeason.departure) : ' ', xlRaw: districtSeason?.departure, xlPct: true },
               { content: dSeasonCat.Cat, styles: { fillColor: dSeasonCat.color } },
             ]);
           }
