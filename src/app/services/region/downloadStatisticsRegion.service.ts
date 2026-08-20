@@ -340,15 +340,16 @@ export class RegionDownloadStatistics {
         const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
         const fillHex   = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
         const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
-        return {
-          v: String(content ?? ''), t: 's',
-          s: {
-            fill: { fgColor: { rgb: fillHex } },
-            border: thinBlack,
-            font: { bold: true, sz: 9, color: { rgb: '000000' } },
-            alignment: { horizontal: hAlign, vertical: 'middle' as const },
-          },
+        const cellStyle = {
+          fill: { fgColor: { rgb: fillHex } },
+          border: thinBlack,
+          font: { bold: true, sz: 9, color: { rgb: '000000' } },
+          alignment: { horizontal: hAlign, vertical: 'middle' as const },
         };
+        const isDep = colIdx === 4 || colIdx === 8;
+        const numeric = this.constants.excelNumericCell(item, isDep ? 0 : 1, isDep ? '%' : '');
+        if (numeric) return { ...numeric, s: cellStyle };
+        return { v: String(content ?? ''), t: 's', s: cellStyle };
       });
     });
 
@@ -584,12 +585,14 @@ export class RegionDownloadStatistics {
             regionDate.actual_rainfall != null
               ? this.constants.trimToOneDecimals(regionDate.actual_rainfall)
               : " ",
+          xlRaw: regionDate.actual_rainfall,
           styles: { fillColor: regionColorCode },
         },
         {
           content: this.constants.trimToOneDecimals(
             parseFloat(regionDate.rainfall_normal_value)
           ),
+          xlRaw: regionDate.rainfall_normal_value,
           styles: { fillColor: regionColorCode },
         },
         {
@@ -597,6 +600,7 @@ export class RegionDownloadStatistics {
             regionDate.departure != null
               ? this.constants.trimToZeroDecimals(regionDate.departure)
               : " ",
+          xlRaw: regionDate.departure,
           styles: { fillColor: regionColorCode },
         },
         { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
@@ -605,12 +609,14 @@ export class RegionDownloadStatistics {
             regionSeason.actual_rainfall != null
               ? this.constants.trimToOneDecimals(regionSeason.actual_rainfall)
               : " ",
+          xlRaw: regionSeason.actual_rainfall,
           styles: { fillColor: regionColorCode },
         },
         {
           content: this.constants.trimToOneDecimals(
             parseFloat(regionSeason.rainfall_normal_value)
           ),
+          xlRaw: regionSeason.rainfall_normal_value,
           styles: { fillColor: regionColorCode },
         },
         {
@@ -618,6 +624,7 @@ export class RegionDownloadStatistics {
             regionSeason.departure != null
               ? this.constants.trimToZeroDecimals(regionSeason.departure)
               : " ",
+          xlRaw: regionSeason.departure,
           styles: { fillColor: regionColorCode },
         },
         { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } },

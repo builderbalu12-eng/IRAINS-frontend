@@ -444,11 +444,17 @@ export class McWiseStateStatistics {
         const cellFill  = item?.styles?.fillColor;
         const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
         const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
-        if (isGroupRow) {
-          return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: 'FF00FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
-        }
         const fillHex = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
-        return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
+        let cellStyle;
+        if (isGroupRow) {
+          cellStyle = { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: 'FF00FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } };
+        } else {
+          cellStyle = { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } };
+        }
+        const isDep = colIdx === 4 || colIdx === 8;
+        const numeric = this.constants.excelNumericCell(item, isDep ? 0 : 1, isDep ? '%' : '');
+        if (numeric) return { ...numeric, s: cellStyle };
+        return { v: String(content ?? ''), t: 's', s: cellStyle };
       });
     });
 
@@ -726,13 +732,13 @@ export class McWiseStateStatistics {
         this.rows.push([
             { content: '', styles: { fillColor: stateColorCode } },
             { content: `STATE : ${stateDate.state_name}`, styles: { fillColor: stateColorCode } },
-            { content: stateDate.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateDate.actual_state_rainfall) : ' ', styles: { fillColor: stateColorCode } },
-            { content: this.constants.trimToOneDecimals(parseFloat(stateDate.rainfall_normal_value)), styles: { fillColor: stateColorCode } },
-            { content: stateDate.departure != null ? this.constants.trimToZeroDecimals(stateDate.departure) : ' ', styles: { fillColor: stateColorCode } },
+            { content: stateDate.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateDate.actual_state_rainfall) : ' ', xlRaw: stateDate.actual_state_rainfall, styles: { fillColor: stateColorCode } },
+            { content: this.constants.trimToOneDecimals(parseFloat(stateDate.rainfall_normal_value)), xlRaw: stateDate.rainfall_normal_value, styles: { fillColor: stateColorCode } },
+            { content: stateDate.departure != null ? this.constants.trimToZeroDecimals(stateDate.departure) : ' ', xlRaw: stateDate.departure, styles: { fillColor: stateColorCode } },
             { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
-            { content: stateSeason.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateSeason.actual_state_rainfall) : ' ', styles: { fillColor: stateColorCode } },
-            { content: this.constants.trimToOneDecimals(parseFloat(stateSeason.rainfall_normal_value)), styles: { fillColor: stateColorCode } },
-            { content: stateSeason.departure != null ? this.constants.trimToZeroDecimals(stateSeason.departure) : ' ', styles: { fillColor: stateColorCode } },
+            { content: stateSeason.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateSeason.actual_state_rainfall) : ' ', xlRaw: stateSeason.actual_state_rainfall, styles: { fillColor: stateColorCode } },
+            { content: this.constants.trimToOneDecimals(parseFloat(stateSeason.rainfall_normal_value)), xlRaw: stateSeason.rainfall_normal_value, styles: { fillColor: stateColorCode } },
+            { content: stateSeason.departure != null ? this.constants.trimToZeroDecimals(stateSeason.departure) : ' ', xlRaw: stateSeason.departure, styles: { fillColor: stateColorCode } },
             { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
         ]);
 
@@ -751,13 +757,13 @@ export class McWiseStateStatistics {
             this.rows.push([
                 i + 1,
                 districtDate.district_name,
-                districtDate.actual_rainfall != null ? this.constants.trimToOneDecimals(districtDate.actual_rainfall) : ' ',
-                this.constants.trimToOneDecimals(parseFloat(districtDate.normal_rainfall)),
-                districtDate.departure != null ? this.constants.trimToZeroDecimals(districtDate.departure) : ' ',
+                { content: districtDate.actual_rainfall != null ? this.constants.trimToOneDecimals(districtDate.actual_rainfall) : ' ', xlRaw: districtDate.actual_rainfall },
+                { content: this.constants.trimToOneDecimals(parseFloat(districtDate.normal_rainfall)), xlRaw: districtDate.normal_rainfall },
+                { content: districtDate.departure != null ? this.constants.trimToZeroDecimals(districtDate.departure) : ' ', xlRaw: districtDate.departure },
                 { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
-                districtSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(districtSeason.actual_rainfall) : ' ',
-                this.constants.trimToOneDecimals(parseFloat(districtSeason?.normal_rainfall)),
-                districtSeason?.departure != null ? this.constants.trimToZeroDecimals(districtSeason.departure) : ' ',
+                { content: districtSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(districtSeason.actual_rainfall) : ' ', xlRaw: districtSeason?.actual_rainfall },
+                { content: this.constants.trimToOneDecimals(parseFloat(districtSeason?.normal_rainfall)), xlRaw: districtSeason?.normal_rainfall },
+                { content: districtSeason?.departure != null ? this.constants.trimToZeroDecimals(districtSeason.departure) : ' ', xlRaw: districtSeason?.departure },
                 { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
             ]);
         }

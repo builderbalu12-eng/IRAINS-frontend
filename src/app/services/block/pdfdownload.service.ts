@@ -314,14 +314,20 @@ export class DownloadPdf {
         const cellFill  = item?.styles?.fillColor;
         const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
         const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
-        if (isState) {
-          return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: 'FF00FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
-        }
-        if (isDistrict) {
-          return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: '0000FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
-        }
         const fillHex = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
-        return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
+        let cellStyle;
+        if (isState) {
+          cellStyle = { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: 'FF00FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } };
+        } else if (isDistrict) {
+          cellStyle = { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: '0000FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } };
+        } else {
+          cellStyle = { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } };
+        }
+        // Blocks print departure to one decimal, so keep that in the sheet too.
+        const isDep = colIdx === 4 || colIdx === 8;
+        const numeric = this.constants.excelNumericCell(item, 1, isDep ? '%' : '');
+        if (numeric) return { ...numeric, s: cellStyle };
+        return { v: String(content ?? ''), t: 's', s: cellStyle };
       });
     });
 
@@ -610,13 +616,13 @@ export class DownloadPdf {
           this.rows.push([
             i + 1,
             blockDate.block_name,
-            blockDate.actual_rainfall != null ? this.constants.trimToOneDecimals(blockDate.actual_rainfall) : '',
-            blockDate.normal_rainfall != null ? this.constants.trimToOneDecimals(blockDate.normal_rainfall) : '',
-            blockDate.departure != null ? this.constants.trimToOneDecimals(blockDate.departure) : '',
+            { content: blockDate.actual_rainfall != null ? this.constants.trimToOneDecimals(blockDate.actual_rainfall) : '', xlRaw: blockDate.actual_rainfall },
+            { content: blockDate.normal_rainfall != null ? this.constants.trimToOneDecimals(blockDate.normal_rainfall) : '', xlRaw: blockDate.normal_rainfall },
+            { content: blockDate.departure != null ? this.constants.trimToOneDecimals(blockDate.departure) : '', xlRaw: blockDate.departure },
             { content: dateCat.Cat, styles: { fillColor: dateCat.color } },
-            blockSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(blockSeason.actual_rainfall) : '',
-            blockSeason?.normal_rainfall != null ? this.constants.trimToOneDecimals(blockSeason.normal_rainfall) : '',
-            blockSeason?.departure != null ? this.constants.trimToOneDecimals(blockSeason.departure) : '',
+            { content: blockSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(blockSeason.actual_rainfall) : '', xlRaw: blockSeason?.actual_rainfall },
+            { content: blockSeason?.normal_rainfall != null ? this.constants.trimToOneDecimals(blockSeason.normal_rainfall) : '', xlRaw: blockSeason?.normal_rainfall },
+            { content: blockSeason?.departure != null ? this.constants.trimToOneDecimals(blockSeason.departure) : '', xlRaw: blockSeason?.departure },
             { content: seasonCat.Cat, styles: { fillColor: seasonCat.color } }
           ]);
         }

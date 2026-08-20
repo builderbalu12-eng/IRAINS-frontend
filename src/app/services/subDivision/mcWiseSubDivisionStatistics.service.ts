@@ -433,11 +433,17 @@ export class McWiseSubdivDownloadStatistics {
         const cellFill  = item?.styles?.fillColor;
         const isHexFill = typeof cellFill === 'string' && cellFill.startsWith('#');
         const hAlign    = colIdx === 1 ? 'left' as const : 'center' as const;
-        if (isGroupRow) {
-          return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: '0000FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
-        }
         const fillHex = isHexFill ? cellFill.replace('#', '').toUpperCase() : 'FFFFFF';
-        return { v: String(content ?? ''), t: 's', s: { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } } };
+        let cellStyle;
+        if (isGroupRow) {
+          cellStyle = { fill: { fgColor: { rgb: 'FFFFFF' } }, border: thinBlack, font: { bold: true, sz: 9, color: { rgb: '0000FF' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } };
+        } else {
+          cellStyle = { fill: { fgColor: { rgb: fillHex } }, border: thinBlack, font: { bold: false, sz: 9, color: { rgb: '000000' } }, alignment: { horizontal: hAlign, vertical: 'middle' as const } };
+        }
+        const isDep = colIdx === 4 || colIdx === 8;
+        const numeric = this.constants.excelNumericCell(item, isDep ? 0 : 1, isDep ? '%' : '');
+        if (numeric) return { ...numeric, s: cellStyle };
+        return { v: String(content ?? ''), t: 's', s: cellStyle };
       });
     });
 
@@ -714,13 +720,13 @@ export class McWiseSubdivDownloadStatistics {
         this.rows.push([
             { content: '', styles: { fillColor: subdivColorCode } },
             { content: `SUBDIVISION : ${subdivisionDate.subdiv_name}`, styles: { fillColor: subdivColorCode } },
-            { content: subdivisionDate.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionDate.actual_subdiv_rainfall) : ' ', styles: { fillColor: subdivColorCode } },
-            { content: this.constants.trimToOneDecimals(parseFloat(subdivisionDate.rainfall_normal_value)), styles: { fillColor: subdivColorCode } },
-            { content: subdivisionDate.departure != null ? this.constants.trimToZeroDecimals(subdivisionDate.departure) : ' ', styles: { fillColor: subdivColorCode } },
+            { content: subdivisionDate.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionDate.actual_subdiv_rainfall) : ' ', xlRaw: subdivisionDate.actual_subdiv_rainfall, styles: { fillColor: subdivColorCode } },
+            { content: this.constants.trimToOneDecimals(parseFloat(subdivisionDate.rainfall_normal_value)), xlRaw: subdivisionDate.rainfall_normal_value, styles: { fillColor: subdivColorCode } },
+            { content: subdivisionDate.departure != null ? this.constants.trimToZeroDecimals(subdivisionDate.departure) : ' ', xlRaw: subdivisionDate.departure, styles: { fillColor: subdivColorCode } },
             { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
-            { content: subdivisionSeason.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionSeason.actual_subdiv_rainfall) : ' ', styles: { fillColor: subdivColorCode } },
-            { content: this.constants.trimToOneDecimals(parseFloat(subdivisionSeason.rainfall_normal_value)), styles: { fillColor: subdivColorCode } },
-            { content: subdivisionSeason.departure != null ? this.constants.trimToZeroDecimals(subdivisionSeason.departure) : ' ', styles: { fillColor: subdivColorCode } },
+            { content: subdivisionSeason.actual_subdiv_rainfall != null ? this.constants.trimToOneDecimals(subdivisionSeason.actual_subdiv_rainfall) : ' ', xlRaw: subdivisionSeason.actual_subdiv_rainfall, styles: { fillColor: subdivColorCode } },
+            { content: this.constants.trimToOneDecimals(parseFloat(subdivisionSeason.rainfall_normal_value)), xlRaw: subdivisionSeason.rainfall_normal_value, styles: { fillColor: subdivColorCode } },
+            { content: subdivisionSeason.departure != null ? this.constants.trimToZeroDecimals(subdivisionSeason.departure) : ' ', xlRaw: subdivisionSeason.departure, styles: { fillColor: subdivColorCode } },
             { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
         ]);
 
@@ -739,13 +745,13 @@ export class McWiseSubdivDownloadStatistics {
             this.rows.push([
                 i + 1,
                 districtDate.district_name,
-                districtDate.actual_rainfall != null ? this.constants.trimToOneDecimals(districtDate.actual_rainfall) : ' ',
-                this.constants.trimToOneDecimals(parseFloat(districtDate.normal_rainfall)),
-                districtDate.departure != null ? this.constants.trimToZeroDecimals(districtDate.departure) : ' ',
+                { content: districtDate.actual_rainfall != null ? this.constants.trimToOneDecimals(districtDate.actual_rainfall) : ' ', xlRaw: districtDate.actual_rainfall },
+                { content: this.constants.trimToOneDecimals(parseFloat(districtDate.normal_rainfall)), xlRaw: districtDate.normal_rainfall },
+                { content: districtDate.departure != null ? this.constants.trimToZeroDecimals(districtDate.departure) : ' ', xlRaw: districtDate.departure },
                 { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
-                districtSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(districtSeason.actual_rainfall) : ' ',
-                this.constants.trimToOneDecimals(parseFloat(districtSeason?.normal_rainfall)),
-                districtSeason?.departure != null ? this.constants.trimToZeroDecimals(districtSeason.departure) : ' ',
+                { content: districtSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(districtSeason.actual_rainfall) : ' ', xlRaw: districtSeason?.actual_rainfall },
+                { content: this.constants.trimToOneDecimals(parseFloat(districtSeason?.normal_rainfall)), xlRaw: districtSeason?.normal_rainfall },
+                { content: districtSeason?.departure != null ? this.constants.trimToZeroDecimals(districtSeason.departure) : ' ', xlRaw: districtSeason?.departure },
                 { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
             ]);
         }

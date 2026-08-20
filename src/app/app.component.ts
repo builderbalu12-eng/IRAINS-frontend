@@ -12,8 +12,8 @@ import { CalculationsModeService } from './services/calculationsMode.service';
 export class AppComponent implements OnInit, OnDestroy {
   title = 'CRIS';
   loadedFeature = 'Departure';
-  /** Hidden on Data Management shell and all of its child routes. */
-  showChatbot = true;
+  /** HQ only, and hidden on the Data Management shell and its child routes. */
+  showChatbot = false;
 
   private routerSub?: Subscription;
 
@@ -52,7 +52,14 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private updateChatbotVisibility(url: string): void {
     const path = (url || '').split('?')[0].split('#')[0];
-    this.showChatbot = !path.startsWith('/data-management');
+    // Re-read the role on every navigation rather than caching it at startup:
+    // the app boots before the user logs in, and the guest auto-login lands
+    // here through a NavigationEnd.
+    const loggedInUserObject = JSON.parse(
+      localStorage.getItem('isAuthorised') || '{}'
+    );
+    const role = loggedInUserObject?.data?.[0]?.mcorhq;
+    this.showChatbot = role === 'hq' && !path.startsWith('/data-management');
   }
 
   onNavigate(feature:string){
