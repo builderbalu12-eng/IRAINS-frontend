@@ -388,7 +388,7 @@ export class CountryDownloadStatistics {
           alignment: { horizontal: hAlign, vertical: 'middle' as const },
         };
         const isDep = colIdx === 4 || colIdx === 8;
-        const numeric = this.constants.excelNumericCell(item, isDep ? 0 : 1, isDep ? '%' : '');
+        const numeric = this.constants.excelNumericCell(item, isDep ? 0 : 1);
         if (numeric) return { ...numeric, s: cellStyle };
         return { v: String(content ?? ''), t: 's', s: cellStyle };
       });

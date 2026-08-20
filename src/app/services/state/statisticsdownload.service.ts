@@ -474,8 +474,8 @@ export class StateDownloadStatistics {
     // Write the unrounded value as a real number when the cell carries one, so
     // the sheet shows a fixed number of decimals (12 -> "12.0") while a click
     // still reveals the full precision; otherwise fall back to text.
-    const numOrText = (item: any, decimals: number, suffix: string, style: any, text: string) => {
-      const numeric = this.constants.excelNumericCell(item, decimals, suffix);
+    const numOrText = (item: any, decimals: number, style: any, text: string) => {
+      const numeric = this.constants.excelNumericCell(item, decimals);
       return numeric ? { ...numeric, s: style } : { v: text, t: 's', s: style };
     };
 
@@ -523,13 +523,13 @@ export class StateDownloadStatistics {
         newArr.push([
           { v: 'COUNTRY AS A WHOLE', t: 's', s: { ...cStyle, alignment: { horizontal: 'left' as const, vertical: 'middle' as const } } }, // A — merged A:B
           { v: '', t: 's', s: cStyle },                              // B
-          numOrText(subArr[2], 1, '', cStyle, String(getContent(subArr[2]) ?? '')), // C actual day
-          numOrText(subArr[3], 1, '', cStyle, String(getContent(subArr[3]) ?? '')), // D normal day
-          numOrText(subArr[4], 0, '%', cStyle, depDay != null && depDay !== ' ' ? `${depDay}%` : ''), // E dep% day — merged E:F
+          numOrText(subArr[2], 1, cStyle, String(getContent(subArr[2]) ?? '')), // C actual day
+          numOrText(subArr[3], 1, cStyle, String(getContent(subArr[3]) ?? '')), // D normal day
+          numOrText(subArr[4], 0, cStyle, depDay != null && depDay !== ' ' ? `${depDay}%` : ''), // E dep% day — merged E:F
           { v: '', t: 's', s: cStyle },                              // F
-          numOrText(subArr[6], 1, '', cStyle, String(getContent(subArr[6]) ?? '')), // G actual period
-          numOrText(subArr[7], 1, '', cStyle, String(getContent(subArr[7]) ?? '')), // H normal period
-          numOrText(subArr[8], 0, '%', cStyle, depPeriod != null && depPeriod !== ' ' ? `${depPeriod}%` : ''), // I dep% period — merged I:J
+          numOrText(subArr[6], 1, cStyle, String(getContent(subArr[6]) ?? '')), // G actual period
+          numOrText(subArr[7], 1, cStyle, String(getContent(subArr[7]) ?? '')), // H normal period
+          numOrText(subArr[8], 0, cStyle, depPeriod != null && depPeriod !== ' ' ? `${depPeriod}%` : ''), // I dep% period — merged I:J
           { v: '', t: 's', s: cStyle },                              // J
         ]);
         continue;
@@ -551,7 +551,7 @@ export class StateDownloadStatistics {
           alignment: { horizontal: 'center', vertical: 'middle' },
         };
         const isDep = colIdx === 4 || colIdx === 8;
-        return numOrText(item, isDep ? 0 : 1, isDep ? '%' : '', cellStyle, String(content ?? ''));
+        return numOrText(item, isDep ? 0 : 1, cellStyle, String(content ?? ''));
       }));
     }
 

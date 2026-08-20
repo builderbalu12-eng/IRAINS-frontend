@@ -569,8 +569,8 @@ export class SubdivDownloadStatistics {
     // Write the unrounded value as a real number when the cell carries one, so
     // the sheet shows a fixed number of decimals (12 -> "12.0") while a click
     // still reveals the full precision; otherwise fall back to text.
-    const numOrText = (item: any, decimals: number, suffix: string, style: any, text: string) => {
-      const numeric = this.constants.excelNumericCell(item, decimals, suffix);
+    const numOrText = (item: any, decimals: number, style: any, text: string) => {
+      const numeric = this.constants.excelNumericCell(item, decimals);
       return numeric ? { ...numeric, s: style } : { v: text, t: 's', s: style };
     };
 
@@ -599,13 +599,13 @@ export class SubdivDownloadStatistics {
         newArr.push([
           { v: regionName, t: 's', s: { ...mkRStyle(), alignment: { horizontal: 'left' as const, vertical: 'middle' as const } } },
           { v: '', t: 's', s: mkRStyle() },
-          numOrText(subArr[2], 1, '', mkRStyle(), String(getContent(subArr[2]) ?? '')),
-          numOrText(subArr[3], 1, '', mkRStyle(), String(getContent(subArr[3]) ?? '')),
-          numOrText(subArr[4], 0, '%', mkRStyle(), depDay != null && depDay !== ' ' ? `${depDay}%` : ''),
+          numOrText(subArr[2], 1, mkRStyle(), String(getContent(subArr[2]) ?? '')),
+          numOrText(subArr[3], 1, mkRStyle(), String(getContent(subArr[3]) ?? '')),
+          numOrText(subArr[4], 0, mkRStyle(), depDay != null && depDay !== ' ' ? `${depDay}%` : ''),
           { v: '', t: 's', s: mkRStyle() },
-          numOrText(subArr[6], 1, '', mkRStyle(), String(getContent(subArr[6]) ?? '')),
-          numOrText(subArr[7], 1, '', mkRStyle(), String(getContent(subArr[7]) ?? '')),
-          numOrText(subArr[8], 0, '%', mkRStyle(), depPeriod != null && depPeriod !== ' ' ? `${depPeriod}%` : ''),
+          numOrText(subArr[6], 1, mkRStyle(), String(getContent(subArr[6]) ?? '')),
+          numOrText(subArr[7], 1, mkRStyle(), String(getContent(subArr[7]) ?? '')),
+          numOrText(subArr[8], 0, mkRStyle(), depPeriod != null && depPeriod !== ' ' ? `${depPeriod}%` : ''),
           { v: '', t: 's', s: mkRStyle() },
         ]);
         continue;
@@ -629,13 +629,13 @@ export class SubdivDownloadStatistics {
         newArr.push([
           { v: 'COUNTRY AS A WHOLE', t: 's', s: { ...mkCStyle(), alignment: { horizontal: 'left' as const, vertical: 'middle' as const } } },
           { v: '', t: 's', s: mkCStyle() },
-          numOrText(subArr[2], 1, '', mkCStyle(), String(getContent(subArr[2]) ?? '')),
-          numOrText(subArr[3], 1, '', mkCStyle(), String(getContent(subArr[3]) ?? '')),
-          numOrText(subArr[4], 0, '%', mkCStyle(), depDay != null && depDay !== ' ' ? `${depDay}%` : ''),
+          numOrText(subArr[2], 1, mkCStyle(), String(getContent(subArr[2]) ?? '')),
+          numOrText(subArr[3], 1, mkCStyle(), String(getContent(subArr[3]) ?? '')),
+          numOrText(subArr[4], 0, mkCStyle(), depDay != null && depDay !== ' ' ? `${depDay}%` : ''),
           { v: '', t: 's', s: mkCStyle() },
-          numOrText(subArr[6], 1, '', mkCStyle(), String(getContent(subArr[6]) ?? '')),
-          numOrText(subArr[7], 1, '', mkCStyle(), String(getContent(subArr[7]) ?? '')),
-          numOrText(subArr[8], 0, '%', mkCStyle(), depPeriod != null && depPeriod !== ' ' ? `${depPeriod}%` : ''),
+          numOrText(subArr[6], 1, mkCStyle(), String(getContent(subArr[6]) ?? '')),
+          numOrText(subArr[7], 1, mkCStyle(), String(getContent(subArr[7]) ?? '')),
+          numOrText(subArr[8], 0, mkCStyle(), depPeriod != null && depPeriod !== ' ' ? `${depPeriod}%` : ''),
           { v: '', t: 's', s: mkCStyle() },
         ]);
         continue;
@@ -657,7 +657,7 @@ export class SubdivDownloadStatistics {
           alignment: { horizontal: 'center', vertical: 'middle' },
         };
         const isDep = colIdx === 4 || colIdx === 8;
-        return numOrText(item, isDep ? 0 : 1, isDep ? '%' : '', cellStyle, String(content ?? ''));
+        return numOrText(item, isDep ? 0 : 1, cellStyle, String(content ?? ''));
       }));
     }
 
