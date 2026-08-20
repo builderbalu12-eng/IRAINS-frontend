@@ -593,7 +593,7 @@ export class StateDownloadStatistics {
     doc.text(headingText1, marginLeft + 100, marginTop + 28);
     autoTable(doc, {
       head: [columns1, columns],
-      body: this.rows,
+      body: this.constants.withDeparturePercent(this.rows),
       theme: 'striped',
       startY: marginTop + cellHeight + 25, // Adjust the vertical position below the image and heading
       margin: { left: marginLeft },
@@ -1152,11 +1152,11 @@ export class StateDownloadStatistics {
             { content: `REGION : ${regionDate.name.toUpperCase()}`, styles: { fillColor: subdivColorCode } },
             { content: regionDate.actual_rainfall != null ? this.constants.trimToOneDecimals(regionDate.actual_rainfall) : ' ', xlRaw: regionDate.actual_rainfall, styles: { fillColor: subdivColorCode } },
             { content: this.constants.trimToOneDecimals(parseFloat(regionDate.rainfall_normal_value)), xlRaw: regionDate.rainfall_normal_value, styles: { fillColor: subdivColorCode } },
-            { content: regionDate.departure != null ? this.constants.trimToZeroDecimals(regionDate.departure) : ' ', xlRaw: regionDate.departure, styles: { fillColor: subdivColorCode } },
+            { content: regionDate.departure != null ? this.constants.trimToZeroDecimals(regionDate.departure) : ' ', xlRaw: regionDate.departure, xlPct: true, styles: { fillColor: subdivColorCode } },
             { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
             { content: regionSeason.actual_rainfall != null ? this.constants.trimToOneDecimals(regionSeason.actual_rainfall) : ' ', xlRaw: regionSeason.actual_rainfall, styles: { fillColor: subdivColorCode } },
             { content: this.constants.trimToOneDecimals(parseFloat(regionSeason.rainfall_normal_value)), xlRaw: regionSeason.rainfall_normal_value, styles: { fillColor: subdivColorCode } },
-            { content: regionSeason.departure != null ? this.constants.trimToZeroDecimals(regionSeason.departure) : ' ', xlRaw: regionSeason.departure, styles: { fillColor: subdivColorCode } },
+            { content: regionSeason.departure != null ? this.constants.trimToZeroDecimals(regionSeason.departure) : ' ', xlRaw: regionSeason.departure, xlPct: true, styles: { fillColor: subdivColorCode } },
             { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
         ]);
 
@@ -1181,11 +1181,11 @@ export class StateDownloadStatistics {
                 { content: `${stateDate.state_name}`, styles: { fillColor: stateColorCode } },
                 { content: stateDate.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateDate.actual_state_rainfall) : ' ', xlRaw: stateDate.actual_state_rainfall, styles: { fillColor: stateColorCode } },
                 { content: this.constants.trimToOneDecimals(parseFloat(stateDate.rainfall_normal_value)), xlRaw: stateDate.rainfall_normal_value, styles: { fillColor: stateColorCode } },
-                { content: stateDate.departure != null ? this.constants.trimToZeroDecimals(stateDate.departure) : ' ', xlRaw: stateDate.departure, styles: { fillColor: stateColorCode } },
+                { content: stateDate.departure != null ? this.constants.trimToZeroDecimals(stateDate.departure) : ' ', xlRaw: stateDate.departure, xlPct: true, styles: { fillColor: stateColorCode } },
                 { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
                 { content: stateSeason.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateSeason.actual_state_rainfall) : ' ', xlRaw: stateSeason.actual_state_rainfall, styles: { fillColor: stateColorCode } },
                 { content: this.constants.trimToOneDecimals(parseFloat(stateSeason.rainfall_normal_value)), xlRaw: stateSeason.rainfall_normal_value, styles: { fillColor: stateColorCode } },
-                { content: stateSeason.departure != null ? this.constants.trimToZeroDecimals(stateSeason.departure) : ' ', xlRaw: stateSeason.departure, styles: { fillColor: stateColorCode } },
+                { content: stateSeason.departure != null ? this.constants.trimToZeroDecimals(stateSeason.departure) : ' ', xlRaw: stateSeason.departure, xlPct: true, styles: { fillColor: stateColorCode } },
                 { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
             ]);
         }
@@ -1203,11 +1203,11 @@ export class StateDownloadStatistics {
         { content: 'COUNTRY AS A WHOLE', styles: { fillColor: countryColorCode, fontStyle: 'bold' } },
         { content: countryDate.actual_rainfall != null ? this.constants.trimToOneDecimals(countryDate.actual_rainfall) : ' ', xlRaw: countryDate.actual_rainfall, styles: { fillColor: countryColorCode } },
         { content: this.constants.trimToOneDecimals(parseFloat(countryDate.rainfall_normal_value)), xlRaw: countryDate.rainfall_normal_value, styles: { fillColor: countryColorCode } },
-        { content: countryDate.departure != null ? this.constants.trimToZeroDecimals(countryDate.departure) : ' ', xlRaw: countryDate.departure, styles: { fillColor: countryColorCode } },
+        { content: countryDate.departure != null ? this.constants.trimToZeroDecimals(countryDate.departure) : ' ', xlRaw: countryDate.departure, xlPct: true, styles: { fillColor: countryColorCode } },
         { content: cDateCat.Cat,   styles: { fillColor: cDateCat.color } },
         { content: countrySeason.actual_rainfall != null ? this.constants.trimToOneDecimals(countrySeason.actual_rainfall) : ' ', xlRaw: countrySeason.actual_rainfall, styles: { fillColor: countryColorCode } },
         { content: this.constants.trimToOneDecimals(parseFloat(countrySeason.rainfall_normal_value)), xlRaw: countrySeason.rainfall_normal_value, styles: { fillColor: countryColorCode } },
-        { content: countrySeason.departure != null ? this.constants.trimToZeroDecimals(countrySeason.departure) : ' ', xlRaw: countrySeason.departure, styles: { fillColor: countryColorCode } },
+        { content: countrySeason.departure != null ? this.constants.trimToZeroDecimals(countrySeason.departure) : ' ', xlRaw: countrySeason.departure, xlPct: true, styles: { fillColor: countryColorCode } },
         { content: cSeasonCat.Cat, styles: { fillColor: cSeasonCat.color } },
       ]);
     }

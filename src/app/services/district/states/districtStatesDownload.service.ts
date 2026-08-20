@@ -495,7 +495,7 @@ export class DownloadPdfStateDistrict {
     doc.text(headingText1, marginLeft + 100, marginTop + 28);
     autoTable(doc, {
       head: [columns1, columns],
-      body: this.rows,
+      body: this.constants.withDeparturePercent(this.rows),
       theme: 'striped',
       startY: marginTop + cellHeight + 25, // Adjust the vertical position below the image and heading
       margin: { left: marginLeft },
@@ -666,11 +666,11 @@ export class DownloadPdfStateDistrict {
                 { content: `STATE : ${stateDate.state_name}`, styles: { fillColor: stateColorCode } },
                 { content: stateDate.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateDate.actual_state_rainfall) : ' ', xlRaw: stateDate.actual_state_rainfall, styles: { fillColor: stateColorCode } },
                 { content: this.constants.trimToOneDecimals(parseFloat(stateDate.rainfall_normal_value)), xlRaw: stateDate.rainfall_normal_value, styles: { fillColor: stateColorCode } },
-                { content: stateDate.departure != null ? Math.round(stateDate.departure) : ' ', xlRaw: stateDate.departure, styles: { fillColor: stateColorCode } },
+                { content: stateDate.departure != null ? Math.round(stateDate.departure) : ' ', xlRaw: stateDate.departure, xlPct: true, styles: { fillColor: stateColorCode } },
                 { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
                 { content: stateSeason.actual_state_rainfall != null ? this.constants.trimToOneDecimals(stateSeason.actual_state_rainfall) : ' ', xlRaw: stateSeason.actual_state_rainfall, styles: { fillColor: stateColorCode } },
                 { content: this.constants.trimToOneDecimals(parseFloat(stateSeason.rainfall_normal_value)), xlRaw: stateSeason.rainfall_normal_value, styles: { fillColor: stateColorCode } },
-                { content: stateSeason.departure != null ? Math.round(stateSeason.departure) : ' ', xlRaw: stateSeason.departure, styles: { fillColor: stateColorCode } },
+                { content: stateSeason.departure != null ? Math.round(stateSeason.departure) : ' ', xlRaw: stateSeason.departure, xlPct: true, styles: { fillColor: stateColorCode } },
                 { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
             ]);
 
@@ -691,11 +691,11 @@ export class DownloadPdfStateDistrict {
                     districtDate.district_name,
                     { content: districtDate.actual_rainfall != null ? this.constants.trimToOneDecimals(districtDate.actual_rainfall) : ' ', xlRaw: districtDate.actual_rainfall },
                     { content: this.constants.trimToOneDecimals(parseFloat(districtDate.normal_rainfall)), xlRaw: districtDate.normal_rainfall },
-                    { content: districtDate.departure != null ? Math.round(districtDate.departure) : ' ', xlRaw: districtDate.departure },
+                    { content: districtDate.departure != null ? Math.round(districtDate.departure) : ' ', xlRaw: districtDate.departure, xlPct: true },
                     { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
                     { content: districtSeason?.actual_rainfall != null ? this.constants.trimToOneDecimals(districtSeason.actual_rainfall) : ' ', xlRaw: districtSeason?.actual_rainfall },
                     { content: this.constants.trimToOneDecimals(parseFloat(districtSeason?.normal_rainfall)), xlRaw: districtSeason?.normal_rainfall },
-                    { content: districtSeason?.departure != null ? Math.round(districtSeason.departure) : ' ', xlRaw: districtSeason?.departure },
+                    { content: districtSeason?.departure != null ? Math.round(districtSeason.departure) : ' ', xlRaw: districtSeason?.departure, xlPct: true },
                     { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
                 ]);
             }

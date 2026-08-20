@@ -388,7 +388,7 @@ export class RegionDownloadStatistics {
     doc.text(headingText1, marginLeft + 100, marginTop + 28);
     autoTable(doc, {
       head: [columns1, columns],
-      body: this.rows,
+      body: this.constants.withDeparturePercent(this.rows),
       theme: "striped",
       startY: marginTop + cellHeight + 25, // Adjust the vertical position below the image and heading
       margin: { left: marginLeft },
@@ -600,7 +600,7 @@ export class RegionDownloadStatistics {
             regionDate.departure != null
               ? this.constants.trimToZeroDecimals(regionDate.departure)
               : " ",
-          xlRaw: regionDate.departure,
+          xlRaw: regionDate.departure, xlPct: true,
           styles: { fillColor: regionColorCode },
         },
         { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
@@ -624,7 +624,7 @@ export class RegionDownloadStatistics {
             regionSeason.departure != null
               ? this.constants.trimToZeroDecimals(regionSeason.departure)
               : " ",
-          xlRaw: regionSeason.departure,
+          xlRaw: regionSeason.departure, xlPct: true,
           styles: { fillColor: regionColorCode },
         },
         { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } },

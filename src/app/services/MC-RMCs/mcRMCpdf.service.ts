@@ -391,7 +391,7 @@ export class MCRMCDownloadStatistics {
     
     autoTable(doc, {
       head: [columns1, columns],
-      body: this.rows,
+      body: this.constants.withDeparturePercent(this.rows),
       theme: 'striped',
       startY: marginTop + cellHeight + 25,
       margin: { left: marginLeft },
@@ -473,11 +473,11 @@ export class MCRMCDownloadStatistics {
         districtDate.district_name,
         { content: districtDate.actual_rainfall != null ? parseFloat(districtDate.actual_rainfall).toFixed(1) : ' ', xlRaw: districtDate.actual_rainfall },
         { content: parseFloat(districtDate.normal_rainfall).toFixed(1), xlRaw: districtDate.normal_rainfall },
-        { content: districtDate.departure != null ? Math.round(parseFloat(districtDate.departure)) : ' ', xlRaw: districtDate.departure },
+        { content: districtDate.departure != null ? Math.round(parseFloat(districtDate.departure)) : ' ', xlRaw: districtDate.departure, xlPct: true },
         { content: DateCat.Cat, styles: { fillColor: DateCat.color } },
         { content: districtSeason?.actual_rainfall != null ? parseFloat(districtSeason.actual_rainfall).toFixed(1) : ' ', xlRaw: districtSeason?.actual_rainfall },
         { content: parseFloat(districtSeason?.normal_rainfall || '0').toFixed(1), xlRaw: districtSeason?.normal_rainfall ?? 0 },
-        { content: districtSeason?.departure != null ? Math.round(parseFloat(districtSeason.departure)) : ' ', xlRaw: districtSeason?.departure },
+        { content: districtSeason?.departure != null ? Math.round(parseFloat(districtSeason.departure)) : ' ', xlRaw: districtSeason?.departure, xlPct: true },
         { content: SeasonCat.Cat, styles: { fillColor: SeasonCat.color } }
       ]);
     }
