@@ -122,6 +122,8 @@ export interface OllamaChatResponse {
   out_of_scope?: boolean;
   /** Example questions to offer when out_of_scope. */
   suggestions?: string[];
+  /** Follow-up chips after a place-specific rainfall answer. */
+  related_options?: Array<{ label?: string; value?: string }>;
 }
 
 export interface SampleQuestions {

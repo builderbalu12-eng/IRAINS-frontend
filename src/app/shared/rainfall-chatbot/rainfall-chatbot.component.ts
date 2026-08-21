@@ -218,6 +218,8 @@ interface ApiDataRow {
   rainfall_normal_value?: number | null;
   normal_rainfall?: number | null;
   date?: string;
+  year?: number | string;
+  _level?: 'district' | 'station' | 'history' | string;
   days?: Array<{ date?: string; activity?: string }>;
   /** Centre station summary (quoted SQL aliases). */
   'MC or RMC'?: string;
@@ -790,6 +792,16 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Related follow-up chips (previous days / same-date history) — no pending clarify
+    if (!this.pendingBackendClarify && choice.value != null && choice.value !== '') {
+      this.clearChoicesFromMessages();
+      this.pushUser(choice.label);
+      this.isTyping = true;
+      this.scrollToBottom();
+      this.askBackend(String(choice.value));
+      return;
+    }
+
     // Backend clarify chips (which map, place, timeframe, …)
     if (this.pendingBackendClarify) {
       this.resolveBackendClarify(choice);
@@ -1095,10 +1107,12 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
 
         if (res?.answer) {
           const formatted = this.formatApiAnswer(res);
+          const relatedChoices = this.mapRelatedOptions(res);
           this.pushAssistant(
             formatted.text,
             formatted.listItems,
-            formatted.navLink
+            formatted.navLink,
+            relatedChoices.length ? relatedChoices : null
           );
         } else {
           const reply = this.composeReply(text);
@@ -1854,6 +1868,18 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
   }
 
   /** Banner when backend soft-corrected a place name (chenai → Chennai). */
+  private mapRelatedOptions(res: OllamaChatResponse): ClarificationChoice[] {
+    const opts = Array.isArray(res?.related_options) ? res.related_options : [];
+    return opts
+      .filter((o) => o && (o.label || o.value))
+      .map((o, i) => ({
+        id: `related_${i}`,
+        label: String(o.label || o.value),
+        value: String(o.value || o.label),
+        variant: 'action' as const,
+      }));
+  }
+
   private formatDidYouMeanBanner(res: OllamaChatResponse): string {
     const prompt =
       res?.did_you_mean?.prompt ||
@@ -1981,7 +2007,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       return withSource({ text });
     }
 
-    // Rankings (top wettest) / threshold (above X mm)
+    // Rankings (top wettest / Heavy Rainfall) / threshold (above X mm)
     if (
       postProcess?.type === 'rank_by_actual' ||
       postProcess?.type === 'filter_by_actual_min'
@@ -1999,7 +2025,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
           : `<strong>${rows.length}</strong> result(s)`;
       const intro =
         postProcess.type === 'rank_by_actual'
-          ? `<p>Top wettest` +
+          ? `<p>Heavy Rainfall / top wettest` +
             (date ? ` for <strong>${this.escapeHtml(date)}</strong>` : '') +
             ` — <strong>${rows.length}</strong> place(s):</p>`
           : `<p>Places with rainfall ≥ <strong>${Number(
@@ -2030,6 +2056,81 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         });
       }
       return withSource({ text: didYouMean + intro, listItems });
+    }
+
+    // Same calendar date across previous years
+    if (postProcess?.type === 'same_date_history') {
+      const listItems = rows.map((d, i) => {
+        const year = d.year || (d.date ? String(d.date).slice(0, 4) : i + 1);
+        const name =
+          d.station_name || d.district_name || d.name || 'Place';
+        const rain = d.actual ?? d.actual_rainfall ?? d.data;
+        return (
+          `<strong>${this.escapeHtml(String(year))}</strong> — ` +
+          `${this.escapeHtml(String(name))}` +
+          (rain != null ? ` — <strong>${Number(rain).toFixed(1)} mm</strong>` : ' — no data')
+        );
+      });
+      const place =
+        (res.action?.post_filter as { station_name?: string; district_name?: string } | undefined)
+          ?.station_name ||
+        (res.action?.post_filter as { district_name?: string } | undefined)?.district_name ||
+        'selected place';
+      return withSource({
+        text:
+          didYouMean +
+          `<p>Same-date rainfall history for <strong>${this.escapeHtml(
+            String(place)
+          )}</strong>` +
+          (res.api?.usedDate
+            ? ` (calendar day <strong>${this.escapeHtml(String(res.api.usedDate))}</strong>)`
+            : '') +
+          `:</p>`,
+        listItems,
+      });
+    }
+
+    // District rainfall + stations in that district
+    const districtRows = rows.filter((d) => (d as any)._level === 'district');
+    const stationRows = rows.filter((d) => (d as any)._level === 'station');
+    if (districtRows.length === 1 && stationRows.length) {
+      const d = districtRows[0];
+      const date = this.resolveAnswerDate(res, [d]);
+      const name = d.district_name || d.name || 'District';
+      const intro =
+        `<p>For <strong>${this.escapeHtml(String(name))}</strong> district` +
+        (date ? ` on <strong>${this.escapeHtml(String(date))}</strong>` : '') +
+        `:</p>` +
+        this.formatRowSummaryList(d) +
+        `<p class="clarify-hint"><strong>${stationRows.length}</strong> station(s) in this district:</p>`;
+      return withSource({
+        text: didYouMean + intro,
+        listItems: stationRows.map((s, i) => this.formatStationRainListItem(s, i)),
+      });
+    }
+
+    if (
+      String(res?.action?.api_id || '') === 'fetch_station_data' ||
+      (stationRows.length && !districtRows.length)
+    ) {
+      const date = this.resolveAnswerDate(res, rows);
+      if (!rows.length) {
+        return withSource({
+          text:
+            didYouMean +
+            `<p>No station rainfall available` +
+            (date ? ` for <strong>${this.escapeHtml(date)}</strong>` : '') +
+            `.</p>`,
+        });
+      }
+      return withSource({
+        text:
+          didYouMean +
+          `<p>Station rainfall` +
+          (date ? ` for <strong>${this.escapeHtml(date)}</strong>` : '') +
+          `:</p>`,
+        listItems: rows.map((s, i) => this.formatStationRainListItem(s, i)),
+      });
     }
 
     // Monsoon activity
