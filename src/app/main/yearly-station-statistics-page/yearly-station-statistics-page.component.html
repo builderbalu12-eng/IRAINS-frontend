@@ -134,31 +134,38 @@
 
   <!-- Table (hidden while Statistics is open) -->
   <div *ngIf="!showImdStatistics" class="data-table-wrapper">
-    <div class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>S.No</th>
-            <th *ngFor="let col of DailyWiseStationcolumns">{{ col | titlecase }}</th>
-          </tr>
-        </thead>
-        <tbody *ngIf="DailyWiseStationRows && DailyWiseStationRows.length > 0">
-          <tr *ngFor="let row of DailyWiseStationRows; let i = index" [class.even-row]="i % 2 === 0">
-            <td>{{ i + 1 }}</td>
-            <td *ngFor="let col of DailyWiseStationcolumns" [class.numeric]="isNumeric(row[col])">
-              {{ formatCellValue(row[col]) }}
-            </td>
-          </tr>
-        </tbody>
-        <tbody *ngIf="!isLoading && (!DailyWiseStationRows || DailyWiseStationRows.length === 0)">
-          <tr>
-            <td [attr.colspan]="(DailyWiseStationcolumns?.length || 0) + 1" class="no-data">
-              Select the appropriate options and Submit
-            </td>
-          </tr>
-        </tbody>
-      </table>
+
+    <!-- Virtualised: only the rows in view exist in the DOM, so a country-wide
+         range costs the same as a single district rather than ~1.6M cells. The
+         header sits outside the viewport and shares its grid track list, so the
+         two stay aligned while this wrapper scrolls them horizontally together. -->
+    <div class="dw-hscroll" *ngIf="DailyWiseStationRows?.length; else dwNoData">
+      <div class="dw-grid" [style.width.px]="dwTotalWidth">
+        <div class="dw-head" [style.gridTemplateColumns]="dwGridTemplate">
+          <div class="dw-cell">S.No</div>
+          <div class="dw-cell" *ngFor="let col of DailyWiseStationcolumns; trackBy: trackByIndex">
+            {{ col | titlecase }}
+          </div>
+        </div>
+
+        <cdk-virtual-scroll-viewport class="dw-viewport" [itemSize]="dwRowHeight"
+                                     [minBufferPx]="dwRowHeight * 10"
+                                     [maxBufferPx]="dwRowHeight * 20">
+          <div class="dw-row" [class.even-row]="i % 2 === 0"
+               [style.gridTemplateColumns]="dwGridTemplate"
+               [style.height.px]="dwRowHeight"
+               *cdkVirtualFor="let row of DailyWiseStationRows; let i = index; trackBy: trackByDailyWiseRow">
+            <div class="dw-cell">{{ i + 1 }}</div>
+            <div class="dw-cell" *ngFor="let cell of dwCells(row); trackBy: trackByIndex"
+                 [class.numeric]="cell.n">{{ cell.v }}</div>
+          </div>
+        </cdk-virtual-scroll-viewport>
+      </div>
     </div>
+
+    <ng-template #dwNoData>
+      <div class="no-data" *ngIf="!isLoading">Select the appropriate options and Submit</div>
+    </ng-template>
   </div>
 
   <!-- Statistics: satellite map LEFT + charts RIGHT (in-page, no modal) -->
@@ -320,7 +327,7 @@
         <tbody *ngIf="govtAwsRows && govtAwsRows.length > 0">
           <tr *ngFor="let row of govtAwsRows; let i = index" [class.even-row]="i % 2 === 0">
             <td>{{ i + 1 }}</td>
-            <td *ngFor="let col of govtAwsColumns" [class.numeric]="isNumeric(row[col])">
+            <td *ngFor="let col of govtAwsColumns" [class.numeric]="isNumeric(row[col]) || isMissing(row[col])">
               {{ formatCellValue(row[col]) }}
             </td>
           </tr>

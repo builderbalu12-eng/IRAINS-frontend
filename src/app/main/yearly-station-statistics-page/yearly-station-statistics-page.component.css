@@ -724,3 +724,89 @@ opacity: 0.6; /* Makes the text look faded */
     padding: 8px 6px;
   }
 }
+
+/* ── Daily-Wise virtualised grid ─────────────────────────────────────────────
+   Replaces .table-container / .data-table for this one table. The header and
+   every data row are separate CSS grids sharing the track list built in
+   dwSetupGrid(), which is what keeps columns aligned without a <table>.
+   This wrapper scrolls both horizontally so they move together. */
+.dw-hscroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.dw-grid {
+  /* width is set inline from dwTotalWidth */
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.dw-head {
+  display: grid;
+  align-items: center;
+  min-height: 42px;
+  background-color: #4a90a4;
+  color: white;
+  font-weight: 600;
+}
+
+.dw-head .dw-cell {
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dw-head .dw-cell:last-child {
+  border-right: none;
+}
+
+/* Virtual scroll needs a definite height — it cannot size to its content,
+   because only the rows in view are ever measured. */
+.dw-viewport {
+  height: 70vh;
+  min-height: 300px;
+  width: 100%;
+}
+
+.dw-row {
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s ease;
+}
+
+.dw-row.even-row {
+  background-color: #f9fafb;
+}
+
+.dw-row:hover,
+.dw-row.even-row:hover {
+  background-color: #f1f5f9;
+}
+
+/* Columns are fixed-width now (they must be, to virtualise), so content that
+   would have widened an auto-layout <td> is clipped instead of breaking
+   alignment. Full value stays available in the Excel download. */
+.dw-cell {
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 1px solid #e5e7eb;
+}
+
+.dw-cell:last-child {
+  border-right: none;
+}
+
+.dw-cell.numeric {
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .dw-grid {
+    font-size: 12px;
+  }
+
+  .dw-cell {
+    padding: 0 6px;
+  }
+}

@@ -35,6 +35,18 @@ export class YearlyStationStatisticsPageComponent {
   DailyWiseStationcolumns: any;
   DailyWiseStationRows: any;
 
+  // Only the rows in view exist in the DOM. A full country-wide range is ~6,600
+  // stations x ~240 date columns, and rendering all of that at once is ~1.6M
+  // cell elements, which locks the browser up. Download and Statistics still
+  // read DailyWiseStationRows, so they keep the complete dataset.
+  // IMD's sentinel for "no data / not entered". The Excel download's legend
+  // already documents -999.9, so the grid and the export now agree.
+  readonly MISSING_VALUE = -999.9;
+
+  readonly dwRowHeight = 38;
+  dwGridTemplate = '';
+  dwTotalWidth = 0;
+
   govtAwsColumns: any;
   govtAwsRows: any;
   govtAwsIsLoading: boolean = false;
@@ -1078,16 +1090,16 @@ async fetchUnifiedFileFromBackend() {
         this.districtCodeList
       )
       .toPromise();
-    this.stationData = response?.data; // Store the fetched data
-    console.log(
-      "Data fetched successfully from fetchUnifiedFileFromBackend:",
-      this.stationData
-    );
+    // The backend already returns the station-by-date grid, so there is nothing
+    // left to pivot here. Deliberately not stored on this.stationData, which
+    // filterStationData() still expects to be a flat array.
+    const result = response?.data ?? { columns: [], rows: [] };
     console.log(this.enteredFromDate, this.enteredEndDate);
-    const result = this.groupByDates(this.stationData);
     this.DailyWiseStationcolumns = result.columns;
     this.DailyWiseStationRows = result.rows;
-    console.log('result.rows', result.rows);
+    // Not logging the rows themselves: at ~6,600 x ~240 that alone hangs DevTools.
+    console.log('result.rows', result.rows?.length, 'stations x', result.columns?.length, 'columns');
+    this.dwSetupGrid();
     this.cdr.detectChanges();
   } catch (error) {
     console.error("Error fetching data:", error);
@@ -1204,9 +1216,12 @@ onDownload() {
   // Ensure rows are in array format
   const formattedRows = this.DailyWiseStationRows.map((row: any) => {
     if (Array.isArray(row)) {
-      return row;
+      return row.map((cell: any) => this.isMissing(cell) ? this.MISSING_VALUE : cell);
     } else {
-      return this.DailyWiseStationcolumns.map((col: string | number) => row[col]);
+      // Written as a number, not a string, so Excel right-aligns it and the
+      // column-width pass below measures it like any other reading.
+      return this.DailyWiseStationcolumns.map((col: string | number) =>
+        this.isMissing(row[col]) ? this.MISSING_VALUE : row[col]);
     }
   });
 
@@ -1483,7 +1498,8 @@ onDownloadGovtAws(): void {
   ];
 
   const formattedRows = this.govtAwsRows.map((row: any) =>
-    this.govtAwsColumns.map((col: string) => row[col])
+    this.govtAwsColumns.map((col: string) =>
+      this.isMissing(row[col]) ? this.MISSING_VALUE : row[col])
   );
 
   const worksheetData = [...headerInfo, this.govtAwsColumns, ...formattedRows];
@@ -1727,9 +1743,64 @@ buildGovtAwsStatsTables(): void {
   this.cdr.detectChanges();
 }
 
+// The header row and every data row are CSS grids sharing one track list, which
+// is what keeps the columns lined up without a <table>. Widths must be explicit:
+// a virtualised row cannot be auto-sized, because the browser only ever sees the
+// handful of rows currently rendered.
+private dwWidthFor(col: string): number {
+  switch (col) {
+    case 'state_name': return 170;
+    case 'district_name': return 150;
+    case 'block_name': return 150;
+    case 'station_name': return 180;
+    case 'station_id': return 130;
+    case 'latitude':
+    case 'longitude': return 90;
+    default: return 92;   // date columns
+  }
+}
+
+dwSetupGrid(): void {
+  const cols: string[] = this.DailyWiseStationcolumns || [];
+  const widths = [60, ...cols.map((c) => this.dwWidthFor(c))];   // 60 = S.No
+  this.dwGridTemplate = widths.map((w) => `${w}px`).join(' ');
+  this.dwTotalWidth = widths.reduce((sum, w) => sum + w, 0);
+}
+
+// Formatted lazily, then cached on the row, so scrolling only ever pays for the
+// rows actually looked at and the cached array keeps its identity for ngFor.
+// Non-enumerable so the cache cannot leak into the Excel download or a console dump.
+dwCells(row: any): { v: string; n: boolean }[] {
+  if (!row.__cells) {
+    const cols: string[] = this.DailyWiseStationcolumns || [];
+    const cells = new Array(cols.length);
+    for (let c = 0; c < cols.length; c++) {
+      const value = row[cols[c]];
+      cells[c] = { v: this.formatCellValue(value), n: this.isNumeric(value) || this.isMissing(value) };
+    }
+    Object.defineProperty(row, '__cells', { value: cells, enumerable: false, configurable: true });
+  }
+  return row.__cells;
+}
+
+trackByDailyWiseRow(index: number): number {
+  return index;
+}
+
+trackByIndex(index: number): number {
+  return index;
+}
+
+// Blank cells and empty strings are both treated as missing, so the grid never
+// shows an ambiguous gap that could be read as a genuine zero-rainfall day.
+isMissing(value: any): boolean {
+  return value === null || value === undefined ||
+         (typeof value === 'string' && value.trim() === '');
+}
+
 formatCellValue(value: any): string {
-  if (value === null || value === undefined) {
-    return '-';
+  if (this.isMissing(value)) {
+    return this.MISSING_VALUE.toFixed(1);
   }
   if (typeof value === 'number') {
     return value.toLocaleString();
