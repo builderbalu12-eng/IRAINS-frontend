@@ -999,13 +999,14 @@
         </li>
 
         <!-- ARG/AWS CUMULATIVE RAINFALL REAL TIME STATION — hidden from the
-             navbar. The route and component are untouched, so uncommenting
-             this block brings the link straight back.
+             navbar. The page is still reachable, but only at the obscured
+             path /arg-aws-realtime-ef6et7d83d. Uncommenting this block brings
+             the link back; keep the suffix in sync with app-routing.module.ts.
         <li>
           <a
             class="main_nav"
-            *ngIf="hasAccess('arg-aws-realtime')"
-            routerLink="../arg-aws-realtime"
+            *ngIf="hasAccess('arg-aws-realtime-ef6et7d83d')"
+            routerLink="../arg-aws-realtime-ef6et7d83d"
             >ARG/AWS CUMULATIVE RAINFALL REAL TIME STATION</a
           >
         </li>

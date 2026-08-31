@@ -242,7 +242,7 @@ export const routes: Routes = [
   {path: 'newverification', component: VerificationComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc'] }},
   { path: 'station-level-data', component: StationLevelDataComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
   { path: 'station-statistics', component: StationStatisticsPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
-  { path: 'arg-aws-realtime', component: ArgAwsRealtimeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
+  { path: 'arg-aws-realtime-ef6et7d83d', component: ArgAwsRealtimeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
 
   { path: 'daily-state-rf-distribution', component: RainfallStatisticsComponent, data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'STATE'}, canActivate: [AuthGuard],  },
   { path: 'daily-subdivision-rf-distribution', component: RainfallStatisticsComponent,  data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'SUBDIVISION'},canActivate: [AuthGuard],  },
