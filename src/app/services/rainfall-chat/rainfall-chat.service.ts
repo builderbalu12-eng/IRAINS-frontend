@@ -94,6 +94,23 @@ export interface OllamaDidYouMean {
   prompt?: string | null;
 }
 
+/** One documentation section a knowledge answer was grounded in. */
+export interface OllamaChatSource {
+  heading_path?: string[];
+  heading?: string;
+  source?: string;
+  type?: string;
+  score?: number;
+}
+
+/** Which path the backend router sent the question down. */
+export interface OllamaChatRouting {
+  route?: 'data' | 'knowledge' | 'navigation' | string;
+  why?: string;
+  confidence?: number;
+  stage?: string;
+}
+
 export interface OllamaChatResponse {
   success: boolean;
   mode?: string;
@@ -124,6 +141,23 @@ export interface OllamaChatResponse {
   suggestions?: string[];
   /** Follow-up chips after a place-specific rainfall answer. */
   related_options?: Array<{ label?: string; value?: string }>;
+  /**
+   * Documentation sections behind a knowledge answer (mode "rag_knowledge").
+   * Show these — an uncited documentation answer is not verifiable.
+   */
+  sources?: OllamaChatSource[];
+  /** Router decision: data / knowledge / navigation. */
+  routing?: OllamaChatRouting | null;
+  /** Retrieval diagnostics (chunk headings, context size, timings). */
+  retrieval?: {
+    used?: number;
+    candidates?: number;
+    context_tokens?: number;
+    retrieved?: boolean;
+    reason?: string;
+    chunks?: Array<{ heading?: string; type?: string; score?: number }>;
+    timings?: { embed_ms?: number; total_ms?: number };
+  } | null;
 }
 
 export interface SampleQuestions {
@@ -145,6 +179,28 @@ export interface OllamaHealthResponse {
     models?: string[];
     baseUrl?: string;
     model?: string;
+    num_ctx?: number;
+  };
+  /**
+   * Context window vs prompt size. When full_catalog_fits is false and the RAG
+   * index is not ready, Ollama silently truncates the catalog and the planner
+   * invents endpoint names.
+   */
+  context_budget?: {
+    num_ctx?: number;
+    full_catalog_prompt_tokens?: number;
+    full_catalog_fits?: boolean;
+    retrieval_prompt_tokens_typical?: number;
+    warning?: string | null;
+  };
+  rag?: {
+    ready?: boolean;
+    chunk_count?: number;
+    embed_model?: string;
+    built_at?: string;
+    stale?: boolean;
+    error?: string;
+    rebuild_hint?: string | null;
   };
   demo_question?: string;
   sample_questions?: SampleQuestions;

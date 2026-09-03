@@ -26,6 +26,8 @@ interface ChatMessage {
   navLink?: { label: string; path: string } | null;
   /** Clarification buttons (local navigate/data or backend clarify). */
   choices?: ClarificationChoice[] | null;
+  /** Documentation sections behind a knowledge answer. */
+  sources?: Array<{ label: string; file?: string }> | null;
 }
 
 interface ClarificationChoice {
@@ -1077,7 +1079,8 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     text: string,
     listItems?: string[],
     navLink?: { label: string; path: string } | null,
-    choices?: ClarificationChoice[] | null
+    choices?: ClarificationChoice[] | null,
+    sources?: Array<{ label: string; file?: string }> | null
   ): void {
     this.messages.push({
       id: ++this.msgId,
@@ -1088,7 +1091,40 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       listExpanded: false,
       navLink: navLink || null,
       choices: choices?.length ? choices : null,
+      sources: sources?.length ? sources : null,
     });
+  }
+
+  /**
+   * Documentation sections behind a knowledge answer, de-duplicated and capped.
+   * A documentation answer the reader cannot trace back is not verifiable, so
+   * these are shown rather than kept as diagnostics.
+   *
+   * Only the leaf heading is shown. The full path exposes document scaffolding
+   * ("Appendix Z: iRAINS at a Glance — Executive Summary > What is iRAINS?"),
+   * which reads to a user like an internal file browser rather than a source.
+   */
+  private mapSources(
+    res: OllamaChatResponse
+  ): Array<{ label: string; file?: string }> {
+    if (res?.mode !== 'rag_knowledge' || !res.sources?.length) return [];
+    const seen = new Set<string>();
+    const out: Array<{ label: string; file?: string }> = [];
+    for (const src of res.sources) {
+      const leaf = src.heading_path?.length
+        ? src.heading_path[src.heading_path.length - 1]
+        : src.heading || '';
+      // Strip appendix / module numbering: "Z.3 Departure bands" -> "Departure bands"
+      const label = String(leaf)
+        .replace(/^(?:Appendix\s+[A-Z]|Module\s+[IVXLC]+)\s*[:.\u2014-]\s*/i, '')
+        .replace(/^(?:[A-Z]\.)?\d+(?:\.\d+)*\s+/, '')
+        .trim();
+      if (!label || seen.has(label)) continue;
+      seen.add(label);
+      out.push({ label, file: src.source });
+      if (out.length >= 3) break;
+    }
+    return out;
   }
 
   private askBackend(text: string): void {
@@ -1112,7 +1148,8 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
             formatted.text,
             formatted.listItems,
             formatted.navLink,
-            relatedChoices.length ? relatedChoices : null
+            relatedChoices.length ? relatedChoices : null,
+            this.mapSources(res)
           );
         } else {
           const reply = this.composeReply(text);
@@ -1154,9 +1191,17 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         if (!this.isGenericFaqFallback(reply.text)) {
           this.pushAssistant(reply.text);
         } else if (isOllamaDown) {
+          // 503 means the local model service is down, not that iRAINS is down.
+          // Say which, so an operator knows what to restart.
+          const hint = (body as any)?.ollama?.baseUrl
+            ? ` (model service at ${this.escapeHtml((body as any).ollama.baseUrl)})`
+            : '';
           this.pushAssistant(
-            `I can't answer right now — the iRAINS rainfall service is temporarily ` +
-              `unavailable.<br><br>Please try again in a little while.`
+            `I can't answer right now — the assistant's language model service ` +
+              `isn't running${hint}.<br><br>` +
+              `Rainfall pages and maps are unaffected. If you administer this ` +
+              `server, start it with <em>ollama serve</em> and check ` +
+              `<em>/api/v1/ollama-chat/health</em>.`
           );
         } else if (isTimeout) {
           this.pushAssistant(

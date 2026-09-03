@@ -839,3 +839,27 @@
     height: min(70vh, 560px);
   }
 }
+
+/* Sources behind a documentation answer.
+   Deliberately quiet: it is provenance, not part of the reply. */
+.answer-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(13, 92, 140, 0.22);
+}
+
+.answer-sources__item {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #0a6396;
+  background: rgba(10, 99, 150, 0.08);
+  border: 1px solid rgba(10, 99, 150, 0.16);
+  border-radius: 3px;
+  padding: 2px 6px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
