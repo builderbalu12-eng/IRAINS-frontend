@@ -30,6 +30,17 @@
      highlighted value cannot be confused with a chart series. */
   --rt-select: #1e7a45;
 
+  /* One identity colour per daily network, used by the badge, the picker and
+     the comparison cards so the same network is the same colour everywhere.
+     Deliberately outside the depth-band palette: those seven colours mean
+     millimetres, and a network must never be mistaken for a rainfall class.
+     On the map the networks are told apart by SHAPE instead — a filled circle
+     vs a hollow ring — because both are painted in band colours there. */
+  --rt-net-state: #1a4fa0;
+  --rt-net-state-tint: #eaf0fa;
+  --rt-net-imd: #7b3fa0;
+  --rt-net-imd-tint: #f2ebf8;
+
   --rt-radius: 8px;
   --rt-radius-sm: 5px;
   --rt-shadow: 0 1px 3px rgba(16, 24, 40, 0.09), 0 4px 12px rgba(16, 24, 40, 0.06);
@@ -1822,4 +1833,302 @@
   .rt-heat__row {
     grid-template-columns: 84px 1fr;
   }
+}
+
+
+/* ═══════════════════════════════════════════════════════ daily networks ═══
+   Two networks reach this page: State Government (aws_station_*) and IMD
+   (station_*). They are never merged into a single figure without saying so,
+   and everything below exists to keep which-is-which readable at a glance.
+   ========================================================================= */
+
+.rt-net--state {
+  --net: var(--rt-net-state);
+  --net-tint: var(--rt-net-state-tint);
+}
+
+.rt-net--imd {
+  --net: var(--rt-net-imd);
+  --net-tint: var(--rt-net-imd-tint);
+}
+
+/* ── network badge ── */
+
+.rt-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.rt-badge--net {
+  border: 1px solid var(--net, var(--rt-line));
+  background: var(--net-tint, var(--rt-canvas));
+  color: var(--net, var(--rt-ink-soft));
+}
+
+/* Sits before the station name in the profile heading, so it needs to clear
+   the baseline of much larger text without dragging the line height around. */
+.rt-idcard__name .rt-badge--net {
+  position: relative;
+  top: -2px;
+  margin-right: 6px;
+  font-size: 10px;
+}
+
+/* ── per-network comparison cards ── */
+
+.rt-netgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 10px;
+}
+
+.rt-netcard {
+  padding: 10px 12px 11px;
+  border: 1px solid var(--rt-line);
+  /* The identity colour rides the left edge rather than the whole border, so
+     two cards side by side stay visually equal in weight. */
+  border-left: 3px solid var(--net, var(--rt-line));
+  border-radius: var(--rt-radius-sm);
+  background: var(--rt-canvas);
+}
+
+.rt-netcard__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 9px;
+}
+
+.rt-netcard__label {
+  color: var(--rt-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rt-netcard__tag {
+  padding: 1px 6px;
+  border: 1px solid #e8c48a;
+  border-radius: 999px;
+  background: var(--rt-warn-tint);
+  color: var(--rt-warn);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.rt-netcard__tag--live {
+  border-color: #a9d3ba;
+  background: #e8f5ed;
+  color: var(--rt-select);
+}
+
+.rt-netcard__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 10px;
+  margin: 0;
+}
+
+.rt-netcard__stats dt {
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.rt-netcard__stats dd {
+  margin: 1px 0 0;
+  color: var(--rt-ink);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-netcard__stats dd em {
+  margin-left: 3px;
+  color: var(--rt-ink-faint);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.rt-netcard__foot {
+  margin: 9px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--rt-line);
+  color: var(--rt-ink-soft);
+  font-size: 11px;
+}
+
+.rt-netcard__foot--muted {
+  color: var(--rt-ink-faint);
+  font-style: italic;
+}
+
+/* ── supporting variants ── */
+
+.rt-tag--net {
+  border-color: #cbb6de;
+  background: var(--rt-net-imd-tint);
+  color: var(--rt-net-imd);
+}
+
+/* A caption tucked under the thing it explains, rather than a standing note. */
+.rt-note--tight {
+  margin: 8px 2px 0;
+  line-height: 1.5;
+}
+
+.rt-note__err {
+  display: block;
+  margin-top: 3px;
+  color: var(--rt-danger);
+  font-weight: 600;
+}
+
+/* Explains an absent panel. Flat, so it does not read as a result of its own. */
+.rt-card--muted {
+  background: var(--rt-canvas);
+  box-shadow: none;
+}
+
+/* ── live map: IMD rings ── */
+
+/* A hollow ring, so it reads apart from a filled State circle at any size and
+   carries no corners. The band colour rides the ring itself (set inline), which
+   keeps every class legible — including the white "Zero" band, which as a fill
+   would vanish into a light basemap. */
+.rt-legendbar__sw--ring {
+  border-width: 2.5px;
+  border-color: var(--rt-net-imd);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.rt-legendbar__item--net {
+  color: var(--rt-net-imd);
+  font-weight: 600;
+}
+
+/* Leaflet builds divIcons outside view encapsulation. */
+::ng-deep .aws-daily-marker {
+  background: none;
+  border: 0;
+}
+
+/* Sized to sit UNDER the State network, not compete with it.
+   A State dot is 10px across with a 1px hairline, so the ring is 9px with a
+   2px stroke and only a half-pixel rim: slightly smaller, hollow, and lighter
+   in weight. The animated 15-minute network stays the subject of this tab;
+   IMD is the context drawn behind it. */
+::ng-deep .aws-daily-marker i {
+  display: block;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border-width: 2px;
+  border-style: solid;
+  /* border-color is set inline, per depth band. */
+  border-radius: 50%;
+  background: transparent;
+  /* Just enough rim to hold the edge over satellite imagery, without the
+     dark outline reading as extra weight against the State dots. */
+  box-shadow: 0 0 0 0.5px rgba(29, 39, 51, 0.55);
+  opacity: 0.92;
+}
+
+::ng-deep .aws-popup__note {
+  margin: 7px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid #e3e7ec;
+  color: #5b6675;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+
+/* ── command bar: the page-wide network lens ───────────────────────────────
+   Shares the Time Zone control's shell, so the two read as the same kind of
+   thing: a lens the whole console is viewed through. The glyphs mirror what the
+   map actually draws — filled circle for the animated State network, hollow
+   ring for the static IMD totals — so the control doubles as the map's key.
+   ========================================================================= */
+
+.rt-zone--net .rt-zone__btn--net {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-right: 1px solid var(--rt-brand);
+  font-size: 13px;
+  letter-spacing: 0.03em;
+}
+
+.rt-zone--net .rt-zone__btn--net:last-child {
+  border-right: 0;
+}
+
+.rt-netglyph {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+/* State is the filled network. */
+.rt-netglyph--state {
+  background: currentColor;
+}
+
+/* IMD is hollow — the same distinction the map makes. */
+.rt-netglyph--imd {
+  border-width: 2.5px;
+  background: transparent;
+}
+
+/* Both: the filled dot, with the ring set beside it. */
+.rt-netglyph--both {
+  position: relative;
+  background: currentColor;
+  margin-right: 6px;
+}
+
+.rt-netglyph--both::after {
+  content: '';
+  position: absolute;
+  top: -1.5px;
+  left: 5px;
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  border: 2.5px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+}
+
+/* Live census of the overlay, on the sources row beside the source counts. */
+.rt-chips__netcount {
+  margin-left: 8px;
+  padding: 2px 7px;
+  border: 1px solid #cbb6de;
+  border-radius: 999px;
+  background: var(--rt-net-imd-tint);
+  color: var(--rt-net-imd);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rt-chips__netcount--load {
+  border-color: var(--rt-line);
+  background: var(--rt-canvas);
+  color: var(--rt-ink-faint);
 }

@@ -10,7 +10,31 @@ import { environment } from 'src/environment/environment';
  * Backed by controllers/scripts/aws/awsRealtimeAnalytics.js. Every method
  * unwraps the `{ success, message, data }` envelope the backend uses so
  * callers only ever see the payload.
+ *
+ * Two daily networks are in play throughout, tagged by `network`:
+ *   'state' — aws_station_details / aws_station_daily_data, the only one with
+ *             15-minute observations behind it.
+ *   'imd'   — station_details / station_daily_data, ARG and AWS types only,
+ *             one total per station per day and nothing sub-daily.
+ * station_code is unique only WITHIN a network, so anything keyed by station
+ * must key on `network + station_code`.
  */
+
+/** Which daily network a station belongs to. */
+export type AwsNetworkKey = 'state' | 'imd';
+
+export interface AwsNetworkInfo {
+  key: AwsNetworkKey;
+  label: string;
+  short: string;
+  details_table: string;
+  daily_table: string;
+  /** True only for 'state': it alone can be replayed in 15-minute slots. */
+  sub_daily: boolean;
+  /** Station types the network is restricted to, or null for no restriction. */
+  station_types: string[] | null;
+  stations: number;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,7 +52,13 @@ export interface AwsFilters {
   aws_today: string;
   states: Array<{ state_code: string; state_name: string; region_name: string }>;
   districts_by_state: Record<string, Array<{ district_code: string; district_name: string }>>;
-  station_types: Array<{ station_type: string; stations: number }>;
+  station_types: Array<{
+    station_type: string;
+    stations: number;
+    /** The same count split by network, e.g. { state: 2394, imd: 655 }. */
+    by_network: Partial<Record<AwsNetworkKey, number>>;
+  }>;
+  networks: AwsNetworkInfo[];
   sources: AwsSourceInfo[];
 }
 
@@ -170,6 +200,11 @@ export interface AwsTimeline {
 }
 
 export interface AwsCumulativeStation {
+  network: AwsNetworkKey;
+  network_short: string;
+  network_label: string;
+  /** False for IMD — no 15-minute curve exists, so none is offered. */
+  sub_daily: boolean;
   station_code: string;
   station_name: string;
   latitude: number | null;
@@ -229,6 +264,25 @@ export interface AwsRollup {
   avg_rain_days: number | null;
 }
 
+/** One selected network's slice of the window, for the comparison strip. */
+export interface AwsNetworkSummary {
+  key: AwsNetworkKey;
+  label: string;
+  short: string;
+  daily_table: string;
+  details_table: string;
+  sub_daily: boolean;
+  stations_total: number;
+  stations_reporting: number;
+  stations_silent: number;
+  reporting_pct: number;
+  total_rainfall: number;
+  mean_station_total: number | null;
+  mean_rain_days: number | null;
+  max_daily: number | null;
+  wettest_station: AwsCumulativeStation | null;
+}
+
 export interface AwsCumulative {
   range: { startDate: string; endDate: string; days: number };
   summary: {
@@ -242,6 +296,7 @@ export interface AwsCumulative {
     wettest_day: AwsCumulativeDay | null;
     peak_station_day: AwsCumulativeStation | null;
   };
+  networks: AwsNetworkSummary[];
   stations: AwsCumulativeStation[];
   daily: AwsCumulativeDay[];
   states: AwsRollup[];
@@ -251,6 +306,12 @@ export interface AwsCumulative {
 
 export interface AwsStationSeries {
   station: {
+    network: AwsNetworkKey;
+    network_label: string;
+    network_short: string;
+    /** False for IMD; `live` is then always null. */
+    sub_daily: boolean;
+    daily_table: string;
     station_code: string;
     station_name: string;
     station_type: string | null;
@@ -290,6 +351,55 @@ export interface AwsStationSeries {
   } | null;
 }
 
+/**
+ * One station's stored total for a single AWS day.
+ *
+ * This is how a daily-only network reaches the Live map: it cannot join the
+ * 15-minute scrubber, but its 24-hour figure for the same day can be drawn
+ * alongside it. Stations that filed nothing come back with `day_total: null`
+ * rather than being dropped, so the map can show them as silent.
+ */
+export interface AwsDailyStation {
+  network: AwsNetworkKey;
+  network_short: string;
+  network_label: string;
+  station_code: string;
+  station_name: string;
+  station_type: string | null;
+  centre_name: string | null;
+  block_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  district_code: string | null;
+  district_name: string | null;
+  state_name: string | null;
+  state_code: string | null;
+  day_total: number | null;
+  reported: boolean;
+}
+
+export interface AwsDailyStations {
+  date: string;
+  networks: AwsNetworkKey[];
+  stations: AwsDailyStation[];
+  meta: {
+    /** Keyed only by the networks the request asked for — hence Partial. */
+    by_network: Partial<Record<AwsNetworkKey, {
+      label: string;
+      short: string;
+      sub_daily: boolean;
+      stations_total: number;
+      stations_reporting: number;
+      stations_raining: number;
+      stations_plotted: number;
+      max_total: number | null;
+    }>>;
+    stations_total: number;
+    stations_reporting: number;
+    stations_plotted: number;
+  };
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 @Injectable({ providedIn: 'root' })
@@ -327,13 +437,25 @@ export class AwsRealtimeService {
     stateCodes?: number[];
     districtCodes?: number[];
     stationType?: string | null;
+    /** Omitted or empty means every network. */
+    networks?: AwsNetworkKey[];
   }): Observable<AwsCumulative> {
     return this.post<AwsCumulative>('/cumulative', body);
   }
 
-  fetchStationSeries(body: { stationCode: string | number; startDate: string; endDate: string }):
-    Observable<AwsStationSeries> {
+  /** `network` narrows the lookup; without it both are tried in registry order. */
+  fetchStationSeries(body: {
+    stationCode: string | number;
+    startDate: string;
+    endDate: string;
+    network?: AwsNetworkKey | null;
+  }): Observable<AwsStationSeries> {
     return this.post<AwsStationSeries>('/station-series', body);
+  }
+
+  fetchDailyStations(body: { date?: string; networks?: AwsNetworkKey[] }):
+    Observable<AwsDailyStations> {
+    return this.post<AwsDailyStations>('/daily-stations', body);
   }
 
   private post<T>(path: string, body: any): Observable<T> {

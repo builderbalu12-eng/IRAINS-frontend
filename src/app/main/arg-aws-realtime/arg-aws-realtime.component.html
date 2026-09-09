@@ -6,7 +6,8 @@
       <div>
         <h1 class="rt-bar__title">Cumulative &amp; Real-Time Station Console</h1>
         <p class="rt-bar__sub">
-          State Government AWS daily accumulation joined to the 15-minute observation sources
+          State Government AWS daily accumulation joined to the 15-minute observation
+          sources, with the IMD ARG/AWS daily network alongside it
         </p>
       </div>
     </div>
@@ -23,6 +24,22 @@
           <button type="button" class="rt-zone__btn"
                   [class.rt-zone__btn--on]="clockZone === 'UTC'"
                   (click)="setZone('UTC')">UTC</button>
+        </div>
+      </div>
+
+      <!-- Page-wide. Sits next to Time Zone because it is the same kind of
+           control: a lens the whole console is read through, not a filter
+           belonging to one tab. -->
+      <div class="rt-field">
+        <span class="rt-field__label">Network</span>
+        <div class="rt-zone rt-zone--net" role="group" aria-label="Daily network">
+          <button *ngFor="let o of networkOptions; trackBy: trackByIndex" type="button"
+                  class="rt-zone__btn rt-zone__btn--net"
+                  [class.rt-zone__btn--on]="networkView === o.key"
+                  (click)="setNetworkView(o.key)" [title]="o.hint">
+            <i class="rt-netglyph" [ngClass]="'rt-netglyph--' + o.key" aria-hidden="true"></i>
+            {{ o.label }}
+          </button>
         </div>
       </div>
 
@@ -136,7 +153,8 @@
         <span class="rt-field__label">Type</span>
         <select class="rt-input" [(ngModel)]="cumStationType">
           <option value="">All types</option>
-          <option *ngFor="let t of filters?.station_types" [value]="t.station_type">
+          <option *ngFor="let t of filters?.station_types" [value]="t.station_type"
+                  [title]="'STATE ' + (t.by_network.state || 0) + ' · IMD ' + (t.by_network.imd || 0)">
             {{ t.station_type }} ({{ t.stations }})
           </option>
         </select>
@@ -164,7 +182,7 @@
       <label class="rt-field">
         <span class="rt-field__label">Station code</span>
         <input type="text" class="rt-input" [(ngModel)]="stationCodeInput"
-               placeholder="aws_station_details.station_code" (keyup.enter)="loadStation()" />
+               placeholder="station_code in either network" (keyup.enter)="loadStation()" />
       </label>
       <label class="rt-field">
         <span class="rt-field__label">From</span>
@@ -203,6 +221,15 @@
         <span class="rt-chip__n">{{ liveSourceCount(s.key) }}</span>
       </button>
       <button type="button" class="rt-chip rt-chip--ghost" (click)="allSources(true)">All</button>
+
+      <!-- IMD's census rides here beside the source counts; the control that
+           governs it lives in the command bar, page-wide. -->
+      <span class="rt-chips__netcount" *ngIf="showDailyOverlay"
+            [class.rt-chips__netcount--load]="dailyOverlayLoading"
+            title="IMD ARG/AWS stations that filed a 24-hour total for this AWS day">
+        {{ dailyOverlayLoading ? 'loading IMD…' : overlayReporting + ' / ' + overlayStations.length + ' IMD' }}
+      </span>
+
       <span class="rt-chips__spacer"></span>
       <span class="rt-chips__meta" *ngIf="timeline">
         {{ timeline.meta.stations_mapped }} mapped ·
@@ -305,7 +332,29 @@
             <i class="rt-legendbar__sw rt-legendbar__sw--none"></i>
             No report<b>{{ (timeline?.meta?.stations_plotted || 0) - slotStats.reporting }}</b>
           </span>
+          <!-- Shape, not colour, separates the networks: both are painted on
+               the same depth bands, so the swatch alone could not tell them
+               apart. -->
+          <span class="rt-legendbar__item rt-legendbar__item--net" *ngIf="showDailyOverlay"
+                title="IMD ARG/AWS stations. One value per day — the 24-hour total — so these do not change as you scrub.">
+            <i class="rt-legendbar__sw rt-legendbar__sw--ring"></i>
+            IMD 24-h total<b>{{ overlayReporting }}/{{ overlayStations.length }}</b>
+          </span>
         </div>
+        <p class="rt-note rt-note--tight" *ngIf="showDailyOverlay">
+          <strong>Rings are IMD ARG/AWS stations</strong> — one reading per day, the
+          24-hour total for AWS day {{ dailyOverlay?.date || liveDate }}. They are shown on
+          the same depth bands as the circles but hold still while you scrub.
+          <span *ngIf="networkView === 'imd'">
+            The scrubber, the wettest-stations strip, the top movers and every figure in the
+            bar above still describe the <strong>State</strong> network — they are built from
+            15-minute slots, which IMD does not have.
+          </span>
+          <span *ngIf="networkView !== 'imd'">
+            They are excluded from every per-slot figure on this tab.
+          </span>
+          <span *ngIf="dailyOverlayError" class="rt-note__err">{{ dailyOverlayError }}</span>
+        </p>
       </div>
 
       <aside class="rt-live__rail">
@@ -589,6 +638,67 @@
         </section>
       </div>
 
+      <!-- The two networks are not comparable station for station — IMD has
+           roughly a third as many gauges and sites them differently — so their
+           totals are shown side by side rather than merged into one figure. -->
+      <section class="rt-card" *ngIf="cumulative.networks?.length">
+        <h2 class="rt-card__title">
+          Networks in this window
+          <small>the same window, counted separately for each network</small>
+        </h2>
+        <div class="rt-netgrid">
+          <article class="rt-netcard" *ngFor="let n of cumulative.networks; trackBy: trackByIndex"
+                   [ngClass]="'rt-net--' + n.key">
+            <header class="rt-netcard__head">
+              <span class="rt-badge rt-badge--net" [ngClass]="'rt-net--' + n.key">{{ n.short }}</span>
+              <span class="rt-netcard__label">{{ n.label }}</span>
+              <span class="rt-netcard__tag" *ngIf="!n.sub_daily"
+                    title="No 15-minute observations exist for this network anywhere">daily only</span>
+              <span class="rt-netcard__tag rt-netcard__tag--live" *ngIf="n.sub_daily"
+                    title="Backed by the 15-minute observation sources">15-min feeds</span>
+            </header>
+            <dl class="rt-netcard__stats">
+              <div>
+                <dt>Reporting</dt>
+                <dd>{{ n.stations_reporting }}<em>of {{ n.stations_total }}</em></dd>
+              </div>
+              <div>
+                <dt>Coverage</dt>
+                <dd>{{ fmt(n.reporting_pct) }}<em>%</em></dd>
+              </div>
+              <div>
+                <dt>Mean station total</dt>
+                <dd>{{ fmt(n.mean_station_total) }}<em>mm</em></dd>
+              </div>
+              <div>
+                <dt>Wettest day</dt>
+                <dd>{{ fmt(n.max_daily) }}<em>mm</em></dd>
+              </div>
+              <div>
+                <dt>Mean rain days</dt>
+                <dd>{{ fmt(n.mean_rain_days) }}<em>d</em></dd>
+              </div>
+              <div>
+                <dt>Volume</dt>
+                <dd>{{ fmt(n.total_rainfall) }}<em>mm</em></dd>
+              </div>
+            </dl>
+            <p class="rt-netcard__foot" *ngIf="n.wettest_station">
+              Wettest: <strong>{{ n.wettest_station.station_name }}</strong>
+              · {{ fmt(n.wettest_station.total_rainfall) }} mm
+            </p>
+            <p class="rt-netcard__foot rt-netcard__foot--muted" *ngIf="!n.wettest_station">
+              No station in this network reported in the window.
+            </p>
+          </article>
+        </div>
+        <p class="rt-note rt-note--tight">
+          Read the two columns against each other, not as one network: the rollup charts
+          and the district / state tables above pool both, so a district served only by
+          IMD gauges is summarised from those alone.
+        </p>
+      </section>
+
       <section class="rt-card">
         <div class="rt-card__head">
           <h2 class="rt-card__title">
@@ -596,6 +706,15 @@
             <small>{{ cumFilteredStations.length }} rows</small>
           </h2>
           <div class="rt-card__tools">
+            <!-- Narrows what is already loaded, so it needs no re-query. -->
+            <div class="rt-seg rt-seg--sm" role="group" aria-label="Network filter">
+              <button type="button" class="rt-seg__btn" [class.rt-seg__btn--on]="!cumNetworkFilter"
+                      (click)="cumNetworkFilter = ''; applyCumFilter()">All</button>
+              <button *ngFor="let n of cumulative.networks; trackBy: trackByIndex" type="button"
+                      class="rt-seg__btn" [class.rt-seg__btn--on]="cumNetworkFilter === n.key"
+                      (click)="cumNetworkFilter = n.key; applyCumFilter()"
+                      [title]="n.label">{{ n.short }}</button>
+            </div>
             <input type="search" class="rt-input rt-input--search" placeholder="Search station, district, centre…"
                    [(ngModel)]="cumSearch" (input)="applyCumFilter()" />
             <button type="button" class="rt-btn rt-btn--ghost" (click)="exportCumulativeCsv()">
@@ -608,6 +727,7 @@
           <table class="rt-table">
             <thead>
               <tr>
+                <th (click)="sortCum('network_short')" title="Which network the station belongs to">Net</th>
                 <th (click)="sortCum('station_name')">Station</th>
                 <th (click)="sortCum('state_name')">State</th>
                 <th (click)="sortCum('district_name')">District</th>
@@ -628,6 +748,12 @@
             <tbody>
               <tr *ngFor="let s of cumPageStations; trackBy: trackByCode"
                   class="rt-table__row" (click)="openStationFromRow(s)">
+                <td>
+                  <span class="rt-badge rt-badge--net" [ngClass]="'rt-net--' + s.network"
+                        [title]="s.network_label + (s.sub_daily ? '' : ' — daily totals only')">
+                    {{ s.network_short }}
+                  </span>
+                </td>
                 <td>
                   <span class="rt-mini__name">{{ s.station_name }}</span>
                   <span class="rt-mini__sub">{{ s.station_code }} · {{ s.station_type || '—' }}</span>
@@ -653,7 +779,7 @@
                 <td class="num" [class.rt-warn]="s.reporting_pct < 80">{{ fmt(s.reporting_pct) }}</td>
               </tr>
               <tr *ngIf="!cumPageStations.length">
-                <td colspan="15" class="rt-empty">No stations match this filter.</td>
+                <td colspan="16" class="rt-empty">No stations match this filter.</td>
               </tr>
             </tbody>
           </table>
@@ -729,8 +855,16 @@
     <ng-container *ngIf="stationSeries && !stationLoading">
       <div class="rt-idcard">
         <div>
-          <h2 class="rt-idcard__name">{{ stationSeries.station.station_name }}</h2>
+          <h2 class="rt-idcard__name">
+            <span class="rt-badge rt-badge--net" [ngClass]="'rt-net--' + stationSeries.station.network"
+                  [title]="stationSeries.station.network_label">
+              {{ stationSeries.station.network_short }}
+            </span>
+            {{ stationSeries.station.station_name }}
+          </h2>
           <p class="rt-idcard__meta">
+            <strong>{{ stationSeries.station.network_label }}</strong> ·
+            {{ stationSeries.station.daily_table }} ·
             {{ stationSeries.station.station_code }} ·
             {{ stationSeries.station.station_type || '—' }} ·
             {{ stationSeries.station.block_name || '—' }},
@@ -746,13 +880,22 @@
         </div>
         <div class="rt-idcard__feeds">
           <span class="rt-field__label">Live sources</span>
-          <ng-container *ngIf="stationSeries.station.live_sources.length; else noFeed">
-            <span class="rt-tag" *ngFor="let f of stationSeries.station.live_sources; trackBy: trackByIndex">
-              {{ f.source_label }} · {{ f.source_id }}
+          <!-- An IMD station is not "unmapped": aws_mapping_id only ever names
+               State codes, so the warning below would be a false alarm here. -->
+          <ng-container *ngIf="!stationSeries.station.sub_daily; else stateFeeds">
+            <span class="rt-tag rt-tag--net">
+              Daily network — no 15-minute source exists for IMD stations
             </span>
           </ng-container>
-          <ng-template #noFeed>
-            <span class="rt-tag rt-tag--warn">No aws_mapping_id row — daily rows come from the no-data fill</span>
+          <ng-template #stateFeeds>
+            <ng-container *ngIf="stationSeries.station.live_sources.length; else noFeed">
+              <span class="rt-tag" *ngFor="let f of stationSeries.station.live_sources; trackBy: trackByIndex">
+                {{ f.source_label }} · {{ f.source_id }}
+              </span>
+            </ng-container>
+            <ng-template #noFeed>
+              <span class="rt-tag rt-tag--warn">No aws_mapping_id row — daily rows come from the no-data fill</span>
+            </ng-template>
           </ng-template>
         </div>
       </div>
@@ -792,6 +935,20 @@
         </h2>
         <div [chart]="stationLiveChart"></div>
       </section>
+
+      <!-- An absent chart with no explanation reads as a loading failure. -->
+      <section class="rt-card rt-card--muted" *ngIf="!stationSeries.station.sub_daily">
+        <h2 class="rt-card__title">
+          No 15-minute curve
+          <small>this is a property of the network, not a gap in the data</small>
+        </h2>
+        <p class="rt-empty">
+          IMD ARG/AWS stations file a single value per rainfall day — the 24-hour total
+          plotted above. There are no sub-daily observations for them anywhere in the
+          database, so there is nothing to replay slot by slot. The Live 24-Hour tab can
+          still show this station as a ring carrying its daily total.
+        </p>
+      </section>
     </ng-container>
   </section>
 
@@ -807,6 +964,51 @@
       </span>
     </div>
 
+    <!-- The two daily networks first: everything below concerns the State
+         side's 15-minute plumbing, which the IMD side simply does not have,
+         and that difference is easier to read stated than inferred. -->
+    <section class="rt-card" *ngIf="networkDaily && !networkLoading">
+      <h2 class="rt-card__title">
+        Daily networks
+        <small>stored totals for {{ networkDaily.date }}, the last completed AWS day</small>
+      </h2>
+      <div class="rt-tablewrap">
+        <table class="rt-table">
+          <thead>
+            <tr>
+              <th>Network</th><th>Daily table</th><th>15-minute feeds</th>
+              <th class="num">Stations</th><th class="num">Reported</th>
+              <th class="num">Raining</th><th class="num">Coverage</th>
+              <th class="num">Wettest</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let n of networks; trackBy: trackByIndex">
+              <td>
+                <span class="rt-badge rt-badge--net" [ngClass]="'rt-net--' + n.key">{{ n.short }}</span>
+                <span class="rt-mini__name">{{ n.label }}</span>
+              </td>
+              <td><code>{{ n.dailyTable }}</code></td>
+              <td>
+                <span class="rt-tag" *ngIf="n.subDaily">yes — 10 source tables</span>
+                <span class="rt-tag rt-tag--net" *ngIf="!n.subDaily">none — daily totals only</span>
+              </td>
+              <td class="num">{{ netDaily(n.key)?.stations_total ?? '—' }}</td>
+              <td class="num">{{ netDaily(n.key)?.stations_reporting ?? '—' }}</td>
+              <td class="num">{{ netDaily(n.key)?.stations_raining ?? '—' }}</td>
+              <td class="num">{{ fmt(netCoverage(n.key)) }}%</td>
+              <td class="num">{{ fmt(netDaily(n.key)?.max_total) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="rt-note rt-note--tight">
+        A low IMD figure on a day still in progress is normal — those totals are entered
+        after the 08:30 IST close, not streamed. Everything below this card describes the
+        State side's 15-minute plumbing only; IMD has no feed to be mapped or unmapped.
+      </p>
+    </section>
+
     <ng-container *ngIf="health && !networkLoading">
       <p class="rt-note rt-note--lead">
         Rainfall arrives in <strong>10 separate observation tables</strong>, one per
@@ -814,7 +1016,7 @@
         cumulative store if its ID is listed in the <code>aws_mapping_id</code>
         table, which ties it to an official station code. This page shows which
         sources are still delivering, and which stations are sending data that
-        nothing is picking up.
+        nothing is picking up. <strong>This concerns the State network only.</strong>
       </p>
 
       <div class="rt-alert rt-alert--warn" *ngIf="sourcesWithoutMapping.length">

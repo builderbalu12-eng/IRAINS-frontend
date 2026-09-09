@@ -25,7 +25,10 @@ import { catchError, takeUntil } from 'rxjs/operators';
 import {
   AwsCumulative,
   AwsCumulativeStation,
+  AwsDailyStation,
+  AwsDailyStations,
   AwsFilters,
+  AwsNetworkKey,
   AwsRealtimeService,
   AwsSourceHealthResponse,
   AwsStationSeries,
@@ -42,7 +45,49 @@ const SLOTS_PER_HOUR = 4;
 /** Dot size when every station is drawn the same. */
 const MARKER_RADIUS = 5;
 
+/**
+ * The two daily networks, in the order they are offered.
+ *
+ * They are NOT interchangeable: 'state' has 15-minute observations behind every
+ * daily total, 'imd' has only the total. Everything slot-shaped on this page —
+ * the scrubber, the heat strip, the movers, the per-slot stats — is State-only
+ * by construction, and IMD appears there as a static 24-hour overlay instead.
+ */
+const NETWORKS: ReadonlyArray<{
+  key: AwsNetworkKey;
+  label: string;
+  short: string;
+  hint: string;
+  dailyTable: string;
+  /** True only where 15-minute observations exist behind the daily total. */
+  subDaily: boolean;
+}> = [
+  {
+    key: 'state', label: 'State Government AWS/ARG', short: 'STATE',
+    hint: '15-minute feeds → daily store',
+    dailyTable: 'aws_station_daily_data', subDaily: true,
+  },
+  {
+    key: 'imd', label: 'IMD ARG/AWS', short: 'IMD',
+    hint: 'daily totals only, no sub-daily data',
+    dailyTable: 'station_daily_data', subDaily: false,
+  },
+];
+
 type TabKey = 'live' | 'cumulative' | 'station' | 'network';
+/**
+ * Which daily networks the whole console is about. Page-wide, and it means the
+ * right thing on every tab:
+ *
+ *   Live       which networks the map draws
+ *   Cumulative which networks the query asks the server for
+ *   Station    which table a station code is looked up in ('both' = auto)
+ *   Sources    nothing — that tab compares the two side by side by design
+ *
+ * It is NOT a source filter. The ten source chips narrow the 15-minute replay;
+ * IMD is not part of that replay at all.
+ */
+type NetworkView = 'state' | 'imd' | 'both';
 /** What the map paints: accumulated depth, or how hard it is raining right now. */
 type DisplayMode = 'cumulative' | 'intensity';
 /** Which clock the Live tab reads in. Applies to that tab only.
@@ -145,7 +190,7 @@ interface Mover {
 /** Sortable column keys for the cumulative station table. */
 type CumSortKey = keyof Pick<
   AwsCumulativeStation,
-  | 'station_name' | 'state_name' | 'district_name' | 'total_rainfall'
+  | 'network_short' | 'station_name' | 'state_name' | 'district_name' | 'total_rainfall'
   | 'mean_daily' | 'max_daily' | 'median_daily' | 'p95_daily' | 'sd_daily'
   | 'cv_pct' | 'rain_days' | 'dry_days' | 'longest_wet_spell'
   | 'reporting_pct' | 'peak_share_pct'
@@ -193,6 +238,38 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
   cumStateCode = '';
   cumDistrictCode = '';
   cumStationType = '';
+
+  // ─────────────────────────────────────────────────────────────── networks
+  readonly networks = NETWORKS;
+  /** Post-query narrowing of the station table only; '' shows every network. */
+  cumNetworkFilter: '' | AwsNetworkKey = '';
+
+  /**
+   * Which daily networks the Live map shows. Both, so IMD is visible without
+   * having to be discovered — the earlier arrangement hid it behind a gear at
+   * the foot of the map, where nobody found it.
+   *
+   * IMD is deliberately kept out of `liveStations`: those stations have one
+   * value for the whole day, so they cannot animate with the scrubber and must
+   * not enter the per-slot statistics, the heat strip or the movers list. The
+   * overlay is a second, static layer saying what IMD recorded over the same
+   * 24 hours.
+   */
+  networkView: NetworkView = 'both';
+  readonly networkOptions: ReadonlyArray<{ key: NetworkView; label: string; hint: string }> = [
+    { key: 'state', label: 'State', hint: 'State Government AWS/ARG only — the network with 15-minute feeds behind it' },
+    { key: 'imd',   label: 'IMD',   hint: 'IMD ARG/AWS only — one 24-hour total per station, drawn as rings' },
+    { key: 'both',  label: 'Both',  hint: 'Both daily networks together' },
+  ];
+  dailyOverlay: AwsDailyStations | null = null;
+  dailyOverlayLoading = false;
+  dailyOverlayError = '';
+  private dailyLayer: L.LayerGroup | null = null;
+  private overlayCache: AwsDailyStation[] = [];
+  private overlayKey = '';
+
+  /** Last completed day's per-network snapshot, for the Sources tab. */
+  networkDaily: AwsDailyStations | null = null;
 
   // ───────────────────────────────────────────────────────────── live state
   timeline: AwsTimeline | null = null;
@@ -394,6 +471,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     this.mapResizeObserver = null;
     this.map?.remove();
     this.map = null;
+    this.dailyLayer = null;
   }
 
   // ════════════════════════════════════════════════════════════════════ tabs
@@ -410,6 +488,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
         if (this.ensureMap() && this.liveStations.length) {
           this.rebuildMarkers();
           this.applySlot(true);
+          this.applyNetworkView();
         }
         this.map?.invalidateSize();
       }, 0);
@@ -473,6 +552,8 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
             this.rebuildMarkers();
             this.slotIndex = this.lastReportedSlot();
             this.applySlot(true);
+            // The date or the state filter may have moved under the overlay.
+            this.applyNetworkView();
           }, 0);
         },
         error: (err) => {
@@ -627,6 +708,9 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
       this.maskFill = null;
       this.maskRim = null;
       this.stateBorders = null;
+      // Belongs to the map that just went away; a stale group would never
+      // reattach and the overlay would silently stop drawing.
+      this.dailyLayer = null;
       this.mapResizeObserver?.disconnect();
       this.mapResizeObserver = null;
       for (const s of this.liveStations) {
@@ -665,6 +749,13 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     const maskPane = this.map.createPane('rt-mask');
     maskPane.style.zIndex = '350';
     maskPane.style.pointerEvents = 'none';
+
+    // The IMD overlay needs its own pane between the mask (350) and the live
+    // markers (400). Leaflet's default markerPane sits at 600 — above the
+    // canvas the circles are drawn on — so `zIndexOffset` alone could not put
+    // 1200 rings underneath the network that actually animates.
+    const dailyPane = this.map.createPane('rt-daily');
+    dailyPane.style.zIndex = '360';
 
     this.markerLayer = L.layerGroup().addTo(this.map);
     this.observeMapResize(host.parentElement);
@@ -876,6 +967,202 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     if (!this.indiaBounds && bounds.length) {
       this.map.fitBounds(L.latLngBounds(bounds).pad(0.1), { animate: false });
     }
+  }
+
+  // ══════════════════════════════════════════════ live — IMD daily overlay
+
+  /**
+   * IMD stations that can actually be drawn for the current view.
+   *
+   * The live state filter is applied here rather than server-side: the overlay
+   * is fetched once per date and re-filtered locally, so changing state does
+   * not cost a round trip. Names are compared case-insensitively because the
+   * live sources spell states freely while `normal_district_details` does not.
+   */
+  get overlayStations(): AwsDailyStation[] {
+    const all = this.dailyOverlay?.stations ?? [];
+    const want = this.liveStateFilter.trim().toLowerCase();
+    // Memoised on what it depends on. The legend reads this getter twice per
+    // change-detection pass, and those passes run on every frame of playback.
+    const key = `${this.dailyOverlay?.date ?? ''}|${want}|${all.length}`;
+    if (this.overlayKey !== key) {
+      this.overlayKey = key;
+      this.overlayCache = all.filter(
+        (s) =>
+          s.latitude !== null &&
+          s.longitude !== null &&
+          (!want || (s.state_name ?? '').trim().toLowerCase() === want)
+      );
+    }
+    return this.overlayCache;
+  }
+
+  get overlayReporting(): number {
+    return this.overlayStations.filter((s) => s.reported).length;
+  }
+
+  /** True when the animated State circles should be on the map. */
+  get showStateLayer(): boolean {
+    return this.networkView !== 'imd';
+  }
+
+  /** True when the static IMD rings should be on the map. */
+  get showDailyOverlay(): boolean {
+    return this.networkView !== 'state';
+  }
+
+  /**
+   * Page-wide network change.
+   *
+   * The map is updated immediately because it is already in memory. The other
+   * tabs re-query, but only if they are actually showing something — switching
+   * networks while sitting on the Live tab should not fire a cumulative
+   * aggregate nobody asked to see.
+   */
+  setNetworkView(view: NetworkView): void {
+    if (this.networkView === view) return;
+    this.networkView = view;
+
+    // A network that is no longer loaded cannot stay selected in the table.
+    if (this.cumNetworkFilter && !this.selectedNetworkKeys.includes(this.cumNetworkFilter)) {
+      this.cumNetworkFilter = '';
+    }
+
+    this.applyNetworkView();
+    if (this.cumulative && !this.cumLoading) this.loadCumulative();
+    if (this.stationSeries && !this.stationLoading) this.loadStation();
+  }
+
+  /**
+   * Brings both map layers into line with the current view.
+   *
+   * The State circles live in `markerLayer`, so hiding them is a matter of
+   * detaching that group rather than rebuilding it — the markers keep their
+   * state and reappear instantly when the view comes back.
+   */
+  private applyNetworkView(): void {
+    if (this.map && this.markerLayer) {
+      const want = this.showStateLayer;
+      const on = this.map.hasLayer(this.markerLayer);
+      if (want && !on) this.markerLayer.addTo(this.map);
+      else if (!want && on) this.map.removeLayer(this.markerLayer);
+    }
+
+    if (!this.showDailyOverlay) {
+      this.paintDailyOverlay();
+      return;
+    }
+    // Cached per date — only refetch when the day being replayed has moved.
+    if (this.dailyOverlay?.date === this.liveDate) this.paintDailyOverlay();
+    else this.loadDailyOverlay();
+  }
+
+  loadDailyOverlay(): void {
+    this.dailyOverlayLoading = true;
+    this.dailyOverlayError = '';
+    this.api
+      .fetchDailyStations({ date: this.liveDate, networks: ['imd'] })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => {
+          this.dailyOverlay = data;
+          this.dailyOverlayLoading = false;
+          this.paintDailyOverlay();
+        },
+        error: (err) => {
+          this.dailyOverlayLoading = false;
+          this.dailyOverlay = null;
+          this.dailyOverlayError =
+            err?.error?.message || err?.message || 'Failed to load IMD daily stations';
+          this.paintDailyOverlay();
+        },
+      });
+  }
+
+  /**
+   * Draws the overlay as rings, never filled circles.
+   *
+   * Shape is the distinction that survives the colour scale: both networks are
+   * painted on the same IMD depth bands, so a green IMD dot and a green State
+   * dot would be indistinguishable. A hollow ring reads apart from a filled
+   * circle at any size, keeps every band colour legible — including the white
+   * "Zero" band, which a fill would lose against the basemap — and has no
+   * corners, so it never looks like a chart marker.
+   */
+  private paintDailyOverlay(): void {
+    if (!this.map) return;
+    if (!this.dailyLayer) this.dailyLayer = L.layerGroup();
+    this.dailyLayer.clearLayers();
+
+    if (!this.showDailyOverlay) {
+      if (this.map.hasLayer(this.dailyLayer)) this.map.removeLayer(this.dailyLayer);
+      return;
+    }
+
+    for (const st of this.overlayStations) {
+      const idx = st.day_total === null ? -1 : bandIndex(DEPTH_BANDS, st.day_total);
+      const fill = idx < 0 ? NO_REPORT_COLOR : DEPTH_BANDS[idx].color;
+      const marker = L.marker([st.latitude as number, st.longitude as number], {
+        icon: L.divIcon({
+          className: 'aws-daily-marker',
+          // The colour rides the border: the marker is a ring, and its hollow
+          // centre is what separates it from a filled State circle.
+          html: `<i style="border-color:${fill}"></i>`,
+          // Must match the CSS box, or the ring sits off its true coordinate.
+          iconSize: [9, 9],
+          iconAnchor: [4.5, 4.5],
+        }),
+        // Under the live markers: the animated network is the subject of this
+        // tab, and 1200 rings on top of it would bury the thing that moves.
+        pane: 'rt-daily',
+        keyboard: false,
+      });
+      marker.bindPopup(() => this.buildDailyPopup(st));
+      this.dailyLayer.addLayer(marker);
+    }
+
+    if (!this.map.hasLayer(this.dailyLayer)) this.dailyLayer.addTo(this.map);
+  }
+
+  private buildDailyPopup(st: AwsDailyStation): HTMLElement {
+    const root = document.createElement('div');
+    root.className = 'aws-popup';
+
+    const rows: Array<[string, string]> = [
+      ['Network', st.network_label],
+      ['Station code', st.station_code],
+      ['Type', st.station_type || '—'],
+      ['District', st.district_name || '—'],
+      ['State', st.state_name || '—'],
+      ['Centre', st.centre_name || '—'],
+      ['Day total', st.day_total === null ? 'no reading filed' : `${st.day_total.toFixed(1)} mm`],
+    ];
+
+    const title = document.createElement('strong');
+    title.className = 'aws-popup__title';
+    title.textContent = st.station_name;
+    root.appendChild(title);
+
+    const table = document.createElement('dl');
+    table.className = 'aws-popup__grid';
+    for (const [k, v] of rows) {
+      const dt = document.createElement('dt');
+      dt.textContent = k;
+      const dd = document.createElement('dd');
+      dd.textContent = v;
+      table.appendChild(dt);
+      table.appendChild(dd);
+    }
+    root.appendChild(table);
+
+    const note = document.createElement('p');
+    note.className = 'aws-popup__note';
+    note.textContent =
+      `24-hour total for the AWS day ending ${this.dailyOverlay?.date ?? this.liveDate}. ` +
+      'IMD stations file one value per day, so this figure does not change as you scrub.';
+    root.appendChild(note);
+
+    return root;
   }
 
   /** Popup content reflects the currently scrubbed slot, not the day total. */
@@ -1581,6 +1868,20 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     this.cumDistrictCode = '';
   }
 
+  /** Networks the next cumulative request will ask for. */
+  get selectedNetworkKeys(): AwsNetworkKey[] {
+    return this.networkView === 'both' ? ['state', 'imd'] : [this.networkView];
+  }
+
+  /**
+   * Which table the Station Profile looks a code up in. 'both' becomes null —
+   * the server then tries each network in turn, which is what you want when
+   * you have pasted a code and do not know where it came from.
+   */
+  get stationNetwork(): AwsNetworkKey | null {
+    return this.networkView === 'both' ? null : this.networkView;
+  }
+
   loadCumulative(): void {
     if (!this.cumStartDate || !this.cumEndDate) return;
     if (this.cumStartDate > this.cumEndDate) {
@@ -1597,6 +1898,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
         stateCodes: this.cumStateCode ? [Number(this.cumStateCode)] : undefined,
         districtCodes: this.cumDistrictCode ? [Number(this.cumDistrictCode)] : undefined,
         stationType: this.cumStationType || null,
+        networks: this.selectedNetworkKeys,
       })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -1617,11 +1919,17 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
   }
 
   applyCumFilter(): void {
-    const all = this.cumulative?.stations ?? [];
+    const loaded = this.cumulative?.stations ?? [];
+    // The network chip narrows what is already loaded — no refetch, so
+    // flipping between STATE / IMD / All is instant.
+    const all = this.cumNetworkFilter
+      ? loaded.filter((s) => s.network === this.cumNetworkFilter)
+      : loaded;
     const q = this.cumSearch.trim().toLowerCase();
     const filtered = q
       ? all.filter((s) =>
-          [s.station_name, s.station_code, s.district_name, s.state_name, s.block_name, s.centre_name]
+          [s.station_name, s.station_code, s.district_name, s.state_name,
+           s.block_name, s.centre_name, s.network_short]
             .some((f) => (f ?? '').toString().toLowerCase().includes(q))
         )
       : all.slice();
@@ -1669,6 +1977,9 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
 
   openStationFromRow(station: AwsCumulativeStation): void {
     this.stationCodeInput = station.station_code;
+    // The page view already resolves the lookup: on 'both' the server tries
+    // each network in turn and finds this code wherever it lives, and when a
+    // single network is selected the row can only have come from that one.
     this.selectTab('station');
     this.loadStation();
   }
@@ -1821,6 +2132,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
   exportCumulativeCsv(): void {
     if (!this.cumFilteredStations.length) return;
     const header = [
+      'network', 'network_label',
       'station_code', 'station_name', 'state', 'district', 'block', 'centre', 'station_type',
       'latitude', 'longitude', 'days_total', 'days_reported', 'days_missing', 'reporting_pct',
       'rain_days', 'dry_days', 'total_mm', 'mean_daily_mm', 'mean_rain_day_mm', 'median_mm',
@@ -1828,6 +2140,7 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
       'longest_wet_spell_days', 'spell_total_mm', 'spell_start', 'spell_end',
     ];
     const rows = this.cumFilteredStations.map((s) => [
+      s.network_short, s.network_label,
       s.station_code, s.station_name, s.state_name ?? '', s.district_name ?? '',
       s.block_name ?? '', s.centre_name ?? '', s.station_type ?? '',
       s.latitude ?? '', s.longitude ?? '', s.days_total, s.days_reported, s.days_missing,
@@ -1851,7 +2164,12 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     this.stationLoading = true;
     this.stationError = '';
     this.api
-      .fetchStationSeries({ stationCode: code, startDate: this.cumStartDate, endDate: this.cumEndDate })
+      .fetchStationSeries({
+        stationCode: code,
+        startDate: this.cumStartDate,
+        endDate: this.cumEndDate,
+        network: this.stationNetwork,
+      })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
@@ -1959,16 +2277,35 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
       unmapped: this.api
         .fetchUnmapped({ date: this.liveDate, lookbackDays: this.networkLookback, limit: 2000 })
         .pipe(catchError(() => of(null))),
+      // Both networks for the last COMPLETED day. The live date is often a day
+      // still in progress, for which IMD has entered nothing yet — comparing
+      // the two networks on that day would read as an IMD outage.
+      daily: this.api
+        .fetchDailyStations({ date: this.maxDate, networks: ['state', 'imd'] })
+        .pipe(catchError(() => of(null))),
     })
       .pipe(takeUntil(this.destroy$))
-      .subscribe(({ health, unmapped }) => {
+      .subscribe(({ health, unmapped, daily }) => {
         this.networkLoading = false;
         this.health = health;
+        this.networkDaily = daily;
         this.unmapped = unmapped?.stations ?? [];
         this.unmappedTruncated = unmapped?.truncated ?? false;
         this.unmappedBySource = unmapped?.count_by_source ?? {};
         if (!health && !unmapped) this.networkError = 'Failed to load network health.';
       });
+  }
+
+  /** The last completed day's figures for one network, or null if absent. */
+  netDaily(key: AwsNetworkKey) {
+    return this.networkDaily?.meta?.by_network?.[key] ?? null;
+  }
+
+  /** Share of that network's stations that filed a reading, as a percentage. */
+  netCoverage(key: AwsNetworkKey): number | null {
+    const d = this.netDaily(key);
+    if (!d || !d.stations_total) return null;
+    return (d.stations_reporting / d.stations_total) * 100;
   }
 
   get filteredUnmapped(): AwsUnmappedStation[] {
@@ -2052,8 +2389,13 @@ export class ArgAwsRealtimeComponent implements OnInit, OnDestroy {
     return `${item.station.source_key}|${item.station.station_id}`;
   }
 
+  /**
+   * Keyed by network as well as code. station_code is unique only within a
+   * network, so a bare code could collide across the two and make Angular
+   * reuse one network's row for the other's station.
+   */
   trackByCode(_: number, item: AwsCumulativeStation): string {
-    return item.station_code;
+    return `${item.network}|${item.station_code}`;
   }
 
   trackByIndex(index: number): number {
