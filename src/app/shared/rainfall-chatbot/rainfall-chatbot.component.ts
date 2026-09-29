@@ -1104,6 +1104,25 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
    * ("Appendix Z: iRAINS at a Glance — Executive Summary > What is iRAINS?"),
    * which reads to a user like an internal file browser rather than a source.
    */
+  /**
+   * Ask about the section a knowledge answer came from.
+   *
+   * These chips were plain spans carrying a border and background, so they
+   * read as buttons but clicking did nothing. An affordance with no action is
+   * worse than none — it either goes somewhere or it should not look pressable.
+   */
+  askSource(source: { label: string; file?: string }): void {
+    if (this.isTyping || !source?.label) return;
+    const question = /\?$/.test(source.label)
+      ? source.label
+      : `Tell me about ${source.label}`;
+    this.clearChoicesFromMessages();
+    this.pushUser(source.label);
+    this.isTyping = true;
+    this.scrollToBottom();
+    this.askBackend(question);
+  }
+
   private mapSources(
     res: OllamaChatResponse
   ): Array<{ label: string; file?: string }> {

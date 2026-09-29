@@ -105,9 +105,15 @@
           </button>
         </div>
         <div class="answer-sources" *ngIf="m.sources?.length">
-          <span class="answer-sources__item" *ngFor="let s of m.sources" [title]="s.file || ''">
+          <button
+            type="button"
+            class="answer-sources__item"
+            *ngFor="let s of m.sources"
+            [title]="'Ask about ' + s.label"
+            (click)="askSource(s)"
+          >
             {{ s.label }}
-          </span>
+          </button>
         </div>
         <div class="clarify-choices" *ngIf="m.choices?.length" [attr.data-clarify-count]="m.choices!.length">
           <button
