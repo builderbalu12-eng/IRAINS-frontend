@@ -1,97 +1,108 @@
-<div class="page-wrap">
-  <div class="page-header mb-4">
-    <h4 class="mb-1"><i class="bi bi-person-plus-fill me-2 text-purple"></i>New User Registration</h4>
-    <small class="text-muted">Create a new user account with role assignment</small>
-  </div>
+<div class="ax-page">
 
-  <div class="row justify-content-center">
-    <div class="col-lg-7">
-      <div class="card shadow-sm">
-        <div class="card-header fw-semibold" style="background: linear-gradient(135deg,#1a0a45,#2d1a6e); color:#fff;">
-          <i class="bi bi-person-plus me-2"></i>Register New User
-        </div>
-        <div class="card-body p-4">
-
-          <div *ngIf="success" class="alert alert-success"><i class="bi bi-check-circle me-2"></i>{{ success }}</div>
-          <div *ngIf="error" class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>{{ error }}</div>
-
-          <form [formGroup]="form" (ngSubmit)="submit()">
-            <div class="row g-3">
-
-              <div class="col-12">
-                <label class="form-label fw-bold">Full Name <span class="text-danger">*</span></label>
-                <input class="form-control" formControlName="fullName" placeholder="Full name" />
-                <div *ngIf="f['fullName'].invalid && f['fullName'].touched" class="text-danger small mt-1">Minimum 3 characters required.</div>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Email <span class="text-danger">*</span></label>
-                <input type="email" class="form-control" formControlName="email" placeholder="user@example.com" />
-                <div *ngIf="f['email'].invalid && f['email'].touched" class="text-danger small mt-1">Valid email required.</div>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Username <span class="text-danger">*</span></label>
-                <input class="form-control" formControlName="username" placeholder="username" />
-                <div *ngIf="f['username'].invalid && f['username'].touched" class="text-danger small mt-1">Minimum 4 characters.</div>
-              </div>
-
-              <div class="col-12">
-                <label class="form-label fw-bold">Password <span class="text-danger">*</span></label>
-                <div class="input-group">
-                  <input [type]="showPassword ? 'text' : 'password'" class="form-control" formControlName="password" placeholder="Minimum 8 characters" />
-                  <button type="button" class="btn btn-outline-secondary" (click)="showPassword = !showPassword">
-                    <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
-                  </button>
-                </div>
-                <div *ngIf="f['password'].invalid && f['password'].touched" class="text-danger small mt-1">Minimum 8 characters required.</div>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Role <span class="text-danger">*</span></label>
-                <select class="form-select" formControlName="role">
-                  <option value="">-- Select role --</option>
-                  <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
-                </select>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Region</label>
-                <select class="form-select" formControlName="region">
-                  <option value="">-- Select region (optional) --</option>
-                  <option *ngFor="let r of regions" [value]="r">{{ r }}</option>
-                </select>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Designation</label>
-                <input class="form-control" formControlName="designation" placeholder="e.g. Meteorologist" />
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Phone</label>
-                <input class="form-control" formControlName="phone" placeholder="+91 XXXXX XXXXX" />
-              </div>
-
-              <div class="col-12">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" formControlName="active" id="activeUser" />
-                  <label class="form-check-label" for="activeUser">Active Account</label>
-                </div>
-              </div>
-
-              <div class="col-12 mt-2">
-                <button type="submit" class="btn btn-primary px-5" [disabled]="form.invalid || isSaving">
-                  <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
-                  <i *ngIf="!isSaving" class="bi bi-person-check me-1"></i>
-                  {{ isSaving ? 'Registering...' : 'Register User' }}
-                </button>
-              </div>
-
-            </div>
-          </form>
-        </div>
-      </div>
+  <header class="ax-hero">
+    <div>
+      <h2><i class="bi bi-person-plus-fill"></i> New User Registration</h2>
+      <p class="ax-sub">Create a user account and assign a role. Required fields are marked.</p>
     </div>
+  </header>
+
+  <div class="ax-roles">
+    <button
+      *ngFor="let r of roleCards"
+      type="button"
+      class="ax-role"
+      [class.on]="form.value.role === r.value"
+      (click)="pickRole(r.value)">
+      <strong>{{ r.value }}</strong>
+      <small>{{ r.hint }}</small>
+    </button>
+  </div>
+  <p class="ax-err" *ngIf="f['role'].invalid && f['role'].touched">Select a role.</p>
+
+  <div class="nr-layout">
+    <aside class="nr-preview">
+      <div class="nr-avatar"><i class="bi bi-person-fill"></i></div>
+      <h3>{{ previewName }}</h3>
+      <p class="nr-preview-role" [attr.data-empty]="!form.value.role">{{ previewRole }}</p>
+      <ul class="nr-checklist">
+        <li [class.ok]="f['fullName'].valid"><i class="bi" [ngClass]="f['fullName'].valid ? 'bi-check-circle-fill' : 'bi-circle'"></i> Identity</li>
+        <li [class.ok]="f['email'].valid && f['username'].valid && f['password'].valid"><i class="bi" [ngClass]="f['email'].valid && f['username'].valid && f['password'].valid ? 'bi-check-circle-fill' : 'bi-circle'"></i> Login</li>
+        <li [class.ok]="f['role'].valid"><i class="bi" [ngClass]="f['role'].valid ? 'bi-check-circle-fill' : 'bi-circle'"></i> Role</li>
+      </ul>
+      <div class="nr-note">
+        <i class="bi bi-info-circle"></i>
+        Role determines access to Data Management, maps, and reports. Public remains read-only.
+      </div>
+    </aside>
+
+    <section class="nr-form-card">
+      <div *ngIf="success" class="nr-banner ok"><i class="bi bi-check-circle-fill"></i>{{ success }}</div>
+      <div *ngIf="error" class="nr-banner bad"><i class="bi bi-exclamation-triangle-fill"></i>{{ error }}</div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <h4>Identity</h4>
+        <label class="nr-label">Full name <span>*</span></label>
+        <input class="nr-input" formControlName="fullName" placeholder="Full name" />
+        <p class="nr-err" *ngIf="f['fullName'].invalid && f['fullName'].touched">Minimum 3 characters required.</p>
+
+        <div class="nr-grid">
+          <div>
+            <label class="nr-label">Email <span>*</span></label>
+            <input class="nr-input" type="email" formControlName="email" placeholder="user@example.com" />
+            <p class="nr-err" *ngIf="f['email'].invalid && f['email'].touched">Valid email required.</p>
+          </div>
+          <div>
+            <label class="nr-label">Username <span>*</span></label>
+            <input class="nr-input" formControlName="username" placeholder="username" />
+            <p class="nr-err" *ngIf="f['username'].invalid && f['username'].touched">Minimum 4 characters.</p>
+          </div>
+        </div>
+
+        <label class="nr-label">Password <span>*</span></label>
+        <div class="nr-password">
+          <input class="nr-input" [type]="showPassword ? 'text' : 'password'" formControlName="password" placeholder="Minimum 8 characters" />
+          <button type="button" (click)="showPassword = !showPassword" [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'">
+            <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+          </button>
+        </div>
+        <p class="nr-err" *ngIf="f['password'].invalid && f['password'].touched">Minimum 8 characters required.</p>
+
+        <h4>Region <em>optional</em></h4>
+        <div class="nr-chips">
+          <button
+            *ngFor="let region of regions"
+            type="button"
+            class="ax-chip"
+            [class.on]="form.value.region === region"
+            (click)="pickRegion(region)">
+            {{ region }}
+          </button>
+        </div>
+
+        <h4>Contact</h4>
+        <div class="nr-grid">
+          <div>
+            <label class="nr-label">Designation</label>
+            <input class="nr-input" formControlName="designation" placeholder="e.g. Meteorologist" />
+          </div>
+          <div>
+            <label class="nr-label">Phone</label>
+            <input class="nr-input" formControlName="phone" placeholder="+91 XXXXX XXXXX" />
+          </div>
+        </div>
+
+        <label class="nr-active">
+          <input type="checkbox" formControlName="active" />
+          Active account
+        </label>
+
+        <button type="submit" class="ax-btn nr-submit" [disabled]="form.invalid || isSaving">
+          <span *ngIf="isSaving" class="spinner-border spinner-border-sm"></span>
+          <i *ngIf="!isSaving" class="bi bi-person-check"></i>
+          {{ isSaving ? 'Registering…' : 'Register user' }}
+        </button>
+      </form>
+    </section>
   </div>
 </div>

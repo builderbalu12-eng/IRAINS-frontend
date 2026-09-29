@@ -14,6 +14,12 @@ export class NewRegisterComponent implements OnInit {
   showPassword = false;
 
   roles = ['HQ Admin', 'MC User', 'SP User', 'Public'];
+  roleCards = [
+    { value: 'HQ Admin', code: 'hq', hint: 'Headquarters — full control' },
+    { value: 'MC User', code: 'mc', hint: 'Meteorological Centre' },
+    { value: 'SP User', code: 'sp', hint: 'State / Special portal' },
+    { value: 'Public', code: 'public', hint: 'Read-only public access' },
+  ];
   regions = ['North West', 'North East', 'Central India', 'South Peninsular', 'East & North East'];
 
   constructor(private fb: FormBuilder) {}
@@ -32,6 +38,16 @@ export class NewRegisterComponent implements OnInit {
     });
   }
 
+  pickRole(role: string): void {
+    this.form.patchValue({ role });
+    this.form.get('role')?.markAsTouched();
+  }
+
+  pickRegion(region: string): void {
+    const current = this.form.value.region;
+    this.form.patchValue({ region: current === region ? '' : region });
+  }
+
   submit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -48,4 +64,12 @@ export class NewRegisterComponent implements OnInit {
   }
 
   get f() { return this.form.controls; }
+
+  get previewName(): string {
+    return (this.form.value.fullName || '').trim() || 'New user';
+  }
+
+  get previewRole(): string {
+    return this.form.value.role || 'No role yet';
+  }
 }

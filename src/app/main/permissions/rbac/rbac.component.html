@@ -1,96 +1,160 @@
-<div class="page-wrap">
-  <div class="page-header mb-4">
-    <h4 class="mb-1"><i class="bi bi-shield-lock-fill me-2 text-purple"></i>RBAC — Role Based Access Control</h4>
-    <small class="text-muted">Configure permissions per role for each module</small>
-  </div>
+<div class="ax-page">
 
-  <div class="row g-4">
+  <header class="ax-hero">
+    <div>
+      <h2><i class="bi bi-shield-lock-fill"></i> Role Based Access Control</h2>
+      <p class="ax-sub">{{ heroSub }}</p>
+    </div>
+    <div class="ax-hero-actions">
+      <div class="ax-switch">
+        <button type="button" [class.on]="activeTab === 'permissions'" (click)="setTab('permissions')">Permissions</button>
+        <button type="button" [class.on]="activeTab === 'statistics'" (click)="setTab('statistics')">Statistics</button>
+      </div>
+      <span class="ax-saved" *ngIf="saved"><i class="bi bi-check-circle-fill"></i> Saved</span>
+      <button class="ax-btn" *ngIf="activeTab === 'permissions'" (click)="savePermissions()">
+        <i class="bi bi-save"></i> Save
+      </button>
+      <button
+        class="ax-btn ax-btn-excel"
+        *ngIf="activeTab === 'statistics'"
+        [disabled]="exporting"
+        (click)="downloadExcel()">
+        <i class="bi bi-file-earmark-excel-fill"></i>
+        {{ exporting ? 'Preparing…' : 'Download Excel' }}
+      </button>
+    </div>
+  </header>
 
-    <!-- Role Cards -->
-    <div class="col-lg-4">
-      <div class="card shadow-sm">
-        <div class="card-header fw-semibold">
-          <i class="bi bi-person-badge me-2"></i>Select Role
-        </div>
-        <div class="list-group list-group-flush">
-          <button *ngFor="let r of roles"
-                  class="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
-                  [class.active]="selectedRole?.role === r.role"
-                  (click)="selectRole(r)">
-            <div class="d-flex align-items-center gap-2">
-              <span class="badge" [ngClass]="'bg-' + r.color">{{ r.role }}</span>
-            </div>
-            <small class="text-muted">
-              {{ viewCount(r) }}/{{ r.permissions.length }} modules
-            </small>
-          </button>
-        </div>
+  <ng-container *ngIf="activeTab === 'permissions'">
+    <div class="ax-roles">
+      <button
+        *ngFor="let r of roles"
+        class="ax-role"
+        [class.on]="selectedRole?.role === r.role"
+        (click)="selectRole(r)">
+        <strong>{{ r.role }}</strong>
+        <small>{{ viewCount(r) }}/{{ r.permissions.length }} modules · {{ r.hint }}</small>
+      </button>
+    </div>
+
+    <div class="ax-toolbar">
+      <div class="ax-search">
+        <i class="bi bi-search"></i>
+        <input type="text" [(ngModel)]="searchText" placeholder="Filter modules…" />
+      </div>
+      <div class="ax-tools" *ngIf="selectedRole">
+        <button type="button" (click)="grantAll('view')">Grant all view</button>
+        <button type="button" (click)="revokeWrites()">Revoke writes</button>
       </div>
     </div>
 
-    <!-- Permission Matrix -->
-    <div class="col-lg-8">
-      <div class="card shadow-sm" *ngIf="selectedRole">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span class="fw-semibold">
-            <i class="bi bi-table me-2"></i>Permissions &mdash;
-            <span class="badge" [ngClass]="'bg-' + getSelectedColor()">{{ getSelectedRole() }}</span>
-          </span>
-          <div class="d-flex gap-2 align-items-center">
-            <span *ngIf="saved" class="text-success small"><i class="bi bi-check-circle me-1"></i>Saved</span>
-            <button class="btn btn-sm btn-success" (click)="savePermissions()">
-              <i class="bi bi-save me-1"></i>Save
-            </button>
-          </div>
-        </div>
-        <div class="card-body p-0">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th>Module</th>
-                <th class="text-center">View</th>
-                <th class="text-center">Create</th>
-                <th class="text-center">Edit</th>
-                <th class="text-center">Delete</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let perm of getPermissions()">
-                <td class="fw-semibold">{{ perm.module }}</td>
-                <td class="text-center">
-                  <input type="checkbox" class="form-check-input"
-                         [checked]="perm.view"
-                         (change)="perm.view = !perm.view" />
-                </td>
-                <td class="text-center">
-                  <input type="checkbox" class="form-check-input"
-                         [checked]="perm.create"
-                         [disabled]="!perm.view"
-                         (change)="perm.create = !perm.create" />
-                </td>
-                <td class="text-center">
-                  <input type="checkbox" class="form-check-input"
-                         [checked]="perm.edit"
-                         [disabled]="!perm.view"
-                         (change)="perm.edit = !perm.edit" />
-                </td>
-                <td class="text-center">
-                  <input type="checkbox" class="form-check-input"
-                         [checked]="perm.delete"
-                         [disabled]="!perm.view"
-                         (change)="perm.delete = !perm.delete" />
-                </td>
-              </tr>
-            </tbody>
-          </table>
+    <div class="ax-chart" *ngIf="selectedRole">
+      <p class="ax-editing">
+        Editing <strong>{{ selectedRole.role }}</strong> —
+        View {{ actionCount(selectedRole, 'view') }},
+        Create {{ actionCount(selectedRole, 'create') }},
+        Edit {{ actionCount(selectedRole, 'edit') }},
+        Delete {{ actionCount(selectedRole, 'delete') }}
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th class="ax-mod">Module</th>
+            <th *ngFor="let a of actions">{{ a.label }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let perm of getPermissions()">
+            <td class="ax-mod">
+              <i class="bi" [ngClass]="iconFor(perm.module)"></i>
+              {{ perm.module }}
+            </td>
+            <td *ngFor="let a of actions">
+              <button
+                type="button"
+                class="ax-cell"
+                [class.on]="perm[a.key]"
+                [class.locked]="a.key !== 'view' && !perm.view"
+                [disabled]="a.key !== 'view' && !perm.view"
+                (click)="toggleAction(perm, a.key)">
+                <i class="bi" [ngClass]="a.icon"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="activeTab === 'statistics'">
+    <section class="st-masthead">
+      <div class="st-mast-brand">
+        <div class="st-seal">IMD</div>
+        <div>
+          <p class="st-kicker">Hydromet Division · New Delhi</p>
+          <h3>Access Control Intelligence</h3>
+          <p class="st-mast-meta">
+            Official RBAC snapshot for iRAINS operators ·
+            Generated {{ reportGeneratedAt | date:'dd MMM yyyy, HH:mm' }}
+          </p>
         </div>
       </div>
+      <div class="st-kpi-strip">
+        <div class="st-kpi">
+          <span>Coverage</span>
+          <strong>{{ grantShare }}<small>%</small></strong>
+        </div>
+        <div class="st-kpi">
+          <span>Grants</span>
+          <strong>{{ totalGrants }}<small>/{{ maxGrants }}</small></strong>
+        </div>
+        <div class="st-kpi">
+          <span>Roles</span>
+          <strong>{{ roles.length }}</strong>
+        </div>
+        <div class="st-kpi">
+          <span>Modules</span>
+          <strong>{{ modules.length }}</strong>
+        </div>
+      </div>
+    </section>
 
-      <div *ngIf="!selectedRole" class="text-center text-muted py-5">
-        <i class="bi bi-shield fs-1 opacity-25"></i>
-        <p class="mt-3">Select a role to configure permissions</p>
+    <div class="st-section-label">
+      <span>01</span>
+      <div>
+        <h4>Role coverage</h4>
+        <p>Share of possible View · Create · Edit · Delete grants held by each role.</p>
       </div>
     </div>
 
-  </div>
+    <div class="st-gauges">
+      <button
+        *ngFor="let r of roles; let i = index"
+        type="button"
+        class="st-gauge"
+        [class.on]="selectedRole?.role === r.role"
+        (click)="selectRole(r)">
+        <div class="st-gauge-top">
+          <em>R0{{ i + 1 }}</em>
+          <span class="st-pill" [class.full]="coveragePct(r) === 100">{{ coveragePct(r) === 100 ? 'Full access' : 'Scoped' }}</span>
+        </div>
+        <div class="st-ring" [style.--p]="coveragePct(r) + '%'">
+          <b>{{ coveragePct(r) }}<small>%</small></b>
+        </div>
+        <strong>{{ r.role }}</strong>
+        <span class="st-hint">{{ r.hint }}</span>
+        <ul>
+          <li><i class="v"></i> View <b>{{ actionCount(r, 'view') }}</b></li>
+          <li><i class="c"></i> Create <b>{{ actionCount(r, 'create') }}</b></li>
+          <li><i class="e"></i> Edit <b>{{ actionCount(r, 'edit') }}</b></li>
+          <li><i class="d"></i> Delete <b>{{ actionCount(r, 'delete') }}</b></li>
+        </ul>
+      </button>
+    </div>
+
+    <footer class="st-foot">
+      <span>India Meteorological Department · Hydromet Division</span>
+      <span>Export filename pattern: IMD_RBAC_Access_Report_YYYYMMDD_HHMMSS.xlsx</span>
+    </footer>
+  </ng-container>
 </div>

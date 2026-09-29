@@ -1,8 +1,9 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 
 import "jspdf-autotable";
 import { Router } from "@angular/router";
+import { Subscription } from "rxjs";
 import { DataService } from "src/app/data.service";
 import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 import * as L from "leaflet";
@@ -13,7 +14,7 @@ import "leaflet.fullscreen";
   templateUrl: "./front-page.component.html",
   styleUrls: ["./front-page.component.css"],
 })
-export class FrontPageComponent implements OnInit {
+export class FrontPageComponent implements OnInit, OnDestroy {
   selecteddatamode: any = "Departure";
 
   selectDataMode(mode: string) {
@@ -43,6 +44,7 @@ export class FrontPageComponent implements OnInit {
   isSlider = false;
   slidingMap: L.Map = {} as L.Map;
   today: any;
+  private dateSub?: Subscription;
 
   // allDaysInMonth:any[]=[];
 
@@ -80,6 +82,29 @@ export class FrontPageComponent implements OnInit {
     } else {
       applyDate(new Date());
     }
+
+    this.dateSub = this.dataService.fromAndToDate$.subscribe((value) => {
+      if (!value) return;
+      try {
+        const dates = JSON.parse(value);
+        const from = this.toIsoDate(dates.fromDate);
+        const to = this.toIsoDate(dates.toDate);
+        if (from) this.fromDate = from as any;
+        if (to) this.toDate = to as any;
+      } catch {
+        /* ignore */
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.dateSub?.unsubscribe();
+  }
+
+  private toIsoDate(value: unknown): string {
+    const raw = String(value || "").trim();
+    const iso = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+    return iso ? iso[1] : "";
   }
 
   ngAfterViewInit(): void {

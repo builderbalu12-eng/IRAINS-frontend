@@ -9,6 +9,17 @@ interface AppRoute {
   active: boolean;
 }
 
+interface RoleMeta {
+  code: string;
+  label: string;
+  hint: string;
+}
+
+interface RouteGroup {
+  name: string;
+  items: AppRoute[];
+}
+
 @Component({
   selector: 'app-route-management',
   templateUrl: './route-management.component.html',
@@ -24,6 +35,16 @@ export class RouteManagementComponent implements OnInit {
   rolesInput = '';
 
   availableRoles = ['hq', 'mc', 'sp', 'public'];
+  viewMode: 'lanes' | 'table' = 'lanes';
+  roleFilter: string | null = null;
+  statusFilter: 'all' | 'active' | 'off' = 'all';
+
+  roleMeta: RoleMeta[] = [
+    { code: 'hq', label: 'HQ', hint: 'Headquarters' },
+    { code: 'mc', label: 'MC', hint: 'Meteorological Centre' },
+    { code: 'sp', label: 'SP', hint: 'State / Special' },
+    { code: 'public', label: 'Public', hint: 'Public maps' },
+  ];
 
   appRoutes: AppRoute[] = [
     { id: 1,  path: '/irains-dashboard',         label: 'Dashboard',              allowedRoles: ['hq','mc','public','sp'], active: true },
@@ -49,18 +70,92 @@ export class RouteManagementComponent implements OnInit {
   }
 
   get filtered(): AppRoute[] {
-    const s = this.searchText.toLowerCase();
-    return this.appRoutes.filter(r =>
-      r.path.toLowerCase().includes(s) ||
-      r.label.toLowerCase().includes(s) ||
-      r.allowedRoles.join(',').includes(s)
-    );
+    const s = this.searchText.toLowerCase().trim();
+    return this.appRoutes.filter(r => {
+      const hay = `${r.path} ${r.label} ${r.allowedRoles.join(',')}`.toLowerCase();
+      if (s && !hay.includes(s)) return false;
+      if (this.roleFilter && !this.hasRole(r, this.roleFilter)) return false;
+      if (this.statusFilter === 'active' && !r.active) return false;
+      if (this.statusFilter === 'off' && r.active) return false;
+      return true;
+    });
+  }
+
+  get groupedRoutes(): RouteGroup[] {
+    const buckets = new Map<string, AppRoute[]>();
+    for (const r of this.filtered) {
+      const name = this.groupOf(r.path);
+      if (!buckets.has(name)) buckets.set(name, []);
+      buckets.get(name)!.push(r);
+    }
+    return Array.from(buckets.entries()).map(([name, items]) => ({ name, items }));
+  }
+
+  get totalCount(): number {
+    return this.appRoutes.length;
+  }
+
+  get activeCount(): number {
+    return this.appRoutes.filter(r => r.active).length;
+  }
+
+  roleCoverage(role: string): number {
+    if (!this.appRoutes.length) return 0;
+    const n = this.appRoutes.filter(r => this.hasRole(r, role)).length;
+    return Math.round((n / this.appRoutes.length) * 100);
+  }
+
+  roleCount(role: string): number {
+    return this.appRoutes.filter(r => this.hasRole(r, role)).length;
+  }
+
+  coverage(route: AppRoute): number {
+    return this.availableRoles.filter(role => this.hasRole(route, role)).length;
+  }
+
+  setRoleFilter(role: string | null): void {
+    this.roleFilter = this.roleFilter === role ? null : role;
+  }
+
+  setStatusFilter(status: 'all' | 'active' | 'off'): void {
+    this.statusFilter = status;
+  }
+
+  meta(role: string): RoleMeta {
+    return this.roleMeta.find(r => r.code === role) || { code: role, label: role, hint: role };
+  }
+
+  iconFor(path: string): string {
+    const p = path.toLowerCase();
+    if (p.includes('dashboard')) return 'bi-speedometer2';
+    if (p.includes('data-entry')) return 'bi-pencil-square';
+    if (p.includes('verif')) return 'bi-check2-square';
+    if (p.includes('admin')) return 'bi-gear-wide-connected';
+    if (p.includes('data-management')) return 'bi-database';
+    if (p.includes('permission')) return 'bi-shield-lock';
+    if (p.includes('email')) return 'bi-envelope-paper';
+    if (p.includes('station-stat')) return 'bi-bar-chart-line';
+    if (p.includes('spatial')) return 'bi-grid-3x3-gap';
+    if (p.includes('monsoon')) return 'bi-cloud-rain';
+    if (p.includes('map')) return 'bi-map';
+    return 'bi-signpost-2';
+  }
+
+  groupOf(path: string): string {
+    const p = path.toLowerCase();
+    if (p.includes('admin') || p.includes('data-management') || p.includes('permission')) {
+      return 'Administration';
+    }
+    if (p.includes('data-entry') || p.includes('verif') || p.includes('dashboard')) {
+      return 'Operations';
+    }
+    return 'Products';
   }
 
   openAdd() {
     this.isEditing = false;
     this.editingId = null;
-    this.rolesInput = '';
+    this.rolesInput = 'hq';
     this.form.reset({ active: true });
     this.showModal = true;
   }
@@ -76,7 +171,7 @@ export class RouteManagementComponent implements OnInit {
   save() {
     if (this.form.invalid) return;
     this.isSaving = true;
-    const roles = this.rolesInput.split(',').map(s => s.trim()).filter(Boolean);
+    const roles = this.parseRolesInput();
     setTimeout(() => {
       const v = { ...this.form.value, allowedRoles: roles };
       if (this.isEditing && this.editingId !== null) {
@@ -103,7 +198,30 @@ export class RouteManagementComponent implements OnInit {
     else route.allowedRoles.push(role);
   }
 
+  toggleActive(route: AppRoute) {
+    route.active = !route.active;
+  }
+
   hasRole(route: AppRoute, role: string): boolean {
     return route.allowedRoles.includes(role);
+  }
+
+  formHasRole(role: string): boolean {
+    return this.parseRolesInput().includes(role);
+  }
+
+  toggleFormRole(role: string) {
+    const roles = this.parseRolesInput();
+    const idx = roles.indexOf(role);
+    if (idx > -1) roles.splice(idx, 1);
+    else roles.push(role);
+    this.rolesInput = roles.join(', ');
+  }
+
+  private parseRolesInput(): string[] {
+    return this.rolesInput
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean);
   }
 }

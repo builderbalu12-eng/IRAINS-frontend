@@ -22,6 +22,7 @@ export class RoleManagementComponent implements OnInit {
   editingId: number | null = null;
   isSaving = false;
   form!: FormGroup;
+  statusFilter: 'all' | 'active' | 'off' = 'all';
 
   roles: Role[] = [
     { id: 1, code: 'hq',     name: 'HQ Admin',  description: 'Full access — headquarters admin', userCount: 5,  active: true },
@@ -43,7 +44,29 @@ export class RoleManagementComponent implements OnInit {
 
   get filtered(): Role[] {
     const s = this.searchText.toLowerCase();
-    return this.roles.filter(r => r.name.toLowerCase().includes(s) || r.code.toLowerCase().includes(s));
+    return this.roles.filter(r => {
+      const hit = r.name.toLowerCase().includes(s) || r.code.toLowerCase().includes(s) || r.description.toLowerCase().includes(s);
+      if (!hit) return false;
+      if (this.statusFilter === 'active' && !r.active) return false;
+      if (this.statusFilter === 'off' && r.active) return false;
+      return true;
+    });
+  }
+
+  get totalUsers(): number {
+    return this.roles.reduce((n, r) => n + (r.userCount || 0), 0);
+  }
+
+  get activeCount(): number {
+    return this.roles.filter(r => r.active).length;
+  }
+
+  setStatusFilter(status: 'all' | 'active' | 'off'): void {
+    this.statusFilter = this.statusFilter === status ? 'all' : status;
+  }
+
+  toggleActive(r: Role): void {
+    r.active = !r.active;
   }
 
   openAdd() { this.isEditing = false; this.editingId = null; this.form.reset({ active: true }); this.showModal = true; }
@@ -67,6 +90,7 @@ export class RoleManagementComponent implements OnInit {
   }
 
   delete(r: Role) {
+    if (r.userCount > 0) return;
     if (!confirm(`Delete role "${r.name}"?`)) return;
     this.roles = this.roles.filter(x => x.id !== r.id);
   }
