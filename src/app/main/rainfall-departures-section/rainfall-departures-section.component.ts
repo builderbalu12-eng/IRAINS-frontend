@@ -69,6 +69,7 @@ export class RainfallDeparturesSectionComponent {
   
     async onSubmitButton() {
       this.loading = true
+      try {
       this.rows = []
       const date = new Date()
       let listofdata : any[] = []
@@ -94,6 +95,11 @@ export class RainfallDeparturesSectionComponent {
       }else{
        listofdata = this.constants.getWeeklyByCummulative(this.selectedSeason.toLowerCase(),this.selectedYear)
       }
+
+      // When the season starts on a Thursday, the first "week" comes back inverted
+      // (e.g. 2026-10-01 to 2026-09-30) and the API rejects it with a 400 — drop it
+      listofdata = listofdata.filter((week: any) => week.startDate <= week.endDate)
+
       this.columns = [
         { header: 'S.NO', style: 'border: 1px solid black' },
         { header: this.selectedMap, style: 'border: 1px solid black' },
@@ -125,7 +131,12 @@ export class RainfallDeparturesSectionComponent {
           this.rows = await this.districtRainfallDep.updateAndShowFromDataEntry(listofdata)
         }
       }
-      this.loading = false
+      } catch (error) {
+        console.error('Error loading rainfall departures:', error)
+      } finally {
+        // Always stop the spinner, even if a week's fetch/row build fails
+        this.loading = false
+      }
     }
 
     modes: string[] = [
