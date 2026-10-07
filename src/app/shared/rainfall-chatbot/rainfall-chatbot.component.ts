@@ -28,7 +28,11 @@ interface ChatMessage {
   choices?: ClarificationChoice[] | null;
   /** Documentation sections behind a knowledge answer. */
   sources?: Array<{ label: string; file?: string }> | null;
+  /** Keep these choices when another chip is used (welcome level buttons). */
+  keepChoices?: boolean;
 }
+
+type ChatLevel = 'station' | 'block' | 'district' | 'state' | 'subdivision' | 'region' | 'country';
 
 interface ClarificationChoice {
   id: string;
@@ -41,10 +45,16 @@ interface ClarificationChoice {
   path?: string | null;
   /** False = show but not selectable (e.g. Temperature). */
   available?: boolean;
-  /** Visual group for chip styling (month / year / action). */
-  variant?: 'default' | 'month' | 'year' | 'action';
+  /** Visual group for chip styling (month / year / action / level / page / ask). */
+  variant?: 'default' | 'month' | 'year' | 'action' | 'level' | 'page' | 'ask';
   /** For Yes/No styling when variant is action. */
   emphasize?: boolean;
+  /** Welcome level button: shows that level's pages and statistics. */
+  level?: ChatLevel;
+  /** Local page chip: opens this route directly. */
+  openPath?: string;
+  /** Local template chip: pre-fills the composer with the caret at the gap. */
+  fillTemplate?: { before: string; after: string };
 }
 
 interface FormattedAnswer {
@@ -109,11 +119,6 @@ const PRODUCT_KEYWORDS: {
     keywords: ['monsoon activity', 'monsoon'],
     productName: 'Monsoon Activity',
     path: '/monsoon-activity',
-  },
-  {
-    keywords: ['station level data', 'station data'],
-    productName: 'Station Level Data',
-    path: '/station-level-data',
   },
   {
     keywords: ['station statistics', 'station stats'],
@@ -185,6 +190,114 @@ const PRODUCT_KEYWORDS: {
     path: '/cummulative-departure-country-map',
   },
 ];
+
+/**
+ * Welcome level buttons → the pages and statistics that exist for that level.
+ *
+ * Only questions the backend answers correctly at that level are listed:
+ * ranking and category questions for blocks, states and subdivisions currently
+ * come back as district rows, so those levels offer pages and a named-place
+ * question instead. Region questions currently return no data, so Region
+ * offers pages only.
+ */
+const LEVEL_ORDER: ChatLevel[] = [
+  'station',
+  'block',
+  'district',
+  'state',
+  'subdivision',
+  'region',
+  'country',
+];
+
+const LEVEL_MENUS: Record<
+  ChatLevel,
+  {
+    label: string;
+    pages: { label: string; path: string }[];
+    questions: string[];
+    template?: { label: string; before: string; after: string };
+  }
+> = {
+  station: {
+    label: 'Station',
+    pages: [
+      { label: 'Station Statistics', path: '/station-statistics' },
+      { label: 'Yearly Station Statistics', path: '/yearlystationstatistics' },
+    ],
+    questions: ['Top 5 wettest stations today', 'Which stations recorded heavy rainfall today'],
+    template: { label: 'Rainfall at a station…', before: 'rainfall at ', after: ' station today' },
+  },
+  block: {
+    label: 'Block',
+    pages: [{ label: 'Block Rainfall Map', path: '/block-rainfall' }],
+    questions: [],
+    template: { label: 'Rainfall in a block…', before: 'rainfall in ', after: ' block today' },
+  },
+  district: {
+    label: 'District',
+    pages: [
+      { label: 'Daily Departure District Map', path: '/pan-india-region' },
+      { label: 'Weekly Departure District Map', path: '/weekly-departure-district-panindia-map' },
+      { label: 'Cumulative Departure District Map', path: '/cummulative-departure-district-pan-map' },
+    ],
+    questions: [
+      'Top 5 wettest districts today',
+      'Which districts are deficient today',
+      'Which districts are in excess today',
+    ],
+    template: { label: 'Rainfall in a district…', before: 'rainfall in ', after: ' district today' },
+  },
+  state: {
+    label: 'State',
+    pages: [
+      { label: 'Daily Actual State Map', path: '/daily-actual-state-map' },
+      { label: 'Daily Departure State Map', path: '/daily-departure-state-map' },
+      { label: 'Weekly Departure State Map', path: '/weekly-departure-state-map' },
+      { label: 'Cumulative Departure State Map', path: '/cummulative-departure-state-map' },
+    ],
+    questions: [],
+    template: { label: 'Rainfall in a state…', before: 'rainfall in ', after: ' state today' },
+  },
+  subdivision: {
+    label: 'Subdivision',
+    pages: [
+      { label: 'Daily Actual Subdivision Map', path: '/daily-actual-subdivision-map' },
+      { label: 'Daily Departure Subdivision Map', path: '/daily-departure-subdivision-map' },
+      { label: 'Weekly Departure Subdivision Map', path: '/weekly-departure-subdiv-map' },
+      { label: 'Cumulative Departure Subdivision Map', path: '/cummulative-departure-subdiv-map' },
+      { label: 'Monsoon Activity', path: '/monsoon-activity' },
+      { label: 'Spatial Distribution Table', path: '/spatial-table' },
+    ],
+    questions: ['Monsoon activity today', 'What is spatial distribution today'],
+    template: { label: 'Rainfall in a subdivision…', before: 'rainfall in ', after: ' subdivision today' },
+  },
+  region: {
+    label: 'Region',
+    pages: [
+      { label: 'Daily Actual Region Map', path: '/daily-actual-homogenous-map' },
+      { label: 'Daily Departure Region Map', path: '/daily-departure-homogenous-map' },
+      { label: 'Weekly Departure Region Map', path: '/weekly-departure-homogenous-map' },
+      { label: 'Cumulative Departure Region Map', path: '/cummulative-departure-region-map' },
+    ],
+    questions: [],
+  },
+  country: {
+    label: 'India',
+    pages: [
+      { label: 'Daily Country Rainfall Map', path: '/daily-actual-country-map' },
+      { label: 'Daily Departure Country Map', path: '/daily-departure-country-map' },
+      { label: 'Weekly Departure Country Map', path: '/weekly-departure-country-map' },
+      { label: 'Cumulative Departure Country Map', path: '/cummulative-departure-country-map' },
+    ],
+    questions: [
+      'What is rainfall in India today',
+      'Rainfall in India yesterday',
+      'Rainfall in India this week',
+      'Rainfall in India this month',
+    ],
+  },
+};
 
 /** Row shape returned inside ollama-chat `api.data`. */
 interface ApiDataRow {
@@ -319,8 +432,8 @@ const API_SOURCE_PAGES: Record<
     path: '/station-statistics',
   },
   fetch_station_with_max_rainfall: {
-    label: 'Station Level Data',
-    path: '/station-level-data',
+    label: 'Station Statistics',
+    path: '/station-statistics',
   },
   fetch_district_station_count: {
     label: 'All Maps Overview',
@@ -740,7 +853,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       })
     );
 
-    this.pushAssistant(this.welcomeText());
+    this.pushWelcome();
     this.checkOllamaHealth();
   }
 
@@ -784,6 +897,25 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
   chooseClarification(choice: ClarificationChoice): void {
     if (this.isTyping) return;
     if (choice.available === false) return;
+
+    // Welcome level buttons and the page / template chips they list
+    if (choice.level) {
+      this.showLevelMenu(choice.level);
+      return;
+    }
+    if (choice.openPath) {
+      this.openNavLink(choice.openPath);
+      return;
+    }
+    if (choice.fillTemplate) {
+      this.fillComposer(choice.fillTemplate);
+      return;
+    }
+    // A level-menu question is a fresh question, never an answer to a clarify.
+    if (choice.variant === 'ask') {
+      this.pendingClarification = null;
+      this.pendingBackendClarify = null;
+    }
 
     // Local navigate-vs-data chips
     if (choice.localIntent && this.pendingClarification) {
@@ -932,7 +1064,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     this.pendingBackendClarify = null;
     this.messages = [];
     this.msgId = 0;
-    this.pushAssistant(this.welcomeText());
+    this.pushWelcome();
   }
 
   trackById(_: number, msg: ChatMessage): number {
@@ -960,16 +1092,82 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
   }
 
   private welcomeText(): string {
-    const range =
-      this.fromDate && this.toDate
-        ? ` for <strong>${this.fromDate}</strong> → <strong>${this.toDate}</strong>`
-        : '';
     return (
       `Namaste — I'm <strong>IRAINS</strong>, your rainfall companion.` +
-      `<br><br>You're on All Maps in <strong>${this.dataMode}</strong> mode${range}.` +
-      `<br>Ask live rainfall, rankings (top wettest), spatial distribution, monsoon activity, ` +
-      `deficient / excess, or <em>Where is…?</em> to open a product page.`
+      `<br>I can help you analyse rainfall information in iRAINS, take you to the right page, ` +
+      `and explain how the system works.` +
+      `<br><br>Pick a level below to see its pages and statistics, or type any question.`
     );
+  }
+
+  /** Welcome message with level buttons that stay usable for the whole chat. */
+  private pushWelcome(): void {
+    this.pushAssistant(
+      this.welcomeText(),
+      undefined,
+      null,
+      LEVEL_ORDER.map((level) => ({
+        id: `level-${level}`,
+        label: LEVEL_MENUS[level].label,
+        level,
+        variant: 'level' as const,
+      }))
+    );
+    this.messages[this.messages.length - 1].keepChoices = true;
+  }
+
+  /** A level button was tapped: list that level's pages and statistics. */
+  private showLevelMenu(level: ChatLevel): void {
+    const menu = LEVEL_MENUS[level];
+    // Picking a level abandons any open clarification.
+    this.pendingClarification = null;
+    this.pendingBackendClarify = null;
+    this.clearChoicesFromMessages();
+    this.pushUser(menu.label);
+
+    const choices: ClarificationChoice[] = [
+      ...menu.pages.map((p) => ({
+        id: `page-${p.path}`,
+        label: p.label,
+        openPath: p.path,
+        variant: 'page' as const,
+      })),
+      ...menu.questions.map((q) => ({
+        id: `ask-${q}`,
+        label: q,
+        value: q,
+        variant: 'ask' as const,
+      })),
+      ...(menu.template
+        ? [
+            {
+              id: `fill-${level}`,
+              label: menu.template.label,
+              fillTemplate: { before: menu.template.before, after: menu.template.after },
+              variant: 'ask' as const,
+            },
+          ]
+        : []),
+    ];
+    const text = menu.questions.length
+      ? `<strong>${menu.label}</strong> — open a page, or ask a statistics question.`
+      : menu.template
+        ? `<strong>${menu.label}</strong> — open a page, or ask about a ${level} by name.`
+        : `<strong>${menu.label}</strong> — open a page.`;
+    this.pushAssistant(text, undefined, null, choices);
+    this.scrollToBottom();
+  }
+
+  /** Put a question template in the composer with the caret where the name goes. */
+  private fillComposer(template: { before: string; after: string }): void {
+    this.inputText = template.before + template.after;
+    const caret = template.before.length;
+    setTimeout(() => {
+      const el = this.chatInput?.nativeElement;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(caret, caret);
+    });
   }
 
   private checkOllamaHealth(): void {
@@ -1163,8 +1361,12 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
         if (res?.answer) {
           const formatted = this.formatApiAnswer(res);
           const relatedChoices = this.mapRelatedOptions(res);
+          // e.g. "Rainfall for 7 Oct has not been published yet — showing 6 Oct"
+          const rangeNote = res.range_note
+            ? `<p class="range-note">${this.escapeHtml(res.range_note)}</p>`
+            : '';
           this.pushAssistant(
-            formatted.text,
+            rangeNote + formatted.text,
             formatted.listItems,
             formatted.navLink,
             relatedChoices.length ? relatedChoices : null,
@@ -1755,7 +1957,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
 
   private clearChoicesFromMessages(): void {
     this.messages.forEach((m) => {
-      if (m.choices?.length) m.choices = null;
+      if (m.choices?.length && !m.keepChoices) m.choices = null;
     });
   }
 
@@ -2764,14 +2966,16 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     if (departure === null || departure === undefined || Number.isNaN(Number(departure))) {
       return null;
     }
-    const value = Number(departure);
-    if (value === -100) return 'No Rain';
+    const raw = Number(departure);
+    if (raw <= -100) return 'No Rain';
+    // Band the whole-number departure, as the maps do (Math.round), so values
+    // such as -59.9 or 19.5 fall in a band instead of between two.
+    const value = Math.round(raw);
     if (value >= 60) return 'Large Excess';
     if (value >= 20) return 'Excess';
-    if (value >= -19 && value <= 19) return 'Normal';
-    if (value >= -59 && value <= -20) return 'Deficient';
-    if (value >= -99 && value <= -60) return 'Large Deficient';
-    return 'No Data';
+    if (value >= -19) return 'Normal';
+    if (value >= -59) return 'Deficient';
+    return 'Large Deficient';
   }
 
   private categoryTextClass(category: string | null | undefined): string {
