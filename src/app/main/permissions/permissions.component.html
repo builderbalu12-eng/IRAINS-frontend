@@ -2,48 +2,27 @@
   <app-header></app-header>
 
   <div class="perm-body">
-
-    <!-- SIDEBAR -->
-    <nav class="perm-sidebar" [class.collapsed]="!isExpanded"
-         (mouseenter)="onMouseEnter()" (mouseleave)="onMouseLeave()">
-
-      <!-- Logo / hamburger row -->
-      <div class="sb-logo">
-        <button class="sb-hamburger" (click)="togglePin()" [title]="isPinned ? 'Unpin sidebar' : 'Pin sidebar open'">
-          <i class="bi" [ngClass]="isPinned ? 'bi-x-lg' : 'bi-list'"></i>
-        </button>
-        <span class="sb-logo-text">Permissions</span>
-      </div>
-
-      <div class="sb-scroll">
-        <ng-container *ngFor="let g of menuGroups">
-
-          <div class="sb-parent" [class.open]="g.expanded"
-               (click)="toggleGroup(g)" [title]="!isExpanded ? g.label : ''">
-            <i [class]="g.icon + ' sb-parent-icon'"></i>
-            <span class="sb-parent-label">{{ g.label }}</span>
-            <i class="bi bi-chevron-down sb-chevron" [class.down]="g.expanded"></i>
-          </div>
-
-          <div class="sb-children" [class.open]="g.expanded">
-            <a *ngFor="let item of g.children"
-               class="sb-child"
-               [routerLink]="item.route"
-               routerLinkActive="active"
-               [routerLinkActiveOptions]="{exact:false}">
-              <i [class]="item.icon"></i>
-              <span>{{ item.label }}</span>
-            </a>
-          </div>
-
-        </ng-container>
-      </div>
-
+    <nav class="tn-rail" aria-label="Access control">
+      <a routerLink="/irains-dashboard" title="Home">
+        <i class="bi bi-house-door"></i>
+      </a>
+      <span class="tn-rail-gap"></span>
+      <a routerLink="/permissions/role-management" routerLinkActive="on" title="Roles">
+        <i class="bi bi-person-badge"></i>
+      </a>
+      <a routerLink="/permissions/new-register" routerLinkActive="on" title="Users">
+        <i class="bi bi-people"></i>
+      </a>
+      <a routerLink="/permissions/route-management" routerLinkActive="on" title="Routes">
+        <i class="bi bi-signpost-2"></i>
+      </a>
+      <a routerLink="/permissions/rbac" routerLinkActive="on" title="Role permissions">
+        <i class="bi bi-shield-lock"></i>
+      </a>
     </nav>
 
     <div class="perm-content flex-grow-1 overflow-auto">
       <router-outlet></router-outlet>
     </div>
-
   </div>
 </div>

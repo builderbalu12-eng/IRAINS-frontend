@@ -1,160 +1,201 @@
-<div class="ax-page">
-
-  <header class="ax-hero">
-    <div>
-      <h2><i class="bi bi-shield-lock-fill"></i> Role Based Access Control</h2>
-      <p class="ax-sub">{{ heroSub }}</p>
-    </div>
-    <div class="ax-hero-actions">
-      <div class="ax-switch">
-        <button type="button" [class.on]="activeTab === 'permissions'" (click)="setTab('permissions')">Permissions</button>
-        <button type="button" [class.on]="activeTab === 'statistics'" (click)="setTab('statistics')">Statistics</button>
-      </div>
-      <span class="ax-saved" *ngIf="saved"><i class="bi bi-check-circle-fill"></i> Saved</span>
-      <button class="ax-btn" *ngIf="activeTab === 'permissions'" (click)="savePermissions()">
-        <i class="bi bi-save"></i> Save
-      </button>
-      <button
-        class="ax-btn ax-btn-excel"
-        *ngIf="activeTab === 'statistics'"
-        [disabled]="exporting"
-        (click)="downloadExcel()">
-        <i class="bi bi-file-earmark-excel-fill"></i>
-        {{ exporting ? 'Preparing…' : 'Download Excel' }}
-      </button>
-    </div>
+<div class="tn-page">
+  <header class="page-head">
+    <h1><i class="bi bi-shield-fill-exclamation"></i> ROLE PERMISSIONS MANAGEMENT</h1>
   </header>
 
-  <ng-container *ngIf="activeTab === 'permissions'">
-    <div class="ax-roles">
-      <button
-        *ngFor="let r of roles"
-        class="ax-role"
-        [class.on]="selectedRole?.role === r.role"
-        (click)="selectRole(r)">
-        <strong>{{ r.role }}</strong>
-        <small>{{ viewCount(r) }}/{{ r.permissions.length }} modules · {{ r.hint }}</small>
-      </button>
-    </div>
-
-    <div class="ax-toolbar">
-      <div class="ax-search">
+  <section class="role-panel">
+    <div class="role-panel-head">
+      <span><i class="bi bi-people"></i> All Roles (click to manage permissions)</span>
+      <label class="search">
         <i class="bi bi-search"></i>
-        <input type="text" [(ngModel)]="searchText" placeholder="Filter modules…" />
-      </div>
-      <div class="ax-tools" *ngIf="selectedRole">
-        <button type="button" (click)="grantAll('view')">Grant all view</button>
-        <button type="button" (click)="revokeWrites()">Revoke writes</button>
-      </div>
+        <input type="text" [(ngModel)]="roleQuery" placeholder="Search roles..." />
+      </label>
     </div>
-
-    <div class="ax-chart" *ngIf="selectedRole">
-      <p class="ax-editing">
-        Editing <strong>{{ selectedRole.role }}</strong> —
-        View {{ actionCount(selectedRole, 'view') }},
-        Create {{ actionCount(selectedRole, 'create') }},
-        Edit {{ actionCount(selectedRole, 'edit') }},
-        Delete {{ actionCount(selectedRole, 'delete') }}
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th class="ax-mod">Module</th>
-            <th *ngFor="let a of actions">{{ a.label }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let perm of getPermissions()">
-            <td class="ax-mod">
-              <i class="bi" [ngClass]="iconFor(perm.module)"></i>
-              {{ perm.module }}
-            </td>
-            <td *ngFor="let a of actions">
-              <button
-                type="button"
-                class="ax-cell"
-                [class.on]="perm[a.key]"
-                [class.locked]="a.key !== 'view' && !perm.view"
-                [disabled]="a.key !== 'view' && !perm.view"
-                (click)="toggleAction(perm, a.key)">
-                <i class="bi" [ngClass]="a.icon"></i>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </ng-container>
-
-  <ng-container *ngIf="activeTab === 'statistics'">
-    <section class="st-masthead">
-      <div class="st-mast-brand">
-        <div class="st-seal">IMD</div>
-        <div>
-          <p class="st-kicker">Hydromet Division · New Delhi</p>
-          <h3>Access Control Intelligence</h3>
-          <p class="st-mast-meta">
-            Official RBAC snapshot for iRAINS operators ·
-            Generated {{ reportGeneratedAt | date:'dd MMM yyyy, HH:mm' }}
-          </p>
-        </div>
-      </div>
-      <div class="st-kpi-strip">
-        <div class="st-kpi">
-          <span>Coverage</span>
-          <strong>{{ grantShare }}<small>%</small></strong>
-        </div>
-        <div class="st-kpi">
-          <span>Grants</span>
-          <strong>{{ totalGrants }}<small>/{{ maxGrants }}</small></strong>
-        </div>
-        <div class="st-kpi">
-          <span>Roles</span>
-          <strong>{{ roles.length }}</strong>
-        </div>
-        <div class="st-kpi">
-          <span>Modules</span>
-          <strong>{{ modules.length }}</strong>
-        </div>
-      </div>
-    </section>
-
-    <div class="st-section-label">
-      <span>01</span>
-      <div>
-        <h4>Role coverage</h4>
-        <p>Share of possible View · Create · Edit · Delete grants held by each role.</p>
-      </div>
-    </div>
-
-    <div class="st-gauges">
+    <div class="role-strip">
       <button
-        *ngFor="let r of roles; let i = index"
         type="button"
-        class="st-gauge"
-        [class.on]="selectedRole?.role === r.role"
-        (click)="selectRole(r)">
-        <div class="st-gauge-top">
-          <em>R0{{ i + 1 }}</em>
-          <span class="st-pill" [class.full]="coveragePct(r) === 100">{{ coveragePct(r) === 100 ? 'Full access' : 'Scoped' }}</span>
-        </div>
-        <div class="st-ring" [style.--p]="coveragePct(r) + '%'">
-          <b>{{ coveragePct(r) }}<small>%</small></b>
-        </div>
-        <strong>{{ r.role }}</strong>
-        <span class="st-hint">{{ r.hint }}</span>
-        <ul>
-          <li><i class="v"></i> View <b>{{ actionCount(r, 'view') }}</b></li>
-          <li><i class="c"></i> Create <b>{{ actionCount(r, 'create') }}</b></li>
-          <li><i class="e"></i> Edit <b>{{ actionCount(r, 'edit') }}</b></li>
-          <li><i class="d"></i> Delete <b>{{ actionCount(r, 'delete') }}</b></li>
-        </ul>
+        class="role-pick"
+        *ngFor="let role of visibleRoles"
+        [class.on]="selected?.id === role.id"
+        (click)="selectRole(role)">
+        <strong>{{ role.name }}</strong>
+        <small>{{ role.description || 'No description' }}</small>
+        <em>ID: {{ role.id }} · {{ formatDate(role.createdAt) }}</em>
       </button>
     </div>
+    <p class="muted" *ngIf="!visibleRoles.length">No roles match this search.</p>
+  </section>
 
-    <footer class="st-foot">
-      <span>India Meteorological Department · Hydromet Division</span>
-      <span>Export filename pattern: IMD_RBAC_Access_Report_YYYYMMDD_HHMMSS.xlsx</span>
-    </footer>
+  <div class="empty-state" *ngIf="!selected">
+    <i class="bi bi-person-gear"></i>
+    <p>Select a role above to manage its permissions</p>
+  </div>
+
+  <ng-container *ngIf="selected">
+    <div class="manage-head">
+      <h2>Managing: <span>{{ selected.name }}</span></h2>
+      <div class="manage-actions">
+        <button type="button" class="btn-red" (click)="removeAll()" [disabled]="!assigned.length">
+          <i class="bi bi-trash"></i> Remove All
+        </button>
+        <button type="button" class="btn-blue" (click)="openAssign()" [disabled]="!available.length">
+          + Assign New Routes
+        </button>
+        <button type="button" class="btn-info" (click)="globalView = !globalView">
+          <i class="bi bi-list-ul"></i> {{ globalView ? 'Hide Global View' : 'Show Global View' }}
+        </button>
+      </div>
+    </div>
+
+    <section class="block">
+        <div class="block-head">
+          <h3>Assigned Routes ({{ assigned.length }})</h3>
+          <label class="search slim">
+            <i class="bi bi-search"></i>
+            <input type="text" [(ngModel)]="assignedQuery" placeholder="Search assigned routes" />
+          </label>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="ico">Icon</th>
+                <th>Route Name</th>
+                <th>Path</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let route of assigned">
+                <td class="ico"><i class="bi bi-link-45deg"></i></td>
+                <td>
+                  {{ route.label }}
+                  <em class="off" *ngIf="!route.active">Off</em>
+                </td>
+                <td class="path">{{ route.path }}</td>
+                <td><span class="tag on">Assigned</span></td>
+                <td>
+                  <button type="button" class="link remove" (click)="remove(route)">
+                    <i class="bi bi-trash"></i> Remove
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="!assigned.length">
+                <td colspan="5" class="none">No routes assigned to this role.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h3>Available Routes ({{ available.length }})</h3>
+          <label class="search slim">
+            <i class="bi bi-search"></i>
+            <input type="text" [(ngModel)]="availableQuery" placeholder="Search name or path..." />
+          </label>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="ico">Icon</th>
+                <th>Route Name</th>
+                <th>Path</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let route of available">
+                <td class="ico"><i class="bi bi-link-45deg"></i></td>
+                <td>
+                  {{ route.label }}
+                  <em class="off" *ngIf="!route.active">Off</em>
+                </td>
+                <td class="path">{{ route.path }}</td>
+                <td><span class="tag wait">Not Assigned</span></td>
+                <td>
+                  <button type="button" class="link add" (click)="assign(route)">
+                    <i class="bi bi-plus-lg"></i> Assign
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="!available.length">
+                <td colspan="5" class="none">Every route is already assigned to this role.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="block" *ngIf="globalView">
+        <div class="block-head">
+          <h3>Global Role-Route Mappings</h3>
+          <label class="search slim">
+            <i class="bi bi-search"></i>
+            <input type="text" [(ngModel)]="globalQuery" placeholder="Search role, name, or path..." />
+          </label>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Route Name</th>
+                <th>Path</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of mappings">
+                <td>{{ item.roleName }}</td>
+                <td>{{ item.routeName }}</td>
+                <td class="path">{{ item.path }}</td>
+              </tr>
+              <tr *ngIf="!mappings.length">
+                <td colspan="3" class="none">No mappings found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
   </ng-container>
+</div>
+
+<div class="modal-backdrop" *ngIf="showAssign" (click)="closeAssign()">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="assignTitle" (click)="$event.stopPropagation()">
+    <header class="modal-head">
+      <h2 id="assignTitle">Assign routes to {{ selected?.name }}</h2>
+      <button type="button" class="modal-x" (click)="closeAssign()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+    </header>
+    <div class="modal-body">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="text" [(ngModel)]="assignQuery" placeholder="Search by name or path..." />
+      </label>
+      <div class="pick-tools">
+        <button type="button" (click)="selectAllVisible()" [disabled]="!assignChoices.length">Select All ({{ assignChoices.length }})</button>
+        <button type="button" (click)="deselectAll()" [disabled]="!pickedIds.length">Deselect All</button>
+      </div>
+      <div class="pick-list">
+        <label class="pick" *ngFor="let route of assignChoices">
+          <input type="checkbox" [checked]="isPicked(route.id)" (change)="togglePick(route.id)" />
+          <span>
+            <strong>{{ route.label }}</strong>
+            <small>{{ route.path }}</small>
+            <em [class.on]="route.active">{{ route.active ? 'Active' : 'Inactive' }}</em>
+          </span>
+        </label>
+        <p class="none" *ngIf="!assignChoices.length">No routes left to assign.</p>
+      </div>
+    </div>
+    <footer class="modal-foot">
+      <button type="button" class="btn-cancel" (click)="closeAssign()">Cancel</button>
+      <button type="button" class="btn-blue" [disabled]="!pickedIds.length" (click)="assignPicked()">
+        Assign Selected ({{ pickedIds.length }})
+      </button>
+    </footer>
+  </div>
 </div>

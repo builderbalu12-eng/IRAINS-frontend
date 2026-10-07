@@ -1,99 +1,106 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-
-interface Role {
-  id: number;
-  name: string;
-  code: string;
-  description: string;
-  userCount: number;
-  active: boolean;
-}
+import { Subscription } from 'rxjs';
+import { RbacDirectoryService, RbacRole } from 'src/app/services/permissions/rbac-directory.service';
+import { RouteAccessService } from 'src/app/services/permissions/route-access.service';
 
 @Component({
   selector: 'app-role-management',
   templateUrl: './role-management.component.html',
   styleUrls: ['./role-management.component.css']
 })
-export class RoleManagementComponent implements OnInit {
-  searchText = '';
+export class RoleManagementComponent implements OnInit, OnDestroy {
+  roles: RbacRole[] = [];
   showModal = false;
   isEditing = false;
-  editingId: number | null = null;
-  isSaving = false;
+  editing: RbacRole | null = null;
   form!: FormGroup;
-  statusFilter: 'all' | 'active' | 'off' = 'all';
+  private sub = new Subscription();
 
-  roles: Role[] = [
-    { id: 1, code: 'hq',     name: 'HQ Admin',  description: 'Full access — headquarters admin', userCount: 5,  active: true },
-    { id: 2, code: 'mc',     name: 'MC User',   description: 'Meteorological centre user',       userCount: 24, active: true },
-    { id: 3, code: 'sp',     name: 'SP User',   description: 'State portal user',                userCount: 38, active: true },
-    { id: 4, code: 'public', name: 'Public',    description: 'Read-only public access',          userCount: 0,  active: true },
-  ];
+  constructor(
+    private fb: FormBuilder,
+    private directory: RbacDirectoryService,
+    private routeAccess: RouteAccessService
+  ) {}
 
-  constructor(private fb: FormBuilder) {}
-
-  ngOnInit() {
+  ngOnInit(): void {
     this.form = this.fb.group({
-      code:        ['', Validators.required],
-      name:        ['', Validators.required],
+      name: ['', Validators.required],
       description: [''],
-      active:      [true]
+      active: [true]
     });
+    this.sub.add(this.directory.roles$.subscribe(roles => {
+      this.roles = roles;
+    }));
   }
 
-  get filtered(): Role[] {
-    const s = this.searchText.toLowerCase();
-    return this.roles.filter(r => {
-      const hit = r.name.toLowerCase().includes(s) || r.code.toLowerCase().includes(s) || r.description.toLowerCase().includes(s);
-      if (!hit) return false;
-      if (this.statusFilter === 'active' && !r.active) return false;
-      if (this.statusFilter === 'off' && r.active) return false;
-      return true;
+  ngOnDestroy(): void {
+    this.sub.unsubscribe();
+  }
+
+  userCount(role: RbacRole): number {
+    return this.directory.userCount(role.code);
+  }
+
+  openAdd(): void {
+    this.isEditing = false;
+    this.editing = null;
+    this.form.reset({ name: '', description: '', active: true });
+    this.showModal = true;
+  }
+
+  openEdit(role: RbacRole): void {
+    this.isEditing = true;
+    this.editing = role;
+    this.form.reset({
+      name: role.name,
+      description: role.description,
+      active: role.active
     });
+    this.showModal = true;
   }
 
-  get totalUsers(): number {
-    return this.roles.reduce((n, r) => n + (r.userCount || 0), 0);
+  save(): void {
+    const name = String(this.form.value.name || '').trim();
+    if (!name) {
+      this.form.get('name')?.setErrors({ required: true });
+      this.form.get('name')?.markAsTouched();
+      return;
+    }
+    const description = String(this.form.value.description || '').trim();
+    const active = !!this.form.value.active;
+    if (this.isEditing && this.editing) {
+      this.directory.saveRole({ ...this.editing, name, description, active });
+    } else {
+      this.directory.saveRole({
+        id: this.directory.nextRoleId(),
+        code: this.directory.uniqueCode(name),
+        name,
+        description,
+        active,
+        createdAt: new Date().toISOString().slice(0, 10)
+      });
+    }
+    this.closeModal();
   }
 
-  get activeCount(): number {
-    return this.roles.filter(r => r.active).length;
+  remove(role: RbacRole, event: Event): void {
+    event.stopPropagation();
+    const count = this.userCount(role);
+    if (count > 0) {
+      alert(`"${role.name}" is assigned to ${count} user${count === 1 ? '' : 's'}. Reassign them before deleting this role.`);
+      return;
+    }
+    if (!confirm(`Delete role "${role.name}"?`)) return;
+    const routes = this.routeAccess.getRoutes().map(route => ({
+      ...route,
+      allowedRoles: route.allowedRoles.filter(code => code !== role.code)
+    }));
+    this.routeAccess.saveRoutes(routes);
+    this.directory.deleteRole(role.id);
   }
 
-  setStatusFilter(status: 'all' | 'active' | 'off'): void {
-    this.statusFilter = this.statusFilter === status ? 'all' : status;
+  closeModal(): void {
+    this.showModal = false;
   }
-
-  toggleActive(r: Role): void {
-    r.active = !r.active;
-  }
-
-  openAdd() { this.isEditing = false; this.editingId = null; this.form.reset({ active: true }); this.showModal = true; }
-
-  openEdit(r: Role) { this.isEditing = true; this.editingId = r.id; this.form.patchValue(r); this.showModal = true; }
-
-  save() {
-    if (this.form.invalid) return;
-    this.isSaving = true;
-    setTimeout(() => {
-      const v = this.form.value;
-      if (this.isEditing && this.editingId !== null) {
-        const idx = this.roles.findIndex(r => r.id === this.editingId);
-        if (idx > -1) this.roles[idx] = { ...this.roles[idx], ...v };
-      } else {
-        this.roles.push({ id: Date.now(), userCount: 0, ...v });
-      }
-      this.isSaving = false;
-      this.closeModal();
-    }, 600);
-  }
-
-  delete(r: Role) {
-    if (r.userCount > 0) return;
-    if (!confirm(`Delete role "${r.name}"?`)) return;
-    this.roles = this.roles.filter(x => x.id !== r.id);
-  }
-
-  closeModal() { this.showModal = false; }
 }

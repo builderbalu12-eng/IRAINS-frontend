@@ -106,10 +106,10 @@ export class DataManagementComponent implements OnInit, OnDestroy {
       icon: 'bi bi-shield-lock-fill',
       expanded: true,
       children: [
-        { label: 'RBAC',             icon: 'bi bi-table',              route: '/data-management/rbac' },
-        { label: 'Role Management',  icon: 'bi bi-person-badge-fill',  route: '/data-management/role-management' },
-        { label: 'Route Management', icon: 'bi bi-signpost-2-fill',    route: '/data-management/route-management' },
-        { label: 'New Register',     icon: 'bi bi-person-plus-fill',   route: '/data-management/new-register' },
+        { label: 'Roles',            icon: 'bi bi-person-badge-fill',  route: '/data-management/role-management' },
+        { label: 'Users',            icon: 'bi bi-people-fill',        route: '/data-management/new-register' },
+        { label: 'Routes',           icon: 'bi bi-signpost-2-fill',    route: '/data-management/route-management' },
+        { label: 'Role Permissions', icon: 'bi bi-shield-lock-fill',   route: '/data-management/rbac' },
         { label: 'Officer Pass Keys', icon: 'bi bi-key-fill',          route: '/data-management/officer-pass-keys' },
       ]
     },

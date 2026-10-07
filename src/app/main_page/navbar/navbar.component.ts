@@ -7,6 +7,7 @@ import { Constants } from 'src/app/services/constants';
 import { routes } from 'src/app/app-routing.module';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environment/environment';
+import { RouteAccessService } from 'src/app/services/permissions/route-access.service';
 
 @Component({
   selector: 'app-navbar',
@@ -53,6 +54,9 @@ export class NavbarComponent implements OnInit {
   }
 
   hasAccess(route: any) {
+    const path = '/' + String(route || '').replace(/^\//, '');
+    const managed = this.routeAccess.evaluate(path, this.loggedInUserType);
+    if (managed !== null) return managed;
     return this.routeDictionary[route]?.allowedUsers?.includes(this.loggedInUserType) || false;
   }
   
@@ -85,7 +89,8 @@ export class NavbarComponent implements OnInit {
     private indexedDBService: IndexedDBService,
     private pdfService : PdfUploadService,
     private constants : Constants,
-    private http: HttpClient
+    private http: HttpClient,
+    private routeAccess: RouteAccessService
   ) {
 
 

@@ -209,7 +209,7 @@ export const routes: Routes = [
     { path: 'new-register',     component: NewRegisterComponent },
     { path: 'role-management',  component: RoleManagementComponent },
     { path: 'route-management', component: RouteManagementComponent },
-    { path: '', redirectTo: 'rbac', pathMatch: 'full' }
+    { path: '', redirectTo: 'role-management', pathMatch: 'full' }
   ]
  },
 
