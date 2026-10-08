@@ -17,6 +17,8 @@ import { SubdivRainFallDeparture } from "src/app/services/subDivision/rainfallde
 import { style } from "@angular/animations";
 import { DistrictRainFallDeparture } from "src/app/services/district/rainfalldeparturedownload.service";
 import { PdfMakeService } from "src/app/services/pdfMake.service.ts/pdfFromHTML.service";
+import { getStateService } from "src/app/services/state/getState.service";
+import { lastValueFrom } from "rxjs";
 
 @Component({
   selector: 'app-rainfall-departures-section',
@@ -35,6 +37,12 @@ export class RainfallDeparturesSectionComponent {
   enddate: any;
   title : any;
   periodTitle : any;
+  // District row -> state_code, used to group districts under their state
+  districtRowStateCode = new Map<any, any>();
+  // state_code -> state_name (loaded once)
+  stateNames = new Map<string, string>();
+  // What the table and the PDF show: `rows`, with District rows grouped under state names
+  displayRows: any[] = [];
 
 
 
@@ -63,6 +71,8 @@ export class RainfallDeparturesSectionComponent {
       }
       return 0;
     });
+    // For District, this sorts the districts within each state
+    this.displayRows = this.buildDisplayRows();
   }
 
 
@@ -71,6 +81,8 @@ export class RainfallDeparturesSectionComponent {
       this.loading = true
       try {
       this.rows = []
+      this.displayRows = []
+      this.districtRowStateCode.clear()
       const date = new Date()
       let listofdata : any[] = []
       const {
@@ -130,7 +142,13 @@ export class RainfallDeparturesSectionComponent {
         }else{
           this.rows = await this.districtRainfallDep.updateAndShowFromDataEntry(listofdata)
         }
+
+        // Rows are built in the same order as the first week's district list
+        const districts = this.districtRainfallDep.allData[0] || []
+        this.rows.forEach((row: any, i: number) => this.districtRowStateCode.set(row, districts[i]?.state_code))
+        await this.loadStateNames()
       }
+      this.displayRows = this.buildDisplayRows()
       } catch (error) {
         console.error('Error loading rainfall departures:', error)
       } finally {
@@ -171,8 +189,9 @@ export class RainfallDeparturesSectionComponent {
       private constants : Constants,
       private subDivRainFallDep : SubdivRainFallDeparture,
       private districtRainfallDep : DistrictRainFallDeparture,
-      private pdfService : PdfMakeService
-      
+      private pdfService : PdfMakeService,
+      private getStateService : getStateService
+
     ) {
       const currentYear = new Date().getFullYear();
       this.selectedYear = currentYear
@@ -209,7 +228,50 @@ export class RainfallDeparturesSectionComponent {
     
     async onDownload() {
       const title = `${this.selectedMap} - ${this.selectedMode} in ${this.selectedSeason}`;
-      this.pdfService.generatePdf(this.columns, this.rows, this.title, this.periodTitle);
+      this.pdfService.generatePdf(this.columns, this.displayRows, this.title, this.periodTitle);
+    }
+
+    async loadStateNames() {
+      if (this.stateNames.size) return
+      try {
+        const response = await lastValueFrom(this.getStateService.fetchData())
+        for (const state of response?.data || []) {
+          this.stateNames.set(String(state.state_code), state.state_name)
+        }
+      } catch (error) {
+        console.error('Could not load state names, showing districts without state grouping:', error)
+      }
+    }
+
+    // District: a state name row followed by that state's districts, states A–Z,
+    // districts in the current `rows` order, S.NO renumbered top to bottom.
+    // Subdivision (or no state names): `rows` as is.
+    buildDisplayRows(): any[] {
+      if (!this.districtRowStateCode.size || !this.stateNames.size) return this.rows
+
+      const groups = new Map<string, any[]>()
+      for (const row of this.rows) {
+        const code = String(this.districtRowStateCode.get(row))
+        if (!groups.has(code)) groups.set(code, [])
+        groups.get(code)!.push(row)
+      }
+
+      const stateName = (code: string) => this.stateNames.get(code) || `State ${code}`
+      const stateCodes = [...groups.keys()].sort((a, b) => stateName(a).localeCompare(stateName(b)))
+
+      const grouped: any[] = []
+      let sno = 1
+      for (const code of stateCodes) {
+        grouped.push([{
+          content: stateName(code),
+          colSpan: this.columns.length,
+          styles: { fillColor: '#EE82EE', halign: 'left', fontStyle: 'bold' },
+        }])
+        for (const row of groups.get(code)!) {
+          grouped.push([{ ...row[0], content: sno++ }, ...row.slice(1)])
+        }
+      }
+      return grouped
     }
 
   }

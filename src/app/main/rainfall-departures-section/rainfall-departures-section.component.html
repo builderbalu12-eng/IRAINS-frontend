@@ -98,9 +98,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let row of rows; let rowIndex = index">
+            <tr *ngFor="let row of displayRows; let rowIndex = index">
               <ng-container *ngFor="let cell of row; let colIndex = index">
-                <td [ngStyle]="{'border': '1px solid black', 'background-color': cell.styles.fillColor}">
+                <td [attr.colspan]="cell.colSpan"
+                    [ngStyle]="{'border': '1px solid black', 'background-color': cell.styles.fillColor, 'text-align': cell.styles.halign, 'font-weight': cell.styles.fontStyle}">
                   {{ cell.content }}
                 </td>
               </ng-container>
