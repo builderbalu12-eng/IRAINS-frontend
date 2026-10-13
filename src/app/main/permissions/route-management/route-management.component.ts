@@ -28,6 +28,9 @@ export class RouteManagementComponent implements OnInit, OnDestroy {
       path: ['', Validators.required],
       active: [true]
     });
+    void this.routeAccess.ensureLoaded().catch((err) => {
+      console.error('Failed to load routes', err);
+    });
     this.sub.add(this.routeAccess.routes$.subscribe(routes => {
       this.routes = [...routes].sort((a, b) => a.id - b.id);
     }));
@@ -53,7 +56,7 @@ export class RouteManagementComponent implements OnInit, OnDestroy {
     this.showModal = true;
   }
 
-  save(): void {
+  async save(): Promise<void> {
     const label = String(this.form.value.label || '').trim();
     const path = this.routeAccess.normalizePath(String(this.form.value.path || '').trim());
     if (!label || !this.form.value.path || path === '/') {
@@ -77,13 +80,21 @@ export class RouteManagementComponent implements OnInit, OnDestroy {
       const id = next.reduce((max, r) => Math.max(max, r.id), 0) + 1;
       next.push({ id, label, path, active, allowedRoles: [] });
     }
-    this.routeAccess.saveRoutes(next);
-    this.closeModal();
+    try {
+      await this.routeAccess.saveRoutes(next);
+      this.closeModal();
+    } catch (err: any) {
+      this.pathError = err?.error?.message || err?.message || 'Failed to save route.';
+    }
   }
 
-  remove(route: ManagedAppRoute): void {
+  async remove(route: ManagedAppRoute): Promise<void> {
     if (!confirm(`Remove route "${route.label}"?`)) return;
-    this.routeAccess.saveRoutes(this.routes.filter(r => r.id !== route.id));
+    try {
+      await this.routeAccess.saveRoutes(this.routes.filter(r => r.id !== route.id));
+    } catch (err: any) {
+      alert(err?.error?.message || err?.message || 'Failed to remove route.');
+    }
   }
 
   closeModal(): void {

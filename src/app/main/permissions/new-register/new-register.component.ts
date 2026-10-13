@@ -55,6 +55,9 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
       password: [''],
       active: [true]
     });
+    void this.directory.ensureLoaded().catch((err) => {
+      console.error('Failed to load users/roles', err);
+    });
     this.sub.add(this.directory.users$.subscribe(users => {
       this.users = users;
       this.refreshOpenUser();
@@ -195,12 +198,16 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
     this.pendingDelete = user;
   }
 
-  confirmDelete(): void {
+  async confirmDelete(): Promise<void> {
     if (!this.pendingDelete) return;
     const id = this.pendingDelete.id;
-    if (this.viewUser?.id === id) this.viewUser = null;
-    this.directory.deleteUser(id);
-    this.pendingDelete = null;
+    try {
+      await this.directory.deleteUser(id);
+      if (this.viewUser?.id === id) this.viewUser = null;
+      this.pendingDelete = null;
+    } catch (err: any) {
+      alert(err?.error?.message || err?.message || 'Failed to delete user.');
+    }
   }
 
   openRoleModal(user: RbacUser, mode: 'assign' | 'remove'): void {
@@ -219,17 +226,21 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
       : [...this.pickedRoleCodes, code];
   }
 
-  saveRolePicks(): void {
+  async saveRolePicks(): Promise<void> {
     if (!this.roleTarget || !this.pickedRoleCodes.length) return;
     const current = [...this.roleTarget.roleCodes];
     const roleCodes = this.roleMode === 'assign'
       ? Array.from(new Set([...current, ...this.pickedRoleCodes]))
       : current.filter(code => !this.pickedRoleCodes.includes(code));
-    this.directory.saveUser({ ...this.roleTarget, roleCodes });
-    this.closeRoleModal();
+    try {
+      await this.directory.setUserRoles(this.roleTarget.id, roleCodes);
+      this.closeRoleModal();
+    } catch (err: any) {
+      alert(err?.error?.message || err?.message || 'Failed to update roles.');
+    }
   }
 
-  save(): void {
+  async save(): Promise<void> {
     const username = String(this.form.value.username || '').trim();
     const fullName = String(this.form.value.fullName || '').trim();
     const password = String(this.form.value.password || '');
@@ -253,19 +264,34 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
       return;
     }
     this.formError = '';
-    const user: RbacUser = {
-      id: this.isEditing && this.editingUser ? this.editingUser.id : this.directory.nextUserId(),
-      username,
-      fullName,
-      email: String(this.form.value.email || '').trim(),
-      phone: String(this.form.value.phone || '').trim(),
-      designation: String(this.form.value.designation || '').trim(),
-      district: String(this.form.value.district || ''),
-      roleCodes: this.isEditing && this.editingUser ? [...this.editingUser.roleCodes] : [roleCode],
-      active: !!this.form.value.active
-    };
-    this.directory.saveUser(user);
-    this.closeModal();
+    try {
+      if (this.isEditing && this.editingUser) {
+        await this.directory.saveUser({
+          ...this.editingUser,
+          username,
+          fullName,
+          email: String(this.form.value.email || '').trim(),
+          phone: String(this.form.value.phone || '').trim(),
+          designation: String(this.form.value.designation || '').trim(),
+          district: String(this.form.value.district || ''),
+          active: !!this.form.value.active,
+        }, password ? { password } : {});
+      } else {
+        await this.directory.saveUser({
+          username,
+          fullName,
+          email: String(this.form.value.email || '').trim(),
+          phone: String(this.form.value.phone || '').trim(),
+          designation: String(this.form.value.designation || '').trim(),
+          district: String(this.form.value.district || ''),
+          roleCodes: [roleCode],
+          active: !!this.form.value.active,
+        }, { password, roleCode });
+      }
+      this.closeModal();
+    } catch (err: any) {
+      this.formError = err?.error?.message || err?.message || 'Failed to save user.';
+    }
   }
 
   closeModal(): void {

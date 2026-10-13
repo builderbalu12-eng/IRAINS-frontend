@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
+import { environment } from 'src/environment/environment';
 
 export interface ManagedAppRoute {
   id: number;
@@ -9,14 +11,25 @@ export interface ManagedAppRoute {
   active: boolean;
 }
 
-const STORAGE_KEY = 'irains_route_access_v1';
+interface ApiListResponse<T> {
+  success: boolean;
+  data: T[];
+  message?: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class RouteAccessService {
-  private readonly routesSubject = new BehaviorSubject<ManagedAppRoute[]>(this.load());
+  private readonly baseUrl = `${environment.baseUrl}/api/v1/rbac`;
+  private readonly routesSubject = new BehaviorSubject<ManagedAppRoute[]>([]);
+  private loadPromise: Promise<void> | null = null;
+
   readonly routes$: Observable<ManagedAppRoute[]> = this.routesSubject.asObservable();
 
-  /** Default catalog — same set as Route Management UI seed data. */
+  constructor(private http: HttpClient) {
+    void this.ensureLoaded();
+  }
+
+  /** Default catalog — same set as backend seed / Route Management UI. */
   static defaultRoutes(): ManagedAppRoute[] {
     return [
       { id: 1,  path: '/irains-dashboard',        label: 'Dashboard',           allowedRoles: ['hq', 'mc', 'public', 'sp'], active: true },
@@ -39,26 +52,62 @@ export class RouteAccessService {
     return this.routesSubject.value;
   }
 
+  ensureLoaded(): Promise<void> {
+    if (!this.loadPromise) {
+      this.loadPromise = this.refreshRoutes()
+        .then(() => undefined)
+        .catch((err) => {
+          this.loadPromise = null;
+          // Keep static defaults so AuthGuard/navbar still work offline
+          if (!this.routesSubject.value.length) {
+            this.routesSubject.next(RouteAccessService.defaultRoutes());
+          }
+          throw err;
+        });
+    }
+    return this.loadPromise;
+  }
+
+  async refreshRoutes(): Promise<ManagedAppRoute[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiListResponse<ManagedAppRoute>>(`${this.baseUrl}/routes`)
+    );
+    const routes = (res?.data || []).map((r, i) => this.mapRoute(r, i));
+    this.routesSubject.next(routes.length ? routes : RouteAccessService.defaultRoutes());
+    return this.routesSnapshot;
+  }
+
   getRoutes(): ManagedAppRoute[] {
-    return this.routesSnapshot.map(r => ({
+    return this.routesSnapshot.map((r) => ({
       ...r,
       allowedRoles: [...r.allowedRoles],
     }));
   }
 
-  saveRoutes(routes: ManagedAppRoute[]): void {
-    const normalized = routes.map(r => ({
+  async saveRoutes(routes: ManagedAppRoute[]): Promise<ManagedAppRoute[]> {
+    const normalized = routes.map((r) => ({
       ...r,
       path: this.normalizePath(r.path),
-      allowedRoles: (r.allowedRoles || []).map(x => String(x).toLowerCase().trim()).filter(Boolean),
+      allowedRoles: (r.allowedRoles || []).map((x) => String(x).toLowerCase().trim()).filter(Boolean),
       active: !!r.active,
     }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-    this.routesSubject.next(normalized);
+    const res = await firstValueFrom(
+      this.http.put<ApiListResponse<ManagedAppRoute>>(`${this.baseUrl}/routes`, {
+        routes: normalized,
+      })
+    );
+    const saved = (res?.data || []).map((r, i) => this.mapRoute(r, i));
+    this.routesSubject.next(saved);
+    return this.getRoutes();
   }
 
-  resetToDefaults(): void {
-    this.saveRoutes(RouteAccessService.defaultRoutes());
+  async resetToDefaults(): Promise<ManagedAppRoute[]> {
+    const res = await firstValueFrom(
+      this.http.post<ApiListResponse<ManagedAppRoute>>(`${this.baseUrl}/routes/reset`, {})
+    );
+    const routes = (res?.data || []).map((r, i) => this.mapRoute(r, i));
+    this.routesSubject.next(routes.length ? routes : RouteAccessService.defaultRoutes());
+    return this.getRoutes();
   }
 
   /**
@@ -71,14 +120,14 @@ export class RouteAccessService {
     if (!match) return null;
     if (!match.active) return false;
     const userRole = String(role || '').toLowerCase().trim();
-    return match.allowedRoles.map(r => r.toLowerCase()).includes(userRole);
+    return match.allowedRoles.map((r) => r.toLowerCase()).includes(userRole);
   }
 
   getAllowedPathsForRole(role: string): string[] {
     const userRole = String(role || '').toLowerCase().trim();
     return this.routesSnapshot
-      .filter(r => r.active && r.allowedRoles.map(x => x.toLowerCase()).includes(userRole))
-      .map(r => r.path);
+      .filter((r) => r.active && r.allowedRoles.map((x) => x.toLowerCase()).includes(userRole))
+      .map((r) => r.path);
   }
 
   private findManagedRoute(path: string): ManagedAppRoute | null {
@@ -86,7 +135,7 @@ export class RouteAccessService {
     if (!target || target === '/') return null;
 
     const routes = this.routesSnapshot;
-    const exact = routes.find(r => this.normalizePath(r.path) === target);
+    const exact = routes.find((r) => this.normalizePath(r.path) === target);
     if (exact) return exact;
 
     // Longest prefix: /data-management covers /data-management/rbac
@@ -112,25 +161,15 @@ export class RouteAccessService {
     return p;
   }
 
-  private load(): ManagedAppRoute[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return RouteAccessService.defaultRoutes();
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed) || !parsed.length) {
-        return RouteAccessService.defaultRoutes();
-      }
-      return parsed.map((r: any, i: number) => ({
-        id: Number(r.id) || i + 1,
-        path: this.normalizePath(r.path || ''),
-        label: String(r.label || r.path || 'Route'),
-        allowedRoles: Array.isArray(r.allowedRoles)
-          ? r.allowedRoles.map((x: any) => String(x).toLowerCase())
-          : [],
-        active: r.active !== false,
-      }));
-    } catch {
-      return RouteAccessService.defaultRoutes();
-    }
+  private mapRoute(r: any, i: number): ManagedAppRoute {
+    return {
+      id: Number(r.id) || i + 1,
+      path: this.normalizePath(r.path || ''),
+      label: String(r.label || r.path || 'Route'),
+      allowedRoles: Array.isArray(r.allowedRoles)
+        ? r.allowedRoles.map((x: any) => String(x).toLowerCase())
+        : [],
+      active: r.active !== false,
+    };
   }
 }

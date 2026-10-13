@@ -56,6 +56,12 @@ export class AuthGuard implements CanActivate {
 			return false;
 		}
 
+		try {
+			await this.routeAccess.ensureLoaded();
+		} catch (error) {
+			console.warn('Route access catalog unavailable; using cached/static rules.', error);
+		}
+
 		// 1) Dynamic catalog from Route Management (TNSMART-style overlay)
 		const managed = this.routeAccess.evaluate(requestedUrl, currentUserType);
 		if (managed !== null) {

@@ -29,6 +29,10 @@ export class RbacComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    void Promise.all([
+      this.directory.ensureLoaded(),
+      this.routeAccess.ensureLoaded(),
+    ]).catch((err) => console.error('Failed to load RBAC catalog', err));
     this.sub.add(this.directory.roles$.subscribe(roles => {
       this.roles = roles;
       if (this.selected) {
@@ -109,25 +113,33 @@ export class RbacComponent implements OnInit, OnDestroy {
     this.closeAssign();
   }
 
-  remove(route: ManagedAppRoute): void {
+  async remove(route: ManagedAppRoute): Promise<void> {
     if (!this.selected) return;
     const code = this.selected.code;
-    this.routeAccess.saveRoutes(this.routes.map(r => (
-      r.id === route.id
-        ? { ...r, allowedRoles: r.allowedRoles.filter(c => c !== code) }
-        : r
-    )));
+    try {
+      await this.routeAccess.saveRoutes(this.routes.map(r => (
+        r.id === route.id
+          ? { ...r, allowedRoles: r.allowedRoles.filter(c => c !== code) }
+          : r
+      )));
+    } catch (err: any) {
+      alert(err?.error?.message || err?.message || 'Failed to update route access.');
+    }
   }
 
-  removeAll(): void {
+  async removeAll(): Promise<void> {
     if (!this.selected) return;
     if (!this.assigned.length) return;
     if (!confirm(`Remove all routes from "${this.selected.name}"?`)) return;
     const code = this.selected.code;
-    this.routeAccess.saveRoutes(this.routes.map(r => ({
-      ...r,
-      allowedRoles: r.allowedRoles.filter(c => c !== code)
-    })));
+    try {
+      await this.routeAccess.saveRoutes(this.routes.map(r => ({
+        ...r,
+        allowedRoles: r.allowedRoles.filter(c => c !== code)
+      })));
+    } catch (err: any) {
+      alert(err?.error?.message || err?.message || 'Failed to update route access.');
+    }
   }
 
   openAssign(): void {
@@ -161,13 +173,17 @@ export class RbacComponent implements OnInit, OnDestroy {
     this.pickedIds = [];
   }
 
-  private assignIds(ids: number[]): void {
+  private async assignIds(ids: number[]): Promise<void> {
     if (!this.selected || !ids.length) return;
     const code = this.selected.code;
-    this.routeAccess.saveRoutes(this.routes.map(r => {
-      if (!ids.includes(r.id) || r.allowedRoles.includes(code)) return r;
-      return { ...r, allowedRoles: [...r.allowedRoles, code] };
-    }));
+    try {
+      await this.routeAccess.saveRoutes(this.routes.map(r => {
+        if (!ids.includes(r.id) || r.allowedRoles.includes(code)) return r;
+        return { ...r, allowedRoles: [...r.allowedRoles, code] };
+      }));
+    } catch (err: any) {
+      alert(err?.error?.message || err?.message || 'Failed to assign routes.');
+    }
   }
 
   private filterRoutes(list: ManagedAppRoute[], query: string): ManagedAppRoute[] {

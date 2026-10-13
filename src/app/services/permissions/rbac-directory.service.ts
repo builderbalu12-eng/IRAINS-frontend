@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
+import { environment } from 'src/environment/environment';
 
 export interface RbacRole {
   id: number;
@@ -20,10 +22,20 @@ export interface RbacUser {
   district: string;
   roleCodes: string[];
   active: boolean;
+  loginUserid?: string | null;
 }
 
-const ROLES_KEY = 'irains_rbac_roles_v1';
-const USERS_KEY = 'irains_rbac_users_v1';
+interface ApiListResponse<T> {
+  success: boolean;
+  data: T[];
+  message?: string;
+}
+
+interface ApiItemResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class RbacDirectoryService {
@@ -36,11 +48,17 @@ export class RbacDirectoryService {
     'East & North East',
   ];
 
-  private readonly rolesSubject = new BehaviorSubject<RbacRole[]>(this.loadRoles());
-  private readonly usersSubject = new BehaviorSubject<RbacUser[]>(this.loadUsers());
+  private readonly baseUrl = `${environment.baseUrl}/api/v1/rbac`;
+  private readonly rolesSubject = new BehaviorSubject<RbacRole[]>([]);
+  private readonly usersSubject = new BehaviorSubject<RbacUser[]>([]);
+  private loadPromise: Promise<void> | null = null;
 
   readonly roles$: Observable<RbacRole[]> = this.rolesSubject.asObservable();
   readonly users$: Observable<RbacUser[]> = this.usersSubject.asObservable();
+
+  constructor(private http: HttpClient) {
+    void this.ensureLoaded();
+  }
 
   get roles(): RbacRole[] {
     return this.rolesSubject.value;
@@ -50,12 +68,44 @@ export class RbacDirectoryService {
     return this.usersSubject.value;
   }
 
+  ensureLoaded(): Promise<void> {
+    if (!this.loadPromise) {
+      this.loadPromise = this.refreshAll().catch((err) => {
+        this.loadPromise = null;
+        throw err;
+      });
+    }
+    return this.loadPromise;
+  }
+
+  async refreshAll(): Promise<void> {
+    await Promise.all([this.refreshRoles(), this.refreshUsers()]);
+  }
+
+  async refreshRoles(): Promise<RbacRole[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiListResponse<RbacRole>>(`${this.baseUrl}/roles`)
+    );
+    const roles = (res?.data || []).map((row) => this.mapRole(row)).filter((r) => r.id && r.code);
+    this.rolesSubject.next(roles);
+    return roles;
+  }
+
+  async refreshUsers(): Promise<RbacUser[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiListResponse<RbacUser>>(`${this.baseUrl}/users`)
+    );
+    const users = (res?.data || []).map((row) => this.mapUser(row)).filter((u) => u.id && u.username);
+    this.usersSubject.next(users);
+    return users;
+  }
+
   userCount(roleCode: string): number {
-    return this.users.filter(u => u.roleCodes.includes(roleCode)).length;
+    return this.users.filter((u) => u.roleCodes.includes(roleCode)).length;
   }
 
   roleByCode(code: string): RbacRole | undefined {
-    return this.roles.find(r => r.code === code);
+    return this.roles.find((r) => r.code === code);
   }
 
   nextRoleId(): number {
@@ -70,40 +120,101 @@ export class RbacDirectoryService {
     const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 24) || 'role';
     let code = base;
     let n = 2;
-    while (this.roles.some(r => r.code === code)) {
+    while (this.roles.some((r) => r.code === code)) {
       code = `${base.slice(0, 20)}${n}`;
       n += 1;
     }
     return code;
   }
 
-  saveRole(role: RbacRole): void {
-    const list = this.roles.map(r => ({ ...r }));
-    const idx = list.findIndex(r => r.id === role.id);
-    if (idx > -1) list[idx] = { ...role };
-    else list.push({ ...role });
-    this.persistRoles(list);
+  async saveRole(role: Partial<RbacRole> & { name: string }): Promise<RbacRole> {
+    await this.ensureLoaded();
+    if (role.id && this.roles.some((r) => r.id === role.id)) {
+      const res = await firstValueFrom(
+        this.http.put<ApiItemResponse<RbacRole>>(`${this.baseUrl}/roles/${role.id}`, {
+          name: role.name,
+          description: role.description || '',
+          active: role.active !== false,
+        })
+      );
+      await this.refreshRoles();
+      return this.mapRole(res.data);
+    }
+
+    const res = await firstValueFrom(
+      this.http.post<ApiItemResponse<RbacRole>>(`${this.baseUrl}/roles`, {
+        name: role.name,
+        description: role.description || '',
+        active: role.active !== false,
+        code: role.code,
+      })
+    );
+    await this.refreshRoles();
+    return this.mapRole(res.data);
   }
 
-  deleteRole(id: number): void {
-    this.persistRoles(this.roles.filter(r => r.id !== id));
+  async deleteRole(id: number): Promise<void> {
+    await firstValueFrom(this.http.delete<ApiItemResponse<unknown>>(`${this.baseUrl}/roles/${id}`));
+    await this.refreshRoles();
   }
 
-  saveUser(user: RbacUser): void {
-    const list = this.users.map(u => ({ ...u }));
-    const idx = list.findIndex(u => u.id === user.id);
-    if (idx > -1) list[idx] = { ...user };
-    else list.push({ ...user });
-    this.persistUsers(list);
+  async saveUser(
+    user: Partial<RbacUser> & { username: string; fullName: string },
+    options: { password?: string; roleCode?: string } = {}
+  ): Promise<RbacUser> {
+    await this.ensureLoaded();
+    const payload: Record<string, unknown> = {
+      username: user.username,
+      fullName: user.fullName,
+      email: user.email || '',
+      phone: user.phone || '',
+      designation: user.designation || '',
+      district: user.district || 'HQ',
+      active: user.active !== false,
+    };
+
+    if (user.roleCodes?.length) payload['roleCodes'] = user.roleCodes;
+    if (options.roleCode) payload['roleCode'] = options.roleCode;
+    if (options.password) payload['password'] = options.password;
+
+    if (user.id && this.users.some((u) => u.id === user.id)) {
+      const res = await firstValueFrom(
+        this.http.put<ApiItemResponse<RbacUser>>(`${this.baseUrl}/users/${user.id}`, payload)
+      );
+      await this.refreshUsers();
+      return this.mapUser(res.data);
+    }
+
+    if (!options.password && !payload['password']) {
+      throw new Error('Password is required when creating a user.');
+    }
+    if (!options.roleCode && !(user.roleCodes && user.roleCodes.length)) {
+      throw new Error('A role is required when creating a user.');
+    }
+
+    const res = await firstValueFrom(
+      this.http.post<ApiItemResponse<RbacUser>>(`${this.baseUrl}/users`, payload)
+    );
+    await this.refreshUsers();
+    return this.mapUser(res.data);
   }
 
-  deleteUser(id: number): void {
-    this.persistUsers(this.users.filter(u => u.id !== id));
+  async deleteUser(id: number): Promise<void> {
+    await firstValueFrom(this.http.delete<ApiItemResponse<unknown>>(`${this.baseUrl}/users/${id}`));
+    await this.refreshUsers();
+  }
+
+  async setUserRoles(userId: number, roleCodes: string[]): Promise<RbacUser> {
+    const res = await firstValueFrom(
+      this.http.put<ApiItemResponse<RbacUser>>(`${this.baseUrl}/users/${userId}/roles`, { roleCodes })
+    );
+    await this.refreshUsers();
+    return this.mapUser(res.data);
   }
 
   usernameTaken(username: string, ignoreId?: number): boolean {
     const key = username.trim().toLowerCase();
-    return this.users.some(u => u.username.toLowerCase() === key && u.id !== ignoreId);
+    return this.users.some((u) => u.username.toLowerCase() === key && u.id !== ignoreId);
   }
 
   formatDate(iso: string): string {
@@ -116,78 +227,38 @@ export class RbacDirectoryService {
     });
   }
 
-  private persistRoles(roles: RbacRole[]): void {
-    localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
-    this.rolesSubject.next(roles);
-  }
-
-  private persistUsers(users: RbacUser[]): void {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    this.usersSubject.next(users);
-  }
-
-  private loadRoles(): RbacRole[] {
-    return this.readList<RbacRole>(ROLES_KEY, seedRoles(), row => ({
+  private mapRole(row: any): RbacRole {
+    return {
       id: Number(row.id) || 0,
       code: String(row.code || '').toLowerCase().trim(),
       name: String(row.name || 'Role'),
       description: String(row.description || ''),
       active: row.active !== false,
-      createdAt: String(row.createdAt || new Date().toISOString()),
-    })).filter(r => r.id && r.code);
+      createdAt: String(row.createdAt || row.created_at || new Date().toISOString()).slice(0, 10),
+    };
   }
 
-  private loadUsers(): RbacUser[] {
-    return this.readList<RbacUser>(USERS_KEY, seedUsers(), row => ({
+  private mapUser(row: any): RbacUser {
+    const fromList = Array.isArray(row.roleCodes) ? row.roleCodes : [];
+    const fromOne = row.roleCode ? [row.roleCode] : [];
+    const roleCodes = Array.from(
+      new Set(
+        [...fromList, ...fromOne]
+          .map((code) => String(code || '').toLowerCase().trim())
+          .filter(Boolean)
+      )
+    );
+    return {
       id: Number(row.id) || 0,
       username: String(row.username || '').trim(),
-      fullName: String(row.fullName || ''),
+      fullName: String(row.fullName || row.full_name || ''),
       email: String(row.email || ''),
       phone: String(row.phone || ''),
       designation: String(row.designation || ''),
       district: String(row.district || ''),
-      roleCodes: this.readRoleCodes(row),
+      roleCodes,
       active: row.active !== false,
-    })).filter(u => u.id && u.username);
+      loginUserid: row.loginUserid ?? row.login_userid ?? null,
+    };
   }
-
-  private readRoleCodes(row: any): string[] {
-    const fromList = Array.isArray(row.roleCodes) ? row.roleCodes : [];
-    const fromOne = row.roleCode ? [row.roleCode] : [];
-    const codes = [...fromList, ...fromOne]
-      .map(code => String(code || '').toLowerCase().trim())
-      .filter(Boolean);
-    return Array.from(new Set(codes));
-  }
-
-  private readList<T>(key: string, fallback: T[], map: (row: any) => T): T[] {
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return fallback;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return fallback;
-      return parsed.map(map);
-    } catch {
-      return fallback;
-    }
-  }
-}
-
-function seedRoles(): RbacRole[] {
-  return [
-    { id: 1, code: 'hq', name: 'HQ Admin', description: 'Full access — headquarters', active: true, createdAt: '2025-12-29' },
-    { id: 2, code: 'mc', name: 'MC User', description: 'Meteorological Centre pages', active: true, createdAt: '2026-06-11' },
-    { id: 3, code: 'sp', name: 'SP User', description: 'State and special portal pages', active: true, createdAt: '2026-06-11' },
-    { id: 4, code: 'public', name: 'Public', description: 'Read-only public maps and reports', active: true, createdAt: '2025-12-30' },
-  ];
-}
-
-function seedUsers(): RbacUser[] {
-  return [
-    { id: 1, username: 'hq.admin', fullName: 'IMD HQ Admin', email: 'hq.admin@imd.gov.in', phone: '', designation: 'Headquarters', district: 'HQ', roleCodes: ['hq'], active: true },
-    { id: 2, username: 'mc.delhi', fullName: 'MC Delhi', email: 'mc.delhi@imd.gov.in', phone: '', designation: 'Meteorologist', district: 'North West', roleCodes: ['mc'], active: true },
-    { id: 3, username: 'mc.chennai', fullName: 'MC Chennai', email: 'mc.chennai@imd.gov.in', phone: '', designation: 'Meteorologist', district: 'South Peninsular', roleCodes: ['mc', 'sp'], active: true },
-    { id: 4, username: 'sp.user', fullName: 'SP North West', email: 'sp.nw@imd.gov.in', phone: '', designation: 'State portal', district: 'North West', roleCodes: ['sp'], active: true },
-    { id: 5, username: 'public.viewer', fullName: 'Public Viewer', email: 'public@imd.gov.in', phone: '', designation: 'Public access', district: 'HQ', roleCodes: ['public'], active: true },
-  ];
 }

@@ -29,6 +29,9 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
       description: [''],
       active: [true]
     });
+    void this.directory.ensureLoaded().catch((err) => {
+      console.error('Failed to load roles', err);
+    });
     this.sub.add(this.directory.roles$.subscribe(roles => {
       this.roles = roles;
     }));
@@ -60,7 +63,7 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
     this.showModal = true;
   }
 
-  save(): void {
+  async save(): Promise<void> {
     const name = String(this.form.value.name || '').trim();
     if (!name) {
       this.form.get('name')?.setErrors({ required: true });
@@ -69,22 +72,24 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
     }
     const description = String(this.form.value.description || '').trim();
     const active = !!this.form.value.active;
-    if (this.isEditing && this.editing) {
-      this.directory.saveRole({ ...this.editing, name, description, active });
-    } else {
-      this.directory.saveRole({
-        id: this.directory.nextRoleId(),
-        code: this.directory.uniqueCode(name),
-        name,
-        description,
-        active,
-        createdAt: new Date().toISOString().slice(0, 10)
-      });
+    try {
+      if (this.isEditing && this.editing) {
+        await this.directory.saveRole({ ...this.editing, name, description, active });
+      } else {
+        await this.directory.saveRole({
+          code: this.directory.uniqueCode(name),
+          name,
+          description,
+          active,
+        });
+      }
+      this.closeModal();
+    } catch (err: any) {
+      alert(err?.error?.message || err?.message || 'Failed to save role.');
     }
-    this.closeModal();
   }
 
-  remove(role: RbacRole, event: Event): void {
+  async remove(role: RbacRole, event: Event): Promise<void> {
     event.stopPropagation();
     const count = this.userCount(role);
     if (count > 0) {
@@ -92,12 +97,16 @@ export class RoleManagementComponent implements OnInit, OnDestroy {
       return;
     }
     if (!confirm(`Delete role "${role.name}"?`)) return;
-    const routes = this.routeAccess.getRoutes().map(route => ({
-      ...route,
-      allowedRoles: route.allowedRoles.filter(code => code !== role.code)
-    }));
-    this.routeAccess.saveRoutes(routes);
-    this.directory.deleteRole(role.id);
+    try {
+      const routes = this.routeAccess.getRoutes().map(route => ({
+        ...route,
+        allowedRoles: route.allowedRoles.filter(code => code !== role.code)
+      }));
+      await this.routeAccess.saveRoutes(routes);
+      await this.directory.deleteRole(role.id);
+    } catch (err: any) {
+      alert(err?.error?.message || err?.message || 'Failed to delete role.');
+    }
   }
 
   closeModal(): void {
