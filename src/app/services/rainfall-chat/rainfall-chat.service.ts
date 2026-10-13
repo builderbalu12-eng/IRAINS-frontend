@@ -117,6 +117,8 @@ export interface OllamaChatResponse {
   model?: string;
   answer?: string;
   answer_mode?: 'ollama' | 'fallback' | 'clarify' | string;
+  /** Set when the asked dates were moved, e.g. today not published yet. */
+  range_note?: string | null;
   action?: OllamaChatAction;
   navigation?: OllamaChatNavigation | null;
   api?: OllamaChatApiResult;

@@ -126,9 +126,14 @@
             [class.clarify-month]="c.variant === 'month'"
             [class.clarify-year]="c.variant === 'year'"
             [class.clarify-action]="c.variant === 'action'"
+            [class.clarify-level]="c.variant === 'level'"
+            [class.clarify-page]="c.variant === 'page'"
+            [class.clarify-ask]="c.variant === 'ask'"
             [class.clarify-primary]="c.emphasize === true"
-            [title]="c.available === false ? 'Not available yet' : c.label"
+            [title]="c.available === false ? 'Not available yet' : c.openPath ? 'Open ' + c.label : c.label"
           >
+            <i class="bi bi-box-arrow-up-right" *ngIf="c.variant === 'page'" aria-hidden="true"></i>
+            <i class="bi bi-chat-dots" *ngIf="c.variant === 'ask'" aria-hidden="true"></i>
             {{ c.label }}
           </button>
         </div>
