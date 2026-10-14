@@ -140,30 +140,30 @@ import { RouteManagementComponent } from './main/permissions/route-management/ro
 
 
 export const routes: Routes = [
- { path: 'irains-dashboard', component: DashboardComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'daily-actual-state-map', component: StateRainfallMapDailyActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'district-daily-spatial', component: DistrictDailySpatialComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'weekly-daily-spatial', component: WeeklyDistrictSpatialComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'cummulative-daily-spatial', component: CummulativeDistrictSpatialComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'daily-actual-subdivision-map', component: SubdivisionRainfallMapDailyActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'pan-india-region-actual', component: PanIndiaRegionActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'daily-east-north-east-region-actual', component: EastNorthEastRegionActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'daily-north-west-region-actual', component: NorthWestRegionActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'daily-south-peninsula-region-actual', component: SouthPeninsularaRegionActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'daily-central-region-actual', component: CentralIndiaRegionActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'daily-actual-homogenous-map', component: HomogenousRainfallMapDailyActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'daily-actual-country-map', component: CountryRainfallMapDailyActualComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'allstates-actual-maps', component: AllStatesActualMapsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
- { path: 'annual-seasonal-monthly-actual-maps', component: RealTimeUpdatedRainfallActualMapsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'actual-block-rainfall-map', component: ActualBlockRainfallMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'actual-block-rainfall', component: ActualBlockRainfallMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'block-rainfall-map-daily', component: BlockRainfallMapDailyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'block-rainfall', component: BlockRainfallMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'block-rainfall-actual', component: BlockrainfallMapDailyActualMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'block-rainfall-aws-actual', component: BlockRainfallMapDailyMainPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'spatial-table', component: SpatialTableComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'monsoon-activity', component: MonsoonActivityComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
- { path: 'river-basin', component: UnderprogressComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+ { path: 'irains-dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
+ { path: 'daily-actual-state-map', component: StateRainfallMapDailyActualComponent, canActivate: [AuthGuard] },
+ { path: 'district-daily-spatial', component: DistrictDailySpatialComponent, canActivate: [AuthGuard] },
+ { path: 'weekly-daily-spatial', component: WeeklyDistrictSpatialComponent, canActivate: [AuthGuard] },
+ { path: 'cummulative-daily-spatial', component: CummulativeDistrictSpatialComponent, canActivate: [AuthGuard] },
+ { path: 'daily-actual-subdivision-map', component: SubdivisionRainfallMapDailyActualComponent, canActivate: [AuthGuard] },
+ { path: 'pan-india-region-actual', component: PanIndiaRegionActualComponent, canActivate: [AuthGuard] },
+ { path: 'daily-east-north-east-region-actual', component: EastNorthEastRegionActualComponent, canActivate: [AuthGuard] },
+ { path: 'daily-north-west-region-actual', component: NorthWestRegionActualComponent, canActivate: [AuthGuard] },
+ { path: 'daily-south-peninsula-region-actual', component: SouthPeninsularaRegionActualComponent, canActivate: [AuthGuard] },
+ { path: 'daily-central-region-actual', component: CentralIndiaRegionActualComponent, canActivate: [AuthGuard] },
+ { path: 'daily-actual-homogenous-map', component: HomogenousRainfallMapDailyActualComponent, canActivate: [AuthGuard] },
+ { path: 'daily-actual-country-map', component: CountryRainfallMapDailyActualComponent, canActivate: [AuthGuard] },
+ { path: 'allstates-actual-maps', component: AllStatesActualMapsComponent, canActivate: [AuthGuard] },
+ { path: 'annual-seasonal-monthly-actual-maps', component: RealTimeUpdatedRainfallActualMapsComponent, canActivate: [AuthGuard]},
+ { path: 'actual-block-rainfall-map', component: ActualBlockRainfallMapComponent, canActivate: [AuthGuard]},
+ { path: 'actual-block-rainfall', component: ActualBlockRainfallMapComponent, canActivate: [AuthGuard]},
+ { path: 'block-rainfall-map-daily', component: BlockRainfallMapDailyComponent, canActivate: [AuthGuard]},
+ { path: 'block-rainfall', component: BlockRainfallMainPageComponent, canActivate: [AuthGuard]},
+ { path: 'block-rainfall-actual', component: BlockrainfallMapDailyActualMainPageComponent, canActivate: [AuthGuard]},
+ { path: 'block-rainfall-aws-actual', component: BlockRainfallMapDailyMainPageComponent, canActivate: [AuthGuard]},
+ { path: 'spatial-table', component: SpatialTableComponent, canActivate: [AuthGuard]},
+ { path: 'monsoon-activity', component: MonsoonActivityComponent, canActivate: [AuthGuard]},
+ { path: 'river-basin', component: UnderprogressComponent, canActivate: [AuthGuard]},
  { path: 'calulate-exclusion', redirectTo: '/data-management/calculation-exclusion', pathMatch: 'full' },
  { path: 'display-order-management', redirectTo: '/data-management/display-order', pathMatch: 'full' },
 
@@ -171,7 +171,6 @@ export const routes: Routes = [
   path: 'data-management',
   component: DataManagementComponent,
   canActivate: [AuthGuard],
-  data: { allowedUsers: ['hq'] },
   children: [
     { path: 'calculation-exclusion', component: CalculationExclusionComponent },
     { path: 'display-order',         component: DisplayOrderManagementComponent },
@@ -203,7 +202,6 @@ export const routes: Routes = [
   path: 'permissions',
   component: PermissionsComponent,
   canActivate: [AuthGuard],
-  data: { allowedUsers: ['hq'] },
   children: [
     { path: 'rbac',             component: RbacComponent },
     { path: 'new-register',     component: NewRegisterComponent },
@@ -217,7 +215,6 @@ export const routes: Routes = [
   path: 'admin-panel',
   component: AdminPanelComponent,
   canActivate: [AuthGuard],
-  data: { allowedUsers: ['hq'] },
   children: [
     {
       path: 'station-management',                     // ← matches the route above
@@ -228,121 +225,121 @@ export const routes: Routes = [
 },
 //  BlockActualRainfallMapIncAwsComponent
 
- {path: 'state-map-mc-rmc', component: RainfallmapMcRmcComponent, canActivate: [AuthGuard], data: {allowedUsers: ['mc']}},
- {path: 'subdiv-map-mc-rmc', component: RainfallmapSubdivMcRmcComponent, canActivate: [AuthGuard], data: {allowedUsers: ['mc']}},
- {path: 'region-map-mc-rmc', component: RainfallmapRegionMcRmcComponent, canActivate: [AuthGuard], data: {allowedUsers: ['mc']}},
+ {path: 'state-map-mc-rmc', component: RainfallmapMcRmcComponent, canActivate: [AuthGuard]},
+ {path: 'subdiv-map-mc-rmc', component: RainfallmapSubdivMcRmcComponent, canActivate: [AuthGuard]},
+ {path: 'region-map-mc-rmc', component: RainfallmapRegionMcRmcComponent, canActivate: [AuthGuard]},
 
-  { path: 'about', component: AboutSectionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
-  {path: 'distribution-district-in-states-daily', component: DistributionDistrictStatesDailyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+  { path: 'about', component: AboutSectionComponent, canActivate: [AuthGuard]},
+  {path: 'distribution-district-in-states-daily', component: DistributionDistrictStatesDailyComponent, canActivate: [AuthGuard]},
 
-  { path: 'realTimeUpdatedRainfallMaps', component: RealTimeUpdatedRainfallMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+  { path: 'realTimeUpdatedRainfallMaps', component: RealTimeUpdatedRainfallMapComponent, canActivate: [AuthGuard]},
   
-  { path: 'all-maps', component: AllMapsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  // { path: 'district-map', component: DistrictMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+  { path: 'all-maps', component: AllMapsComponent, canActivate: [AuthGuard] },
+  // { path: 'district-map', component: DistrictMapComponent, canActivate: [AuthGuard]},
   { path: 'login', component: LoginComponent },
-  {path: 'yearlystationstatistics', component: YearlyStationStatisticsPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] }},
-  { path: 'data-entry', component: DataEntryComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc'] } },
-  {path: 'rainfalldatacm', component: RainfallDataCmPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] }},
-  {path: 'newverification', component: VerificationComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc'] }},
-  { path: 'station-level-data', component: StationLevelDataComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'station-statistics', component: StationStatisticsPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
-  { path: 'arg-aws-realtime', component: ArgAwsRealtimeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
+  {path: 'yearlystationstatistics', component: YearlyStationStatisticsPageComponent, canActivate: [AuthGuard]},
+  { path: 'data-entry', component: DataEntryComponent, canActivate: [AuthGuard] },
+  {path: 'rainfalldatacm', component: RainfallDataCmPageComponent, canActivate: [AuthGuard]},
+  {path: 'newverification', component: VerificationComponent, canActivate: [AuthGuard]},
+  { path: 'station-level-data', component: StationLevelDataComponent, canActivate: [AuthGuard] },
+  { path: 'station-statistics', component: StationStatisticsPageComponent, canActivate: [AuthGuard] },
+  { path: 'arg-aws-realtime', component: ArgAwsRealtimeComponent, canActivate: [AuthGuard] },
 
-  { path: 'daily-state-rf-distribution', component: RainfallStatisticsComponent, data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'STATE'}, canActivate: [AuthGuard],  },
-  { path: 'daily-subdivision-rf-distribution', component: RainfallStatisticsComponent,  data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'SUBDIVISION'},canActivate: [AuthGuard],  },
-  { path: 'daily-district-rf-distribution', component: RainfallStatisticsComponent, data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'DISTRICT'}, canActivate: [AuthGuard],  },
-  { path: 'daily-homogenous-rf-distribution', component: RainfallStatisticsComponent,  data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'REGION'},canActivate: [AuthGuard],  },
-  { path: 'daily-country-rf-distribution', component: RainfallStatisticsComponent,  data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'COUNTRY'},canActivate: [AuthGuard],  },
+  { path: 'daily-state-rf-distribution', component: RainfallStatisticsComponent, data: { category : 'STATE'}, canActivate: [AuthGuard],  },
+  { path: 'daily-subdivision-rf-distribution', component: RainfallStatisticsComponent,  data: { category : 'SUBDIVISION'},canActivate: [AuthGuard],  },
+  { path: 'daily-district-rf-distribution', component: RainfallStatisticsComponent, data: { category : 'DISTRICT'}, canActivate: [AuthGuard],  },
+  { path: 'daily-homogenous-rf-distribution', component: RainfallStatisticsComponent,  data: { category : 'REGION'},canActivate: [AuthGuard],  },
+  { path: 'daily-country-rf-distribution', component: RainfallStatisticsComponent,  data: { category : 'COUNTRY'},canActivate: [AuthGuard],  },
 
-  { path: 'weekly-state-rf-distribution', component: RainfallStatisticsWeeklyComponent, data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'STATE'}, canActivate: [AuthGuard],  },
-  { path: 'weekly-subdivision-rf-distribution', component: RainfallStatisticsWeeklyComponent,  data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'SUBDIVISION'},canActivate: [AuthGuard],  },
-  { path: 'weekly-district-rf-distribution', component: RainfallStatisticsWeeklyComponent, data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'DISTRICT'}, canActivate: [AuthGuard],  },
-  { path: 'weekly-homogenous-rf-distribution', component: RainfallStatisticsWeeklyComponent,  data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'REGION'},canActivate: [AuthGuard],  },
-  { path: 'weekly-country-rf-distribution', component: RainfallStatisticsWeeklyComponent,  data:{allowedUsers: ['hq', 'mc', 'public', 'sp'], category : 'COUNTRY'},canActivate: [AuthGuard],  },
+  { path: 'weekly-state-rf-distribution', component: RainfallStatisticsWeeklyComponent, data: { category : 'STATE'}, canActivate: [AuthGuard],  },
+  { path: 'weekly-subdivision-rf-distribution', component: RainfallStatisticsWeeklyComponent,  data: { category : 'SUBDIVISION'},canActivate: [AuthGuard],  },
+  { path: 'weekly-district-rf-distribution', component: RainfallStatisticsWeeklyComponent, data: { category : 'DISTRICT'}, canActivate: [AuthGuard],  },
+  { path: 'weekly-homogenous-rf-distribution', component: RainfallStatisticsWeeklyComponent,  data: { category : 'REGION'},canActivate: [AuthGuard],  },
+  { path: 'weekly-country-rf-distribution', component: RainfallStatisticsWeeklyComponent,  data: { category : 'COUNTRY'},canActivate: [AuthGuard],  },
 
-  { path: 'weekly-departure-state-map', component: StateRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'weekly-departure-subdiv-map', component: SubdivisionRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'weekly-departure-homogenous-map', component: HomogenousRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'weekly-departure-country-map', component: CountryRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'weekly-departure-district-panindia-map', component: DistrictPanRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'weekly-departure-eastandnortheast-map', component: DistrictEastAndNorthEastRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'weekly-departure-northWest-map', component: DistrictNorthWestRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'weekly-departure-southPeninsular-map', component: DistrictSoutPensinsulaRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'weekly-departure-centalIndia-map', component: DistrictCentralIndiaRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
+  { path: 'weekly-departure-state-map', component: StateRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  { path: 'weekly-departure-subdiv-map', component: SubdivisionRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  { path: 'weekly-departure-homogenous-map', component: HomogenousRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  { path: 'weekly-departure-country-map', component: CountryRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  { path: 'weekly-departure-district-panindia-map', component: DistrictPanRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  { path: 'weekly-departure-eastandnortheast-map', component: DistrictEastAndNorthEastRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  { path: 'weekly-departure-northWest-map', component: DistrictNorthWestRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  { path: 'weekly-departure-southPeninsular-map', component: DistrictSoutPensinsulaRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  { path: 'weekly-departure-centalIndia-map', component: DistrictCentralIndiaRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
 
-  { path: 'cummulative-departure-state-map', component: StateRainfallMapCummulativeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'cummulative-departure-subdiv-map', component: SubdivisionRainfallMapCummulativeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'cummulative-departure-region-map', component: RegionRainfallMapCummulativeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'cummulative-departure-country-map', component: CountryRainfallMapCummulativeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'cummulative-departure-district-pan-map', component: DistrictPanIndiaRainfallMapCummulativeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'cummulative-departure-district-north-west-map', component: DistrictNorthWestRainfallMapCummulativeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'cummulative-departure-district-east-and-north-east-map', component: DistrictEastAndNorthEastRainfallMapCummulativeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'cummulative-departure-district-south-peninsular-map', component: DistrictSouthPeninsularRainfallMapCummulativeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'cummulative-departure-district-central-India-map', component: DistrictCentralIndiaRainfallMapCummulativeComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
+  { path: 'cummulative-departure-state-map', component: StateRainfallMapCummulativeComponent, canActivate: [AuthGuard] },
+  { path: 'cummulative-departure-subdiv-map', component: SubdivisionRainfallMapCummulativeComponent, canActivate: [AuthGuard] },
+  { path: 'cummulative-departure-region-map', component: RegionRainfallMapCummulativeComponent, canActivate: [AuthGuard] },
+  { path: 'cummulative-departure-country-map', component: CountryRainfallMapCummulativeComponent, canActivate: [AuthGuard] },
+  { path: 'cummulative-departure-district-pan-map', component: DistrictPanIndiaRainfallMapCummulativeComponent, canActivate: [AuthGuard] },
+  { path: 'cummulative-departure-district-north-west-map', component: DistrictNorthWestRainfallMapCummulativeComponent, canActivate: [AuthGuard] },
+  { path: 'cummulative-departure-district-east-and-north-east-map', component: DistrictEastAndNorthEastRainfallMapCummulativeComponent, canActivate: [AuthGuard] },
+  { path: 'cummulative-departure-district-south-peninsular-map', component: DistrictSouthPeninsularRainfallMapCummulativeComponent, canActivate: [AuthGuard] },
+  { path: 'cummulative-departure-district-central-India-map', component: DistrictCentralIndiaRainfallMapCummulativeComponent, canActivate: [AuthGuard] },
 
-  {path: 'normal-rainfall-map', component: NormalRainfallComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+  {path: 'normal-rainfall-map', component: NormalRainfallComponent, canActivate: [AuthGuard]},
 
-  { path: 'rainfall-departure', component: RainfallDeparturesSectionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-
-
-  { path: 'daily-departure-state-map', component: StateRainfallMapDailyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'daily-departure-subdivision-map', component: SubdivisionRainfallMapDailyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-
-  { path: 'weekly-departure-state-map', component: StateRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'weekly-departure-subdiv-map', component: SubdivisionRainfallMapWeeklyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  {path: 'daily-departure-country-map', component: CountryRainfallMapDailyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
-  {path: 'daily-departure-homogenous-map', component: HomogenousRainfallMapDailyComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+  { path: 'rainfall-departure', component: RainfallDeparturesSectionComponent, canActivate: [AuthGuard] },
 
 
-  {path: 'allstatemaps', component: AllStatesMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+  { path: 'daily-departure-state-map', component: StateRainfallMapDailyComponent, canActivate: [AuthGuard] },
+  { path: 'daily-departure-subdivision-map', component: SubdivisionRainfallMapDailyComponent, canActivate: [AuthGuard] },
+
+  { path: 'weekly-departure-state-map', component: StateRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  { path: 'weekly-departure-subdiv-map', component: SubdivisionRainfallMapWeeklyComponent, canActivate: [AuthGuard] },
+  {path: 'daily-departure-country-map', component: CountryRainfallMapDailyComponent, canActivate: [AuthGuard]},
+  {path: 'daily-departure-homogenous-map', component: HomogenousRainfallMapDailyComponent, canActivate: [AuthGuard]},
+
+
+  {path: 'allstatemaps', component: AllStatesMapComponent, canActivate: [AuthGuard]},
 
   // RMU map products (browser port of irainsmap2.0.py) — one component,
   // the level comes from data.level (see rmu-map-levels.ts)
-  { path: 'rmu-country-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'COUNTRY' } },
-  { path: 'rmu-region-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'REGION' } },
-  { path: 'rmu-subdivision-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'SUBDIVISION' } },
-  { path: 'rmu-state-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'STATE' } },
-  { path: 'rmu-district-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'DISTRICT' } },
-  { path: 'rmu-block-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'BLOCK' } },
+  { path: 'rmu-country-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'COUNTRY' } },
+  { path: 'rmu-region-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'REGION' } },
+  { path: 'rmu-subdivision-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'SUBDIVISION' } },
+  { path: 'rmu-state-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'STATE' } },
+  { path: 'rmu-district-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'DISTRICT' } },
+  { path: 'rmu-block-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'BLOCK' } },
 
   // the four regional district sheets (daily_ce/ene/nw/sp_map)
-  { path: 'rmu-central-india-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'REGION_CENTRAL' } },
-  { path: 'rmu-east-north-east-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'REGION_ENE' } },
-  { path: 'rmu-north-west-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'REGION_NW' } },
-  { path: 'rmu-south-peninsula-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'], level: 'REGION_SP' } },
-  { path: 'rmu-statewise-district-map', component: RmuStatewiseMapComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'all-statistics', component: AllStatisticsComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq'] } },
+  { path: 'rmu-central-india-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'REGION_CENTRAL' } },
+  { path: 'rmu-east-north-east-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'REGION_ENE' } },
+  { path: 'rmu-north-west-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'REGION_NW' } },
+  { path: 'rmu-south-peninsula-rainfall-map', component: RmuMapComponent, canActivate: [AuthGuard], data: { level: 'REGION_SP' } },
+  { path: 'rmu-statewise-district-map', component: RmuStatewiseMapComponent, canActivate: [AuthGuard] },
+  { path: 'all-statistics', component: AllStatisticsComponent, canActivate: [AuthGuard] },
 
   //Inside district of Rainfall Map Module
-  {path: 'daily-east-north-east-region', component: EastNorthEastRegionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
-  {path: 'daily-north-west-region', component: NorthWestRegionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
-  {path: 'daily-south-peninsula-region', component: SouthPeninsularaRegionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
-  {path: 'daily-central-region', component: CentralRegionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
-  {path: 'pan-india-region', component: PanIndiaRegionComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+  {path: 'daily-east-north-east-region', component: EastNorthEastRegionComponent, canActivate: [AuthGuard]},
+  {path: 'daily-north-west-region', component: NorthWestRegionComponent, canActivate: [AuthGuard]},
+  {path: 'daily-south-peninsula-region', component: SouthPeninsularaRegionComponent, canActivate: [AuthGuard]},
+  {path: 'daily-central-region', component: CentralRegionComponent, canActivate: [AuthGuard]},
+  {path: 'pan-india-region', component: PanIndiaRegionComponent, canActivate: [AuthGuard]},
 
 
-  { path: 'underprogress', component: UnderprogressComponent , canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
+  { path: 'underprogress', component: UnderprogressComponent , canActivate: [AuthGuard] },
 
-  { path: 'rainfall-graphs', component: RainfallCountrySeasonalGraphComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }},
+  { path: 'rainfall-graphs', component: RainfallCountrySeasonalGraphComponent, canActivate: [AuthGuard]},
 
 
 
-  { path: 'gangariverbasin', component: GangaRiverBasinComponent , canActivate: [AuthGuard], data: { allowedUsers: ['hq'] } },
+  { path: 'gangariverbasin', component: GangaRiverBasinComponent , canActivate: [AuthGuard] },
   
-  { path: 'QpfverificationReports2020', component: QpfverificationReports2020Component , canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'QpfverificationReports2021', component: QpfverificationReports2021Component , canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'QpfverificationReports2022', component: QpfverificationReports2022Component , canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'upload-file', component: UploadFileComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'verification-page', component: VerificationComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc'] } },
-  { path: 'verification-page-mc', component: VerificationPageMcComponent, canActivate: [AuthGuard], data: { allowedUsers: ['mc'] } },
-  { path: 'verification-page-hq', component: VerificationPageHQComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'sp'] } },
-  { path: 'station-statistics', component: StationStatisticsPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] } },
-  { path: 'realtime-station-data', component: RealtimeStationDataComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'user-manual', component: UserManualv2Component, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
-  { path: 'block-actual-rainfall-map-daily-main-page-pubic', component: BlockActualRainfallMapDailyMainPagePubicComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] } },
+  { path: 'QpfverificationReports2020', component: QpfverificationReports2020Component , canActivate: [AuthGuard] },
+  { path: 'QpfverificationReports2021', component: QpfverificationReports2021Component , canActivate: [AuthGuard] },
+  { path: 'QpfverificationReports2022', component: QpfverificationReports2022Component , canActivate: [AuthGuard] },
+  { path: 'upload-file', component: UploadFileComponent, canActivate: [AuthGuard] },
+  { path: 'verification-page', component: VerificationComponent, canActivate: [AuthGuard] },
+  { path: 'verification-page-mc', component: VerificationPageMcComponent, canActivate: [AuthGuard] },
+  { path: 'verification-page-hq', component: VerificationPageHQComponent, canActivate: [AuthGuard] },
+  { path: 'station-statistics', component: StationStatisticsPageComponent, canActivate: [AuthGuard] },
+  { path: 'realtime-station-data', component: RealtimeStationDataComponent, canActivate: [AuthGuard] },
+  { path: 'user-manual', component: UserManualv2Component, canActivate: [AuthGuard] },
+  { path: 'block-actual-rainfall-map-daily-main-page-pubic', component: BlockActualRainfallMapDailyMainPagePubicComponent, canActivate: [AuthGuard] },
 
 
-   { path: 'new-email-dissemination', component: EmailDisseminationPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'sp'] }, children:
+   { path: 'new-email-dissemination', component: EmailDisseminationPageComponent, canActivate: [AuthGuard], children:
     [
       { path: 'new-send-email', component: SendEmailPageComponent },
       { path: 'new-auto-email', component: AutoEmailSetupPageComponent },
@@ -351,7 +348,7 @@ export const routes: Routes = [
       { path: '', redirectTo: 'new-send-email', pathMatch: 'full' }
     ]
    },
-  { path: 'log-info', component: LogInfoContainerComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc'] }, children:
+  { path: 'log-info', component: LogInfoContainerComponent, canActivate: [AuthGuard], children:
     [
       { path: 'station-log', component: DeletedStationLogComponent },
       { path: 'reports-log', component: LogInfoForReportsComponent },
@@ -361,7 +358,7 @@ export const routes: Routes = [
     ]
    },
    
-  // { path: 'front-page', component: FrontPageComponent, canActivate: [AuthGuard], data: { allowedUsers: ['hq', 'mc', 'public', 'sp'] }, children:
+  // { path: 'front-page', component: FrontPageComponent, canActivate: [AuthGuard], children:
   //   [
   //     // { path: 'unifieddeparture', component: AllMapsDupComponent},
   //     // { path: 'weekly-departure', component: WeeklyDepartureMapComponent },

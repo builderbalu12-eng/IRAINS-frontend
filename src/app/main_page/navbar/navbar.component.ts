@@ -4,7 +4,6 @@ import { DataService } from 'src/app/data.service';
 import { IndexedDBService } from 'src/app/indexed-db.service';
 import { PdfUploadService } from 'src/app/services/pdfUploadService.ts/pdf-upload.service';
 import { Constants } from 'src/app/services/constants';
-import { routes } from 'src/app/app-routing.module';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environment/environment';
 import { RouteAccessService } from 'src/app/services/permissions/route-access.service';
@@ -55,9 +54,8 @@ export class NavbarComponent implements OnInit {
 
   hasAccess(route: any) {
     const path = '/' + String(route || '').replace(/^\//, '');
-    const managed = this.routeAccess.evaluate(path, this.loggedInUserType);
-    if (managed !== null) return managed;
-    return this.routeDictionary[route]?.allowedUsers?.includes(this.loggedInUserType) || false;
+    // Fully DB-driven via rbac_routes / rbac_route_roles
+    return this.routeAccess.evaluate(path, this.loggedInUserType);
   }
   
   selectBlockOrRainfallMaps(arg0: string) {
@@ -111,16 +109,10 @@ export class NavbarComponent implements OnInit {
 
 
 
-    const filteredRoutes = routes.filter((route: any) => route.data && route.data.allowedUsers);
-  
-    this.routeDictionary = filteredRoutes.reduce((acc: any, route: any) => {
-      acc[route.path] = route.data;
-      return acc;
-    }, {});
-
-    console.log('this.routeDictionary', this.routeDictionary)
-
-
+    this.routeDictionary = {};
+    void this.routeAccess.ensureLoaded().catch((err) => {
+      console.warn('Failed to load route access catalog for navbar', err);
+    });
    }
 
 

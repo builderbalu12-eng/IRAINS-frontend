@@ -10,10 +10,6 @@
           placeholder="Search by name, email, username..." />
         <i class="bi bi-search"></i>
       </label>
-      <select [(ngModel)]="districtFilter" (ngModelChange)="resetPage()">
-        <option value="all">All Regions / HQ</option>
-        <option *ngFor="let region of regions" [value]="region">{{ region }}</option>
-      </select>
       <button type="button" class="btn-add" (click)="openAdd()">+ Add New User</button>
     </div>
   </header>
@@ -126,12 +122,6 @@
             <label>Designation</label>
             <input formControlName="designation" placeholder="e.g. Meteorologist" />
           </div>
-          <div>
-            <label>Region / HQ</label>
-            <select formControlName="district">
-              <option *ngFor="let region of regions" [value]="region">{{ region }}</option>
-            </select>
-          </div>
           <div *ngIf="!isEditing">
             <label>Role <span>*</span></label>
             <select formControlName="roleCode">
@@ -180,7 +170,6 @@
       <p><b>Email</b> {{ viewUser.email || '—' }}</p>
       <p><b>Mobile</b> {{ viewUser.phone || '—' }}</p>
       <p><b>Designation</b> {{ viewUser.designation || '—' }}</p>
-      <p><b>Region</b> {{ viewUser.district || '—' }}</p>
       <p><b>Status</b> {{ viewUser.active ? 'Active' : 'Inactive' }}</p>
       <div class="current">
         <b>Assigned roles</b>

@@ -111,14 +111,12 @@ export class RouteAccessService {
   }
 
   /**
-   * Returns true/false when the path is governed by the managed catalog.
-   * Returns null when the path is not managed — caller should fall back to
-   * static route.data.allowedUsers (existing iRAINS behaviour).
+   * Fully DB-driven access check against rbac_routes / rbac_route_roles.
+   * Unknown / inactive paths are denied (no hardcoded routing fallback).
    */
-  evaluate(path: string, role: string): boolean | null {
+  evaluate(path: string, role: string): boolean {
     const match = this.findManagedRoute(path);
-    if (!match) return null;
-    if (!match.active) return false;
+    if (!match || !match.active) return false;
     const userRole = String(role || '').toLowerCase().trim();
     return match.allowedRoles.map((r) => r.toLowerCase()).includes(userRole);
   }

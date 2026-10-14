@@ -17,9 +17,7 @@ interface RoleChip {
 export class NewRegisterComponent implements OnInit, OnDestroy {
   users: RbacUser[] = [];
   roles: RbacRole[] = [];
-  regions: string[] = [];
   searchText = '';
-  districtFilter = 'all';
   page = 1;
   pageSize = 10;
 
@@ -43,14 +41,12 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.regions = this.directory.regions;
     this.form = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(4)]],
       fullName: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', Validators.email],
       phone: [''],
       designation: [''],
-      district: ['HQ'],
       roleCode: [''],
       password: [''],
       active: [true]
@@ -74,10 +70,9 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
   get filtered(): RbacUser[] {
     const q = this.searchText.toLowerCase().trim();
     return this.users.filter(user => {
-      if (this.districtFilter !== 'all' && user.district !== this.districtFilter) return false;
       if (!q) return true;
       const roleNames = this.userRoles(user).map(r => r.name).join(' ');
-      const hay = `${user.username} ${user.fullName} ${user.email} ${user.phone} ${user.district} ${user.designation} ${roleNames}`.toLowerCase();
+      const hay = `${user.username} ${user.fullName} ${user.email} ${user.phone} ${user.designation} ${roleNames}`.toLowerCase();
       return hay.includes(q);
     });
   }
@@ -154,7 +149,6 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
       email: '',
       phone: '',
       designation: '',
-      district: 'HQ',
       roleCode: first,
       password: '',
       active: true
@@ -178,7 +172,6 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
       email: user.email,
       phone: user.phone,
       designation: user.designation,
-      district: user.district || 'HQ',
       roleCode: '',
       password: '',
       active: user.active
@@ -273,7 +266,6 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
           email: String(this.form.value.email || '').trim(),
           phone: String(this.form.value.phone || '').trim(),
           designation: String(this.form.value.designation || '').trim(),
-          district: String(this.form.value.district || ''),
           active: !!this.form.value.active,
         }, password ? { password } : {});
       } else {
@@ -283,7 +275,6 @@ export class NewRegisterComponent implements OnInit, OnDestroy {
           email: String(this.form.value.email || '').trim(),
           phone: String(this.form.value.phone || '').trim(),
           designation: String(this.form.value.designation || '').trim(),
-          district: String(this.form.value.district || ''),
           roleCodes: [roleCode],
           active: !!this.form.value.active,
         }, { password, roleCode });

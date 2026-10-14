@@ -59,22 +59,13 @@ export class AuthGuard implements CanActivate {
 		try {
 			await this.routeAccess.ensureLoaded();
 		} catch (error) {
-			console.warn('Route access catalog unavailable; using cached/static rules.', error);
-		}
-
-		// 1) Dynamic catalog from Route Management (TNSMART-style overlay)
-		const managed = this.routeAccess.evaluate(requestedUrl, currentUserType);
-		if (managed !== null) {
-			if (managed) return true;
+			console.warn('Route access catalog unavailable.', error);
 			await this.router.navigate([this.getLandingRoute()]);
 			return false;
 		}
 
-		// 2) Fallback: static allowedUsers on the route tree (existing iRAINS behaviour)
-		const allowedUsers = this.collectAllowedUsers(route);
-		if (allowedUsers.length === 0 || allowedUsers.includes(currentUserType)) {
-			return true;
-		}
+		// Fully DB-driven: allow only when rbac_routes / rbac_route_roles grants access.
+		if (this.routeAccess.evaluate(requestedUrl, currentUserType)) return true;
 
 		await this.router.navigate([this.getLandingRoute()]);
 		return false;
@@ -130,18 +121,5 @@ export class AuthGuard implements CanActivate {
 
 		const path = fromParents.join('/');
 		return path ? (path.startsWith('/') ? path : '/' + path) : '/';
-	}
-
-	private collectAllowedUsers(route: ActivatedRouteSnapshot): string[] {
-		const roles: string[] = [];
-		let current: ActivatedRouteSnapshot | null = route;
-		while (current) {
-			const list = current.data?.['allowedUsers'] as string[] | undefined;
-			if (Array.isArray(list) && list.length) {
-				roles.push(...list.map(r => String(r).toLowerCase()));
-			}
-			current = current.parent;
-		}
-		return Array.from(new Set(roles));
 	}
 }

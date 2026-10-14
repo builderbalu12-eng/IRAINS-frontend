@@ -19,7 +19,6 @@ export interface RbacUser {
   email: string;
   phone: string;
   designation: string;
-  district: string;
   roleCodes: string[];
   active: boolean;
   loginUserid?: string | null;
@@ -39,15 +38,6 @@ interface ApiItemResponse<T> {
 
 @Injectable({ providedIn: 'root' })
 export class RbacDirectoryService {
-  readonly regions = [
-    'HQ',
-    'North West',
-    'North East',
-    'Central India',
-    'South Peninsular',
-    'East & North East',
-  ];
-
   private readonly baseUrl = `${environment.baseUrl}/api/v1/rbac`;
   private readonly rolesSubject = new BehaviorSubject<RbacRole[]>([]);
   private readonly usersSubject = new BehaviorSubject<RbacUser[]>([]);
@@ -169,7 +159,6 @@ export class RbacDirectoryService {
       email: user.email || '',
       phone: user.phone || '',
       designation: user.designation || '',
-      district: user.district || 'HQ',
       active: user.active !== false,
     };
 
@@ -255,7 +244,6 @@ export class RbacDirectoryService {
       email: String(row.email || ''),
       phone: String(row.phone || ''),
       designation: String(row.designation || ''),
-      district: String(row.district || ''),
       roleCodes,
       active: row.active !== false,
       loginUserid: row.loginUserid ?? row.login_userid ?? null,
