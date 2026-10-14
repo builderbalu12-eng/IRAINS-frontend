@@ -197,6 +197,7 @@ import { DisplayOrderManagementComponent } from './main/display-order-management
 import { CalculationModeComponent } from './main/data-management/calculation-mode/calculation-mode.component';
 import { ReviewAndPublishComponent } from './main/data-management/review-and-publish/review-and-publish.component';
 import { DataEntryInvestigationComponent } from './main/data-management/data-entry-investigation/data-entry-investigation.component';
+import { StationImportComponent } from './main/data-management/station-import/station-import.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { DataManagementComponent } from './main/data-management/data-management.component';
@@ -385,6 +386,7 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     CalculationModeComponent,
     ReviewAndPublishComponent,
     DataEntryInvestigationComponent,
+    StationImportComponent,
     DataManagementComponent,
     GeojsonUploadComponent,
     GeojsonManagementComponent,

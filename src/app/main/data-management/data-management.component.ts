@@ -60,7 +60,9 @@ export class DataManagementComponent implements OnInit, OnDestroy {
       label: 'Master File',
       icon: 'bi bi-folder-fill',
       expanded: true,
-      children: []
+      children: [
+        { label: 'Station Import', icon: 'bi bi-file-earmark-spreadsheet-fill', route: '/data-management/station-import' },
+      ]
     },
     {
       label: 'Infographics',

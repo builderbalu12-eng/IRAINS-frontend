@@ -1,0 +1,594 @@
+<div class="si-page" #top>
+
+  <!-- ── Page header ─────────────────────────────────────────────────────── -->
+  <header class="si-head">
+    <div class="si-head-text">
+      <div class="si-eyebrow"><i class="bi bi-folder-fill"></i> Master File</div>
+      <h2>Station Master Import</h2>
+      <p class="si-sub">
+        Bring stations in from the GIS search-results Excel. Every row is checked against the database first,
+        nothing is written until you confirm, and no station is ever deleted.
+      </p>
+    </div>
+    <span class="si-badge sample" *ngIf="api.usingSampleData" title="StationImportService serves sample data until the backend exists">
+      <i class="bi bi-plug"></i> Sample data · backend not connected
+    </span>
+  </header>
+
+  <!-- ── Network overview ────────────────────────────────────────────────── -->
+  <section class="si-card si-overview">
+    <button type="button" class="si-overview-toggle" (click)="overviewOpen = !overviewOpen" [attr.aria-expanded]="overviewOpen">
+      <span class="si-ov-title"><i class="bi bi-broadcast-pin"></i> Station network today</span>
+      <span class="si-ov-summary" *ngIf="overview && !overviewOpen">
+        {{ fmt(overview.totals.stations) }} stations · {{ fmt(overview.totals.active) }} active ·
+        {{ fmt(overview.totals.districts) }} districts · {{ fmt(overview.totals.blocks) }} blocks
+      </span>
+      <span class="si-muted si-ov-asof" *ngIf="overview && overviewOpen">as of {{ formatDate(overview.asOf) }}</span>
+      <i class="bi si-chevron" [ngClass]="overviewOpen ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+    </button>
+
+    <div *ngIf="overviewLoading" class="si-loading"><i class="bi bi-arrow-repeat si-spin"></i> Loading network summary…</div>
+    <div *ngIf="overviewError" class="si-alert error"><i class="bi bi-exclamation-triangle-fill"></i> {{ overviewError }}</div>
+
+    <div class="si-overview-body" *ngIf="overview && overviewOpen">
+      <div class="si-kpis">
+        <div class="si-kpi">
+          <span class="si-kpi-label">Stations</span>
+          <span class="si-kpi-value">{{ fmt(overview.totals.stations) }}</span>
+          <span class="si-kpi-foot">both station tables</span>
+        </div>
+        <div class="si-kpi good">
+          <span class="si-kpi-label">Active</span>
+          <span class="si-kpi-value">{{ fmt(overview.totals.active) }}</span>
+          <span class="si-kpi-foot">flag = 1 · {{ pct(overview.totals.active, overview.totals.stations) }}%</span>
+        </div>
+        <div class="si-kpi muted">
+          <span class="si-kpi-label">Inactive</span>
+          <span class="si-kpi-value">{{ fmt(overview.totals.inactive) }}</span>
+          <span class="si-kpi-foot">flag = 0 · rows kept</span>
+        </div>
+        <div class="si-kpi">
+          <span class="si-kpi-label">Districts</span>
+          <span class="si-kpi-value">{{ fmt(overview.totals.districts) }}</span>
+          <span class="si-kpi-foot">normal_district_details</span>
+        </div>
+        <div class="si-kpi">
+          <span class="si-kpi-label">Blocks</span>
+          <span class="si-kpi-value">{{ fmt(overview.totals.blocks) }}</span>
+          <span class="si-kpi-foot">distinct block codes</span>
+        </div>
+        <div class="si-kpi">
+          <span class="si-kpi-label">Centres</span>
+          <span class="si-kpi-value">{{ fmt(overview.totals.centres) }}</span>
+          <span class="si-kpi-foot">MC / RMC</span>
+        </div>
+      </div>
+
+      <div class="si-ov-grid">
+        <div class="si-panel si-ov-centre">
+          <div class="si-panel-head">
+            <h4>Active stations by centre</h4>
+            <span class="si-muted">sorted by size</span>
+          </div>
+          <div *ngIf="centreChart" [chart]="centreChart"></div>
+        </div>
+
+        <div class="si-ov-side">
+          <div class="si-panel">
+            <div class="si-panel-head">
+              <h4>By station type</h4>
+              <span class="si-key">
+                <span><i class="si-sw" [style.background]="colors.imd"></i>station_details</span>
+                <span><i class="si-sw" [style.background]="colors.state"></i>aws_station_details</span>
+              </span>
+            </div>
+            <div *ngIf="typeChart" [chart]="typeChart"></div>
+          </div>
+
+          <div class="si-panel">
+            <div class="si-panel-head"><h4>Active stations by region</h4></div>
+            <div *ngIf="regionChart" [chart]="regionChart"></div>
+          </div>
+
+          <div class="si-panel si-ready">
+            <div class="si-panel-head"><h4>Ready for new stations?</h4></div>
+            <div class="si-meter">
+              <div class="si-meter-top">
+                <span>District normals {{ overview.normals.year }}</span>
+                <b>{{ fmt(overview.normals.districtsWithNormals) }} / {{ fmt(overview.normals.districts) }}</b>
+              </div>
+              <div class="si-meter-track"><span class="good" [style.width.%]="pct(overview.normals.districtsWithNormals, overview.normals.districts)"></span></div>
+            </div>
+            <div class="si-meter">
+              <div class="si-meter-top">
+                <span>Active blocks with normals {{ overview.normals.year }}</span>
+                <b>{{ fmt(overview.normals.activeBlocksWithNormals) }} / {{ fmt(overview.normals.activeBlocks) }}</b>
+              </div>
+              <div class="si-meter-track"><span class="warn" [style.width.%]="pct(overview.normals.activeBlocksWithNormals, overview.normals.activeBlocks)"></span></div>
+              <small class="si-muted">New stations in a block without normals still import; that block's departure stays blank.</small>
+            </div>
+            <div class="si-fact">
+              <i class="bi bi-calendar3"></i>
+              <div>
+                <b>−999.9 rows ready to {{ formatDate(overview.dailyRows.horizon) }}</b>
+                <span>{{ fmt(overview.dailyRows.rowsPerDay) }} rows per day · oldest kept {{ formatDate(overview.dailyRows.oldestKept) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Import ──────────────────────────────────────────────────────────── -->
+  <section class="si-card si-import">
+
+    <ol class="si-stepper">
+      <li *ngFor="let s of steps" [class.done]="s.id < step" [class.current]="s.id === step">
+        <button type="button" (click)="goToStep(s.id)" [disabled]="!canGoTo(s.id)">
+          <span class="si-step-dot">
+            <i class="bi bi-check-lg" *ngIf="s.id < step"></i>
+            <ng-container *ngIf="s.id >= step">{{ s.id }}</ng-container>
+          </span>
+          <span class="si-step-text"><b>{{ s.label }}</b><small>{{ s.hint }}</small></span>
+        </button>
+      </li>
+    </ol>
+
+    <!-- ── Step 1 · Upload ─────────────────────────────────────────────── -->
+    <div *ngIf="step === 1" class="si-step si-upload">
+      <div class="si-upload-main">
+        <label class="si-drop" [class.dragging]="isDragging" [class.compact]="!!fileCheck"
+               (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+          <input type="file" accept=".xlsx,.xls" (change)="onFileInput($event)" hidden>
+          <span class="si-drop-icon"><i class="bi bi-file-earmark-spreadsheet"></i></span>
+          <span class="si-drop-text">
+            <b>{{ fileCheck ? 'Choose a different file' : 'Drop the search-results Excel here' }}</b>
+            <span>or click to browse · .xlsx · the first sheet is read</span>
+          </span>
+        </label>
+
+        <div *ngIf="fileReading" class="si-loading"><i class="bi bi-arrow-repeat si-spin"></i> Reading {{ file?.name }}…</div>
+        <div *ngIf="fileError" class="si-alert error"><i class="bi bi-exclamation-triangle-fill"></i> {{ fileError }}</div>
+
+        <div *ngIf="fileCheck" class="si-filecard">
+          <div class="si-filecard-head">
+            <span class="si-file-icon"><i class="bi bi-file-earmark-excel-fill"></i></span>
+            <div class="si-file-name">
+              <b [title]="fileCheck.fileName">{{ fileCheck.fileName }}</b>
+              <span>{{ fileCheck.sizeLabel }} · sheet "{{ fileCheck.sheetName }}"</span>
+            </div>
+            <button type="button" class="si-btn ghost sm" (click)="clearFile()"><i class="bi bi-x-lg"></i> Remove</button>
+          </div>
+
+          <div class="si-filestats">
+            <div><b>{{ fmt(fileCheck.rowCount) }}</b><span>rows</span></div>
+            <div><b>{{ fmt(fileCheck.districtCount) }}</b><span>districts</span></div>
+            <div><b>{{ fmt(fileCheck.activeCount) }}</b><span>flag 1</span></div>
+            <div><b>{{ fmt(fileCheck.inactiveCount) }}</b><span>flag 0</span></div>
+            <div><b>{{ fmt(fileCheck.sTypeCount) }}</b><span>sARG / sAWS</span></div>
+          </div>
+
+          <div class="si-columns">
+            <span class="si-columns-label">Columns the import reads</span>
+            <span *ngFor="let c of fileCheck.columns" class="si-colchip" [class.missing]="!c.present">
+              <i class="bi" [ngClass]="c.present ? 'bi-check2' : 'bi-x'"></i>{{ c.name }}
+            </span>
+          </div>
+          <div *ngIf="missingColumns.length" class="si-alert error">
+            <i class="bi bi-x-octagon-fill"></i>
+            This does not look like the search-results export: {{ missingColumns.length }} required
+            column{{ missingColumns.length === 1 ? ' is' : 's are' }} missing ({{ missingColumns.join(', ') }}).
+          </div>
+
+          <div class="si-filechart">
+            <div class="si-panel-head">
+              <h4>Rows by station type in this file</h4>
+              <span class="si-key">
+                <span><i class="si-sw" [style.background]="colors.imd"></i>→ station_details</span>
+                <span><i class="si-sw" [style.background]="colors.state"></i>→ aws_station_details</span>
+              </span>
+            </div>
+            <div *ngIf="fileTypeChart" [chart]="fileTypeChart"></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="si-upload-side">
+        <div class="si-panel">
+          <label class="si-field-label" for="si-activation">Activation date for new stations</label>
+          <input id="si-activation" class="si-input" type="date" [(ngModel)]="activationDate">
+          <small class="si-muted">
+            Also the first day of their −999.9 rows<ng-container *ngIf="seedHorizon">, which run to {{ formatDate(seedHorizon) }}</ng-container>.
+          </small>
+        </div>
+
+        <div class="si-panel si-rules">
+          <h4><i class="bi bi-shield-check"></i> Checked for every row</h4>
+          <ul>
+            <li>Code unique across <code>station_details</code> and <code>aws_station_details</code></li>
+            <li>District exists in <code>normal_district_details</code></li>
+            <li>Code starts with its block code and district code</li>
+            <li>Centre, station type, coordinates and flag are valid</li>
+          </ul>
+          <h4 class="never"><i class="bi bi-slash-circle"></i> Never done</h4>
+          <ul class="never">
+            <li>Delete a station or its daily rows</li>
+            <li>Switch off stations that are missing from the file</li>
+            <li>Write anything before you confirm</li>
+          </ul>
+        </div>
+
+        <button type="button" class="si-btn primary block lg" [disabled]="!canCheck || previewLoading" (click)="checkFile()">
+          <ng-container *ngIf="!previewLoading"><i class="bi bi-search"></i> Check against database</ng-container>
+          <ng-container *ngIf="previewLoading"><i class="bi bi-arrow-repeat si-spin"></i> Checking {{ fmt(fileCheck?.rowCount) }} rows…</ng-container>
+        </button>
+        <small class="si-muted si-center" *ngIf="!file">Choose a file to continue.</small>
+        <div *ngIf="previewError" class="si-alert error"><i class="bi bi-exclamation-triangle-fill"></i> {{ previewError }}</div>
+      </aside>
+    </div>
+
+    <!-- ── Step 2 · Review ─────────────────────────────────────────────── -->
+    <div *ngIf="step === 2 && preview" class="si-step si-review">
+
+      <div class="si-alert sample" *ngIf="preview.isSample">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>
+          <b>Sample preview.</b> The backend is not connected yet, so this shows the 14 Oct 2026 dry run of
+          <code>Irains_29052026search_results…(1).xlsx</code> whichever file you chose. Rows tagged
+          <span class="si-tag example">EXAMPLE</span> are invented to show the New tab; that file has no new stations.
+        </span>
+      </div>
+
+      <div class="si-compare">
+        <div class="si-compare-side">
+          <span class="si-compare-label"><i class="bi bi-file-earmark-excel"></i> File</span>
+          <b>{{ fmt(preview.file.rowCount) }} rows</b>
+          <span>{{ fmt(preview.file.districtCount) }} districts</span>
+        </div>
+        <i class="bi bi-arrow-left-right si-compare-arrow"></i>
+        <div class="si-compare-side">
+          <span class="si-compare-label"><i class="bi bi-database"></i> Database</span>
+          <b>{{ fmt(preview.db.stationDetails + preview.db.awsStationDetails) }} stations</b>
+          <span>{{ fmt(preview.db.stationDetails) }} IMD + {{ fmt(preview.db.awsStationDetails) }} State AWS · {{ fmt(preview.db.districts) }} districts</span>
+        </div>
+        <div class="si-compare-side same">
+          <span class="si-compare-label"><i class="bi bi-check2-all"></i> Unchanged</span>
+          <b>{{ fmt(preview.unchangedCount) }} rows</b>
+          <span>match the database exactly</span>
+        </div>
+      </div>
+
+      <div class="si-tiles" role="tablist" aria-label="Review categories">
+        <button *ngFor="let t of tabs; trackBy: trackTab" type="button" role="tab" class="si-tile"
+                [ngClass]="'tone-' + t.tone" [class.active]="activeTab === t.id" [class.empty]="t.count === 0"
+                [attr.aria-selected]="activeTab === t.id" (click)="setTab(t.id)">
+          <span class="si-tile-top">
+            <i class="bi" [ngClass]="t.icon"></i>
+            <span class="si-tile-label">{{ t.label }}</span>
+          </span>
+          <span class="si-tile-num">{{ fmt(t.count) }}</span>
+          <span class="si-tile-hint">{{ tileHint(t.id) }}</span>
+        </button>
+      </div>
+
+      <div class="si-insights">
+        <div class="si-panel si-map-panel">
+          <div class="si-panel-head">
+            <h4>Where the changes are</h4>
+            <div class="si-map-legend">
+              <button *ngFor="let l of mapLegend" type="button" class="si-chip" [class.off]="!mapLayers[l.id]" (click)="toggleMapLayer(l.id)"
+                      [attr.aria-pressed]="mapLayers[l.id]">
+                <span class="si-dot" [style.background]="l.color"></span>{{ l.label }} <b>{{ l.count }}</b>
+              </button>
+            </div>
+          </div>
+          <div #impactMap class="si-map"></div>
+          <small class="si-muted">Click a legend chip to hide that layer. Rows with errors are listed in the Errors tab, not plotted.</small>
+        </div>
+        <div class="si-panel">
+          <div class="si-panel-head">
+            <h4>Rows to look at, by centre</h4>
+            <span class="si-muted">who to contact</span>
+          </div>
+          <div *ngIf="impactChart" [chart]="impactChart"></div>
+          <div *ngIf="!impactChart" class="si-empty small"><i class="bi bi-check2-circle"></i> The file matches the database.</div>
+        </div>
+      </div>
+
+      <div class="si-panel si-table-panel">
+        <div class="si-table-tools">
+          <div class="si-search">
+            <i class="bi bi-search"></i>
+            <input id="si-search" type="search" [(ngModel)]="search" (ngModelChange)="onSearchChange()" placeholder="Search code, name or centre" aria-label="Search rows">
+          </div>
+          <div class="si-seg" *ngIf="activeTab === 'flags'" role="group" aria-label="Flag direction">
+            <button type="button" [class.on]="flagFilter === 'all'" (click)="setFlagFilter('all')">All {{ flagsTurningOn + flagsTurningOff }}</button>
+            <button type="button" [class.on]="flagFilter === 'on'" (click)="setFlagFilter('on')">Turn on {{ flagsTurningOn }}</button>
+            <button type="button" [class.on]="flagFilter === 'off'" (click)="setFlagFilter('off')">Turn off {{ flagsTurningOff }}</button>
+          </div>
+          <span class="si-spacer"></span>
+          <button type="button" class="si-btn ghost" (click)="downloadReview()"><i class="bi bi-download"></i> Download review (.xlsx)</button>
+        </div>
+
+        <!-- Per-tab explanation -->
+        <div class="si-callout tone-new" *ngIf="activeTab === 'new'">
+          <i class="bi bi-plus-circle-fill"></i>
+          <span>Codes found in neither station table. Ticked by default. Each IMD-type station also gets −999.9 rows from the activation date
+          to {{ formatDate(preview.seedHorizon) }}; sARG / sAWS stations get an <code>aws_mapping_id</code> link instead.</span>
+        </div>
+        <div class="si-callout tone-change" *ngIf="activeTab === 'changes'">
+          <i class="bi bi-pencil-square"></i>
+          <span>Same station code, different value. Nothing is ticked: the database may hold a correction the file does not have.</span>
+        </div>
+        <div class="si-callout tone-flag" *ngIf="activeTab === 'flags'">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>Off by default. <b *ngIf="flagsWithNotes">{{ flagsWithNotes }} of these would turn an old code back on while its re-coded
+          replacement is already active</b><ng-container *ngIf="flagsWithNotes"> — read the note before ticking.</ng-container>
+          Turning a station off only sets <code>flag = 0</code>; its daily rows stay.</span>
+        </div>
+        <div class="si-callout tone-missing" *ngIf="activeTab === 'missing'">
+          <i class="bi bi-question-circle-fill"></i>
+          <span>In the database but not in this file. They are left exactly as they are. To switch one off, use Station Management.</span>
+        </div>
+        <div class="si-callout tone-error" *ngIf="activeTab === 'errors'">
+          <i class="bi bi-x-octagon-fill"></i>
+          <span>These rows are skipped. The rest of the file can still be applied. Fix them in the Excel and import again.</span>
+        </div>
+        <div class="si-callout tone-warn" *ngIf="activeTab === 'warnings'">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>For information. Warnings never block a row.</span>
+        </div>
+
+        <div class="si-table-wrap">
+
+          <!-- New stations -->
+          <table class="si-table" *ngIf="activeTab === 'new' && newRows.length">
+            <thead>
+              <tr>
+                <th class="si-check">
+                  <input type="checkbox" aria-label="Tick all shown" [checked]="allTicked(selectedNew, newKeys)"
+                         [indeterminate]="someTicked(selectedNew, newKeys)" (change)="toggleAll(selectedNew, newKeys, $event)">
+                </th>
+                <th>Station</th><th>Code</th><th>Type</th><th>Goes to</th><th>District · Block</th><th>Centre</th><th>Lat, Lon</th><th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of pageSlice(newRows)" [class.ticked]="selectedNew.has(r.stationCode)">
+                <td class="si-check"><input type="checkbox" [checked]="selectedNew.has(r.stationCode)" (change)="toggle(selectedNew, r.stationCode)" [attr.aria-label]="'Tick ' + r.stationName"></td>
+                <td><b>{{ r.stationName }}</b> <span class="si-tag example" *ngIf="r.example">EXAMPLE</span></td>
+                <td class="mono">{{ r.stationCode }}</td>
+                <td><span class="si-type">{{ r.stationTypeOld }}</span><span class="si-muted" *ngIf="r.stationType !== r.stationTypeOld"> → {{ r.stationType }}</span></td>
+                <td><span class="si-pill" [class.state]="r.table === 'aws_station_details'">{{ tableLabel(r.table) }}</span>
+                  <div class="si-sub-mono" *ngIf="r.awsSource">{{ r.awsSource }} · {{ r.awsId }}</div></td>
+                <td>{{ r.districtName }}<div class="si-sub">{{ r.blockName }} <span class="mono">{{ r.blockCode }}</span></div></td>
+                <td>{{ r.centre }}</td>
+                <td class="mono nowrap">{{ coord(r.latitude) }}, {{ coord(r.longitude) }}</td>
+                <td>
+                  <span *ngFor="let w of r.warnings" class="si-warnchip"><i class="bi bi-exclamation-triangle-fill"></i>{{ w }}</span>
+                  <span *ngIf="r.flag === 0" class="si-warnchip"><i class="bi bi-toggle-off"></i>flag 0 in file — not ticked</span>
+                  <span *ngIf="!r.warnings.length && r.flag === 1" class="si-muted">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Field changes -->
+          <table class="si-table" *ngIf="activeTab === 'changes' && changeRows.length">
+            <thead>
+              <tr>
+                <th class="si-check">
+                  <input type="checkbox" aria-label="Tick all shown" [checked]="allTicked(selectedChanges, changeKeys)"
+                         [indeterminate]="someTicked(selectedChanges, changeKeys)" (change)="toggleAll(selectedChanges, changeKeys, $event)">
+                </th>
+                <th>Row</th><th>Station</th><th>Code</th><th>Field</th><th>In database</th><th></th><th>In file</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of pageSlice(changeRows)" [class.ticked]="selectedChanges.has(changeKey(r))">
+                <td class="si-check"><input type="checkbox" [checked]="selectedChanges.has(changeKey(r))" (change)="toggle(selectedChanges, changeKey(r))" [attr.aria-label]="'Tick ' + r.stationName"></td>
+                <td class="mono si-muted">{{ r.rowNumber }}</td>
+                <td><b>{{ r.stationName }}</b><div class="si-sub">{{ r.centre }}</div></td>
+                <td class="mono">{{ r.stationCode }}</td>
+                <td>{{ fieldLabel(r.field) }}</td>
+                <td><span class="si-old">{{ r.dbValue }}</span></td>
+                <td class="si-arrow"><i class="bi bi-arrow-right"></i></td>
+                <td><span class="si-new">{{ r.fileValue }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Flag changes -->
+          <table class="si-table" *ngIf="activeTab === 'flags' && flagRows.length">
+            <thead>
+              <tr>
+                <th class="si-check">
+                  <input type="checkbox" aria-label="Tick all shown" [checked]="allTicked(selectedFlags, flagKeys)"
+                         [indeterminate]="someTicked(selectedFlags, flagKeys)" (change)="toggleAll(selectedFlags, flagKeys, $event)">
+                </th>
+                <th>Row</th><th>Station</th><th>Code</th><th>Table</th><th>District</th><th>Change</th><th>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of pageSlice(flagRows)" [class.ticked]="selectedFlags.has(r.stationCode)" [class.risky]="!!r.note">
+                <td class="si-check"><input type="checkbox" [checked]="selectedFlags.has(r.stationCode)" (change)="toggle(selectedFlags, r.stationCode)" [attr.aria-label]="'Tick ' + r.stationName"></td>
+                <td class="mono si-muted">{{ r.rowNumber }}</td>
+                <td><b>{{ r.stationName }}</b><div class="si-sub">{{ r.centre }}</div></td>
+                <td class="mono">{{ r.stationCode }}</td>
+                <td><span class="si-pill" [class.state]="r.table === 'aws_station_details'">{{ tableLabel(r.table) }}</span></td>
+                <td>{{ r.districtName }}</td>
+                <td class="nowrap">
+                  <span class="si-flag" [class.on]="r.fileFlag === 1" [class.off]="r.fileFlag === 0">
+                    <i class="bi" [ngClass]="r.fileFlag === 1 ? 'bi-toggle-on' : 'bi-toggle-off'"></i>
+                    {{ r.fileFlag === 1 ? 'Turn on' : 'Turn off' }}
+                  </span>
+                  <span class="si-muted mono"> {{ r.dbFlag }} → {{ r.fileFlag }}</span>
+                </td>
+                <td><span *ngIf="r.note" class="si-risk"><i class="bi bi-exclamation-octagon-fill"></i>{{ r.note }}</span><span *ngIf="!r.note" class="si-muted">—</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Missing from file -->
+          <table class="si-table" *ngIf="activeTab === 'missing' && missingRows.length">
+            <thead>
+              <tr><th>Station</th><th>Code</th><th>Type</th><th>Table</th><th>District · Block</th><th>Centre</th><th>Flag in DB</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of pageSlice(missingRows)">
+                <td><b>{{ r.stationName }}</b></td>
+                <td class="mono">{{ r.stationCode }}</td>
+                <td><span class="si-type">{{ r.stationTypeOld }}</span></td>
+                <td><span class="si-pill" [class.state]="r.table === 'aws_station_details'">{{ tableLabel(r.table) }}</span></td>
+                <td>{{ r.districtName }}<div class="si-sub">{{ r.blockName }} <span class="mono">{{ r.blockCode }}</span></div></td>
+                <td>{{ r.centre }}</td>
+                <td><span class="si-flag" [class.on]="r.flag === 1" [class.off]="r.flag === 0">{{ r.flag === 1 ? 'Active' : 'Inactive' }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Errors / warnings -->
+          <ng-container *ngFor="let kind of ['errors', 'warnings']">
+            <table class="si-table" *ngIf="activeTab === kind && (kind === 'errors' ? errorRows : warningRows).length">
+              <thead>
+                <tr><th>Row</th><th>Station</th><th>Code</th><th>Centre</th><th>Rule</th><th>What is wrong</th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of pageSlice(kind === 'errors' ? errorRows : warningRows)">
+                  <td class="mono si-muted">{{ r.rowNumber }}</td>
+                  <td><b>{{ r.stationName }}</b></td>
+                  <td class="mono">{{ r.stationCode }}</td>
+                  <td class="nowrap">{{ r.centre }}</td>
+                  <td class="nowrap"><span class="si-rule" [class.error]="r.severity === 'error'">{{ r.rule }}</span></td>
+                  <td class="si-msg">{{ r.message }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </ng-container>
+
+          <div class="si-empty" *ngIf="activeRowCount === 0">
+            <i class="bi" [ngClass]="search ? 'bi-search' : 'bi-check2-circle'"></i>
+            <ng-container *ngIf="search">No rows match "{{ search }}".</ng-container>
+            <ng-container *ngIf="!search">Nothing in this category.</ng-container>
+          </div>
+        </div>
+
+        <div class="si-pager" *ngIf="activeRowCount > pageSize">
+          <span>Showing {{ fmt(pageStart) }}–{{ fmt(pageEnd) }} of {{ fmt(activeRowCount) }}</span>
+          <button type="button" class="si-btn ghost sm" (click)="changePage(-1)" [disabled]="page === 1" aria-label="Previous page"><i class="bi bi-chevron-left"></i></button>
+          <span class="mono">{{ page }} / {{ pageCount }}</span>
+          <button type="button" class="si-btn ghost sm" (click)="changePage(1)" [disabled]="page === pageCount" aria-label="Next page"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      </div>
+
+      <div class="si-actionbar">
+        <button type="button" class="si-btn ghost" (click)="goToStep(1)"><i class="bi bi-arrow-left"></i> Change file</button>
+        <div class="si-selection">
+          <b>{{ selectedCount }}</b> ticked
+          <span class="si-sel-part tone-new">{{ selectedNew.size }} new</span>
+          <span class="si-sel-part tone-change">{{ selectedChanges.size }} field</span>
+          <span class="si-sel-part tone-flag">{{ selectedFlags.size }} flag</span>
+        </div>
+        <button type="button" class="si-btn primary" [disabled]="!selectedCount" (click)="goToConfirm()">
+          Continue to confirm <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Step 3 · Confirm ────────────────────────────────────────────── -->
+    <div *ngIf="step === 3 && preview" class="si-step si-confirm">
+      <div class="si-confirm-main">
+        <div class="si-panel">
+          <div class="si-panel-head"><h4>What will be written</h4><span class="si-muted">one transaction</span></div>
+          <table class="si-table plan">
+            <thead><tr><th>Table</th><th>Action</th><th class="num">Rows</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let w of writePlan" [class.zero]="w.count === 0">
+                <td class="mono">{{ w.table }}</td>
+                <td>{{ w.action }}</td>
+                <td class="num"><b>{{ fmt(w.count) }}</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="si-panel" *ngIf="plainNewCount > 0">
+          <div class="si-panel-head"><h4>−999.9 rows for new stations</h4></div>
+          <div class="si-seed">
+            <div class="si-seed-end">
+              <span>Activation</span>
+              <b>{{ formatDate(activationDate) }}</b>
+            </div>
+            <div class="si-seed-bar"><span>{{ fmt(seedDays) }} days</span></div>
+            <div class="si-seed-end right">
+              <span>Horizon</span>
+              <b>{{ formatDate(seedHorizon) }}</b>
+            </div>
+          </div>
+          <p class="si-muted si-seed-note">
+            {{ plainNewCount }} station{{ plainNewCount === 1 ? '' : 's' }} × {{ fmt(seedDays) }} days = <b>{{ fmt(plainNewCount * seedDays) }} rows</b>.
+            Existing values for the same station and date are never overwritten. sARG / sAWS stations get theirs from the daily AWS job.
+          </p>
+        </div>
+
+        <div class="si-panel si-never-panel">
+          <div class="si-panel-head"><h4>What will not happen</h4></div>
+          <ul>
+            <li><i class="bi bi-slash-circle"></i> No station and no daily row is deleted.</li>
+            <li><i class="bi bi-slash-circle"></i> The {{ fmt(preview.missingFromFile.length) }} stations missing from the file are left as they are.</li>
+            <li><i class="bi bi-slash-circle"></i> Stations whose flag changes keep all their daily rows.</li>
+            <li><i class="bi bi-slash-circle"></i> Rows you did not tick, and the {{ fmt(errorCount) }} rows with errors, are not touched.</li>
+          </ul>
+        </div>
+      </div>
+
+      <aside class="si-confirm-side">
+        <div class="si-panel si-confirm-box">
+          <span class="si-confirm-count">{{ fmt(selectedCount) }}</span>
+          <span class="si-confirm-label">ticked change{{ selectedCount === 1 ? '' : 's' }} across {{ fmt(stationsTouched) }} station{{ stationsTouched === 1 ? '' : 's' }}</span>
+          <p>Applied together. If any part fails, everything is rolled back and nothing is written.</p>
+          <label class="si-field-label" for="si-confirm">Type <b>{{ confirmWord }}</b> to confirm</label>
+          <input id="si-confirm" class="si-input mono" [(ngModel)]="confirmText" autocomplete="off" spellcheck="false" [placeholder]="confirmWord">
+          <button type="button" class="si-btn danger block lg" [disabled]="!confirmOk || applying" (click)="apply()">
+            <ng-container *ngIf="!applying"><i class="bi bi-database-check"></i> Apply {{ fmt(selectedCount) }} change{{ selectedCount === 1 ? '' : 's' }}</ng-container>
+            <ng-container *ngIf="applying"><i class="bi bi-arrow-repeat si-spin"></i> Applying…</ng-container>
+          </button>
+          <button type="button" class="si-btn ghost block" (click)="goToStep(2)" [disabled]="applying"><i class="bi bi-arrow-left"></i> Back to review</button>
+          <div *ngIf="applyError" class="si-alert error"><i class="bi bi-exclamation-triangle-fill"></i> {{ applyError }}</div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ── Step 4 · Done ───────────────────────────────────────────────── -->
+    <div *ngIf="step === 4 && result" class="si-step si-done">
+      <div class="si-done-head" [class.sample]="result.isSample">
+        <span class="si-done-icon"><i class="bi" [ngClass]="result.isSample ? 'bi-clipboard-check' : 'bi-check-circle-fill'"></i></span>
+        <div>
+          <h3 *ngIf="!result.isSample">Import applied</h3>
+          <h3 *ngIf="result.isSample">Sample run finished. Nothing was written.</h3>
+          <p *ngIf="!result.isSample">Committed {{ formatDate(result.appliedAt) }}. Every change below is in the database and logged.</p>
+          <p *ngIf="result.isSample">The backend is not connected, so these are the counts the real import would report for your selection.</p>
+        </div>
+      </div>
+
+      <div class="si-result-grid">
+        <div class="si-result" *ngFor="let t of resultTiles" [class.zero]="t.value === 0">
+          <i class="bi" [ngClass]="t.icon"></i>
+          <b>{{ fmt(t.value) }}</b>
+          <span>{{ t.label }}</span>
+          <small class="mono">{{ t.table }}</small>
+        </div>
+      </div>
+
+      <div class="si-alert warn" *ngIf="result.skipped.length">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>{{ fmt(result.skipped.length) }} rows were skipped because of errors. They are listed in the report. Fix them in the Excel and import again.</span>
+      </div>
+
+      <div class="si-done-actions">
+        <button type="button" class="si-btn ghost" (click)="downloadReport()"><i class="bi bi-download"></i> Download report (.xlsx)</button>
+        <button type="button" class="si-btn primary" (click)="startOver()"><i class="bi bi-arrow-repeat"></i> Start a new import</button>
+      </div>
+    </div>
+  </section>
+</div>
