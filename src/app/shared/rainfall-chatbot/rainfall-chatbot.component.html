@@ -39,7 +39,7 @@
           <i class="bi bi-droplet-fill"></i>
         </div>
         <div>
-          <p class="kicker">Rainfall companion</p>
+          <p class="kicker">Rainfall information</p>
           <h2>IRAINS</h2>
           <p class="status">
             <span class="pulse" [class.offline]="ollamaReady === false"></span>
@@ -59,7 +59,8 @@
     </div>
   </header>
 
-  <div class="varsha-body">
+  <div class="body-wrap">
+  <div class="varsha-body" #chatBody (scroll)="onBodyScroll()">
     <div
       class="bubble"
       *ngFor="let m of messages; trackBy: trackById"
@@ -152,6 +153,16 @@
     <div #messagesEnd></div>
   </div>
 
+  <div class="scroll-jump" *ngIf="showJumpTop || showJumpBottom">
+    <button type="button" *ngIf="showJumpTop" (click)="jumpToTop()" title="Go to the top" aria-label="Go to the top">
+      <i class="bi bi-arrow-up"></i>
+    </button>
+    <button type="button" *ngIf="showJumpBottom" (click)="jumpToBottom()" title="Go to the latest message" aria-label="Go to the latest message">
+      <i class="bi bi-arrow-down"></i>
+    </button>
+  </div>
+  </div>
+
   <footer class="varsha-footer">
     <div class="composer">
       <textarea
@@ -172,7 +183,7 @@
         <i class="bi bi-send-fill"></i>
       </button>
     </div>
-    <p class="footer-note">iRAINS rainfall companion</p>
+    <p class="footer-note">IRAINS AI Assistant</p>
   </footer>
 </aside>
 
