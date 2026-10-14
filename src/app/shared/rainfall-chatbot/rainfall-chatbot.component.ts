@@ -535,6 +535,9 @@ const API_SOURCE_PAGES: Record<
 })
 export class RainfallChatbotComponent implements OnInit, OnDestroy {
   @ViewChild('messagesEnd') messagesEnd?: ElementRef<HTMLDivElement>;
+  @ViewChild('chatBody') chatBody?: ElementRef<HTMLDivElement>;
+  showJumpTop = false;
+  showJumpBottom = false;
   @ViewChild('chatInput') chatInput?: ElementRef<HTMLTextAreaElement>;
 
   open = false;
@@ -870,6 +873,7 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
       setTimeout(() => {
         this.scrollToBottom();
         this.chatInput?.nativeElement?.focus();
+        this.onBodyScroll();
       }, 280);
     }
   }
@@ -1093,9 +1097,9 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
 
   private welcomeText(): string {
     return (
-      `Namaste — I'm <strong>IRAINS</strong>, your rainfall companion.` +
-      `<br>I can help you analyse rainfall information in iRAINS, take you to the right page, ` +
-      `and explain how the system works.` +
+      `Namaste! I'm <strong>IRAINS AI Assistant</strong>, your guide to rainfall information.` +
+      `<br>I'm here to assist you with rainfall data analysis, system navigation, statistical insights, ` +
+      `and information about iRAINS functionalities.` +
       `<br><br>Pick a level below to see its pages and statistics, or type any question.`
     );
   }
@@ -2077,6 +2081,25 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     }, 40);
   }
 
+  /** Show the up arrow once scrolled down, and the down arrow once scrolled up. */
+  onBodyScroll(): void {
+    const el = this.chatBody?.nativeElement;
+    if (!el) return;
+    const fromTop = el.scrollTop;
+    const fromBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
+    this.showJumpTop = fromTop > 120;
+    this.showJumpBottom = fromBottom > 120;
+  }
+
+  jumpToTop(): void {
+    this.chatBody?.nativeElement?.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  jumpToBottom(): void {
+    const el = this.chatBody?.nativeElement;
+    el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }
+
   /** Inject header From/To when user asks about the selected range. */
   private enrichQuestionWithDates(raw: string): string {
     const q = raw.toLowerCase();
@@ -2214,15 +2237,20 @@ export class RainfallChatbotComponent implements OnInit, OnDestroy {
     const sourceLink = this.resolveDataSourceLink(res);
     const withSource = (formatted: FormattedAnswer): FormattedAnswer => {
       if (!sourceLink) return formatted;
-      return {
-        ...formatted,
-        text:
-          (formatted.text || '') +
-          `<p class="source-page">Data from: <strong>${this.escapeHtml(
-            sourceLink.label.replace(/^View on\s+/i, '')
-          )}</strong></p>`,
-        navLink: sourceLink,
-      };
+      const sourceHtml =
+        `<p class="source-page">Data from: <strong>${this.escapeHtml(
+          sourceLink.label.replace(/^View on\s+/i, '')
+        )}</strong></p>`;
+      let text = formatted.text || '';
+      // Keep a list's heading ("13 station(s) in this district:") next to its
+      // list: the source line goes above that heading, not between it and the list.
+      const headingAt = text.lastIndexOf('<p');
+      if (formatted.listItems?.length && headingAt >= 0 && /:\s*<\/p>\s*$/.test(text)) {
+        text = text.slice(0, headingAt) + sourceHtml + text.slice(headingAt);
+      } else {
+        text += sourceHtml;
+      }
+      return { ...formatted, text, navLink: sourceLink };
     };
 
     // Prefer structured API rows for deficient / excess / multi-district lists
