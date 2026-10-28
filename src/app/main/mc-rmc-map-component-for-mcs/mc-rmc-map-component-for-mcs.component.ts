@@ -12,6 +12,7 @@ import jsPDF from 'jspdf';
 import { MCRMCsService } from 'src/app/services/MC-RMCs/mcRmc.service';
 import { MCRMCDownloadStatistics } from 'src/app/services/MC-RMCs/mcRMCpdf.service';
 import { MapDataScheduleService } from 'src/app/services/mapDataSchedule.service';
+import { Constants } from 'src/app/services/constants';
 @Component({
   selector: 'app-mc-rmc-map-component-for-mcs',
   templateUrl: './mc-rmc-map-component-for-mcs.component.html',
@@ -105,6 +106,7 @@ export class McRmcMapComponentForMCsComponent {
     // private countryService: CountryService,x
     private mcRMCService : MCRMCsService,
     private mapDataScheduleService: MapDataScheduleService,
+    private constants: Constants,
   ) {
 
     // Read first: initWithEffectiveDate() below needs the role off this to
@@ -514,7 +516,7 @@ async downloadMapImage(downloadpdf : boolean) {
               rainfall = ' ';
             }
             else {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
             }
           }
           else {
@@ -543,7 +545,7 @@ async downloadMapImage(downloadpdf : boolean) {
               rainfall = "NA";
             }
             else {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
             }
           }
           else {

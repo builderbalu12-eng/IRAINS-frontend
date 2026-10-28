@@ -10,6 +10,7 @@ import jsPDF from 'jspdf';
 import { MCRMCsService } from 'src/app/services/MC-RMCs/mcRmc.service';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { Constants } from 'src/app/services/constants';
 
 
 @Component({
@@ -111,7 +112,8 @@ export class McRmcMapComponentForMCsDupComponent {
     private district: DistrictService,
     private downloadPdf$: DownloadPdf,
     private mcRMCService: MCRMCsService,
-    private router: Router // Inject Router
+    private router: Router, // Inject Router
+    private constants: Constants,
   ) {
     // Current date formatting
     const currentDate = new Date();
@@ -487,7 +489,7 @@ async downloadMapImage(downloadpdf : boolean) {
               rainfall = ' ';
             }
             else {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
             }
           }
           else {
@@ -515,7 +517,7 @@ async downloadMapImage(downloadpdf : boolean) {
               rainfall = "NA";
             }
             else {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
             }
           }
           else {

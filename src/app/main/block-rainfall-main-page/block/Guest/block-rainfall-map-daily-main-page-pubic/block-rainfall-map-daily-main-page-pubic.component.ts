@@ -490,7 +490,7 @@ export class BlockRainfallMapDailyMainPagePubicComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
         console.log(
           "country dep data",
           this.countrydatacum,
@@ -515,7 +515,7 @@ export class BlockRainfallMapDailyMainPagePubicComponent {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
         console.log(
           "country dep data",
           this.countrydatacum,
@@ -1104,7 +1104,7 @@ export class BlockRainfallMapDailyMainPagePubicComponent {
           let rainfall: any;
 
           if (matchedData?.departure != null) {
-            rainfall = Math.round(matchedData.departure);
+            rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
           } else {
             rainfall = "NA";
           }
@@ -1314,7 +1314,7 @@ export class BlockRainfallMapDailyMainPagePubicComponent {
           let rainfall: any;
 
           if (matchedData?.departure != null) {
-            rainfall = Math.round(matchedData.departure);
+            rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
           } else {
             rainfall = "NA";
           }

@@ -661,7 +661,7 @@ export class NormalMapSubdivComponent implements AfterViewInit {
             let rainfall: any;
 
             if (matchedData?.departure!=null) {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
             } else {
               rainfall = "NA";
             }

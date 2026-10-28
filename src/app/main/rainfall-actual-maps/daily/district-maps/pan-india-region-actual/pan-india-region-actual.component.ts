@@ -226,7 +226,7 @@ export class PanIndiaRegionActualComponent implements AfterViewInit {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
         console.log(
           "country dep data",
           this.countrydatacum,
@@ -251,7 +251,7 @@ export class PanIndiaRegionActualComponent implements AfterViewInit {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
         console.log(
           "country dep data",
           this.countrydatacum,
@@ -728,7 +728,7 @@ export class PanIndiaRegionActualComponent implements AfterViewInit {
             let rainfall: any;
 
             if (matchedData?.departure != null) {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
             } else {
               rainfall = "NA";
             }

@@ -608,7 +608,7 @@ export class RainfallmapRegionMcRmcComponent {
   
   
             if (matchedData?.departure!=null) {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
             } else {
               rainfall = "NA";
             }
@@ -657,7 +657,7 @@ export class RainfallmapRegionMcRmcComponent {
         matchedData && !Number.isNaN(matchedData.normal_rainfall)
           ? parseFloat(matchedData.normal_rainfall).toFixed(1) + " mm"
           : "NA";
-      const departure = matchedData ? Math.round(matchedData.departure) : "NA";
+      const departure = matchedData ? this.constants.trimToZeroDecimals(matchedData.departure) : "NA";
   
       return `
         <div style="background-color: white; padding: 5px; font-family: Arial, sans-serif;">

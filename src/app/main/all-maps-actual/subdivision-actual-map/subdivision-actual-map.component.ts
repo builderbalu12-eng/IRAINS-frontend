@@ -186,7 +186,7 @@ export class SubdivisionActualMapComponent {
       this.countryNormal = this.constants.trimToOneDecimals(
         parseFloat(this.countrydatacum[0].rainfall_normal_value)
       );
-      this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+      this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
     });
 
     console.log('dates check', this.StartDate, this.EndDate)
@@ -577,7 +577,7 @@ ngAfterViewInit(): void {
               if (Number.isNaN(matchedData.actual_rainfall)) {
                 rainfall = " ";
               } else {
-                rainfall = Math.round(matchedData.departure);
+                rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
               }
             } else {
               rainfall = -100;
@@ -618,7 +618,7 @@ ngAfterViewInit(): void {
               if (Number.isNaN(matchedData.actual_subdiv_rainfall)) {
                 rainfall = "NA";
               } else {
-                rainfall = Math.round(matchedData.departure);
+                rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
               }
             } else {
               rainfall = -100;

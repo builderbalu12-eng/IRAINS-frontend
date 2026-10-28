@@ -451,7 +451,7 @@ async downloadMapImage(downloadpdf : boolean) {
               rainfall = ' ';
             }
             else {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
             }
           }
           else {
@@ -478,7 +478,7 @@ async downloadMapImage(downloadpdf : boolean) {
               rainfall = "NA";
             }
             else {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
             }
           }
           else {

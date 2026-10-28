@@ -203,7 +203,7 @@ export class DistrictMapComponent implements AfterViewInit {
         this.countryNormal = this.constants.trimToOneDecimals(
           parseFloat(this.countrydatacum[0].rainfall_normal_value)
         );
-        this.countryDeparture = Math.round(this.countrydatacum[0].departure);
+        this.countryDeparture = this.constants.trimToZeroDecimals(this.countrydatacum[0].departure);
         console.log(
           "Country data:",
           this.countrydatacum,
@@ -670,7 +670,7 @@ export class DistrictMapComponent implements AfterViewInit {
             const matchedData = this.findMatchingData(id2);
             let rainfall: any;
             if (matchedData && matchedData.departure != null) {
-              rainfall = Math.round(matchedData.departure);
+              rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
               console.log("Matched rainfall for district", id2, ":", rainfall);
             } else {
               rainfall = "NA";

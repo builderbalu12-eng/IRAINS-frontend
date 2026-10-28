@@ -692,7 +692,7 @@ export class StateRainfallMapDailyActualComponent implements AfterViewInit {
           const matchedData = this.findMatchingData(id2);
           let rainfall: any;
           if (matchedData?.departure != null) {
-            rainfall = Math.round(matchedData.departure);
+            rainfall = this.constants.trimToZeroDecimals(matchedData.departure);
           } else {
             rainfall = "NA";
           }
