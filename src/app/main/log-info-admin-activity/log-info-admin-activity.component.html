@@ -4,9 +4,12 @@
 
       <div class="audit-hero" [class.embedded]="embedded">
         <div>
-          <p class="audit-kicker">Audit Center</p>
-          <h2>Admin Activity Log</h2>
-          <p class="audit-subtitle">{{ total }} record(s) · {{ filterSummary }}</p>
+          <p class="audit-kicker">{{ embeddedInPermissions ? 'Permissions' : 'Audit Center' }}</p>
+          <h2>{{ embeddedInPermissions ? 'Activity Log' : 'Admin Activity Log' }}</h2>
+          <p class="audit-subtitle" *ngIf="embeddedInPermissions">
+            Who activated / changed access · name, designation, timestamp · {{ total }} record(s)
+          </p>
+          <p class="audit-subtitle" *ngIf="!embeddedInPermissions">{{ total }} record(s) · {{ filterSummary }}</p>
         </div>
         <div class="hero-stats">
           <div class="stat-pill">

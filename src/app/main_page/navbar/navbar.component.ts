@@ -1,12 +1,13 @@
 import { Router } from '@angular/router';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { DataService } from 'src/app/data.service';
 import { IndexedDBService } from 'src/app/indexed-db.service';
 import { PdfUploadService } from 'src/app/services/pdfUploadService.ts/pdf-upload.service';
 import { Constants } from 'src/app/services/constants';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environment/environment';
-import { RouteAccessService } from 'src/app/services/permissions/route-access.service';
+import { NavNode, RouteAccessService } from 'src/app/services/permissions/route-access.service';
 
 @Component({
   selector: 'app-navbar',
@@ -14,7 +15,7 @@ import { RouteAccessService } from 'src/app/services/permissions/route-access.se
   styleUrls: ['./navbar.component.css']
 })
 
-export class NavbarComponent implements OnInit {
+export class NavbarComponent implements OnInit, OnDestroy {
   selectedMapType: any = 'RainfallMaps';
 
   isNavbarOpen = false;
@@ -29,6 +30,8 @@ export class NavbarComponent implements OnInit {
   routeDictionary: any;
   loggedInUserType: any;
   google: any;
+  navTree: NavNode[] = [];
+  private routesSub: Subscription | null = null;
 
   documentTypes: any[] = [];
   visitorCount: number = 0;
@@ -54,8 +57,16 @@ export class NavbarComponent implements OnInit {
 
   hasAccess(route: any) {
     const path = '/' + String(route || '').replace(/^\//, '');
-    // Fully DB-driven via rbac_routes / rbac_route_roles
     return this.routeAccess.evaluate(path, this.loggedInUserType);
+  }
+
+  routerLinkFor(path: string): string {
+    const p = String(path || '').replace(/^\//, '');
+    return '../' + p;
+  }
+
+  private rebuildNavTree(): void {
+    this.navTree = this.routeAccess.getNavTreeForRole(this.loggedInUserType || '');
   }
   
   selectBlockOrRainfallMaps(arg0: string) {
@@ -110,31 +121,27 @@ export class NavbarComponent implements OnInit {
 
 
     this.routeDictionary = {};
-    void this.routeAccess.ensureLoaded().catch((err) => {
-      console.warn('Failed to load route access catalog for navbar', err);
-    });
+    this.routesSub = this.routeAccess.routes$.subscribe(() => this.rebuildNavTree());
+    void this.routeAccess.ensureLoaded()
+      .then(() => this.rebuildNavTree())
+      .catch((err) => {
+        console.warn('Failed to load route access catalog for navbar', err);
+        this.rebuildNavTree();
+      });
    }
 
+  ngOnDestroy(): void {
+    this.routesSub?.unsubscribe();
+  }
 
   ngOnInit(): void {
-    // const guestData = localStorage.getItem("IsGuestMode");
-    // this.isGuest = guestData ? JSON.parse(guestData).IsGuestMode : false; // Parse and assign boolean
-  
-    // if (this.isGuest) {
-    //   this.selectedMode = this.constants.getGuestMode();
-    // }
-
-
-
-
     let loggedInUser: any = localStorage.getItem("isAuthorised");
     this.loggedInUser = JSON.parse(loggedInUser);
     this.loggedInUserType = this.loggedInUser.data[0].mcorhq
     console.log('loggedInUserType nav, loggedInUser', this.loggedInUser, this.loggedInUserType)
+    this.rebuildNavTree();
     this.loadDocumentTypes();
-    this.trackAndLoadVisitorCount();  // ✅ ADD THIS LINE
-
-
+    this.trackAndLoadVisitorCount();
   }
   private isTranslateInitialized = false;
 

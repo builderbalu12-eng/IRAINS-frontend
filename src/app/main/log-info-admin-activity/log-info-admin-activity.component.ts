@@ -21,7 +21,7 @@ import {
   styleUrls: ['./log-info-admin-activity.component.css'],
 })
 export class LogInfoAdminActivityComponent implements OnInit, OnDestroy {
-  readonly moduleOptions = ['', 'Data Management', 'Spatial Boundaries'];
+  readonly moduleOptions = ['', 'Data Management', 'Spatial Boundaries', 'Permissions'];
   /** Filter by the shared login role (HQ / MC / SP). All officers under that role are included. */
   readonly mcorhqOptions: { value: string; label: string }[] = [
     { value: '', label: 'All login types' },
@@ -31,6 +31,8 @@ export class LogInfoAdminActivityComponent implements OnInit, OnDestroy {
     { value: 'public', label: 'Public' },
   ];
   readonly embedded: boolean;
+  /** Opened from Permissions rail — no pass-key; focus Access Control logs. */
+  readonly embeddedInPermissions: boolean;
 
   moduleName = '';
   categoryName = '';
@@ -57,7 +59,12 @@ export class LogInfoAdminActivityComponent implements OnInit, OnDestroy {
     private activityLog: AdminActivityLogService,
     route: ActivatedRoute,
   ) {
-    this.embedded = !!route.snapshot.data['embeddedInDataManagement'];
+    this.embeddedInPermissions = !!route.snapshot.data['embeddedInPermissions'];
+    this.embedded =
+      !!route.snapshot.data['embeddedInDataManagement'] || this.embeddedInPermissions;
+    if (this.embeddedInPermissions) {
+      this.moduleName = 'Permissions';
+    }
   }
 
   ngOnInit(): void {
@@ -94,7 +101,13 @@ export class LogInfoAdminActivityComponent implements OnInit, OnDestroy {
   get categoryOptions(): readonly string[] {
     if (this.moduleName === 'Data Management') return DATA_MANAGEMENT_CATEGORIES;
     if (this.moduleName === 'Spatial Boundaries') return SPATIAL_BOUNDARY_CATEGORIES;
-    return ['', ...DATA_MANAGEMENT_CATEGORIES.slice(1), ...SPATIAL_BOUNDARY_CATEGORIES.slice(1)];
+    if (this.moduleName === 'Permissions') return ['', 'Access Control'];
+    return [
+      '',
+      ...DATA_MANAGEMENT_CATEGORIES.slice(1),
+      ...SPATIAL_BOUNDARY_CATEGORIES.slice(1),
+      'Access Control',
+    ];
   }
 
   get pageOptions(): AdminActivityPageMeta[] {

@@ -120,6 +120,11 @@ export const ADMIN_ACTIVITY_PAGES: AdminActivityPageMeta[] = [
   { page_key: 'normalsSubdivision', module_name: 'Data Management', category_name: 'Normals', page_name: 'Subdivision', route_path: '/data-management/normals/subdivision' },
   { page_key: 'normalsDistrict', module_name: 'Data Management', category_name: 'Normals', page_name: 'District', route_path: '/data-management/normals/district' },
   { page_key: 'normalsBlock', module_name: 'Data Management', category_name: 'Normals', page_name: 'Block', route_path: '/data-management/normals/block' },
+  { page_key: 'permissionsRoles', module_name: 'Permissions', category_name: 'Access Control', page_name: 'Role Management', route_path: '/permissions/role-management' },
+  { page_key: 'permissionsUsers', module_name: 'Permissions', category_name: 'Access Control', page_name: 'User & Role Management', route_path: '/permissions/new-register' },
+  { page_key: 'permissionsRoutes', module_name: 'Permissions', category_name: 'Access Control', page_name: 'Route Management', route_path: '/permissions/route-management' },
+  { page_key: 'permissionsRbac', module_name: 'Permissions', category_name: 'Access Control', page_name: 'Role Permissions', route_path: '/permissions/rbac' },
+  { page_key: 'permissionsActivityLog', module_name: 'Permissions', category_name: 'Access Control', page_name: 'Activity Log', route_path: '/permissions/activity-log' },
 ];
 
 export const DATA_MANAGEMENT_CATEGORIES = ['', 'Normals', 'Calculation', 'Display Order', 'Station Data'] as const;

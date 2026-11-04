@@ -117,14 +117,39 @@ export class RbacDirectoryService {
     return code;
   }
 
+  /** Logged-in actor for activity log (name, designation, timestamp on server) — no pass-key. */
+  private actorPayload(): Record<string, unknown> {
+    try {
+      const raw = localStorage.getItem('isAuthorised');
+      if (!raw) return { emp_name: 'Unknown', emp_designation: 'Officer' };
+      const auth = JSON.parse(raw);
+      const u = auth?.data?.[0] || {};
+      const username = String(u.username || '');
+      const matched = this.users.find((x) => x.username === username);
+      const role = String(u.mcorhq || '').toUpperCase();
+      return {
+        emp_name: String(u.name || username || 'Unknown'),
+        emp_designation:
+          matched?.designation || (role ? `${role} Officer` : 'Officer'),
+        mcorhq_type: u.mcorhq || null,
+        login_id: u.userid ?? null,
+        emp_email: username.includes('@') ? username : matched?.email || null,
+      };
+    } catch {
+      return { emp_name: 'Unknown', emp_designation: 'Officer' };
+    }
+  }
+
   async saveRole(role: Partial<RbacRole> & { name: string }): Promise<RbacRole> {
     await this.ensureLoaded();
+    const actor = this.actorPayload();
     if (role.id && this.roles.some((r) => r.id === role.id)) {
       const res = await firstValueFrom(
         this.http.put<ApiItemResponse<RbacRole>>(`${this.baseUrl}/roles/${role.id}`, {
           name: role.name,
           description: role.description || '',
           active: role.active !== false,
+          ...actor,
         })
       );
       await this.refreshRoles();
@@ -137,6 +162,7 @@ export class RbacDirectoryService {
         description: role.description || '',
         active: role.active !== false,
         code: role.code,
+        ...actor,
       })
     );
     await this.refreshRoles();
@@ -144,7 +170,11 @@ export class RbacDirectoryService {
   }
 
   async deleteRole(id: number): Promise<void> {
-    await firstValueFrom(this.http.delete<ApiItemResponse<unknown>>(`${this.baseUrl}/roles/${id}`));
+    await firstValueFrom(
+      this.http.request<ApiItemResponse<unknown>>('DELETE', `${this.baseUrl}/roles/${id}`, {
+        body: this.actorPayload(),
+      })
+    );
     await this.refreshRoles();
   }
 
@@ -160,6 +190,7 @@ export class RbacDirectoryService {
       phone: user.phone || '',
       designation: user.designation || '',
       active: user.active !== false,
+      ...this.actorPayload(),
     };
 
     if (user.roleCodes?.length) payload['roleCodes'] = user.roleCodes;
@@ -189,13 +220,20 @@ export class RbacDirectoryService {
   }
 
   async deleteUser(id: number): Promise<void> {
-    await firstValueFrom(this.http.delete<ApiItemResponse<unknown>>(`${this.baseUrl}/users/${id}`));
+    await firstValueFrom(
+      this.http.request<ApiItemResponse<unknown>>('DELETE', `${this.baseUrl}/users/${id}`, {
+        body: this.actorPayload(),
+      })
+    );
     await this.refreshUsers();
   }
 
   async setUserRoles(userId: number, roleCodes: string[]): Promise<RbacUser> {
     const res = await firstValueFrom(
-      this.http.put<ApiItemResponse<RbacUser>>(`${this.baseUrl}/users/${userId}/roles`, { roleCodes })
+      this.http.put<ApiItemResponse<RbacUser>>(`${this.baseUrl}/users/${userId}/roles`, {
+        roleCodes,
+        ...this.actorPayload(),
+      })
     );
     await this.refreshUsers();
     return this.mapUser(res.data);

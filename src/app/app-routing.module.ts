@@ -194,6 +194,7 @@ export const routes: Routes = [
     { path: 'route-management', component: RouteManagementComponent },
     { path: 'officer-pass-keys', component: OfficerPassKeyManagementComponent },
     { path: 'activity-log', component: LogInfoAdminActivityComponent, data: { embeddedInDataManagement: true } },
+    { path: 'permissions-activity-log', component: LogInfoAdminActivityComponent, data: { embeddedInDataManagement: true, embeddedInPermissions: true } },
     { path: '', redirectTo: 'calculation-exclusion', pathMatch: 'full' }
   ]
  },
@@ -207,6 +208,7 @@ export const routes: Routes = [
     { path: 'new-register',     component: NewRegisterComponent },
     { path: 'role-management',  component: RoleManagementComponent },
     { path: 'route-management', component: RouteManagementComponent },
+    { path: 'activity-log',     component: LogInfoAdminActivityComponent, data: { embeddedInPermissions: true } },
     { path: '', redirectTo: 'role-management', pathMatch: 'full' }
   ]
  },
