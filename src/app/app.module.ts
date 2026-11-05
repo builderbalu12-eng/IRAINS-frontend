@@ -205,6 +205,7 @@ import { GeojsonUploadComponent } from './main/data-management/geojson-upload/ge
 import { GeojsonManagementComponent } from './main/data-management/geojson-management/geojson-management.component';
 import { BlockManagementComponent } from './main/data-management/block-management/block-management.component';
 import { DistrictManagementComponent } from './main/data-management/district-management/district-management.component';
+import { NormalsDownloadComponent } from './main/data-management/normals-download/normals-download.component';
 import { StateManagementComponent } from './main/data-management/state-management/state-management.component';
 import { SubdivisionManagementComponent } from './main/data-management/subdivision-management/subdivision-management.component';
 import { RegionManagementComponent } from './main/data-management/region-management/region-management.component';
@@ -392,6 +393,7 @@ import { SchedulerManagementComponent } from './main/data-management/scheduler-m
     GeojsonManagementComponent,
     BlockManagementComponent,
     DistrictManagementComponent,
+    NormalsDownloadComponent,
     StateManagementComponent,
     SubdivisionManagementComponent,
     RegionManagementComponent,

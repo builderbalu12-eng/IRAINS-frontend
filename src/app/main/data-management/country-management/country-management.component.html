@@ -14,6 +14,7 @@
           </small>
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
+          <app-normals-download level="country"></app-normals-download>
           <a *ngIf="countries.length > 0" [href]="countryService.downloadCountryNormalTemplate(countries[0].country_name)" class="btn btn-outline-success btn-sm fw-semibold">
             <i class="fa fa-download me-1"></i> Sample Excel
           </a>

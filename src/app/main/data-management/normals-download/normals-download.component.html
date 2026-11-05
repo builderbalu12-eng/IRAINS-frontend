@@ -1,0 +1,14 @@
+<div class="d-flex gap-1 align-items-center flex-wrap">
+  <select class="form-select form-select-sm w-auto" [(ngModel)]="year" aria-label="Normals year" [disabled]="downloading">
+    <option *ngFor="let y of years" [ngValue]="y">{{ y }}</option>
+  </select>
+  <select class="form-select form-select-sm w-auto" [(ngModel)]="view" aria-label="Normals period" [disabled]="downloading">
+    <option *ngFor="let v of views" [ngValue]="v.value">{{ v.label }}</option>
+  </select>
+  <button class="btn btn-primary btn-sm fw-semibold" (click)="download()" [disabled]="!year || downloading"
+          title="Excel with the period normals and the cumulative normals">
+    <i class="fa me-1" [ngClass]="downloading ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+    {{ downloading ? 'Preparing...' : 'Download Normals' }}
+  </button>
+  <small *ngIf="error" class="text-danger">{{ error }}</small>
+</div>
