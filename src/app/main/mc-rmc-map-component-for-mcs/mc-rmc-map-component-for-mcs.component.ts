@@ -63,7 +63,7 @@ export class McRmcMapComponentForMCsComponent {
       const mcDistrictsArray = Array.from(this.mcDistricts);
       console.log('MC Districts selected:', mcDistrictsArray);
       
-      await this.downloadPdf$.updateanddownloadpdfFromDataEntry(mcDistrictsArray);
+      await this.downloadPdf$.updateanddownloadpdfFromDataEntry(mcDistrictsArray, this.selectedMcName);
       this.isLoading = false; 
     } catch (error) {
       console.error('Error downloading map data:', error);

@@ -24,12 +24,27 @@ export class MCRMCDownloadStatistics {
   seasonPeriodDate: any;
   selectedMCName: any;
   mcDistricts: any; // Can be Set or Array
+  // Logged-in centre, e.g. "RMC Chennai". Goes into the PDF/Excel titles and
+  // file names. Empty means the old generic "MC/RMC" wording.
+  centreName: string = '';
 
   constructor(private http: HttpClient, private constants: Constants) {}
 
   convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
 
-  async updateanddownloadpdf(mcRmcName: any) {
+  /** "RMC CHENNAI", or "MC/RMC" when no centre was passed. */
+  private centreLabel(): string {
+    return (this.centreName || '').trim().toUpperCase() || 'MC/RMC';
+  }
+
+  /** "RMC_CHENNAI", or "MCRMC" when no centre was passed. */
+  private centreFileTag(): string {
+    const name = (this.centreName || '').trim().toUpperCase();
+    return name ? name.replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '') : 'MCRMC';
+  }
+
+  async updateanddownloadpdf(mcRmcName: any, centreName: string = '') {
+    this.centreName = centreName;
     const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
@@ -37,7 +52,8 @@ export class MCRMCDownloadStatistics {
     await this.updateCurrDateData(this.data, this.seasonPeriodDate, mcRmcName);
   }
 
-  async updateanddownloadpdfFromDataEntry(mcRmcName: any) {
+  async updateanddownloadpdfFromDataEntry(mcRmcName: any, centreName: string = '') {
+    this.centreName = centreName;
     const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
@@ -216,7 +232,7 @@ export class MCRMCDownloadStatistics {
 
     // Row 1: Title — dark brown, underlined, merged A1:J1
     const row1 = [
-      { v: 'MC/RMC DISTRICT RAINFALL DISTRIBUTION', t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+      { v: `${this.centreLabel()} DISTRICT RAINFALL DISTRIBUTION`, t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
       ...Array.from({ length: 9 }, () => blank()),
     ];
 
@@ -385,9 +401,10 @@ export class MCRMCDownloadStatistics {
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     const headingText = 'India Meteorological Department\nHydromet Division, New Delhi';
-    const headingText1 = 'MC/RMC DISTRICTS RAINFALL DISTRIBUTION';
+    const headingText1 = `${this.centreLabel()} DISTRICTS RAINFALL DISTRIBUTION`;
     doc.text(headingText, marginLeft + 25, marginTop + 8);
-    doc.text(headingText1, marginLeft + 90, marginTop + 28);
+    // Centred, since the centre name makes the length vary.
+    doc.text(headingText1, pageWidth / 2, marginTop + 28, { align: 'center' });
     
     autoTable(doc, {
       head: [columns1, columns],
@@ -430,7 +447,9 @@ export class MCRMCDownloadStatistics {
       },
     });
 
-    const filename = `DISTRIBUTION_MCRMC_DISTRICTS_INDIA_cd.pdf`;
+    const filename = this.centreName
+      ? `DISTRIBUTION_${this.centreFileTag()}_DISTRICTS_cd.pdf`
+      : `DISTRIBUTION_MCRMC_DISTRICTS_INDIA_cd.pdf`;
 
     if (this.isView) {
       const pdfBlob = doc.output('blob');
@@ -441,7 +460,7 @@ export class MCRMCDownloadStatistics {
         doc.save(filename);
         this.exportAsExcelFile(
           newArr,
-          `MCRMC_DISTRICTWISE_RAINFALL_DISTRIBUTION`,
+          `${this.centreFileTag()}_DISTRICTWISE_RAINFALL_DISTRIBUTION`,
           this.convertToIndianDateFormat(this.data.startDate),
           this.convertToIndianDateFormat(this.data.endDate),
           this.convertToIndianDateFormat(this.seasonPeriodDate.startDate),
