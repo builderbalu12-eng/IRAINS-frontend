@@ -21,6 +21,7 @@ import { MCRMCsServiceRegion } from "src/app/services/MC-RMCs/mcRmcRegion.servic
 import { Router, NavigationEnd } from "@angular/router";
 import { filter } from "rxjs/operators";
 import { Constants } from "src/app/services/constants";
+import { fileTag, selectedAllMapsRange, toIndianDate } from "src/app/services/MC-RMCs/mcRmcLabels";
 import { getDistrictService } from "src/app/services/district/getdistrict.service";
 import { RegionDownloadStatistics } from "src/app/services/region/downloadStatisticsRegion.service";
 import { DownloadPdfRegionDistrict } from "src/app/services/district/regions/districtRegionsDownload.service";
@@ -78,7 +79,7 @@ export class RainfallmapRegionMcRmcComponent {
     this.showStatsTable = false;
     try {
       await this.downloadPdf$.updateandViewpdfFromDataEntryCustom(
-        this.region_code, this.fromDate, this.toDate
+        this.region_code, this.fromDate, this.toDate, this.selectedMcName, this.current_region_name
       );
       const svc = this.downloadPdf$;
       const convert = svc.convertToIndianDateFormat;
@@ -99,9 +100,9 @@ export class RainfallmapRegionMcRmcComponent {
       try {
         this.isLoading = true;
         if(this.selectedMode.selectedMode=='Unified'){
-          await this.downloadPdf$.updateanddownloadpdfCustom(this.region_code, this.fromDate, this.toDate);
+          await this.downloadPdf$.updateanddownloadpdfCustom(this.region_code, this.fromDate, this.toDate, this.selectedMcName, this.current_region_name);
         }else{
-          await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.region_code, this.fromDate, this.toDate);
+          await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.region_code, this.fromDate, this.toDate, this.selectedMcName, this.current_region_name);
       }
         this.isLoading = false;
       } catch (error) {
@@ -196,18 +197,14 @@ export class RainfallmapRegionMcRmcComponent {
         this.fromDate = `${year}-${mon}-${dd}`;
         this.toDate = `${year}-${mon}-${dd}`;
 
-        // Date subscription logic
-        this.dataService.fromAndToDate$.subscribe((value) => {
-          if (value) {
-            let fromAndToDates = JSON.parse(value);
-            this.StartDate = fromAndToDates.fromDate;
-            this.EndDate = fromAndToDates.toDate;
-          } else {
-            this.StartDate = `${year}-${mon}-${dd}`;
-            this.EndDate = `${year}-${mon}-${dd}`;
-          }
-          this.fetchBackend();
-        });
+        // Start from the date selected on /all-maps; if nothing was selected,
+        // the effective latest date above. Map, side panel and downloads all use
+        // this one fromDate/toDate.
+        const picked = selectedAllMapsRange(this.dataService);
+        this.fromDate = picked?.fromDate || this.today;
+        this.toDate = picked?.toDate || this.today;
+        this.updateDateLabels();
+        this.fetchBackend();
       };
 
       const role = this.loggedInUserObject?.data?.[0]?.mcorhq;
@@ -270,15 +267,11 @@ export class RainfallmapRegionMcRmcComponent {
       if(this.selectedMode.selectedMode == 'Unified'){
         this.district.fetchDataFtp(data).subscribe((res) => {
           this.districtdatacum = res.data;
-          this.StartDate = this.convertToIndianDateFormat(this.StartDate);
-          this.EndDate = this.convertToIndianDateFormat(this.EndDate);
           drawMap();
         });
       }else{
         (this.calcMode.isAwsEnabled ? this.district.fetchDataWithAWS(data) : this.district.fetchData(data)).subscribe((res) => {
           this.districtdatacum = res.data;
-          this.StartDate = this.convertToIndianDateFormat(this.StartDate);
-          this.EndDate = this.convertToIndianDateFormat(this.EndDate);
           drawMap();
         });
       }
@@ -350,7 +343,7 @@ export class RainfallmapRegionMcRmcComponent {
           });
   
           const link = document.createElement("a");
-          link.download = "DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg";
+          link.download = `${this.mapFileName()}.jpeg`;
           link.href = dataUrl;
   
           if (downloadpdf) {
@@ -405,7 +398,7 @@ export class RainfallmapRegionMcRmcComponent {
   
             // Trigger download
             const link = document.createElement("a");
-            link.download = "DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg";
+            link.download = `${this.mapFileName()}.jpeg`;
             link.href = croppedDataUrl;
   
             if (downloadpdf) {
@@ -456,7 +449,7 @@ export class RainfallmapRegionMcRmcComponent {
           newImgWidth,
           newImgHeight
         );
-        pdf.save("DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.pdf");
+        pdf.save(`${this.mapFileName()}.pdf`);
       };
     }
   
@@ -481,18 +474,29 @@ export class RainfallmapRegionMcRmcComponent {
       // this.onWindowResize()
     }
     setFromAndToDate() {
-      let data = {
-        fromDate: this.fromDate,
-        toDate: this.toDate,
-      };
+      if (!this.fromDate || !this.toDate) {
+        alert('Please select both From and To dates');
+        return;
+      }
+      if (this.fromDate > this.toDate) {
+        alert('From date cannot be greater than To date');
+        return;
+      }
+      this.updateDateLabels();
+      this.calculateInitialZoom();
+      this.fetchBackend();
+    }
 
-      this.StartDate = data.fromDate;
-      this.EndDate = data.toDate
+    /** Map heading dates: always the dates the data and the downloads use. */
+    private updateDateLabels() {
+      this.StartDate = toIndianDate(this.fromDate);
+      this.EndDate = toIndianDate(this.toDate);
+      this.formatteddate = this.StartDate;
+    }
 
-      this.formatteddate = this.fromDate.split("-").reverse().join("-")
-      this.calculateInitialZoom()
-      this.fetchBackend()
-      // this.dataService.setfromAndToDate(JSON.stringify(data));
+    /** e.g. RMC_CHENNAI_TAMIL_NADU_STATE_RAINFALL_MAP_cd */
+    private mapFileName(): string {
+      return `${fileTag(this.selectedMcName, this.current_region_name, 'REGION_RAINFALL_MAP')}_${this.constants.getDateSuffix(this.fromDate, this.toDate)}`;
     }
   
     private calculateInitialZoom(customZoomfactor: any = undefined): void {

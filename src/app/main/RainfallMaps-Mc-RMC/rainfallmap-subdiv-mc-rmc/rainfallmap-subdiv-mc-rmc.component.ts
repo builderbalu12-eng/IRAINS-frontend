@@ -18,6 +18,7 @@ import { Router, NavigationEnd } from "@angular/router";
 import { filter } from "rxjs/operators";
 import { McWiseSubdivDownloadStatistics } from "src/app/services/subDivision/mcWiseSubDivisionStatistics.service";
 import { Constants } from "src/app/services/constants";
+import { fileTag, selectedAllMapsRange, toIndianDate } from "src/app/services/MC-RMCs/mcRmcLabels";
 import { CalculationsModeService } from "src/app/services/calculationsMode.service";
 import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 import { skip } from "rxjs";
@@ -98,9 +99,9 @@ isLoadingSubdivs: any;
       try {
         this.isLoading = true;
         if(this.selectedMode.selectedMode=='Unified'){
-          await this.downloadPdf$.updateanddownloadpdfCustom(this.allSubDivCodesinSelectedSet, this.fromDate, this.toDate);
+          await this.downloadPdf$.updateanddownloadpdfCustom(this.allSubDivCodesinSelectedSet, this.fromDate, this.toDate, this.selectedMcName, this.selectedSubdiv);
         }else{
-        await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.allSubDivCodesinSelectedSet, this.fromDate, this.toDate);
+        await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.allSubDivCodesinSelectedSet, this.fromDate, this.toDate, this.selectedMcName, this.selectedSubdiv);
 
         }
         this.isLoading = false;
@@ -195,18 +196,14 @@ isLoadingSubdivs: any;
         this.fromDate = `${year}-${mon}-${dd}`;
         this.toDate = `${year}-${mon}-${dd}`;
 
-        // Date subscription logic
-        this.dataService.fromAndToDate$.subscribe((value) => {
-          if (value) {
-            let fromAndToDates = JSON.parse(value);
-            this.StartDate = fromAndToDates.fromDate;
-            this.EndDate = fromAndToDates.toDate;
-          } else {
-            this.StartDate = `${year}-${mon}-${dd}`;
-            this.EndDate = `${year}-${mon}-${dd}`;
-          }
-          this.fetchBackend();
-        });
+        // Start from the date selected on /all-maps; if nothing was selected,
+        // the effective latest date above. Map, side panel and downloads all use
+        // this one fromDate/toDate.
+        const picked = selectedAllMapsRange(this.dataService);
+        this.fromDate = picked?.fromDate || this.today;
+        this.toDate = picked?.toDate || this.today;
+        this.updateDateLabels();
+        this.fetchBackend();
       };
 
       const role = this.loggedInUserObject?.data?.[0]?.mcorhq;
@@ -265,14 +262,12 @@ isLoadingSubdivs: any;
         
           // ✅ Set the first name in dropdown and load the first map
           if (this.allSubdivsLocatedinCurrentMc.length > 0) {
-            this.selectedSubdiv = this.allSubdivsLocatedinCurrentMc[0].name; // Set first subdivision url
-            console.log(this.allSubdivsLocatedinCurrentMc[0].name)
-            this.loadGeoJSON(this.allSubdivsLocatedinCurrentMc[0].url);    // Load first subdivision map
+            // Keep the one already chosen (e.g. on a date change); else the first.
+            const keep = this.allSubdivsLocatedinCurrentMc.find((x: any) => x.name === this.selectedSubdiv) || this.allSubdivsLocatedinCurrentMc[0];
+            this.selectedSubdiv = keep.name;
+            this.loadGeoJSON(keep.url);
           }
           console.log('consoling allSubdivsLocatedinCurrentMc', this.allSubdivsLocatedinCurrentMc);
-        
-          this.StartDate = this.convertToIndianDateFormat(this.StartDate);
-          this.EndDate = this.convertToIndianDateFormat(this.EndDate);
   
         this.isLoadingSubdivs = false
   
@@ -294,14 +289,12 @@ isLoadingSubdivs: any;
         
           // ✅ Set the first name in dropdown and load the first map
           if (this.allSubdivsLocatedinCurrentMc.length > 0) {
-            this.selectedSubdiv = this.allSubdivsLocatedinCurrentMc[0].name; // Set first subdivision url
-            console.log(this.allSubdivsLocatedinCurrentMc[0].name)
-            this.loadGeoJSON(this.allSubdivsLocatedinCurrentMc[0].url);    // Load first subdivision map
+            // Keep the one already chosen (e.g. on a date change); else the first.
+            const keep = this.allSubdivsLocatedinCurrentMc.find((x: any) => x.name === this.selectedSubdiv) || this.allSubdivsLocatedinCurrentMc[0];
+            this.selectedSubdiv = keep.name;
+            this.loadGeoJSON(keep.url);
           }
           console.log('consoling allSubdivsLocatedinCurrentMc', this.allSubdivsLocatedinCurrentMc);
-        
-          this.StartDate = this.convertToIndianDateFormat(this.StartDate);
-          this.EndDate = this.convertToIndianDateFormat(this.EndDate);
   
         this.isLoadingSubdivs = false
   
@@ -379,7 +372,7 @@ isLoadingSubdivs: any;
           });
   
           const link = document.createElement("a");
-          link.download = `SUBDIVISION ${this.selectedSubdiv} DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg`;
+          link.download = `${this.mapFileName()}.jpeg`;
           link.href = dataUrl;
   
           if (downloadpdf) {
@@ -434,7 +427,7 @@ isLoadingSubdivs: any;
   
             // Trigger download
             const link = document.createElement("a");
-            link.download = "DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg";
+            link.download = `${this.mapFileName()}.jpeg`;
             link.href = croppedDataUrl;
   
             if (downloadpdf) {
@@ -485,7 +478,7 @@ isLoadingSubdivs: any;
           newImgWidth,
           newImgHeight
         );
-        pdf.save("DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.pdf");
+        pdf.save(`${this.mapFileName()}.pdf`);
       };
     }
   
@@ -511,18 +504,29 @@ isLoadingSubdivs: any;
       // this.onWindowResize()
     }
     setFromAndToDate() {
-      let data = {
-        fromDate: this.fromDate,
-        toDate: this.toDate,
-      };
+      if (!this.fromDate || !this.toDate) {
+        alert('Please select both From and To dates');
+        return;
+      }
+      if (this.fromDate > this.toDate) {
+        alert('From date cannot be greater than To date');
+        return;
+      }
+      this.updateDateLabels();
+      this.calculateInitialZoom();
+      this.fetchBackend();
+    }
 
-      this.StartDate = data.fromDate;
-      this.EndDate = data.toDate
+    /** Map heading dates: always the dates the data and the downloads use. */
+    private updateDateLabels() {
+      this.StartDate = toIndianDate(this.fromDate);
+      this.EndDate = toIndianDate(this.toDate);
+      this.formatteddate = this.StartDate;
+    }
 
-      this.formatteddate = this.fromDate.split("-").reverse().join("-")
-      this.calculateInitialZoom()
-      this.fetchBackend()
-      // this.dataService.setfromAndToDate(JSON.stringify(data));
+    /** e.g. RMC_CHENNAI_TAMIL_NADU_STATE_RAINFALL_MAP_cd */
+    private mapFileName(): string {
+      return `${fileTag(this.selectedMcName, this.selectedSubdiv, 'SUBDIVISION_RAINFALL_MAP')}_${this.constants.getDateSuffix(this.fromDate, this.toDate)}`;
     }
   
     private calculateInitialZoom(customZoomfactor: any = undefined): void {
@@ -652,6 +656,7 @@ isLoadingSubdivs: any;
         this.map.removeLayer(this.districtLayer)
       }
       this.http.get(httpUrl).subscribe((geoJsonData: any) => {
+        this.allSubDivCodesinSelectedSet = new Set();
         const layer = L.geoJSON(geoJsonData, {
           style: (feature: any) => {
             const id2 = feature.properties["district_c"];

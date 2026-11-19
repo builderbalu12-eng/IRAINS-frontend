@@ -7,6 +7,7 @@ import autoTable, { Column } from 'jspdf-autotable';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
+import { centreLabel, fileTag } from 'src/app/services/MC-RMCs/mcRmcLabels';
 
 
 @Injectable({
@@ -34,6 +35,22 @@ export class McWiseSubdivDownloadStatistics {
   }
 
   convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
+
+  // MC/RMC download names, e.g. centreName "RMC Chennai", areaName "Tamil Nadu".
+  // Set by the "Statistics Download" calls of the MC/RMC map pages.
+  centreName: string = '';
+  areaName: string = '';
+
+  /** e.g. "RMC CHENNAI - TAMIL NADU STATE DISTRICT RAINFALL DISTRIBUTION" */
+  private reportTitle(): string {
+    const who = [centreLabel(this.centreName), centreLabel(this.areaName) && `${centreLabel(this.areaName)} SUBDIVISION`].filter(Boolean).join(' - ');
+    return who ? `${who} DISTRICT RAINFALL DISTRIBUTION` : 'SUBDIVISIONWISE DISTRICT RAINFALL DISTRIBUTION';
+  }
+
+  /** e.g. "RMC_CHENNAI_TAMIL_NADU_STATE" */
+  private reportFileTag(): string {
+    return fileTag(this.centreName, this.areaName, this.areaName ? 'SUBDIVISION' : '');
+  }
 
   async updateanddownloadpdf(subdivCodes:any){
     const currDate = new Date();
@@ -70,7 +87,9 @@ export class McWiseSubdivDownloadStatistics {
 
 
 
-  async updateanddownloadpdfCustom(subdivCodes:any,fromDate : any, toDate : any){
+  async updateanddownloadpdfCustom(subdivCodes:any, fromDate : any, toDate : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     console.log('custom date download', fromDate, toDate)
     const currDate = new Date();
     // this.data = this.constants.getRangeFromDateRange();
@@ -87,7 +106,9 @@ export class McWiseSubdivDownloadStatistics {
 
   
 
-  async updateanddownloadpdfFromDataEntryCustom(subdivCodes:any,fromDate : any, toDate : any){
+  async updateanddownloadpdfFromDataEntryCustom(subdivCodes:any, fromDate : any, toDate : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     const currDate = new Date();
     // this.data = this.constants.getRangeFromDateRange();
     this.data  = {
@@ -289,7 +310,7 @@ export class McWiseSubdivDownloadStatistics {
 
     // Row 1: Title — dark brown, underlined, merged A1:J1
     const row1 = [
-      { v: 'SUBDIVISIONWISE DISTRICT RAINFALL DISTRIBUTION', t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+      { v: this.reportTitle(), t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
       ...Array.from({ length: 9 }, () => blank()),
     ];
 
@@ -364,13 +385,8 @@ export class McWiseSubdivDownloadStatistics {
   public async downloadPdf(viewOnly: boolean = false){
 
     console.log('ssssss', this.data.startDate, typeof this.data.startDate,  this.data.endDate, this.data.startDate==this.data.endDate);
-
-    // Adjust season dates based on this.data.startDate to set the seasonal period
-      const seasonRange = this.adjustSeasonForRange(this.data.startDate, this.data.endDate);
-  
-    // Set the season period start and end dates
-      this.seasonPeriodDate.startDate = seasonRange.startDate;
-      this.seasonPeriodDate.endDate = seasonRange.endDate;
+    // PERIOD = start of the current season to the selected To date: the range
+    // the season figures were fetched for (getCurrentMonthSeasonFromAndTodateCustom).
 
     const columns1 = ['', '', 
       // {
@@ -383,7 +399,7 @@ export class McWiseSubdivDownloadStatistics {
       },
 
       {
-        content : `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${(this.seasonPeriodDate.startDate, this.seasonPeriodDate.endDate)}`, colSpan:4
+        content : `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`, colSpan:4
       },
       
     ]
@@ -392,7 +408,7 @@ export class McWiseSubdivDownloadStatistics {
       content : this.data.startDate==this.data.endDate ? `DAY: ${this.convertToIndianDateFormat(this.data.startDate)}`:`DAY: ${this.convertToIndianDateFormat(this.data.startDate)} to ${this.convertToIndianDateFormat(this.data.endDate)}`, colSpan:4
     }, '', '', '',    
     {
-      content : `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${(this.seasonPeriodDate.startDate, this.seasonPeriodDate.endDate)}`, colSpan:4
+      content : `PERIOD: ${this.convertToIndianDateFormat(this.seasonPeriodDate.startDate)} to ${this.convertToIndianDateFormat(this.seasonPeriodDate.endDate)}`, colSpan:4
     }]
 
     const columns = ['S.No', 'MET.SUBDIVISION/UT/STATE/DISTRICT', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.', 'ACTUAL(mm)', 'NORMAL(mm)', '%DEP.', 'CAT.'];
@@ -482,9 +498,9 @@ export class McWiseSubdivDownloadStatistics {
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0); // Set font color to black
     const headingText = 'India Meteorological Department\nHydromet Division, New Delhi';
-    const headingText1 = 'DISTRICT RAINFALL DISTRIBUTION';
-    doc.text(headingText, marginLeft + 25, marginTop + 8); // Adjust position as needed
-    doc.text(headingText1, marginLeft + 100, marginTop + 28);
+    const headingText1 = this.reportTitle();
+    doc.text(headingText, marginLeft + 25, marginTop + 8);
+    doc.text(headingText1, pageWidth / 2, marginTop + 28, { align: 'center' });
     autoTable(doc, {
       head: [columns1, columns],
       body: this.constants.withDeparturePercent(this.rows),
@@ -526,8 +542,8 @@ export class McWiseSubdivDownloadStatistics {
         doc.setDrawColor(0);
       },
     });
-    // DISTRIBUTION_COUNTRY_INDIA_cd.pdf
-    const filename = `DISTRIBUTION_DISTRICT_INDIA_cd.pdf`;
+    const suffix = this.constants.getDateSuffix(this.data.startDate, this.data.endDate);
+    const filename = `DISTRIBUTION_${this.reportFileTag() || 'MC'}_DISTRICT_${suffix}.pdf`;
 
     if(this.isView){
       const pdfBlob = doc.output('blob');
@@ -538,7 +554,7 @@ export class McWiseSubdivDownloadStatistics {
         doc.save(filename);
         this.exportAsExcelFile(
           newArr,
-          `MC_SUBDIVWISE_RAINFALL_DISTRIBUTION`,
+          `${this.reportFileTag() || 'MC'}_DISTRICT_RAINFALL_DISTRIBUTION_${suffix}`,
           this.convertToIndianDateFormat(this.data.startDate),
           this.convertToIndianDateFormat(this.data.endDate),
           this.convertToIndianDateFormat(this.seasonPeriodDate.startDate),

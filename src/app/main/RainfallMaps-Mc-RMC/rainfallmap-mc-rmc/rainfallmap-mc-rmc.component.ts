@@ -19,6 +19,7 @@ import { MCRMCsServiceState } from "src/app/services/MC-RMCs/mcRmcState.service"
 import { Router, NavigationEnd } from "@angular/router";
 import { filter } from "rxjs/operators";
 import { Constants } from "src/app/services/constants";
+import { fileTag, selectedAllMapsRange, toIndianDate } from "src/app/services/MC-RMCs/mcRmcLabels";
 import { McWiseStateStatistics } from "src/app/services/state/mcWiseStateStatistics.service";
 import { MapDataScheduleService } from "src/app/services/mapDataSchedule.service";
 import { CalculationsModeService } from "src/app/services/calculationsMode.service";
@@ -102,9 +103,9 @@ export class RainfallmapMcRmcComponent {
       console.log(this.allStateCodesinSelectedSet)
 
       if(this.selectedMode.selectedMode=='Unified'){
-        await this.downloadPdf$.updateanddownloadpdfCustom(this.allStateCodesinSelectedSet, this.fromDate, this.toDate);
+        await this.downloadPdf$.updateanddownloadpdfCustom(this.allStateCodesinSelectedSet, this.fromDate, this.toDate, this.selectedMcName, this.selectedState);
       }else{
-        await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.allStateCodesinSelectedSet, this.fromDate, this.toDate);
+        await this.downloadPdf$.updateanddownloadpdfFromDataEntryCustom(this.allStateCodesinSelectedSet, this.fromDate, this.toDate, this.selectedMcName, this.selectedState);
       }
       this.isLoading = false;
     } catch (error) {
@@ -196,19 +197,14 @@ export class RainfallmapMcRmcComponent {
       this.fromDate = `${year}-${mon}-${dd}`;
       this.toDate = `${year}-${mon}-${dd}`;
 
-      this.dataService.fromAndToDate$.subscribe((value) => {
-        if (value) {
-          let fromAndToDates = JSON.parse(value);
-          this.StartDate = fromAndToDates.fromDate;
-          this.EndDate = fromAndToDates.toDate;
-          // console.log('inside if', this.StartDate, this.EndDate);
-        } else {
-          this.StartDate = `${year}-${mon}-${dd}`;
-          this.EndDate = `${year}-${mon}-${dd}`;
-          // console.log('inside else', this.StartDate, this.EndDate);
-        }
-        this.fetchBackend();
-      });
+      // Start from the date selected on /all-maps; if nothing was selected,
+      // the effective latest date above. Map, side panel and downloads all use
+      // this one fromDate/toDate.
+      const picked = selectedAllMapsRange(this.dataService);
+      this.fromDate = picked?.fromDate || this.today;
+      this.toDate = picked?.toDate || this.today;
+      this.updateDateLabels();
+      this.fetchBackend();
     };
 
     const role = this.loggedInUserObject?.data?.[0]?.mcorhq;
@@ -268,14 +264,12 @@ export class RainfallmapMcRmcComponent {
       
         // ✅ Set the first name in dropdown and load the first map
         if (this.allStatesLocatedinCurrentMc.length > 0) {
-          this.selectedState = this.allStatesLocatedinCurrentMc[0].name; // Set first subdivision url
-          console.log(this.allStatesLocatedinCurrentMc[0].name)
-          this.loadGeoJSON(this.allStatesLocatedinCurrentMc[0].url, this.allStatesLocatedinCurrentMc[0].name);    // Load first subdivision map
+          // Keep the one already chosen (e.g. on a date change); else the first.
+          const keep = this.allStatesLocatedinCurrentMc.find((x: any) => x.name === this.selectedState) || this.allStatesLocatedinCurrentMc[0];
+          this.selectedState = keep.name;
+          this.loadGeoJSON(keep.url, keep.name);
         }
         console.log('consoling allStatesLocatedinCurrentMc', this.allStatesLocatedinCurrentMc);
-      
-        this.StartDate = this.convertToIndianDateFormat(this.StartDate);
-        this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       
         this.isLoadingStates = false;
       });
@@ -294,14 +288,12 @@ export class RainfallmapMcRmcComponent {
         });
       
         if (this.allStatesLocatedinCurrentMc.length > 0) {
-          this.selectedState = this.allStatesLocatedinCurrentMc[0].name; // Set first subdivision url
-          console.log(this.allStatesLocatedinCurrentMc[0].name)
-          this.loadGeoJSON(this.allStatesLocatedinCurrentMc[0].url, this.allStatesLocatedinCurrentMc[0].name);    // Load first subdivision map
+          // Keep the one already chosen (e.g. on a date change); else the first.
+          const keep = this.allStatesLocatedinCurrentMc.find((x: any) => x.name === this.selectedState) || this.allStatesLocatedinCurrentMc[0];
+          this.selectedState = keep.name;
+          this.loadGeoJSON(keep.url, keep.name);
         }
         console.log('consoling allStatesLocatedinCurrentMc', this.allStatesLocatedinCurrentMc);
-      
-        this.StartDate = this.convertToIndianDateFormat(this.StartDate);
-        this.EndDate = this.convertToIndianDateFormat(this.EndDate);
       
         this.isLoadingStates = false;
       });
@@ -375,7 +367,7 @@ export class RainfallmapMcRmcComponent {
         });
 
         const link = document.createElement("a");
-        link.download = `${this.selectedState}_DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg`;
+        link.download = `${this.mapFileName()}.jpeg`;
         link.href = dataUrl;
 
         if (downloadpdf) {
@@ -430,7 +422,7 @@ export class RainfallmapMcRmcComponent {
 
           // Trigger download
           const link = document.createElement("a");
-          link.download = "DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.jpeg";
+          link.download = `${this.mapFileName()}.jpeg`;
           link.href = croppedDataUrl;
 
           if (downloadpdf) {
@@ -481,7 +473,7 @@ export class RainfallmapMcRmcComponent {
         newImgWidth,
         newImgHeight
       );
-      pdf.save("DISTRICT_RAINFALL_MAP_COUNTRY_INDIA_cd.pdf");
+      pdf.save(`${this.mapFileName()}.pdf`);
     };
   }
 
@@ -509,17 +501,29 @@ export class RainfallmapMcRmcComponent {
     // this.onWindowResize()
   }
   setFromAndToDate() {
-    let data = {
-      fromDate: this.fromDate,
-      toDate: this.toDate,
-    };
-    this.StartDate = data.fromDate;
-    this.EndDate = data.toDate
-    // console.log('379 called', data.fromDate, data.toDate);
-    this.formatteddate = this.fromDate.split("-").reverse().join("-")
-    this.calculateInitialZoom()
-    this.fetchBackend()
-    // this.dataService.setfromAndToDate(JSON.stringify(data));
+    if (!this.fromDate || !this.toDate) {
+      alert('Please select both From and To dates');
+      return;
+    }
+    if (this.fromDate > this.toDate) {
+      alert('From date cannot be greater than To date');
+      return;
+    }
+    this.updateDateLabels();
+    this.calculateInitialZoom();
+    this.fetchBackend();
+  }
+
+  /** Map heading dates: always the dates the data and the downloads use. */
+  private updateDateLabels() {
+    this.StartDate = toIndianDate(this.fromDate);
+    this.EndDate = toIndianDate(this.toDate);
+    this.formatteddate = this.StartDate;
+  }
+
+  /** e.g. RMC_CHENNAI_TAMIL_NADU_STATE_RAINFALL_MAP_cd */
+  private mapFileName(): string {
+    return `${fileTag(this.selectedMcName, this.selectedState, 'STATE_RAINFALL_MAP')}_${this.constants.getDateSuffix(this.fromDate, this.toDate)}`;
   }
 
   private calculateInitialZoom(customZoomfactor: any = undefined): void {
@@ -643,6 +647,7 @@ export class RainfallmapMcRmcComponent {
       this.map.removeLayer(this.districtLayer);
     }
     this.http.get(httpUrl).subscribe((geoJsonData: any) => {
+      this.allStateCodesinSelectedSet = new Set();
       const layer = L.geoJSON(geoJsonData, {
         style: (feature: any) => {
           const id2 = feature.properties["district_c"];

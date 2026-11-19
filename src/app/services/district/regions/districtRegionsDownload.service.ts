@@ -8,6 +8,7 @@ import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx-js-style';
 import * as FileSaver from 'file-saver';
 import { CalculationsModeService } from 'src/app/services/calculationsMode.service';
+import { centreLabel, fileTag } from 'src/app/services/MC-RMCs/mcRmcLabels';
 
 
 @Injectable({
@@ -36,21 +37,43 @@ export class DownloadPdfRegionDistrict {
 
   convertToIndianDateFormat = (dateString: string) => dateString.split('-').reverse().join('-');
 
-  async updateanddownloadpdf(regionName : any){
+  // MC/RMC download names, e.g. centreName "RMC Chennai", areaName "South Peninsula".
+  // Set by the "Statistics Download" calls of the MC/RMC map pages.
+  centreName: string = '';
+  areaName: string = '';
+
+  /** e.g. "RMC CHENNAI - SOUTH PENINSULA REGION DISTRICT RAINFALL DISTRIBUTION" */
+  private reportTitle(): string {
+    const who = [centreLabel(this.centreName), centreLabel(this.areaName) && `${centreLabel(this.areaName)} REGION`].filter(Boolean).join(' - ');
+    return who ? `${who} DISTRICT RAINFALL DISTRIBUTION` : 'DISTRICT RAINFALL DISTRIBUTION';
+  }
+
+  /** e.g. "RMC_CHENNAI_SOUTH_PENINSULA_REGION" */
+  private reportFileTag(): string {
+    return fileTag(this.centreName, this.areaName, this.areaName ? 'REGION' : '');
+  }
+
+  async updateanddownloadpdf(regionName : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
     await this.updateCurrDateData(this.data, this.seasonPeriodDate, regionName)
   }
 
-  async updateanddownloadpdfFromDataEntry(regionName : any){
+  async updateanddownloadpdfFromDataEntry(regionName : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
     this.seasonPeriodDate = this.constants.getCurrentMonthSeasonFromAndTodate(currDate);
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate, regionName)
   }
 
-  async updateandViewpdf(regionName : any){
+  async updateandViewpdf(regionName : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     this.isView = true
     const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
@@ -58,7 +81,9 @@ export class DownloadPdfRegionDistrict {
     await this.updateCurrDateData(this.data, this.seasonPeriodDate, regionName)
   }
   
-  async updateandViewpdfFromDataEntry(regionName : any){
+  async updateandViewpdfFromDataEntry(regionName : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     this.isView = true
     const currDate = new Date();
     this.data = this.constants.getRangeFromDateRange();
@@ -74,7 +99,9 @@ export class DownloadPdfRegionDistrict {
 
 
 
-  async updateanddownloadpdfCustom(regionName : any, fromDate : any, toDate : any){
+  async updateanddownloadpdfCustom(regionName : any, fromDate : any, toDate : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     console.log('custom date download', fromDate, toDate, regionName)
     const currDate = new Date();
     // this.data = this.constants.getRangeFromDateRange();
@@ -91,7 +118,9 @@ export class DownloadPdfRegionDistrict {
 
   
 
-  async updateanddownloadpdfFromDataEntryCustom(regionName : any, fromDate : any, toDate : any){
+  async updateanddownloadpdfFromDataEntryCustom(regionName : any, fromDate : any, toDate : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     const currDate = new Date();
     // this.data = this.constants.getRangeFromDateRange();
     this.data  = {
@@ -103,7 +132,9 @@ export class DownloadPdfRegionDistrict {
     await this.updateCurrDateDataFromDataEntry(this.data, this.seasonPeriodDate, regionName)
   }
 
-  async updateandViewpdfCustom(regionName : any, fromDate : any, toDate : any){
+  async updateandViewpdfCustom(regionName : any, fromDate : any, toDate : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     this.isView = true
     const currDate = new Date();
     // this.data = this.constants.getRangeFromDateRange();
@@ -116,7 +147,9 @@ export class DownloadPdfRegionDistrict {
     await this.updateCurrDateData(this.data, this.seasonPeriodDate, regionName)
   }
 
-  async updateandViewpdfFromDataEntryCustom(regionName : any, fromDate : any, toDate : any){
+  async updateandViewpdfFromDataEntryCustom(regionName : any, fromDate : any, toDate : any, centreName: string = '', areaName: string = ''){
+    this.centreName = centreName;
+    this.areaName = areaName;
     this.isView = true
     const currDate = new Date();
     // this.data = this.constants.getRangeFromDateRange();
@@ -302,7 +335,7 @@ export class DownloadPdfRegionDistrict {
 
     // Row 1: Title — dark brown, underlined, merged A1:J1
     const row1 = [
-      { v: 'DISTRICT RAINFALL DISTRIBUTION', t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
+      { v: this.reportTitle(), t: 's', s: { font: { bold: true, sz: 13, color: { rgb: '993300' }, underline: true }, alignment: { horizontal: 'center' as const, vertical: 'middle' as const } } },
       ...Array.from({ length: 9 }, () => blank()),
     ];
 
@@ -476,11 +509,14 @@ export class DownloadPdfRegionDistrict {
   public async downloadPdf(){
 
     console.log('ssssss', this.data.startDate, typeof this.data.startDate,  this.data.endDate, this.data.startDate==this.data.endDate)
-
-    // Adjust season dates based on this.data.startDate to set the seasonal period
-    const seasonRange = this.adjustSeasonForRange(this.data.startDate, this.data.endDate);
-    this.seasonPeriodDate.startDate = seasonRange.startDate;
-    this.seasonPeriodDate.endDate = seasonRange.endDate;
+    // Other pages keep their original PERIOD (full season, e.g. 01-10 to 31-12).
+    // The MC/RMC region page (centreName set) shows start of season to the
+    // selected To date: the range the season figures were fetched for.
+    if (!this.centreName) {
+      const seasonRange = this.adjustSeasonForRange(this.data.startDate, this.data.endDate);
+      this.seasonPeriodDate.startDate = seasonRange.startDate;
+      this.seasonPeriodDate.endDate = seasonRange.endDate;
+    }
 
     const columns1 = ['', '',
       {
@@ -567,9 +603,13 @@ export class DownloadPdfRegionDistrict {
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0); // Set font color to black
     const headingText = 'India Meteorological Department\nHydromet Division, New Delhi';
-    const headingText1 = 'DISTRICT RAINFALL DISTRIBUTION';
-    doc.text(headingText, marginLeft + 25, marginTop + 8); // Adjust position as needed
-    doc.text(headingText1, marginLeft + 100, marginTop + 28);
+    const headingText1 = this.reportTitle();
+    doc.text(headingText, marginLeft + 25, marginTop + 8);
+    if (this.centreName) {
+      doc.text(headingText1, doc.internal.pageSize.getWidth() / 2, marginTop + 28, { align: 'center' });
+    } else {
+      doc.text(headingText1, marginLeft + 100, marginTop + 28);
+    }
     autoTable(doc, {
       head: [columns1, columns],
       body: this.constants.withDeparturePercent(this.rows),
@@ -612,7 +652,9 @@ export class DownloadPdfRegionDistrict {
       },
     });
     const suffix = this.constants.getDateSuffix(this.data.startDate, this.data.endDate);
-    const filename = `DISTRICT_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_${suffix}.pdf`;
+    const filename = this.centreName
+      ? `DISTRIBUTION_${this.reportFileTag()}_DISTRICT_${suffix}.pdf`
+      : `DISTRICT_RAINFALL_DISTRIBUTION_COUNTRY_INDIA_${suffix}.pdf`;
     const isSingleDate = this.data.startDate === this.data.endDate;
     let excelName: string;
     if (isSingleDate) {
@@ -632,6 +674,10 @@ export class DownloadPdfRegionDistrict {
       } else {
         excelName = `DISTRICTWISE (${d1}${MON[s.getMonth()]}${s.getFullYear()}-${d2}${MON[e.getMonth()]}${e.getFullYear()})`;
       }
+    }
+
+    if (this.centreName) {
+      excelName = `${this.reportFileTag()}_${excelName}`;
     }
 
     if(this.isView){
