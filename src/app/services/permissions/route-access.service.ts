@@ -19,9 +19,73 @@ export interface ManagedAppRoute {
 export interface NavNode {
   label: string;
   path?: string;
+  href?: string;
+  action?: 'upload';
+  docType?: string;
   sortOrder: number;
   children?: NavNode[];
 }
+
+/** Top-level order from the live iRAINS navbar (irainshydro.imd.gov.in). */
+const LIVE_ROOT_ORDER: Record<string, number> = {
+  'IRAINS DASHBOARD': 10,
+  'RAINFALL MAP MC and RMC': 15,
+  'RAINFALL MAP': 20,
+  'RAINFALL GRAPHS': 30,
+  'NWP RAINFALL PRODUCTS': 40,
+  'RAINFALL STATISTICS': 50,
+  'RAINFALL DEPARTURES': 60,
+  'SPATIAL ANALYSIS': 70,
+  'INFO UPLOAD': 80,
+  'QPF VERIFICATION REPORT': 90,
+  'DESIGN STORM ANALYSIS': 100,
+  'RAINFALL REPORTS': 110,
+  'DATA ENTRY': 130,
+  'SIGNIFICANT RAINFALL': 140,
+  'VERIFICATION MC': 150,
+  'VERIFICATION HQ': 160,
+  'DISSEMINATION': 170,
+  'STATION STATISTICS': 180,
+  'YEARLY STATION STATISTICS': 190,
+  'SPATIAL DISTRIBUTION': 200,
+  'MONSOON ACTIVITY': 210,
+  'RIVER BASINS': 220,
+  'LOG INFO': 230,
+  'USER MANUAL': 240,
+  'ABOUT': 250,
+};
+
+/** Nested group order inside a dropdown (not alphabetical). */
+const LIVE_GROUP_ORDER: Record<string, number> = {
+  'ACTUAL': 10,
+  'DEPARTURE': 20,
+  'DAILY': 10,
+  'WEEKLY': 20,
+  'CUMULATIVE': 30,
+  'DISTRICT RAINFALL MAP': 80,
+  'DAILY & CUMULATIVE': 10,
+  'WEEKLY & CUMULATIVE': 20,
+};
+
+/** Live labels for routes whose DB label is still the old catalog name. */
+const LIVE_LABEL_BY_PATH: Record<string, string> = {
+  '/irains-dashboard': 'IRAINS DASHBOARD',
+  '/rainfall-graphs': 'RAINFALL GRAPHS',
+  '/rainfall-departure': 'RAINFALL DEPARTURES',
+  '/data-entry': 'DATA ENTRY',
+  '/rainfalldatacm': 'SIGNIFICANT RAINFALL',
+  '/verification-page-mc': 'VERIFICATION MC',
+  '/verification-page-hq': 'VERIFICATION HQ',
+  '/new-email-dissemination': 'DISSEMINATION',
+  '/yearlystationstatistics': 'YEARLY STATION STATISTICS',
+  '/spatial-table': 'SPATIAL DISTRIBUTION',
+  '/monsoon-activity': 'MONSOON ACTIVITY',
+  '/river-basin': 'RIVER BASINS',
+  '/log-info': 'LOG INFO',
+  '/user-manual': 'USER MANUAL',
+  '/about': 'ABOUT',
+  '/all-statistics': 'ALL STATISTICS',
+};
 
 interface ApiListResponse<T> {
   success: boolean;
@@ -172,15 +236,15 @@ export class RouteAccessService {
       .map((r) => r.path);
   }
 
-  /** Nested menu for the navbar, filtered by role and showInNav. */
+  /** Nested menu for the navbar, in the live site's top-level order. */
   getNavTreeForRole(role: string): NavNode[] {
     const userRole = String(role || '').toLowerCase().trim();
     const leaves = this.routesSnapshot
-      .filter((r) =>
-        r.active &&
-        r.showInNav !== false &&
-        r.allowedRoles.map((x) => x.toLowerCase()).includes(userRole)
-      )
+      .filter((r) => {
+        if (!r.active || r.showInNav === false) return false;
+        if (!r.allowedRoles.map((x) => x.toLowerCase()).includes(userRole)) return false;
+        return this.liveRootKey(r) != null;
+      })
       .slice()
       .sort((a, b) => {
         const mp = (a.menuPath || '').localeCompare(b.menuPath || '');
@@ -191,37 +255,44 @@ export class RouteAccessService {
       });
 
     const root: NavNode[] = [];
-    let rootSeq = 0;
+
+    const groupOrder = (label: string, atRoot: boolean, fallback: number): number => {
+      if (atRoot && LIVE_ROOT_ORDER[label] != null) return LIVE_ROOT_ORDER[label];
+      if (LIVE_GROUP_ORDER[label] != null) return LIVE_GROUP_ORDER[label];
+      return fallback;
+    };
 
     const findOrCreate = (siblings: NavNode[], label: string, sortOrder: number, atRoot: boolean): NavNode => {
-      let node = siblings.find((n) => n.label === label && !n.path);
+      let node = siblings.find((n) => n.label === label && !n.path && !n.href && !n.docType && !n.action);
       if (!node) {
-        // Preserve first-seen order for top-level groups (Rainfall Map, Statistics, …)
-        const order = atRoot ? (rootSeq++) * 1000 : sortOrder;
-        node = { label, sortOrder: order, children: [] };
+        node = { label, sortOrder: groupOrder(label, atRoot, sortOrder), children: [] };
         siblings.push(node);
       }
       return node;
     };
 
     for (const route of leaves) {
-      const segments = String(route.menuPath || '')
+      const path = this.normalizePath(route.path);
+      const label = LIVE_LABEL_BY_PATH[path] || route.label;
+      const menuSegments = String(route.menuPath || '')
         .split('>')
         .map((s) => s.trim())
-        .filter(Boolean);
+        .filter((s) => Boolean(s) && s !== 'Main' && s !== 'Data Management');
+      const rootName = menuSegments[0] || label;
+      if (LIVE_ROOT_ORDER[rootName] == null) continue;
+
       let siblings = root;
-      for (let i = 0; i < segments.length; i += 1) {
-        const group = findOrCreate(siblings, segments[i], route.sortOrder || 0, i === 0);
+      for (let i = 0; i < menuSegments.length; i += 1) {
+        const group = findOrCreate(siblings, menuSegments[i], route.sortOrder || 0, i === 0);
         if (!group.children) group.children = [];
         siblings = group.children;
       }
-      // Top-level leaves also keep discovery order among other root items
-      const leafOrder = segments.length === 0 ? (rootSeq++) * 1000 + (route.sortOrder || 0) : (route.sortOrder || 0);
-      siblings.push({
-        label: route.label,
-        path: route.path,
-        sortOrder: leafOrder,
-      });
+      const leafOrder = menuSegments.length === 0
+        ? (LIVE_ROOT_ORDER[label] ?? route.sortOrder ?? 0)
+        : (path === '/all-statistics' ? 30 : (route.sortOrder || 0));
+      if (!siblings.some((n) => n.path === path)) {
+        siblings.push({ label, path, sortOrder: leafOrder });
+      }
     }
 
     const sortTree = (nodes: NavNode[]): NavNode[] => {
@@ -233,10 +304,27 @@ export class RouteAccessService {
       for (const n of nodes) {
         if (n.children?.length) n.children = sortTree(n.children);
       }
-      return nodes.filter((n) => n.path || (n.children && n.children.length > 0));
+      return nodes.filter((n) => n.path || n.href || n.action || n.docType || (n.children && n.children.length > 0));
     };
 
     return sortTree(root);
+  }
+
+  /** Root label used to decide whether a route belongs on the live navbar. */
+  private liveRootKey(route: ManagedAppRoute): string | null {
+    const path = this.normalizePath(route.path);
+    if (path === '/data-management' || path.startsWith('/data-management/')) return null;
+    if (path === '/admin-panel' || path === '/all-maps' || path === '/permissions' || path === '/newverification') return null;
+    const segments = String(route.menuPath || '')
+      .split('>')
+      .map((s) => s.trim())
+      .filter((s) => Boolean(s) && s !== 'Main');
+    if (segments.length && segments[0] !== 'Data Management' && !segments[0].startsWith('Data Management')) {
+      return LIVE_ROOT_ORDER[segments[0]] != null ? segments[0] : null;
+    }
+    if (segments.length) return null;
+    const label = LIVE_LABEL_BY_PATH[path] || route.label;
+    return LIVE_ROOT_ORDER[label] != null ? label : null;
   }
 
   private findManagedRoute(path: string): ManagedAppRoute | null {

@@ -60,13 +60,53 @@ export class NavbarComponent implements OnInit, OnDestroy {
     return this.routeAccess.evaluate(path, this.loggedInUserType);
   }
 
+  /** Route buttons that sit before the PDF menus (through INFO UPLOAD). */
+  navBeforeDocuments(): NavNode[] {
+    return this.navTree.filter((node) => !node.docType && (node.sortOrder || 0) < 90);
+  }
+
+  /** Route buttons that sit after QPF Reports (DATA ENTRY onward). */
+  navAfterDocuments(): NavNode[] {
+    return this.navTree.filter((node) => !node.docType && (node.sortOrder || 0) >= 130);
+  }
+
+  /** Document menus other than the three fixed ones. Includes QPF Reports. */
+  otherDocumentTypes(): any[] {
+    const fixed = new Set(['QPF VERIFICATION REPORT', 'DESIGN STORM ANALYSIS', 'RAINFALL REPORTS']);
+    return (this.documentTypes || []).filter((docType) => {
+      const name = String(docType?.document_type || '').trim();
+      return !!name && !fixed.has(name);
+    });
+  }
+
   routerLinkFor(path: string): string {
     const p = String(path || '').replace(/^\//, '');
     return '../' + p;
   }
 
   private rebuildNavTree(): void {
-    this.navTree = this.routeAccess.getNavTreeForRole(this.loggedInUserType || '');
+    const tree = this.routeAccess.getNavTreeForRole(this.loggedInUserType || '');
+    const extras: NavNode[] = [
+      {
+        label: 'NWP RAINFALL PRODUCTS',
+        sortOrder: 40,
+        children: [
+          {
+            label: 'QPF-WRF/MME/GFS/NCUM PQPF-GEFS/NEFS',
+            href: 'https://hydro.imd.gov.in/hydrometweb/(S(btoy5c55wy5lrbemoxvhir55))/PRODUCTS/QPF/index.html',
+            sortOrder: 0,
+          },
+        ],
+      },
+    ];
+    if (String(this.loggedInUserType || '').toLowerCase() === 'hq') {
+      extras.push({ label: 'INFO UPLOAD', action: 'upload', sortOrder: 80 });
+    }
+    this.navTree = [...tree, ...extras].sort((a, b) => {
+      const so = (a.sortOrder || 0) - (b.sortOrder || 0);
+      if (so !== 0) return so;
+      return a.label.localeCompare(b.label);
+    });
   }
   
   selectBlockOrRainfallMaps(arg0: string) {
@@ -409,11 +449,21 @@ export class NavbarComponent implements OnInit, OnDestroy {
   loadDocumentTypes(): void {
     console.log('hi')
     this.pdfService.getDocumentTypes().subscribe({
-      next: (response: any[]) => {
-        this.documentTypes = response;
-        console.log('hi')
-
-        console.log('Document types loaded:', this.documentTypes);
+      next: (response: any) => {
+        const rows = Array.isArray(response)
+          ? response
+          : (response?.data || response?.rows || []);
+        this.documentTypes = (Array.isArray(rows) ? rows : []).map((row: any) => {
+          let documents = row?.documents;
+          if (typeof documents === 'string') {
+            try { documents = JSON.parse(documents); } catch { documents = []; }
+          }
+          return {
+            ...row,
+            document_type: String(row?.document_type || '').trim(),
+            documents: Array.isArray(documents) ? documents : [],
+          };
+        });
       },
       error: (error: any) => {
         console.error('Error loading document types:', error);
@@ -423,8 +473,11 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
   // **ADDED: Get documents by type**
   getDocumentsByType(documentType: string): any[] {
-    const typeData = this.documentTypes.find(type => type.document_type === documentType);
-    return typeData ? typeData.documents : [];
+    const wanted = String(documentType || '').trim();
+    const typeData = (this.documentTypes || []).find(
+      (type) => String(type?.document_type || '').trim() === wanted
+    );
+    return typeData && Array.isArray(typeData.documents) ? typeData.documents : [];
   }
 
   // **ADDED: Check if document type exists and has documents**

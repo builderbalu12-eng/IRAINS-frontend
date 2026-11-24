@@ -80,19 +80,100 @@
 
 <nav [ngClass]="{ open: isNavbarOpen }" class="top">
   <ul class="nav">
-    <ng-container *ngFor="let node of navTree" [ngTemplateOutlet]="navNode" [ngTemplateOutletContext]="{ $implicit: node, depth: 0 }"></ng-container>
+    <ng-container *ngFor="let node of navBeforeDocuments()" [ngTemplateOutlet]="navNode" [ngTemplateOutletContext]="{ $implicit: node, depth: 0 }"></ng-container>
+
+    <li *ngIf="hasDocuments('QPF VERIFICATION REPORT')">
+      <a class="main_nav">QPF VERIFICATION REPORT</a>
+      <ul>
+        <li *ngFor="let document of getDocumentsByType('QPF VERIFICATION REPORT')" class="dropdown-item-with-delete">
+          <div class="document-item">
+            <a class="document-link" (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
+            <button *ngIf="canDelete()" class="delete-btn" (click)="confirmDelete($event, document)" title="Delete Document">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </li>
+      </ul>
+    </li>
+
+    <li *ngIf="hasDocuments('DESIGN STORM ANALYSIS')">
+      <a class="main_nav">DESIGN STORM ANALYSIS</a>
+      <ul>
+        <li *ngFor="let document of getDocumentsByType('DESIGN STORM ANALYSIS')" class="dropdown-item-with-delete">
+          <div class="document-item">
+            <a class="document-link" (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
+            <button *ngIf="canDelete()" class="delete-btn" (click)="confirmDelete($event, document)" title="Delete Document">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </li>
+      </ul>
+    </li>
+
+    <li *ngIf="hasDocuments('RAINFALL REPORTS')">
+      <a class="main_nav">RAINFALL REPORTS</a>
+      <ul>
+        <li *ngFor="let document of getDocumentsByType('RAINFALL REPORTS')" class="dropdown-item-with-delete">
+          <div class="document-item">
+            <a class="document-link" (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
+            <button *ngIf="canDelete()" class="delete-btn" (click)="confirmDelete($event, document)" title="Delete Document">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </li>
+      </ul>
+    </li>
+
+    <li *ngFor="let docType of otherDocumentTypes()">
+      <a class="main_nav">{{ docType.document_type }}</a>
+      <ul>
+        <li *ngFor="let document of docType.documents" class="dropdown-item-with-delete">
+          <div class="document-item">
+            <a class="document-link" (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
+            <button *ngIf="canDelete()" class="delete-btn" (click)="confirmDelete($event, document)" title="Delete Document">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </li>
+      </ul>
+    </li>
+
+    <ng-container *ngFor="let node of navAfterDocuments()" [ngTemplateOutlet]="navNode" [ngTemplateOutletContext]="{ $implicit: node, depth: 0 }"></ng-container>
   </ul>
 </nav>
 
 <ng-template #navNode let-node let-depth="depth">
-  <li *ngIf="node.path">
+  <li *ngIf="node.action === 'upload'">
+    <a [class.main_nav]="depth === 0" (click)="uploadPopUp()">{{ node.label }}</a>
+  </li>
+  <li *ngIf="node.href && !node.children?.length">
+    <a [class.main_nav]="depth === 0" [href]="node.href" target="_blank" rel="noopener">{{ node.label }}</a>
+  </li>
+  <li *ngIf="node.docType">
+    <a [class.main_nav]="depth === 0">{{ node.label }}</a>
+    <ul>
+      <li *ngFor="let document of getDocumentsByType(node.docType)" class="dropdown-item-with-delete">
+        <div class="document-item">
+          <a class="document-link" (click)="onDocumentClick(document.id)">{{ document.document_name }}</a>
+          <button
+            *ngIf="canDelete()"
+            class="delete-btn"
+            (click)="confirmDelete($event, document)"
+            title="Delete Document">
+            <i class="fa fa-trash"></i>
+          </button>
+        </div>
+      </li>
+    </ul>
+  </li>
+  <li *ngIf="node.path && !node.docType && node.action !== 'upload'">
     <a
       [class.main_nav]="depth === 0"
       [routerLink]="routerLinkFor(node.path)">
       {{ node.label }}
     </a>
   </li>
-  <li *ngIf="!node.path && node.children?.length">
+  <li *ngIf="!node.path && !node.docType && node.action !== 'upload' && node.children?.length">
     <a [class.main_nav]="depth === 0">{{ node.label }}</a>
     <ul>
       <ng-container *ngFor="let child of node.children" [ngTemplateOutlet]="navNode" [ngTemplateOutletContext]="{ $implicit: child, depth: depth + 1 }"></ng-container>
